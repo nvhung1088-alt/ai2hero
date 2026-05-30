@@ -224,6 +224,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Filter: chỉ nhận số cho PIN inputs
+  document.getElementById('pair-pin')?.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+  });
+  document.getElementById('unlock-pin')?.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+  });
+
   document.getElementById('toggle-pair-pin')?.addEventListener('click', () => {
     const pin = document.getElementById('pair-pin');
     pin.type = pin.type === 'password' ? 'text' : 'password';
@@ -238,8 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
       showError('pair-error', 'Vui lòng nhập mã liên kết hợp lệ (4-6 ký tự)');
       return;
     }
-    if (!pin || pin.length < 4) {
-      showError('pair-error', 'Master PIN phải có ít nhất 4 ký tự');
+    if (!/^\d{6}$/.test(pin)) {
+      showError('pair-error', 'Master PIN phải gồm đúng 6 chữ số (VD: 123456)');
       return;
     }
 
@@ -275,8 +283,8 @@ document.addEventListener('DOMContentLoaded', () => {
     hideError('unlock-error');
     const pin = document.getElementById('unlock-pin')?.value;
 
-    if (!pin || pin.length < 4) {
-      showError('unlock-error', 'Vui lòng nhập Master PIN');
+    if (!/^\d{6}$/.test(pin)) {
+      showError('unlock-error', 'Vui lòng nhập đúng 6 chữ số');
       return;
     }
 

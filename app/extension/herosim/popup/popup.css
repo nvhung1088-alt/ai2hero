@@ -141,6 +141,15 @@ body {
   font-size: 12px;
 }
 
+.input-pin {
+  font-family: 'Courier New', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 12px;
+  text-align: center;
+  padding-right: 44px; /* space for toggle button */
+}
+
 .pin-input-wrap {
   position: relative;
   display: flex;

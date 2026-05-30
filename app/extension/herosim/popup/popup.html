@@ -35,13 +35,16 @@
     </div>
 
     <div class="section">
-      <div class="section-label">Master PIN <span class="label-hint">(ghi nhớ PIN này — không thể khôi phục)</span></div>
+      <div class="section-label">Master PIN <span class="label-hint">(6 chữ số — ghi nhớ, không thể khôi phục)</span></div>
       <div class="pin-input-wrap">
         <input
           id="pair-pin"
-          class="input"
+          class="input input-pin"
           type="password"
-          placeholder="Tạo PIN 6+ ký tự"
+          inputmode="numeric"
+          pattern="[0-9]{6}"
+          maxlength="6"
+          placeholder="••••••"
           autocomplete="new-password"
         >
         <button id="toggle-pair-pin" class="toggle-pin">👁</button>
@@ -78,9 +81,12 @@
     <div class="pin-input-wrap">
       <input
         id="unlock-pin"
-        class="input"
+        class="input input-pin"
         type="password"
-        placeholder="Nhập Master PIN"
+        inputmode="numeric"
+        pattern="[0-9]{6}"
+        maxlength="6"
+        placeholder="••••••"
         autocomplete="current-password"
         autofocus
       >
