@@ -22,11 +22,46 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
 - **LESSONS**: Dùng chung file LESSONS.md toàn cục tại C:\Users\ADMIN\.gemini\LESSONS.md
 - **Tích hợp MVP mới**: Khi tích hợp một ứng dụng Mini-SaaS (MVP) mới vào hệ thống, BẮT BUỘC phải đọc và tuân thủ quy trình 5 giai đoạn tại [MVP_INTEGRATION_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/MVP_INTEGRATION_GUIDE.md).
 
+## TIÊU CHUẨN CÔNG NGHỆ MVP (CORE STANDARDS)
+> Nhằm đảm bảo hệ thống mở rộng đến hàng chục MVP nhưng vẫn duy trì được độ ổn định, BẮT BUỘC áp dụng các chuẩn sau cho mọi MVP:
+
+**1. Bảo mật & An toàn dữ liệu (Security First):**
+- Không rò rỉ `process.env` ra Client Components. Mọi API Keys, DB Passwords phải bị cô lập hoàn toàn tại Server Actions.
+- Dữ liệu nhạy cảm (Tokens, Webhooks của người dùng) phải được mã hóa chuẩn AES-256-GCM qua tiện ích `sim-crypto.ts` trước khi lưu xuống Database.
+- Tự động hóa sinh khóa bảo mật mạnh bằng lệnh `pnpm keys:generate` thay vì dùng chuỗi tĩnh yếu. Không in ra log/console dữ liệu riêng tư.
+
+**2. Hiệu suất & Trải nghiệm (Zero-Latency UX):**
+- **Prefetching**: Mọi thẻ `<Link>` điều hướng quan trọng phải bật `prefetch={true}` để tải ngầm dữ liệu, đem lại cảm giác tức thì (0s) giống hệt SPA.
+- **Loading Boundaries**: Bắt buộc tạo file `loading.tsx` với hiệu ứng kính mờ (Glassmorphism) để bọc các Server Components nặng, chống "đứng" màn hình (Frozen UI).
+- Không tự ý chèn thêm các font chữ hoặc thư viện ảnh hưởng tốc độ tải trang. Tuân thủ Progress bar toàn cục (nextjs-toploader).
+
+**3. Kiến trúc & Công nghệ đồng nhất:**
+- Sử dụng Next.js 15 App Router (Server Components & Server Actions).
+- Database: Drizzle ORM kết nối Supabase (Pooler mode port 6543 cho Production, Session mode port 5432 cho Migration).
+- Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
+
 - **2026-05-30**:
+  - 🎨 **Hoàn thành Sửa Lỗi UI vặt & Xây dựng Premium App Detail Landing Page Popup (Kho ứng dụng)**:
+    - **Sửa dấu `+` thừa ở Sidebar**: Xóa ký tự `+` trùng lặp trong nút "Thêm ứng dụng" ở [sidebar-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/dashboard/sidebar-client.tsx) do đã có icon Plus.
+    - **Kích hoạt nút "Tạo mới" trên Header**: Thay thế hoàn toàn logic dropdown "Tạo mới" tĩnh ở [top-header.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/components/top-header.tsx) bằng các hành động thực tế. Kết nối chuyển trang an toàn đến `/dashboard/home` và `/dashboard/store`.
+    - **Phát Event mở Modal**: Tạo cơ chế phát `CustomEvent('open-create-workspace')` từ Header và viết hook `useEffect` lắng nghe sự kiện để tự động kích hoạt mở workspace modal ở [create-workspace-modal.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/dashboard/create-workspace-modal.tsx).
+    - **Tối ưu hóa và Toàn cục hóa Modal Workspace (Workspace Modal Globalized)**: Bổ sung prop `hideTrigger` cho `CreateWorkspaceModal` để ẩn nút trigger dashed. Mount modal ẩn này vào layout chung của Dashboard [sidebar-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/dashboard/sidebar-client.tsx) và layout quản lý SIM [layout.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/sim/layout.tsx), đảm bảo nút "Tạo không gian mới" trên Header luôn hoạt động ở mọi trang con.
+    - **Tinh gọn Dropdown Tạo mới trên Header**: Hợp nhất các mục đăng bài và giao việc thành một nút duy nhất **Đăng bài nhanh**, đồng thời đổi tên mục kích hoạt ứng dụng thành **Thêm ứng dụng** gọn gàng tại [top-header.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/components/top-header.tsx).
+    - **Vá lỗi Trùng lặp Kích hoạt Ứng dụng**: Thêm validation check tại `handleActivateApp` trong [store-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/dashboard/store/store-client.tsx) để chặn việc kích hoạt lại ứng dụng đã tồn tại trong Workspace được chọn, hiển thị thông báo lỗi rõ ràng.
+    - **Premium Landing Page Popup**: 
+      - Mở rộng metadata interface `AppDefinition` trong [apps-registry.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/apps-registry.ts) với slogan, longDesc, features, benefits, và targetUsers.
+      - Xây dựng component `AppDetailModal` với thiết kế mờ kính Glassmorphism siêu cao cấp trong [store-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/dashboard/store/store-client.tsx).
+      - Thiết kế **Mockup Visual SIM Manager** sinh động bằng Tailwind CSS thuần (dot xanh nhấp nháy, metrics, logs OTP mini mờ kính) hiển thị bên trong Popup.
+      - Tích hợp panel chọn Workspace dropdown và nút Kích hoạt ngay vào trong Popup để đơn giản hóa luồng kích hoạt ứng dụng một cách tự nhiên.
+      - Cấu hình click vào **toàn bộ thẻ card** ở trang Store để mở Landing Page Popup.
+    - **Nghiệm thu**: Biên dịch dự án thành công xuất sắc đạt **0 errors** và **0 warnings** trên toàn hệ thống 29 routes Next.js!
+    - **Vá lỗ hổng Backend kích hoạt trùng**: Cập nhật `activateAppAction` trả về lỗi (error) thay vì success khi ứng dụng đã tồn tại trong không gian làm việc, chặn đứng trường hợp backend ngầm bypass thông báo thành công ảo.
+    - **Tạo Hướng dẫn Triển khai (SOP)**: Tạo file `DEPLOYMENT_AI2HERO.md` làm tài liệu tiêu chuẩn quy định Pre-flight Security Audit, Backup DB, và các bước deploy an toàn khi nhận lệnh đẩy code lên server Ai2Hero.
   - 🌐 **Triển khai Production thành công (Go-Live)**:
     - **Kết nối Tên miền**: Trỏ DNS thành công tên miền chính `ai2hero.com` và tên miền phụ `www.ai2hero.com` từ nhà cung cấp iNet về Vercel.
     - **Bảo mật SSL/HTTPS**: Vercel đã tự động cấp phát và kích hoạt chứng chỉ SSL an toàn (Let's Encrypt). Lỗi cảnh báo bảo mật HTTPS ban đầu trong quá trình đồng bộ DNS đã được khắc phục hoàn toàn. Dự án chính thức hoạt động ổn định trên môi trường Internet.
   - ⚡ **Hoàn thành Tối ưu trải nghiệm UI/UX và Tốc độ chuyển trang (Performance & UX)**:
+    - **Zero-Latency Navigation**: Bật tính năng Aggressive Prefetching (`prefetch={true}`) cho toàn bộ các Menu điều hướng trong Sidebar. Next.js 15 sẽ tự động Background Fetch dữ liệu RSC Payload, giúp thao tác chuyển trang tức thì (0s) mượt mà như SPA thuần túy.
     - **Tích hợp Progress Bar toàn cục**: Cài đặt và nhúng thành công `nextjs-toploader` màu cam vào `app/layout.tsx`. Khắc phục triệt để tình trạng "đứng giao diện" (Frozen UI) khi điều hướng trong Next.js 15 App Router.
     - **Bổ sung Loading Boundaries**: Tạo các fallback component `loading.tsx` sử dụng Spinner mờ kính (Glassmorphism) cực kỳ mượt mà cho nhánh `(dashboard)` và `(dashboard)/sim`, mang lại phản hồi thị giác (visual feedback) tức thì khi truy vấn Server Components.
     - **Nghiệm thu**: Biên dịch dự án `pnpm build` thành công xuất sắc đạt **0 errors** và **0 warnings** trên toàn bộ routes.
