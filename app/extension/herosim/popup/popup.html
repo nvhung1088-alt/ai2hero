@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="vi" translate="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HeroSim Vault</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- STATE A: Chưa liên kết -->
+  <div id="state-pair" class="state" style="display:none">
+    <div class="header">
+      <div class="logo">
+        <img src="../icons/icon48.png" alt="HeroSim" class="logo-icon">
+        <div>
+          <div class="logo-title">HeroSim</div>
+          <div class="logo-sub">by AI2Hero</div>
+        </div>
+      </div>
+      <div class="badge badge-new">Kết nối mới</div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Mã liên kết (6 ký tự)</div>
+      <div class="hint">Lấy mã tại <strong>ai2hero.com/sim/settings</strong> → Kết nối Extension</div>
+      <input
+        id="pair-code"
+        class="input input-code"
+        type="text"
+        maxlength="6"
+        placeholder="VD: A3K9BZ"
+        autocomplete="off"
+        spellcheck="false"
+      >
+    </div>
+
+    <div class="section">
+      <div class="section-label">Master PIN <span class="label-hint">(ghi nhớ PIN này — không thể khôi phục)</span></div>
+      <div class="pin-input-wrap">
+        <input
+          id="pair-pin"
+          class="input"
+          type="password"
+          placeholder="Tạo PIN 6+ ký tự"
+          autocomplete="new-password"
+        >
+        <button id="toggle-pair-pin" class="toggle-pin">👁</button>
+      </div>
+      <div class="hint warning">⚠️ PIN bảo vệ vault của bạn. Nếu quên PIN, cần xóa và kết nối lại.</div>
+    </div>
+
+    <button id="btn-pair" class="btn btn-primary">
+      <span id="pair-spinner" class="spinner" style="display:none"></span>
+      🔗 Liên kết ngay
+    </button>
+
+    <div id="pair-error" class="error-msg" style="display:none"></div>
+  </div>
+
+  <!-- STATE B: Đã liên kết, chờ unlock PIN -->
+  <div id="state-unlock" class="state" style="display:none">
+    <div class="header">
+      <div class="logo">
+        <img src="../icons/icon48.png" alt="HeroSim" class="logo-icon">
+        <div>
+          <div class="logo-title">HeroSim</div>
+          <div id="unlock-team-name" class="logo-sub"></div>
+        </div>
+      </div>
+      <div class="badge badge-lock">🔒 Đã khóa</div>
+    </div>
+
+    <div class="lock-illustration">
+      <div class="lock-icon">🛡️</div>
+      <div class="lock-text">Nhập Master PIN để mở khóa vault</div>
+    </div>
+
+    <div class="pin-input-wrap">
+      <input
+        id="unlock-pin"
+        class="input"
+        type="password"
+        placeholder="Nhập Master PIN"
+        autocomplete="current-password"
+        autofocus
+      >
+      <button id="toggle-unlock-pin" class="toggle-pin">👁</button>
+    </div>
+
+    <button id="btn-unlock" class="btn btn-primary">
+      <span id="unlock-spinner" class="spinner" style="display:none"></span>
+      🔓 Mở khóa
+    </button>
+
+    <div id="unlock-error" class="error-msg" style="display:none"></div>
+
+    <button id="btn-unpair" class="btn btn-ghost">Hủy liên kết</button>
+  </div>
+
+  <!-- STATE C: Dashboard — Danh sách accounts -->
+  <div id="state-dashboard" class="state" style="display:none">
+    <div class="header">
+      <div class="logo">
+        <img src="../icons/icon48.png" alt="HeroSim" class="logo-icon">
+        <div>
+          <div class="logo-title">HeroSim</div>
+          <div id="dashboard-team-name" class="logo-sub"></div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-sync" class="icon-btn" title="Sync ngay">↻</button>
+        <button id="btn-lock" class="icon-btn" title="Khóa vault">🔒</button>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <input
+        id="search-input"
+        class="input input-search"
+        type="text"
+        placeholder="🔍 Tìm tài khoản..."
+        autocomplete="off"
+      >
+    </div>
+
+    <div id="accounts-list" class="accounts-list">
+      <div class="loading-msg">Đang tải...</div>
+    </div>
+
+    <div id="sync-status" class="sync-status"></div>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast" style="display:none"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
