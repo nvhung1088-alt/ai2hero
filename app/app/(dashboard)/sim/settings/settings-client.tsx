@@ -23,6 +23,7 @@ interface SettingsClientProps {
   initialPlatforms: any[];
   savedSettings: any;
   teamId: number;
+  userId: number;
   teamMembers?: any[];
   userRole?: string;
 }
@@ -32,6 +33,7 @@ export default function SettingsClient({
   initialPlatforms,
   savedSettings,
   teamId,
+  userId,
   teamMembers = [],
   userRole,
 }: SettingsClientProps) {
@@ -178,28 +180,79 @@ export default function SettingsClient({
     };
   });
 
-  // Extension PIN State
-  const [extensionPin, setExtensionPin] = useState('883902');
+  // Extension Link Code State (HeroSim v3.0)
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [linkCodeExpiry, setLinkCodeExpiry] = useState<Date | null>(null);
+  const [linkCountdown, setLinkCountdown] = useState(0);
+  const [linkedDevices, setLinkedDevices] = useState<any[]>([]);
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
 
+  // Load danh sách thiết bị đã liên kết khi mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      let pin = localStorage.getItem('simguard_pin');
-      if (!pin) {
-        pin = String(Math.floor(100000 + Math.random() * 900000));
-        localStorage.setItem('simguard_pin', pin);
-      }
-      setExtensionPin(pin);
-    }
-  }, []);
+    import('./actions').then(({ getLinkedDevicesAction }) => {
+      getLinkedDevicesAction(teamId).then((res) => {
+        if (res.success && res.data) setLinkedDevices(res.data);
+      });
+    });
+  }, [teamId]);
 
-  const regeneratePin = () => {
-    const newPin = String(Math.floor(100000 + Math.random() * 900000));
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('simguard_pin', newPin);
+  // Countdown timer cho link code
+  useEffect(() => {
+    if (!linkCodeExpiry) return;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.floor((linkCodeExpiry.getTime() - Date.now()) / 1000));
+      setLinkCountdown(remaining);
+      if (remaining === 0) {
+        setLinkCode(null);
+        setLinkCodeExpiry(null);
+        clearInterval(interval);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [linkCodeExpiry]);
+
+  const handleGenerateLinkCode = async () => {
+    setIsGeneratingCode(true);
+    try {
+      const { generateLinkCodeAction } = await import('./actions');
+      const res = await generateLinkCodeAction(teamId, userId);
+      if (res.success && res.code && res.expiresAt) {
+        setLinkCode(res.code);
+        setLinkCodeExpiry(new Date(res.expiresAt));
+        setLinkCountdown(5 * 60);
+      } else {
+        showToast(res.error || 'Lỗi sinh mã liên kết', 'error');
+      }
+    } finally {
+      setIsGeneratingCode(false);
     }
-    setExtensionPin(newPin);
-    showToast('Đã tạo mã PIN kết nối mới cho Extension!', 'success');
   };
+
+  const handleRevokeDevice = async (tokenId: number) => {
+    const { revokeDeviceAction } = await import('./actions');
+    const res = await revokeDeviceAction(teamId, tokenId);
+    if (res.success) {
+      setLinkedDevices((prev) => prev.filter((d) => d.id !== tokenId));
+      showToast('Đã thu hồi quyền truy cập thiết bị!', 'success');
+    } else {
+      showToast(res.error || 'Lỗi thu hồi thiết bị', 'error');
+    }
+  };
+
+  const formatCountdown = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const formatRelativeTime = (date: string | Date) => {
+    const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+    if (diff < 60) return 'vừa xong';
+    if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
+    return `${Math.floor(diff / 86400)} ngày trước`;
+  };
+
 
   // Platforms State
   const [platformForm, setPlatformForm] = useState({ name: '', icon: '📌', color: '#3b82f6' });
@@ -382,28 +435,76 @@ export default function SettingsClient({
                   </div>
                 </div>
 
-                {/* Chrome Extension Vault PIN */}
+                {/* HeroSim Chrome Extension — Kết nối mới */}
                 <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-500">
                       <Smartphone className="h-5 w-5" />
                     </div>
                     <div>
-                      <h3 className="text-xs font-extrabold text-white">Kết nối Chrome Extension SimGuard Vault 2.0</h3>
-                      <p className="text-[10px] text-gray-400 mt-0.5">Nhập mã PIN xác minh bảo mật này vào popup của extension để xác thực handshake đồng bộ hóa.</p>
+                      <h3 className="text-xs font-extrabold text-white">🔗 Kết nối Chrome Extension HeroSim v3.0</h3>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Sinh mã liên kết để ghép nối Extension với Workspace này. Đồng bộ mật khẩu 2 chiều an toàn qua API bảo mật.</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6 mt-3">
-                    <span className="text-3xl font-black tracking-[8px] font-mono text-orange-400 bg-black/40 px-5 py-2.5 rounded-xl border border-white/5 select-all">
-                      {extensionPin}
-                    </span>
-                    <button
-                      onClick={regeneratePin}
-                      className="px-3.5 py-2 bg-white/5 hover:bg-white/10 text-white hover:text-orange-400 border border-white/10 rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <RefreshCw className="h-3 w-3" /> Tạo mã PIN mới
-                    </button>
-                  </div>
+
+                  {/* Hiển thị mã liên kết + countdown */}
+                  {linkCode ? (
+                    <div className="flex items-center gap-4 mt-2">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-3xl font-black tracking-[8px] font-mono text-orange-400 bg-black/40 px-5 py-2.5 rounded-xl border border-orange-500/20 select-all">
+                          {linkCode}
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-bold">
+                          Hết hạn sau: <span className={`font-mono ${linkCountdown < 60 ? 'text-red-400' : 'text-orange-400'}`}>{formatCountdown(linkCountdown)}</span>
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-gray-400 leading-relaxed">
+                        <p className="font-bold text-gray-200 mb-1">Cách dùng:</p>
+                        <p>1. Mở Extension HeroSim</p>
+                        <p>2. Nhập mã này vào popup</p>
+                        <p>3. Đặt Master PIN cá nhân</p>
+                        <p>4. Bấm "Liên kết ngay"</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-gray-500 italic">Bấm nút bên dưới để sinh mã liên kết mới (hiệu lực 5 phút).</p>
+                  )}
+
+                  <button
+                    onClick={handleGenerateLinkCode}
+                    disabled={isGeneratingCode}
+                    className="px-3.5 py-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:opacity-90 text-white border-0 rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${isGeneratingCode ? 'animate-spin' : ''}`} />
+                    {isGeneratingCode ? 'Đang sinh mã...' : 'Sinh mã liên kết mới'}
+                  </button>
+
+                  {/* Danh sách thiết bị đã liên kết */}
+                  {linkedDevices.length > 0 && (
+                    <div className="border-t border-white/5 pt-4 space-y-2">
+                      <p className="text-[10px] font-extrabold text-gray-300">Thiết bị đã liên kết ({linkedDevices.length})</p>
+                      {linkedDevices.map((device) => (
+                        <div key={device.id} className="flex items-center justify-between gap-3 px-3 py-2 bg-white/[0.02] rounded-xl border border-white/5">
+                          <div>
+                            <p className="text-[11px] font-bold text-white">{device.deviceName || 'Chrome Extension'}</p>
+                            <p className="text-[9px] text-gray-500">
+                              {device.lastUsedAt ? `Dùng ${formatRelativeTime(device.lastUsedAt)}` : `Liên kết ${formatRelativeTime(device.createdAt)}`}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleRevokeDevice(device.id)}
+                            className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-[9px] font-black transition-all cursor-pointer"
+                          >
+                            Thu hồi
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {linkedDevices.length === 0 && (
+                    <p className="text-[10px] text-gray-500 italic border-t border-white/5 pt-3">Chưa có thiết bị nào được liên kết.</p>
+                  )}
                 </div>
               </div>
             )}

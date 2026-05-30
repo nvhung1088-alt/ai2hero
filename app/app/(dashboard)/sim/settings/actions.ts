@@ -233,3 +233,25 @@ export async function deleteSimPlatformAction(teamId: number, key: string) {
   }
 }
 
+// ─── HeroSim Extension Actions ────────────────────────────────────────────────
+import {
+  generateLinkCode,
+  getActiveExtensionTokens,
+  revokeExtensionToken,
+} from '@/lib/db/extension-actions';
+
+export async function generateLinkCodeAction(teamId: number, userId: number) {
+  return generateLinkCode(teamId, userId);
+}
+
+export async function getLinkedDevicesAction(teamId: number) {
+  return getActiveExtensionTokens(teamId);
+}
+
+export async function revokeDeviceAction(teamId: number, tokenId: number) {
+  const result = await revokeExtensionToken(teamId, tokenId);
+  if (result.success) revalidatePath('/sim/settings');
+  return result;
+}
+
+

@@ -96,7 +96,7 @@ export default async function SimLayout({
           
           {/* Footer Sidebar */}
           <div className="border-t border-white/5 pt-3 text-center text-[10px] text-gray-500 font-bold select-none">
-            SimGuard Vault 2.0.0
+            HeroSim v3.0
           </div>
         </aside>
 

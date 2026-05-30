@@ -48,6 +48,7 @@ export default async function SettingsPage() {
       initialPlatforms={platforms} 
       savedSettings={savedSettings} 
       teamId={teamId}
+      userId={user?.id ?? 0}
       teamMembers={dbMembers}
       userRole={userRole}
     />

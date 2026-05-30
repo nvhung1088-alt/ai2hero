@@ -466,5 +466,49 @@ export type NewSimCheckLog = typeof simCheckLogs.$inferInsert;
 export type SimBackupConfig = typeof simBackupConfigs.$inferSelect;
 export type NewSimBackupConfig = typeof simBackupConfigs.$inferInsert;
 
+// ============================================================
+// HEROSIM EXTENSION MODULE
+// ============================================================
+
+export const extensionTokens = pgTable('extension_tokens', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  createdByUserId: integer('created_by_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull(), // SHA-256 hash of JWT — KHÔNG lưu token gốc
+  deviceName: varchar('device_name', { length: 100 }).default('Chrome Extension'),
+  lastUsedAt: timestamp('last_used_at'),
+  revokedAt: timestamp('revoked_at'),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const extensionLinkCodes = pgTable('extension_link_codes', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  code: varchar('code', { length: 8 }).notNull(), // 6-8 ký tự ngẫu nhiên
+  expiresAt: timestamp('expires_at').notNull(), // Hết hạn sau 5 phút
+  usedAt: timestamp('used_at'), // null = chưa dùng
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// --- HeroSim Extension Relations ---
+export const extensionTokensRelations = relations(extensionTokens, ({ one }) => ({
+  team: one(teams, { fields: [extensionTokens.teamId], references: [teams.id] }),
+  creator: one(users, { fields: [extensionTokens.createdByUserId], references: [users.id] }),
+}));
+
+export const extensionLinkCodesRelations = relations(extensionLinkCodes, ({ one }) => ({
+  team: one(teams, { fields: [extensionLinkCodes.teamId], references: [teams.id] }),
+  user: one(users, { fields: [extensionLinkCodes.userId], references: [users.id] }),
+}));
+
+// --- HeroSim Extension Types ---
+export type ExtensionToken = typeof extensionTokens.$inferSelect;
+export type NewExtensionToken = typeof extensionTokens.$inferInsert;
+export type ExtensionLinkCode = typeof extensionLinkCodes.$inferSelect;
+export type NewExtensionLinkCode = typeof extensionLinkCodes.$inferInsert;
+
+
 
 

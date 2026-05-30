@@ -66,25 +66,10 @@ function toCamelCase(obj: any): any {
 export default function BridgeAPI({ teamId, vaultData }: BridgeAPIProps) {
   const router = useRouter();
 
-  // 1. Sync server-side vaultData down to localStorage (snake_case)
-  useEffect(() => {
-    try {
-      localStorage.setItem('simguard_assets', JSON.stringify(toSnakeCase(vaultData.assets) || []));
-      localStorage.setItem('simguard_linked_accounts', JSON.stringify(toSnakeCase(vaultData.linkedAccounts) || []));
-      localStorage.setItem('simguard_employees', JSON.stringify(toSnakeCase(vaultData.employees) || []));
-      localStorage.setItem('simguard_platforms', JSON.stringify(toSnakeCase(vaultData.platforms) || []));
-      localStorage.setItem('simguard_risk_events', JSON.stringify(toSnakeCase(vaultData.riskEvents) || []));
-      localStorage.setItem('simguard_check_logs', JSON.stringify(toSnakeCase(vaultData.checkLogs) || []));
+  // Note: localStorage sync removed in HeroSim v3.0 — data sync now via Direct Sync API
+  // Extension uses Bearer Token + GET /api/sim/extension/sync instead of localStorage
 
-      if (!localStorage.getItem('simguard_pin')) {
-        localStorage.setItem('simguard_pin', '1234');
-      }
-    } catch (err) {
-      console.error('BridgeAPI: Error writing to localStorage:', err);
-    }
-  }, [vaultData]);
-
-  // 2. Listen to postMessage from SimGuard Extension
+  // 2. Listen to postMessage from HeroSim Extension (legacy fallback bridge)
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       // Security filter: prevent cross-origin message interception / data injection
@@ -92,8 +77,8 @@ export default function BridgeAPI({ teamId, vaultData }: BridgeAPIProps) {
         return;
       }
 
-      // Security filter: only listen to messages coming from the SimGuard extension
-      if (!event.data || event.data.source !== 'simguard-extension') {
+      // Security filter: only listen to messages coming from the HeroSim extension
+      if (!event.data || event.data.source !== 'herosim-extension') {
         return;
       }
 
@@ -103,9 +88,9 @@ export default function BridgeAPI({ teamId, vaultData }: BridgeAPIProps) {
       console.log('BridgeAPI: Received message from Extension:', type, payload);
 
       if (type === 'VAULT_QUERY') {
-        // Return current vault data mapped to snake_case
+        // Return current vault data mapped to snake_case (HeroSim v3.0: no PIN exposed)
         window.postMessage({
-          source: 'simguard-web',
+          source: 'herosim-web',
           type: 'VAULT_QUERY_RESPONSE',
           success: true,
           data: {
@@ -115,7 +100,7 @@ export default function BridgeAPI({ teamId, vaultData }: BridgeAPIProps) {
             platforms: toSnakeCase(vaultData.platforms),
             risk_events: toSnakeCase(vaultData.riskEvents),
             check_logs: toSnakeCase(vaultData.checkLogs),
-            pin: localStorage.getItem('simguard_pin') || '1234'
+            // pin removed in HeroSim v3.0 — use Direct Sync API with Bearer Token
           }
         }, window.location.origin);
       }
@@ -163,7 +148,7 @@ export default function BridgeAPI({ teamId, vaultData }: BridgeAPIProps) {
 
             // Respond success back to extension
             window.postMessage({
-              source: 'simguard-web',
+              source: 'herosim-web',
               type: 'VAULT_SAVE_ACCOUNT_RESPONSE',
               success: true,
               data: toSnakeCase(result.data)
@@ -176,7 +161,7 @@ export default function BridgeAPI({ teamId, vaultData }: BridgeAPIProps) {
           showToast(err.message || 'Lỗi lưu tài khoản từ Extension', 'error');
 
           window.postMessage({
-            source: 'simguard-web',
+            source: 'herosim-web',
             type: 'VAULT_SAVE_ACCOUNT_RESPONSE',
             success: false,
             error: err.message || 'Lỗi hệ thống'
