@@ -96,32 +96,45 @@ async function handleMessage(message, sendResponse) {
         const salt = parseSalt(stored.herosim_salt);
         const key = await deriveKey(masterPin, salt);
 
-        // Thử giải mã token — nếu PIN sai sẽ throw
-        const accessToken = await decrypt(stored.herosim_encrypted_token, key);
-
-        // Verify token hợp lệ (Bearer test call)
-        const res = await fetch(`${API_BASE}/sync`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-        });
-
-        if (!res.ok) {
-          sendResponse({ success: false, error: 'PIN sai hoặc token đã hết hạn' });
+        // Thử giải mã token — nếu PIN sai AES-GCM sẽ tự throw DOMException
+        // Không cần gọi API để verify — decrypt thành công = PIN đúng
+        let accessToken;
+        try {
+          accessToken = await decrypt(stored.herosim_encrypted_token, key);
+        } catch (_) {
+          sendResponse({ success: false, error: 'PIN không đúng' });
           return;
         }
 
-        // PIN đúng — lưu key vào RAM
+        // PIN đúng — lưu key vào RAM, mở khóa ngay
         _derivedKey = key;
         await chrome.storage.local.set({ herosim_locked: false });
 
-        // Sync data mới nhất
-        const syncData = await res.json();
-        if (syncData.success) {
-          await cacheAccounts(syncData.accounts, _derivedKey);
+        // Sync data best-effort (không block unlock nếu mạng lỗi)
+        try {
+          const res = await fetch(`${API_BASE}/sync`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` },
+          });
+          if (res.ok) {
+            const syncData = await res.json();
+            if (syncData.success) {
+              await cacheAccounts(syncData.accounts, _derivedKey);
+              await chrome.storage.local.set({ herosim_last_sync: new Date().toISOString() });
+            }
+          } else if (res.status === 401) {
+            // Token thật sự hết hạn — lock lại
+            _derivedKey = null;
+            await chrome.storage.local.set({ herosim_locked: true });
+            sendResponse({ success: false, error: 'Token đã hết hạn. Vui lòng sinh mã liên kết mới.' });
+            return;
+          }
+        } catch (_) {
+          // Mạng lỗi — vẫn unlock được, dùng cache cũ
         }
 
         sendResponse({ success: true });
       } catch (err) {
-        sendResponse({ success: false, error: 'PIN không đúng' });
+        sendResponse({ success: false, error: err.message });
       }
       break;
     }
