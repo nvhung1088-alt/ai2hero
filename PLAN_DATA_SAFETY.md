@@ -265,7 +265,7 @@ Task 1 phải hoàn thành trước (để `deletedAt` được set khi xóa wor
 ## TASK 3: Thêm App Activation Gating vào SIM Server Actions
 
 ### 3.1. Mô tả
-Bổ sung lớp kiểm tra `activatedApps` tại hàm helper `verifyTeamAccess` trong `sim-actions.ts`. Khi SIM Manager bị hủy kích hoạt (`'sim'` không nằm trong `teams.activatedApps`), mọi Server Action ghi dữ liệu SIM (create, update, delete, import...) phải bị từ chối. Điều này chặn bypass backend khi app đã bị tắt trên UI.
+Bổ sung lớp kiểm tra `activatedApps` tại hàm helper `verifyTeamAccess` trong `sim-actions.ts`. Khi HeroSim bị hủy kích hoạt (`'sim'` không nằm trong `teams.activatedApps`), mọi Server Action ghi dữ liệu SIM (create, update, delete, import...) phải bị từ chối. Điều này chặn bypass backend khi app đã bị tắt trên UI.
 
 ### 3.2. Files cần sửa
 | File | Hành động | Dòng ước tính |
@@ -414,8 +414,8 @@ Không — Task này độc lập (có thể làm song song với Task 1 và 2).
 4. Grep `activatedApps` trong `sim-actions.ts` — phải xuất hiện 1 lần (trong `verifyTeamAccess`)
 
 ### 3.8. Kết quả mong đợi
-- Khi SIM Manager bị hủy kích hoạt (không có `'sim'` trong `teams.activatedApps`), mọi thao tác ghi SIM data đều trả về lỗi `{ success: false, error: 'Ứng dụng chưa được kích hoạt trong không gian làm việc này' }`
-- Khi SIM Manager đang kích hoạt, mọi thao tác hoạt động bình thường như trước
+- Khi HeroSim bị hủy kích hoạt (không có `'sim'` trong `teams.activatedApps`), mọi thao tác ghi SIM data đều trả về lỗi `{ success: false, error: 'Ứng dụng chưa được kích hoạt trong không gian làm việc này' }`
+- Khi HeroSim đang kích hoạt, mọi thao tác hoạt động bình thường như trước
 - Pattern `requiredApp` có thể tái sử dụng cho các MVP khác (Chat, API Hub...) trong tương lai
 
 ---

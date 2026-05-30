@@ -58,7 +58,7 @@ async function verifyTeamAccess(targetTeamId: number, requireRole?: string[], re
 
     const activatedApps = (team[0].activatedApps as string[]) || [];
     if (!activatedApps.includes(requiredApp)) {
-      throw new Error(`Ứng dụng SIM Manager chưa được kích hoạt trong Không gian này`);
+      throw new Error(`Ứng dụng HeroSim chưa được kích hoạt trong Không gian này`);
     }
   }
 

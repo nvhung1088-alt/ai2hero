@@ -18,7 +18,7 @@ export interface AppDefinition {
 export const APPS: AppDefinition[] = [
   {
     id: 'sim',
-    name: 'SIM Manager',
+    name: 'HeroSim',
     description: 'Quản lý SIM doanh nghiệp — bảo vệ tài khoản liên kết, cảnh báo rủi ro, kiểm tra tự động.',
     icon: 'Smartphone',
     path: '/sim/dashboard',

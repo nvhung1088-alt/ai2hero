@@ -22,7 +22,7 @@ graph TB
             CHAT[AI Chat<br>/dashboard/chat]
             HUB[AI Hub<br>/dashboard/hub]
             API[API Hub<br>/dashboard/api]
-            SIM[SIM Manager<br>/sim/dashboard]
+            SIM[HeroSim<br>/sim/dashboard]
             POS[POS<br>/dashboard/pos]
             CONTENT[Content Hub<br>/dashboard/content]
         end
@@ -144,7 +144,7 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Đọc/Ghi data**: Đọc/Ghi API providers, connection status
 - **Liên kết**: → /dashboard
 
-### SIM Manager (`/sim/dashboard`) — MVP #4
+### HeroSim (`/sim/dashboard`) — MVP #4
 - **Chức năng**: Giao diện quản trị SIM doanh nghiệp, hiển thị Stats, biểu đồ Donut rủi ro (CSS conic-gradient), danh sách top 5 SIM nguy cấp và các lối tắt nhanh.
 - **Vai trò**: MVP App Home (Server Component + Sub-Sidebar dọc)
 - **Đọc/Ghi data**: 
@@ -184,7 +184,7 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Liên kết**: → /sim/dashboard
 
 ### Cài đặt SIM (`/sim/settings`)
-- **Chức năng**: Trang cài đặt SIM Manager với **8 tabs cấu hình cao cấp** (Cấu hình chung, Quản lý nhân sự, Danh mục kênh, API & Tích hợp, Telegram Alerts, Chu kỳ kiểm tra, Quy tắc rủi ro, và **Sao lưu dữ liệu tự động** gửi email qua Resend). Tab Sao lưu dữ liệu chỉ hiển thị đối với Chủ sở hữu (Owner), hỗ trợ thiết lập email nhận, chu kỳ gửi (hàng tuần/hàng tháng) và kích hoạt sao lưu nhanh thủ công tức thời về email cá nhân.
+- **Chức năng**: Trang cài đặt HeroSim với **8 tabs cấu hình cao cấp** (Cấu hình chung, Quản lý nhân sự, Danh mục kênh, API & Tích hợp, Telegram Alerts, Chu kỳ kiểm tra, Quy tắc rủi ro, và **Sao lưu dữ liệu tự động** gửi email qua Resend). Tab Sao lưu dữ liệu chỉ hiển thị đối với Chủ sở hữu (Owner), hỗ trợ thiết lập email nhận, chu kỳ gửi (hàng tuần/hàng tháng) và kích hoạt sao lưu nhanh thủ công tức thời về email cá nhân.
 - **Vai trò**: MVP Settings Manager (Server & Client Component)
 - **Đọc/Ghi data**:
   - **Đọc**: Đọc danh sách nhân viên qua `getSimEmployees`, platforms qua `getSimPlatforms`, system settings qua Server Action `getSystemSetting`, và cấu hình backup qua `getBackupConfig`.

@@ -25,7 +25,7 @@ const AVAILABLE_APPS = [
   { id: 'chat', name: 'AI Chat' },
   { id: 'hub', name: 'AI Hub' },
   { id: 'api', name: 'API Hub' },
-  { id: 'sim', name: 'SIM Manager' },
+  { id: 'sim', name: 'HeroSim' },
   { id: 'pos', name: 'POS Bán hàng' },
   { id: 'content', name: 'Content Hub' },
 ];

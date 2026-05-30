@@ -89,7 +89,7 @@ export default async function SimLayout({
 
             {/* Menu Điều hướng dọc của SIM */}
             <div className="space-y-1">
-              <span className="text-[9px] uppercase font-bold text-gray-500 tracking-wider px-3 block mb-2">SIM Manager</span>
+              <span className="text-[9px] uppercase font-bold text-gray-500 tracking-wider px-3 block mb-2">HeroSim</span>
               <SimTabs />
             </div>
           </div>

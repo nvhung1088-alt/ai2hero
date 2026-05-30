@@ -8,8 +8,42 @@ const API_BASE = 'https://www.ai2hero.com/api/sim/extension';
 const ALARM_SYNC = 'herosim-sync';
 const SYNC_INTERVAL_MINUTES = 5;
 
-// ─── Derived key trong RAM (mất khi SW bị Chrome tắt) ────────────────────────
-let _derivedKey = null;
+// ─── Export/Import CryptoKey sang Base64 để lưu vào chrome.storage.session ─────
+async function exportKey(key) {
+  const exported = await crypto.subtle.exportKey('raw', key);
+  return btoa(String.fromCharCode(...new Uint8Array(exported)));
+}
+
+async function importKey(keyB64) {
+  const rawKey = Uint8Array.from(atob(keyB64), c => c.charCodeAt(0));
+  return crypto.subtle.importKey(
+    'raw',
+    rawKey,
+    { name: 'AES-GCM' },
+    true,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function getDerivedKey() {
+  const stored = await chrome.storage.session.get(['herosim_derived_key']);
+  if (!stored.herosim_derived_key) return null;
+  try {
+    return await importKey(stored.herosim_derived_key);
+  } catch (err) {
+    console.error('Import key error:', err);
+    return null;
+  }
+}
+
+async function setDerivedKey(key) {
+  if (!key) {
+    await chrome.storage.session.remove(['herosim_derived_key']);
+    return;
+  }
+  const keyB64 = await exportKey(key);
+  await chrome.storage.session.set({ herosim_derived_key: keyB64 });
+}
 
 // ─── Startup: kiểm tra trạng thái lock ───────────────────────────────────────
 self.addEventListener('install', () => self.skipWaiting());
@@ -51,10 +85,11 @@ async function handleMessage(message, sendResponse) {
         // Sinh salt + derive key từ Master PIN
         const saltB64 = generateSalt();
         const salt = parseSalt(saltB64);
-        _derivedKey = await deriveKey(masterPin, salt);
+        const key = await deriveKey(masterPin, salt);
+        await setDerivedKey(key);
 
         // Mã hóa accessToken bằng derived key trước khi lưu storage
-        const encryptedToken = await encrypt(data.accessToken, _derivedKey);
+        const encryptedToken = await encrypt(data.accessToken, key);
 
         await chrome.storage.local.set({
           herosim_paired: true,
@@ -106,8 +141,8 @@ async function handleMessage(message, sendResponse) {
           return;
         }
 
-        // PIN đúng — lưu key vào RAM, mở khóa ngay
-        _derivedKey = key;
+        // PIN đúng — lưu key vào session, mở khóa ngay
+        await setDerivedKey(key);
         await chrome.storage.local.set({ herosim_locked: false });
 
         // Sync data best-effort (không block unlock nếu mạng lỗi)
@@ -118,12 +153,12 @@ async function handleMessage(message, sendResponse) {
           if (res.ok) {
             const syncData = await res.json();
             if (syncData.success) {
-              await cacheAccounts(syncData.accounts, _derivedKey);
+              await cacheAccounts(syncData.accounts, key);
               await chrome.storage.local.set({ herosim_last_sync: new Date().toISOString() });
             }
           } else if (res.status === 401) {
             // Token thật sự hết hạn — lock lại
-            _derivedKey = null;
+            await setDerivedKey(null);
             await chrome.storage.local.set({ herosim_locked: true });
             sendResponse({ success: false, error: 'Token đã hết hạn. Vui lòng sinh mã liên kết mới.' });
             return;
@@ -141,7 +176,7 @@ async function handleMessage(message, sendResponse) {
 
     // ─── LOCK: Xóa derived key khỏi RAM ────────────────────────────────
     case 'LOCK': {
-      _derivedKey = null;
+      await setDerivedKey(null);
       await chrome.storage.local.set({ herosim_locked: true });
       sendResponse({ success: true });
       break;
@@ -149,7 +184,8 @@ async function handleMessage(message, sendResponse) {
 
     // ─── GET_ACCOUNTS: Lấy danh sách accounts từ cache ─────────────────
     case 'GET_ACCOUNTS': {
-      if (!_derivedKey) {
+      const key = await getDerivedKey();
+      if (!key) {
         sendResponse({ success: false, locked: true });
         return;
       }
@@ -162,7 +198,7 @@ async function handleMessage(message, sendResponse) {
           cache.map(async (acc) => {
             try {
               const decryptedPw = acc.encryptedLocal
-                ? await decrypt(acc.encryptedLocal, _derivedKey)
+                ? await decrypt(acc.encryptedLocal, key)
                 : null;
               return { ...acc, password: decryptedPw, encryptedLocal: undefined };
             } catch {
@@ -180,7 +216,8 @@ async function handleMessage(message, sendResponse) {
 
     // ─── SYNC_NOW: Đồng bộ ngay lập tức ───────────────────────────────
     case 'SYNC_NOW': {
-      if (!_derivedKey) {
+      const key = await getDerivedKey();
+      if (!key) {
         sendResponse({ success: false, locked: true });
         return;
       }
@@ -197,9 +234,10 @@ async function handleMessage(message, sendResponse) {
         'herosim_team_name',
         'herosim_last_sync',
       ]);
+      const key = await getDerivedKey();
       sendResponse({
         paired: !!stored.herosim_paired,
-        locked: !_derivedKey || !!stored.herosim_locked,
+        locked: !key || !!stored.herosim_locked,
         teamName: stored.herosim_team_name,
         lastSync: stored.herosim_last_sync,
       });
@@ -208,7 +246,7 @@ async function handleMessage(message, sendResponse) {
 
     // ─── UNPAIR: Xóa toàn bộ data ──────────────────────────────────────
     case 'UNPAIR': {
-      _derivedKey = null;
+      await setDerivedKey(null);
       await chrome.alarms.clear(ALARM_SYNC);
       await chrome.storage.local.clear();
       sendResponse({ success: true });
@@ -222,13 +260,14 @@ async function handleMessage(message, sendResponse) {
 
 // ─── Sync accounts từ server về cache ────────────────────────────────────────
 async function syncAccounts() {
-  if (!_derivedKey) return { success: false, locked: true };
+  const key = await getDerivedKey();
+  if (!key) return { success: false, locked: true };
 
   try {
     const stored = await chrome.storage.local.get(['herosim_encrypted_token', 'herosim_salt']);
     if (!stored.herosim_encrypted_token) return { success: false, error: 'No token' };
 
-    const accessToken = await decrypt(stored.herosim_encrypted_token, _derivedKey);
+    const accessToken = await decrypt(stored.herosim_encrypted_token, key);
 
     const res = await fetch(`${API_BASE}/sync`, {
       headers: { 'Authorization': `Bearer ${accessToken}` },
@@ -237,7 +276,7 @@ async function syncAccounts() {
     if (!res.ok) {
       if (res.status === 401) {
         // Token hết hạn — lock
-        _derivedKey = null;
+        await setDerivedKey(null);
         await chrome.storage.local.set({ herosim_locked: true });
       }
       return { success: false, error: `HTTP ${res.status}` };
@@ -247,7 +286,7 @@ async function syncAccounts() {
     if (!data.success) return { success: false, error: data.error };
 
     // Cache accounts với mã hóa thêm lớp AES-GCM client-side
-    await cacheAccounts(data.accounts, _derivedKey);
+    await cacheAccounts(data.accounts, key);
     await chrome.storage.local.set({ herosim_last_sync: new Date().toISOString() });
 
     return { success: true, count: data.accounts.length };

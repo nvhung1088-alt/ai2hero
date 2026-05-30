@@ -133,7 +133,7 @@ export async function executeBackupForTeam(teamId: number, toEmail: string) {
 
 // Bộ máy quét chạy ngầm (Cron) quét các cấu hình sao lưu đến hạn
 export async function processScheduledBackups() {
-  console.log('=== BẮT ĐẦU QUÉT LỊCH SAO LƯU TỰ ĐỘNG SIM MANAGER ===');
+  console.log('=== BẮT ĐẦU QUÉT LỊCH SAO LƯU TỰ ĐỘNG HEROSIM ===');
   
   // Lấy tất cả cấu hình backup đang được bật
   const configs = await db

@@ -107,7 +107,7 @@ Tích hợp code là chưa đủ. Để hệ thống luôn nhất quán và các
 
 ## Giai đoạn 7: Kết nối Social Feed qua Dispatcher
 
-Để mọi cập nhật quan trọng từ MVP (ví dụ: SIM Manager phát hiện 3 sự cố bảo mật mới, AI Chat tự động xử lý 50 hội thoại) được xuất bản tự động lên Bảng tin chung một cách an toàn và nhất quán, **BẮT BUỘC** các MVP phải gọi qua cổng kết nối duy nhất **`Feed Dispatcher Engine`** thay vì tự ý chèn trực tiếp vào database.
+Để mọi cập nhật quan trọng từ MVP (ví dụ: HeroSim phát hiện 3 sự cố bảo mật mới, AI Chat tự động xử lý 50 hội thoại) được xuất bản tự động lên Bảng tin chung một cách an toàn và nhất quán, **BẮT BUỘC** các MVP phải gọi qua cổng kết nối duy nhất **`Feed Dispatcher Engine`** thay vì tự ý chèn trực tiếp vào database.
 
 1. **Import Dispatcher Engine:**
    ```typescript

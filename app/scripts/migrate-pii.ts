@@ -4,7 +4,7 @@ import { encryptField } from '../lib/sim-crypto';
 import { eq } from 'drizzle-orm';
 
 async function main() {
-  console.log('=== KHỞI CHẠY MIGRATION MÃ HÓA PII CHO SIM MANAGER ===');
+  console.log('=== KHỞI CHẠY MIGRATION MÃ HÓA PII CHO HEROSIM ===');
   
   // 1. Tải tất cả SIM trong database
   const assets = await db.select().from(simAssets);

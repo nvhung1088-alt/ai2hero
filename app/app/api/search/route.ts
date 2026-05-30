@@ -6,7 +6,7 @@ import { getActiveTeamCookie } from '@/lib/team-cookie';
 
 // Định nghĩa registry của các ứng dụng để tìm kiếm
 const PLATFORM_APPS = [
-  { id: 'sim', name: 'SIM Manager', desc: 'Quản lý SIM và đồng bộ bảo mật SimGuard', path: '/sim/dashboard', icon: '📱' },
+  { id: 'sim', name: 'HeroSim', desc: 'Quản lý SIM và đồng bộ bảo mật SimGuard', path: '/sim/dashboard', icon: '📱' },
   { id: 'ai_chat', name: 'Trợ lý AI Chat', desc: 'Hỗ trợ CSKH tự động thông minh', path: '/dashboard/store', icon: '💬', comingSoon: true },
   { id: 'api_hub', name: 'API Hub Integration', desc: 'Quản lý kết nối API Gateway', path: '/dashboard/store', icon: '🔌', comingSoon: true },
 ];

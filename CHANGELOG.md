@@ -203,7 +203,7 @@
 - **Tự động gán Cookie**: Gán cookie tức thì khi người dùng click Sidebar (`layout.tsx`) hoặc khi người dùng tải lại trang F5 / truy cập trực tiếp bằng URL nhờ hook `useEffect` gọi `setActiveTeamCookie` trong `TeamDetailPage` (`page.tsx`).
 
 ### Sửa Lỗi F5 & Apps Demo:
-- **Dọn dẹp Apps Registry (`apps-registry.ts` & `team-mock-data.ts`)**: Gỡ bỏ hoàn toàn các app nháp rác AI Chat, AI Hub, API Hub... Chỉ giữ lại duy nhất SIM Manager hoạt động vững vàng. Thiết lập cứng `activatedApps: ['sim']` để F5 không làm biến mất app SIM của người dùng.
+- **Dọn dẹp Apps Registry (`apps-registry.ts` & `team-mock-data.ts`)**: Gỡ bỏ hoàn toàn các app nháp rác AI Chat, AI Hub, API Hub... Chỉ giữ lại duy nhất HeroSim hoạt động vững vàng. Thiết lập cứng `activatedApps: ['sim']` để F5 không làm biến mất app SIM của người dùng.
 
 ### Đồng nhất Top Header:
 - **Premium Layout (`sim/layout.tsx`)**: Tái sử dụng component `<TopHeader />` toàn cục, đồng nhất thanh menu ngang trên cùng của SIM MVP với hệ thống Dashboard lõi, z-index chuẩn không bị lệch đè visual.
@@ -217,9 +217,9 @@
 
 ## 2026-05-28 — Hoàn thành Di chuyển Route SIM & Tích hợp Trang Cài đặt (7 Tabs Settings DB thật)
 
-### Di chuyển Route SIM Manager & Tái cấu trúc Sub-Sidebar Dọc:
+### Di chuyển Route HeroSim & Tái cấu trúc Sub-Sidebar Dọc:
 - **Di chuyển thư mục logic**: Di chuyển thư mục từ `app/app/(dashboard)/dashboard/sim` ra thư mục gốc `/sim/dashboard` (`app/app/(dashboard)/sim`). Cập nhật `middleware.ts` để bảo vệ route `/sim` và cập nhật `apps-registry.ts` để cập nhật lối tắt.
-- **Cập nhật SimTabs & Menu Dọc**: Thiết kế và chuyển đổi thanh Tab bar ngang cũ của SIM Manager thành một Sub-Sidebar dọc riêng biệt (`flex flex-col` w-60) nằm ở cột trái phân hệ, nâng tầm UX chuyên nghiệp. Tích hợp thêm tab "Cài đặt" dẫn tới `/sim/settings`.
+- **Cập nhật SimTabs & Menu Dọc**: Thiết kế và chuyển đổi thanh Tab bar ngang cũ của HeroSim thành một Sub-Sidebar dọc riêng biệt (`flex flex-col` w-60) nằm ở cột trái phân hệ, nâng tầm UX chuyên nghiệp. Tích hợp thêm tab "Cài đặt" dẫn tới `/sim/settings`.
 - **Thông tin Workspace & Điều hướng nhanh**: Query trực tiếp từ DB Postgres thông tin Workspace hiện tại (Tên Team & gói plan) hiển thị nổi bật trên đầu Sub-Sidebar SIM. Bổ sung nút quay lại Workspace Dashboard nhanh (`ArrowLeft` icon) giúp người dùng dịch chuyển tức thời.
 
 ### Tích hợp Trang Cài đặt SIM DB thật:

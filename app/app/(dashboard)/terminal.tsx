@@ -10,7 +10,7 @@ export function Terminal() {
     'ai2hero init my-workspace',
     '→ Đang cấu hình AI Chat... ✓',
     '→ Đang kết nối API Hub... ✓',
-    '→ Đang khởi tạo SIM Manager... ✓',
+    '→ Đang khởi tạo HeroSim... ✓',
     '→ Dashboard sẵn sàng!',
     'Chào mừng đến AI2Hero! 🚀',
   ];

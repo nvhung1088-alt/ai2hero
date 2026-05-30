@@ -11,7 +11,7 @@ Tech stack:   Next.js 16 + React 19 + TypeScript + PostgreSQL + Drizzle ORM + St
 Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
 
 ## QUYET DINH DA CHOT
-- **Core concept**: Nền tảng Super App miễn phí chứa nhiều MVP (AI Chat, AI Hub, API Hub, SIM Manager...). Đăng ký 1 tài khoản → dùng tất cả.
+- **Core concept**: Nền tảng Super App miễn phí chứa nhiều MVP (AI Chat, AI Hub, API Hub, HeroSim...). Đăng ký 1 tài khoản → dùng tất cả.
 - **Domain strategy**: ai2hero.com = thương hiệu chính duy nhất. upco.vn redirect 301 về ai2hero.com. Không mua thêm domain khác.
 - **Base template**: Next.js SaaS Starter by Vercel (miễn phí, MIT). Có sẵn Auth, Stripe, RBAC cơ bản (Owner/Member), Dashboard.
 - **Kiến trúc**: Monolith thông minh — 1 codebase Next.js, mỗi MVP là 1 route group. App Registry pattern để thêm MVP mới nhanh chóng.
@@ -57,12 +57,18 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
     - **Premium Landing Page Popup**: 
       - Mở rộng metadata interface `AppDefinition` trong [apps-registry.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/apps-registry.ts) với slogan, longDesc, features, benefits, và targetUsers.
       - Xây dựng component `AppDetailModal` với thiết kế mờ kính Glassmorphism siêu cao cấp trong [store-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/dashboard/store/store-client.tsx).
-      - Thiết kế **Mockup Visual SIM Manager** sinh động bằng Tailwind CSS thuần (dot xanh nhấp nháy, metrics, logs OTP mini mờ kính) hiển thị bên trong Popup.
+      - Thiết kế **Mockup Visual HeroSim** sinh động bằng Tailwind CSS thuần (dot xanh nhấp nháy, metrics, logs OTP mini mờ kính) hiển thị bên trong Popup.
       - Tích hợp panel chọn Workspace dropdown và nút Kích hoạt ngay vào trong Popup để đơn giản hóa luồng kích hoạt ứng dụng một cách tự nhiên.
       - Cấu hình click vào **toàn bộ thẻ card** ở trang Store để mở Landing Page Popup.
     - **Nghiệm thu**: Biên dịch dự án thành công xuất sắc đạt **0 errors** và **0 warnings** trên toàn hệ thống 29 routes Next.js!
     - **Vá lỗ hổng Backend kích hoạt trùng**: Cập nhật `activateAppAction` trả về lỗi (error) thay vì success khi ứng dụng đã tồn tại trong không gian làm việc, chặn đứng trường hợp backend ngầm bypass thông báo thành công ảo.
     - **Tạo Hướng dẫn Triển khai (SOP)**: Tạo file `DEPLOYMENT_AI2HERO.md` làm tài liệu tiêu chuẩn quy định Pre-flight Security Audit, Backup DB, và các bước deploy an toàn khi nhận lệnh đẩy code lên server Ai2Hero.
+  - 🧩 **Hoàn thành HeroSim Chrome Extension MVP v3.0 (Zero-knowledge architecture)**:
+    - **Xây dựng API Backend**: Thiết lập `/api/sim/extension/pair` và `/sync` sử dụng JWT (jose) để tạo mã PIN liên kết có thời hạn 3 phút. Database schema `extension_tokens` lưu trữ mã băm SHA-256 an toàn.
+    - **UI/UX Extension Đẳng cấp**: Tích hợp giao diện Popup với 3 state (Pair, Unlock, Sync) dùng CSS tĩnh cực nhẹ, hỗ trợ Dark Mode. Tối ưu trải nghiệm: tự động countdown hết hạn mã PIN, hiển thị danh sách tài khoản dạng thẻ mượt mà.
+    - **Mã hóa 2 lớp Client-side**: Xây dựng `lib/crypto.js` dùng Web Crypto API. Khóa AES-256-GCM được sinh động từ Master PIN (PBKDF2-SHA-256), chỉ lưu trên RAM Service Worker (bay hơi khi đóng tab). Dữ liệu Accounts từ server được mã hóa thêm lớp cục bộ để bảo vệ an toàn tối đa cho cache của Extension.
+    - **Sửa lỗi 401 Redirect Vercel**: Xóa bỏ lỗi rớt header Authorization kinh điển do Vercel Redirect 308 bằng cách chỉ định chuẩn domain `www.ai2hero.com` vào API_BASE của Extension.
+    - **Nghiệm thu**: End-to-end (E2E) Flow Pair → Unlock → Sync hoạt động trơn tru trên Production (Vercel). Extension sync thành công về local an toàn.
   - 🌐 **Triển khai Production thành công (Go-Live)**:
     - **Kết nối Tên miền**: Trỏ DNS thành công tên miền chính `ai2hero.com` và tên miền phụ `www.ai2hero.com` từ nhà cung cấp iNet về Vercel.
     - **Bảo mật SSL/HTTPS**: Vercel đã tự động cấp phát và kích hoạt chứng chỉ SSL an toàn (Let's Encrypt). Lỗi cảnh báo bảo mật HTTPS ban đầu trong quá trình đồng bộ DNS đã được khắc phục hoàn toàn. Dự án chính thức hoạt động ổn định trên môi trường Internet.
@@ -91,7 +97,7 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
     - **Task 2: Bảo mật cookie `activeTeamId` trong `sidebar-client.tsx`**: Loại bỏ hoàn toàn 3 lệnh ghi cookie client-side `document.cookie` gây mất an toàn (bypass cơ chế HttpOnly), chuyển đổi sang gọi Server Action `setActiveTeamCookie` an toàn từ client-side event handlers.
     - **Task 3: Loại bỏ hardcoded Encryption Key trong `sim-crypto.ts`**: Di dời khóa AES sang biến môi trường `SIM_ENCRYPTION_KEY` ở `.env` cục bộ và thêm placeholder vào `.env.example`, đồng thời tích hợp cơ chế kiểm tra runtime fail-fast để ném lỗi ngay khi thiếu khóa hoặc khóa không đủ 32 ký tự, bảo vệ vĩnh viễn khóa giải mã.
     - **Task 4: Vá lỗ hổng cấu hình Auth của Cron Backup Endpoint trong `route.ts`**: Bắt buộc sự tồn tại của `CRON_SECRET` trong biến môi trường (nếu thiếu trả về 500 cảnh báo) và thực hiện xác thực Bearer token 100% các request, triệt tiêu nguy cơ bỏ qua xác thực khi biến môi trường trống.
-  - ✅ **Hoàn thành Bảo mật & An toàn toàn diện SIM Manager (Phase 1, 2, 3)**:
+  - ✅ **Hoàn thành Bảo mật & An toàn toàn diện HeroSim (Phase 1, 2, 3)**:
     - **Giai đoạn 1: Mã hóa khẩn cấp mật khẩu tài khoản liên kết (AES-256-CBC)**: Cập nhật các Server Actions `createSimLinkedAccount`, `updateSimLinkedAccount`, và `importSimLinkedAccountsBatch` tự động mã hóa mật khẩu đối xứng bằng thư viện chuẩn [sim-crypto.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/sim-crypto.ts) trước khi lưu vào DB. Bổ sung giải mã an toàn fallback tại queries `getSimLinkedAccounts` trong [sim-queries.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/sim-queries.ts).
     - **Migration di trú dữ liệu mật khẩu**: Xây dựng và thực thi thành công script [migrate-passwords.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/scripts/migrate-passwords.ts), rà soát bảo mật toàn diện và mã hóa thành công **634/666** bản ghi mật khẩu plaintext của tài khoản liên kết trong DB cục bộ sang dạng ciphertext an toàn tuyệt đối.
     - **Giai đoạn 2: Phân quyền UI Owner-Only**: Thắt chặt an toàn thông tin: Chỉ Owner thực tế của Workspace mới được xem thông tin chính chủ SIM nhạy cảm (Tên, CCCD, ngày đăng ký) trên `/sim/assets` và mật khẩu tài khoản liên kết (Eye/Copy password) trên `/sim/accounts`. Các thành viên khác bị che hoàn toàn bằng dấu chấm tròn `••••••••` và ẩn nút chỉnh sửa/thao tác trong các Modal.
@@ -103,7 +109,7 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
       - Xây dựng các Server Actions [sim-backup-actions.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/sim-backup-actions.ts) giúp Owner cấu hình chu kỳ sao lưu (hàng tuần/hàng tháng) và nút "Sao lưu ngay" để gửi email thử nghiệm nhanh chóng.
       - Thiết kế tab thứ 8 **"Sao lưu dữ liệu"** tuyệt đẹp bằng phong cách mờ kính và gradient cam-hồng chuyên nghiệp trực tiếp trong trang [settings-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/sim/settings/settings-client.tsx) (chỉ hiển thị đối với Owner).
       - Xây dựng API Route [route.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/api/cron/sim-backup/route.ts) bảo vệ bằng `CRON_SECRET` phục vụ cho Vercel Cron Job tự động hóa toàn diện.
-  - ✅ **Hoàn thành Vá 2 Rủi ro Bảo mật & Mất Dữ liệu SIM Manager (Bảo mật PII & Delete Restrict)**:
+  - ✅ **Hoàn thành Vá 2 Rủi ro Bảo mật & Mất Dữ liệu HeroSim (Bảo mật PII & Delete Restrict)**:
     - **Mã hóa PII & Số điện thoại đối xứng AES-256-CBC**: Tách thư viện mã hóa dùng chung [sim-crypto.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/sim-crypto.ts) bảo mật cao. Nâng cấp kiểu các cột `value` (Số điện thoại), `registeredName` (Họ tên) và `registeredId` (CCCD) thành `text` trong [schema.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/schema.ts). Tự động mã hóa Server-side khi ghi (CRUD & CSV import) và tự động giải mã khi truy vấn (kể cả các câu lệnh JOIN phức tạp).
     - **Cam kết bảo mật định danh & số điện thoại SIM**: Thiết kế và tích hợp Banner bảo mật kính mờ Glassmorphism (Emerald) trực tiếp trên đầu trang quản lý Kho SIM (`/sim/assets`), cam kết nguyên lý Zero-Knowledge bảo vệ số điện thoại và thông tin cá nhân chống rò rỉ thông tin cá nhân và tấn công SIM Swapping.
     - **Vá lỗ hổng Cascade Delete**: Chuyển đổi ràng buộc xóa SIM từ `onDelete: 'cascade'` sang `'restrict'` cho cột `linkedPhoneAssetId` trong `sim_linked_accounts`, chặn đứng rủi ro vô tình xóa mất tài khoản liên kết. Tích hợp bọc lỗi delete DB thân thiện cho client.
@@ -118,7 +124,7 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
     - **Nâng cấp Box Hướng dẫn SIM Dashboard**: Viết lại toàn bộ component `SimGuideBox` (`guide-box.tsx`) với phong cách sang xịn mịn khớp 100% mockup thiết kế (nền gradient sinh động, step cards màu trắng sáng `bg-white/[0.06]`, chữ to rõ rệt, đổ bóng cyan dịu mát, gỡ bỏ các imports không sử dụng).
     - **Dọn dẹp scripts**: Xóa hoàn toàn 2 script chẩn đoán tạm `check-team-2.ts` và `test-query.ts` để giữ mã nguồn gọn gàng.
     - **Biên dịch**: Sản xuất build Next.js 15+ thành công rực rỡ với **0 errors** và **0 warnings** trên toàn bộ 33 routes!
-  - ✅ **Hoàn thành Vá 4 Lỗi Bảo Mật & UX của SIM Manager (PLAN_SIM_HARDENING)**:
+  - ✅ **Hoàn thành Vá 4 Lỗi Bảo Mật & UX của HeroSim (PLAN_SIM_HARDENING)**:
     - **Mã hóa API Keys & Tokens**: Triển khai mã hóa đối xứng AES-256-CBC cực kỳ kiên cố (Node.js standard crypto) cho các giá trị nhạy cảm (Numverify API Key và Telegram Bot Token) trước khi lưu vào PostgreSQL, bảo vệ dữ liệu vĩnh viễn khỏi các cuộc tấn công rò rỉ DB. Cài đặt cơ chế giải mã tự động khi query và an toàn fallback nếu là dữ liệu cũ (tương thích ngược 100%).
     - **Cơ chế Zero-Knowledge Client & Masking**: Thiết lập che giấu hoàn toàn API keys và tokens thành dạng placeholder `__SAVED_KEY__` / `__SAVED_TOKEN__` khi gửi dữ liệu xuống client UI. Client không bao giờ cần biết giá trị thực (Zero-Knowledge). Khi client gửi lưu cấu hình, Server Action chỉ ghi đè nếu giá trị thay đổi khác placeholder.
     - **Thay thế Mockup bằng API thực tế**: Viết lại 3 Server Actions kết nối thật với Numverify API và Telegram API để test và gửi tin nhắn thật qua `fetch` với loading transition mượt mà, gỡ bỏ hoàn toàn mock thông báo tĩnh.
@@ -269,10 +275,10 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
   - ✅ **Hoàn thành Cơ chế Cách ly Dữ liệu Multi-tenant & Khắc phục Lỗi F5 MVP SIM**:
     - **Cookie-based Tenancy**: Khởi tạo Helper Cookie (`lib/team-cookie.ts`) để gắn thẻ `teamId` khi điều hướng. Cập nhật `sim-helpers.ts` để đọc team từ Cookie thay vì `limit(1)` lỗi, đạt được khả năng cách ly dữ liệu 100% giữa các Không gian làm việc.
     - **Liên kết Navigation**: Sửa Component Navigation (`layout.tsx`) để đồng bộ cập nhật cookie trực tiếp từ thao tác bấm ở Sidebar. Trang `dashboard/t/[teamId]/page.tsx` cũng tự động mount lại Cookie khi vào Không gian tương ứng. Cấu hình Nút "Quay lại" trong SIM Layout để nhảy về đúng Dashboard của Workspace đang dùng.
-    - **Sửa Lỗi F5 & Demo**: Làm sạch các ứng dụng Demo khỏi `apps-registry.ts`. Loại bỏ trạng thái rỗng ảo, đảm bảo ứng dụng SIM hiển thị vững vàng. F5 không còn làm mất quyền truy cập vào SIM Manager nhờ cập nhật dữ liệu Mock.
+    - **Sửa Lỗi F5 & Demo**: Làm sạch các ứng dụng Demo khỏi `apps-registry.ts`. Loại bỏ trạng thái rỗng ảo, đảm bảo ứng dụng SIM hiển thị vững vàng. F5 không còn làm mất quyền truy cập vào HeroSim nhờ cập nhật dữ liệu Mock.
     - **Tài liệu hóa**: Soạn thảo và xuất bản `MVP_INTEGRATION_GUIDE.md` liệt kê toàn bộ quy trình 4 giai đoạn chuẩn (Schema -> Registry -> Routing -> UI) để nhúng một MVP vào Hệ Sinh Thái Ai2Hero.
   - ✅ **Hoàn thành Giải quyết lỗi hiển thị, cài đặt và điều hướng MVP (`apps-registry.ts`, `team-mock-data.ts`, `layout.tsx`, `page.tsx`)**:
-    - **Dọn sạch App Demo**: Cấu hình lại `APPS` trong `apps-registry.ts` để gỡ bỏ toàn bộ các ứng dụng nháp rác (`AI Chat`, `AI Hub`, `API Hub`, `POS`, `Content Hub`), giữ lại giao diện sạch sẽ chỉ có duy nhất ứng dụng SIM Manager.
+    - **Dọn sạch App Demo**: Cấu hình lại `APPS` trong `apps-registry.ts` để gỡ bỏ toàn bộ các ứng dụng nháp rác (`AI Chat`, `AI Hub`, `API Hub`, `POS`, `Content Hub`), giữ lại giao diện sạch sẽ chỉ có duy nhất ứng dụng HeroSim.
     - **Khắc phục lỗi F5 mất App**: Cập nhật cứng `activatedApps: ['sim']` trong `MOCK_TEAMS` của `team-mock-data.ts` cho toàn bộ các team mẫu, giữ ứng dụng SIM luôn được kích hoạt.
     - **Sửa đổi điều hướng (Routing)**: Cập nhật Sidebar và Quick Launch Grid trong `layout.tsx` và `page.tsx` sử dụng trực tiếp `href={app.path}` đi thẳng vào trang quản trị `/sim/dashboard` thay vì `/dashboard/apps?app=sim`.
     - **Biên dịch**: Chạy thành công `pnpm build` đạt **0 errors** trên toàn hệ thống 26 routes!
@@ -310,7 +316,7 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
       - Bổ sung trường `payload: { count: results.length }` vào đối tượng phản hồi `VAULT_IMPORT_BATCH_RESPONSE` trong `bridge-api.tsx` để khớp hoàn toàn với mong đợi của popup.js mà không cần bắt buộc người dùng reload/rebuild extension.
       - Chạy biên dịch `pnpm build` đạt **0 errors** 100% thành công.
   - ✅ **Hoàn thành Di chuyển Route SIM & Tích hợp Trang Cài đặt (7 Tabs Settings)**:
-    - **Di chuyển Route**: Di chuyển thành công route SIM Manager từ `/dashboard/sim` ra thư mục gốc `/sim/dashboard`. Cập nhật `middleware.ts` để bảo vệ route `/sim` và cập nhật `apps-registry.ts` để cập nhật lối tắt.
+    - **Di chuyển Route**: Di chuyển thành công route HeroSim từ `/dashboard/sim` ra thư mục gốc `/sim/dashboard`. Cập nhật `middleware.ts` để bảo vệ route `/sim` và cập nhật `apps-registry.ts` để cập nhật lối tắt.
     - **Tích hợp Settings DB thật**: Xây dựng trang cài đặt tại `/sim/settings` với 7 tabs cấu hình, sử dụng Server Component để fetch data và Client Component render UI cao cấp. Kết nối cơ sở dữ liệu PostgreSQL thật thông qua Server Actions và Drizzle ORM (lưu cài đặt vào `systemSettings`, platforms vào `simPlatforms`, nhân viên qua `simEmployees`).
     - **Nâng cấp Extension 2.0**: Nâng cấp SimGuard Vault extension lên phiên bản `2.0.0`, cấu hình handshake và đồng bộ hóa tương thích 100% với route mới `/sim/*`.
   - ✅ **Hoàn thành Refactor Accounts & Phân trang SIM**:
@@ -344,7 +350,7 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
     - **Real-time postMessage Events**: Lắng nghe các tin nhắn `VAULT_QUERY`, `VAULT_SAVE_ACCOUNT`, `VAULT_IMPORT_BATCH` từ SimGuard Extension, thực thi Server Actions cập nhật Postgres và phản hồi lại định dạng `${type}_RESPONSE` chuẩn.
     - **Toast Integration**: Tích hợp Toast notification premium thông báo kết quả đồng bộ thời gian thực.
     - **Compilation & Verification**: Build dự án `pnpm build` thành công xuất sắc đạt **0 errors** trên toàn hệ thống.
-  - ✅ **Tích hợp SimGuard Phase 2: Giao diện Premium Dark Mode (SIM Manager UI/UX)**:
+  - ✅ **Tích hợp SimGuard Phase 2: Giao diện Premium Dark Mode (HeroSim UI/UX)**:
     - **Sub-layout & Navigation**: Thiết lập Tab navigation ngang với 5 mục điều hướng, sticky vị trí `top-14` và responsive cuộn ngang.
     - **SIM Dashboard**: Xây dựng trang tổng quan hiển thị 4 Stats widgets và Donut Chart rủi ro sử dụng CSS conic-gradient hiện đại đè vòng tròn đồng tâm, danh sách Top 5 SIM nguy hiểm và panel lối tắt.
     - **SIM Assets Manager**: Thiết lập bảng quản lý SIM với sorting động, tìm kiếm và phân trang client-side. Thiết kế Slide-in Drawer chi tiết bên phải (thông tin thuê bao, đăng ký chính chủ, tài khoản liên kết, check logs và phân tích rủi ro), tích hợp các modal CRUD SIM, kiểm tra bảo mật (add check log) và modal nhập CSV hàng loạt.
@@ -357,7 +363,7 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
     - **Database Migration & Seeding**: Đồng bộ schema mới lên Postgres thành công và nạp seed data cho `Test Team` (15 SIM, 8 nhân viên, 32 tài khoản liên kết, 10 rủi ro và 8 check logs).
     - **Tenancy queries & Server Actions**: Xây dựng tầng truy xuất dữ liệu an toàn scoped theo `teamId` (sim-queries) và các Server Actions đột biến dữ liệu an toàn có kiểm tra session (sim-actions).
     - **TypeScript Risk Engine**: Dịch chuyển logic tính điểm phạt rủi ro 6 quy tắc và phân loại cấp độ rủi ro sang TypeScript.
-    - **App Activation**: Cập nhật Apps Registry kích hoạt SIM Manager từ `'coming_soon'` sang `'beta'`.
+    - **App Activation**: Cập nhật Apps Registry kích hoạt HeroSim từ `'coming_soon'` sang `'beta'`.
     - **Compilation & Verification**: Chạy biên dịch `pnpm build` đạt **0 errors** trên toàn hệ thống.
 - **2026-05-27**:
   - ✅ **Hoàn thành Gói dịch vụ & Gating Tính năng (Billing & Plans Gating System)**:
