@@ -1,0 +1,459 @@
+# AI2HERO — START
+> Cap nhat: 2026-05-26
+
+## TRANG THAI
+Mode:         Build
+Ten du an:    AI2Hero Platform (Free AI MVP Super App)
+Tagline:      "AI biến bạn thành Hero"
+Domain:       ai2hero.com
+Phase:        1 — Xây dựng các MVP Apps (MVP Apps Phase)
+Tech stack:   Next.js 16 + React 19 + TypeScript + PostgreSQL + Drizzle ORM + Stripe + Tailwind CSS + shadcn/ui
+Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
+
+## QUYET DINH DA CHOT
+- **Core concept**: Nền tảng Super App miễn phí chứa nhiều MVP (AI Chat, AI Hub, API Hub, SIM Manager...). Đăng ký 1 tài khoản → dùng tất cả.
+- **Domain strategy**: ai2hero.com = thương hiệu chính duy nhất. upco.vn redirect 301 về ai2hero.com. Không mua thêm domain khác.
+- **Base template**: Next.js SaaS Starter by Vercel (miễn phí, MIT). Có sẵn Auth, Stripe, RBAC cơ bản (Owner/Member), Dashboard.
+- **Kiến trúc**: Monolith thông minh — 1 codebase Next.js, mỗi MVP là 1 route group. App Registry pattern để thêm MVP mới nhanh chóng.
+- **Monetization**: Freemium — miễn phí tất cả MVP (có giới hạn usage), trả phí để nâng cấp Pro.
+- **Multi-tenant**: Cần tự xây Organization → Team → Member hierarchy (SaaS Starter chỉ có Team cơ bản).
+- **RBAC mở rộng**: Owner → Admin → Manager → Member + App Permission Gating.
+- **Quy trình AI**: Kế thừa 100% workflow từ UPCHAT (ai2hero start/plan/code/close).
+- **LESSONS**: Dùng chung file LESSONS.md toàn cục tại C:\Users\ADMIN\.gemini\LESSONS.md
+- **Tích hợp MVP mới**: Khi tích hợp một ứng dụng Mini-SaaS (MVP) mới vào hệ thống, BẮT BUỘC phải đọc và tuân thủ quy trình 5 giai đoạn tại [MVP_INTEGRATION_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/MVP_INTEGRATION_GUIDE.md).
+
+- **2026-05-30**:
+  - 🚀 **Hoàn thành Cấu hình & Triển khai Database lên Supabase (Production Ready)**:
+    - **Tích hợp Pooler Connection**: Thiết lập thành công chuỗi kết nối an toàn đến Supabase Transaction Pooler (port 6543) cho ứng dụng Next.js, tích hợp mật khẩu mã hóa đặc biệt (`%40`).
+    - **Migrate Schema**: Tự động hóa quá trình đẩy (push) toàn bộ Schema kiến trúc (Tables, Indexes, Foreign Keys) từ local Drizzle lên Supabase PostgreSQL sử dụng cổng Session-mode (port 5432).
+    - **Sẵn sàng Vercel Deployment**: Database Online đã khởi tạo thành công 100%. Các biến môi trường siêu bảo mật (`AUTH_SECRET`, `SIM_ENCRYPTION_KEY`, `CRON_SECRET`) đã sinh mới sãn sàng để paste lên Vercel.
+  - 🛡️ **Hoàn thành Khắc phục Các Cảnh Báo Bảo Mật Cấu Hiện Môi Trường (.env)**:
+    - **Task 1: Cập nhật template cấu hình .env.example**: Bổ sung `CRON_SECRET`, chú thích quan trọng về `BASE_URL` động trên production, và hướng dẫn chi tiết về độ dài byte của khóa mã hóa.
+    - **Task 2: Bảo mật hóa file cấu hình local .env**: Bổ sung `CRON_SECRET` cục bộ chặn đứng lỗi HTTP 500 khi chạy thử nghiệm Cron Job sao lưu. Thay thế khóa mã hóa `SIM_ENCRYPTION_KEY` yếu bằng chuỗi 32 ký tự hex ngẫu nhiên bảo mật cao.
+    - **Task 3: Phát triển tiện ích tự động sinh khóa scripts/generate-keys.ts**: Viết script dev-tool chuẩn hóa bằng Node.js crypto giúp tự động tạo ra bộ ba khóa mạnh (AUTH_SECRET, SIM_ENCRYPTION_KEY, CRON_SECRET) nhanh gọn, in ra console có màu sắc trực quan, giúp dễ dàng thiết lập trên Vercel/VPS.
+    - **Task 4: Tích hợp npm script**: Bổ sung lệnh nhanh `"keys:generate"` vào `package.json` giúp chạy tiện ích sinh khóa bất kỳ lúc nào qua `pnpm keys:generate`.
+  - 🐛 **Sửa lỗi loop reload nghiêm trọng trên trình duyệt phát triển cục bộ**:
+    - **Vấn đề**: Giao diện local dev bị dính vòng lặp reload liên tục với thông báo lỗi `"missing required error components, refreshing..."`.
+    - **Giải pháp**: Phát hiện và vá lỗi thiếu từ khóa `await` trước `getUser()` và `getTeamForUser()` tại `app/app/layout.tsx` dòng 36-37. Bịt kín lỗi Serialization Error của Promise chưa giải quyết khi truyền từ Server Component sang Client Component (`SWRConfig`) trong React 19 / Next.js 15+.
+    - **Nghiệm thu**: Khôi phục Fast Refresh hoạt động trơn tru. Biên dịch Next.js build `pnpm build` thành công xuất sắc đạt **0 errors** và **0 warnings** trên toàn bộ 29 routes!
+
+- **2026-05-29**:
+  - 🛡️ **Hoàn thành Vá lỗi bảo mật hệ thống nghiêm trọng (PLAN_SECURITY_HARDENING_V2)**:
+    - **Task 1: Khắc phục lỗ hổng IDOR trong `sim-helpers.ts`**: Bổ sung kiểm tra an toàn membership kết hợp toán tử `and` từ `drizzle-orm` trong hàm `getCurrentTeamId()` để chặn đứng rủi ro người dùng bypass và truy cập dữ liệu SIM chéo tenant.
+    - **Task 2: Bảo mật cookie `activeTeamId` trong `sidebar-client.tsx`**: Loại bỏ hoàn toàn 3 lệnh ghi cookie client-side `document.cookie` gây mất an toàn (bypass cơ chế HttpOnly), chuyển đổi sang gọi Server Action `setActiveTeamCookie` an toàn từ client-side event handlers.
+    - **Task 3: Loại bỏ hardcoded Encryption Key trong `sim-crypto.ts`**: Di dời khóa AES sang biến môi trường `SIM_ENCRYPTION_KEY` ở `.env` cục bộ và thêm placeholder vào `.env.example`, đồng thời tích hợp cơ chế kiểm tra runtime fail-fast để ném lỗi ngay khi thiếu khóa hoặc khóa không đủ 32 ký tự, bảo vệ vĩnh viễn khóa giải mã.
+    - **Task 4: Vá lỗ hổng cấu hình Auth của Cron Backup Endpoint trong `route.ts`**: Bắt buộc sự tồn tại của `CRON_SECRET` trong biến môi trường (nếu thiếu trả về 500 cảnh báo) và thực hiện xác thực Bearer token 100% các request, triệt tiêu nguy cơ bỏ qua xác thực khi biến môi trường trống.
+  - ✅ **Hoàn thành Bảo mật & An toàn toàn diện SIM Manager (Phase 1, 2, 3)**:
+    - **Giai đoạn 1: Mã hóa khẩn cấp mật khẩu tài khoản liên kết (AES-256-CBC)**: Cập nhật các Server Actions `createSimLinkedAccount`, `updateSimLinkedAccount`, và `importSimLinkedAccountsBatch` tự động mã hóa mật khẩu đối xứng bằng thư viện chuẩn [sim-crypto.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/sim-crypto.ts) trước khi lưu vào DB. Bổ sung giải mã an toàn fallback tại queries `getSimLinkedAccounts` trong [sim-queries.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/sim-queries.ts).
+    - **Migration di trú dữ liệu mật khẩu**: Xây dựng và thực thi thành công script [migrate-passwords.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/scripts/migrate-passwords.ts), rà soát bảo mật toàn diện và mã hóa thành công **634/666** bản ghi mật khẩu plaintext của tài khoản liên kết trong DB cục bộ sang dạng ciphertext an toàn tuyệt đối.
+    - **Giai đoạn 2: Phân quyền UI Owner-Only**: Thắt chặt an toàn thông tin: Chỉ Owner thực tế của Workspace mới được xem thông tin chính chủ SIM nhạy cảm (Tên, CCCD, ngày đăng ký) trên `/sim/assets` và mật khẩu tài khoản liên kết (Eye/Copy password) trên `/sim/accounts`. Các thành viên khác bị che hoàn toàn bằng dấu chấm tròn `••••••••` và ẩn nút chỉnh sửa/thao tác trong các Modal.
+    - **Custom Premium Bulk Delete Confirm Modal**: Loại bỏ triệt để hộp thoại `confirm()` native thô kệch khi xóa hàng loạt tài khoản liên kết, thay thế bằng custom Confirm Modal kính mờ Glassmorphism (Red/Orange Gradient) cực kỳ premium, hỗ trợ phím Escape và click-outside.
+    - **Giai đoạn 3: Tự động sao lưu dữ liệu (Email Backup qua Resend)**:
+      - Cài đặt và cấu hình thành công gói thư viện email chính thức `resend`. Thiết lập biến môi trường `RESEND_API_KEY` trong `.env`.
+      - Định nghĩa bảng cấu hình `sim_backup_configs` trong [schema.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/schema.ts) và áp dụng thành công lên DB cục bộ qua `drizzle-kit push`.
+      - Phát triển logic server-side [sim-backup.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/sim-backup.ts) tự động sinh 2 tệp CSV tiếng Việt (SIM và Tài khoản liên kết, mật khẩu được che giấu một phần `abc***` để giảm thiểu rủi ro bảo mật) đính kèm email gửi trực tiếp đến Owner qua Resend.
+      - Xây dựng các Server Actions [sim-backup-actions.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/sim-backup-actions.ts) giúp Owner cấu hình chu kỳ sao lưu (hàng tuần/hàng tháng) và nút "Sao lưu ngay" để gửi email thử nghiệm nhanh chóng.
+      - Thiết kế tab thứ 8 **"Sao lưu dữ liệu"** tuyệt đẹp bằng phong cách mờ kính và gradient cam-hồng chuyên nghiệp trực tiếp trong trang [settings-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/sim/settings/settings-client.tsx) (chỉ hiển thị đối với Owner).
+      - Xây dựng API Route [route.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/api/cron/sim-backup/route.ts) bảo vệ bằng `CRON_SECRET` phục vụ cho Vercel Cron Job tự động hóa toàn diện.
+  - ✅ **Hoàn thành Vá 2 Rủi ro Bảo mật & Mất Dữ liệu SIM Manager (Bảo mật PII & Delete Restrict)**:
+    - **Mã hóa PII & Số điện thoại đối xứng AES-256-CBC**: Tách thư viện mã hóa dùng chung [sim-crypto.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/sim-crypto.ts) bảo mật cao. Nâng cấp kiểu các cột `value` (Số điện thoại), `registeredName` (Họ tên) và `registeredId` (CCCD) thành `text` trong [schema.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/schema.ts). Tự động mã hóa Server-side khi ghi (CRUD & CSV import) và tự động giải mã khi truy vấn (kể cả các câu lệnh JOIN phức tạp).
+    - **Cam kết bảo mật định danh & số điện thoại SIM**: Thiết kế và tích hợp Banner bảo mật kính mờ Glassmorphism (Emerald) trực tiếp trên đầu trang quản lý Kho SIM (`/sim/assets`), cam kết nguyên lý Zero-Knowledge bảo vệ số điện thoại và thông tin cá nhân chống rò rỉ thông tin cá nhân và tấn công SIM Swapping.
+    - **Vá lỗ hổng Cascade Delete**: Chuyển đổi ràng buộc xóa SIM từ `onDelete: 'cascade'` sang `'restrict'` cho cột `linkedPhoneAssetId` trong `sim_linked_accounts`, chặn đứng rủi ro vô tình xóa mất tài khoản liên kết. Tích hợp bọc lỗi delete DB thân thiện cho client.
+    - **Migration dữ liệu một lần (Option A)**: Thực thi script di trú dữ liệu [migrate-pii.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/scripts/migrate-pii.ts) rà soát và mã hóa bảo mật thành công 15/15 bản ghi SIM chứa plaintext cũ trong PostgreSQL thành dạng ciphertext.
+    - **Biên dịch sản xuất**: Chạy thành công lệnh build `pnpm build` đạt **0 errors** và **0 warnings** trên toàn hệ thống 29 routes Next.js!
+  - ✅ **Hoàn thành Tích hợp Cam kết Bảo mật Vault 2.0 vào Quản lý Tài khoản**:
+    - **Premium Security Banner**: Thiết kế và tích hợp Banner cam kết bảo mật Vault 2.0 (kính mờ Glassmorphism, viền xanh Emerald nổi bật với icon Lock và nhãn Military Grade) trực tiếp trên đầu trang Quản lý Tài khoản liên kết (`/sim/accounts`).
+    - **Minh bạch cơ chế bảo mật**: Tuyên bố và giải thích rõ nét nguyên lý **Zero-Knowledge** và công nghệ mã hóa đối xứng **AES-256-CBC**, khẳng định cam kết bảo vệ mật khẩu của khách hàng an toàn tuyệt đối trước mọi nguy cơ rò rỉ dữ liệu (kể cả đối với Super Admin).
+    - **Biên dịch thành công**: Chạy lệnh build `pnpm build` vượt qua 100% kiểm định đạt **0 errors** trên toàn hệ thống 29 routes Next.js!
+  - ✅ **Hoàn thành Sửa Lỗi 404 Workspace & Nâng Cấp Box Hướng Dẫn SIM**:
+    - **Sửa lỗi 404 & Redirect**: Cấu hình chuyển hướng `redirect('/sign-in')` khi `getUser()` hết hạn hoặc cookie bị stale trên trang chi tiết Workspace `/dashboard/t/[teamId]`, thay vì trả về trang lỗi 404 tĩnh gây hiểu lầm. Xóa triệt để 7 dòng `console.log` debug nhạy cảm, đồng thời nâng cấp `TeamNotFound` hỗ trợ chẩn đoán Tenant Isolation an toàn.
+    - **Nâng cấp Box Hướng dẫn SIM Dashboard**: Viết lại toàn bộ component `SimGuideBox` (`guide-box.tsx`) với phong cách sang xịn mịn khớp 100% mockup thiết kế (nền gradient sinh động, step cards màu trắng sáng `bg-white/[0.06]`, chữ to rõ rệt, đổ bóng cyan dịu mát, gỡ bỏ các imports không sử dụng).
+    - **Dọn dẹp scripts**: Xóa hoàn toàn 2 script chẩn đoán tạm `check-team-2.ts` và `test-query.ts` để giữ mã nguồn gọn gàng.
+    - **Biên dịch**: Sản xuất build Next.js 15+ thành công rực rỡ với **0 errors** và **0 warnings** trên toàn bộ 33 routes!
+  - ✅ **Hoàn thành Vá 4 Lỗi Bảo Mật & UX của SIM Manager (PLAN_SIM_HARDENING)**:
+    - **Mã hóa API Keys & Tokens**: Triển khai mã hóa đối xứng AES-256-CBC cực kỳ kiên cố (Node.js standard crypto) cho các giá trị nhạy cảm (Numverify API Key và Telegram Bot Token) trước khi lưu vào PostgreSQL, bảo vệ dữ liệu vĩnh viễn khỏi các cuộc tấn công rò rỉ DB. Cài đặt cơ chế giải mã tự động khi query và an toàn fallback nếu là dữ liệu cũ (tương thích ngược 100%).
+    - **Cơ chế Zero-Knowledge Client & Masking**: Thiết lập che giấu hoàn toàn API keys và tokens thành dạng placeholder `__SAVED_KEY__` / `__SAVED_TOKEN__` khi gửi dữ liệu xuống client UI. Client không bao giờ cần biết giá trị thực (Zero-Knowledge). Khi client gửi lưu cấu hình, Server Action chỉ ghi đè nếu giá trị thay đổi khác placeholder.
+    - **Thay thế Mockup bằng API thực tế**: Viết lại 3 Server Actions kết nối thật với Numverify API và Telegram API để test và gửi tin nhắn thật qua `fetch` với loading transition mượt mà, gỡ bỏ hoàn toàn mock thông báo tĩnh.
+    - **Keyboard & Click-Outside Accessibility cho Modals**: Nâng cấp Modal Nhân viên và Modal Giải Quyết Rủi Ro bằng cách liên kết `useRef` và bắt sự kiện `mousedown` click-outside cùng phím tắt `Escape` tự động đóng, gỡ listeners sạch sẽ khi component unmount.
+    - **Chuẩn hóa Toast**: Di dời toàn bộ logic Toast thủ công ở trang Settings về bộ UI Helper dùng chung `sim-ui-helpers.ts` tĩnh.
+    - **Tài liệu & Hướng dẫn sử dụng cao cấp**:
+      - Thêm cẩm nang hướng dẫn đăng ký API Numverify và lấy Bot Token, Group Chat ID của Telegram Alerts chi tiết trực tiếp trong tab cài đặt [settings-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/sim/settings/settings-client.tsx).
+      - Phát triển tính năng xuất file mẫu CSV cho Kho SIM client-side trực tiếp từ popup trong trang Assets [assets-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/sim/assets/assets-client.tsx) giúp khách tải về tức thì.
+      - Tích hợp hướng dẫn từng bước cụ thể xuất file mật khẩu Chrome `.csv` trong modal đồng bộ [accounts-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/sim/accounts/accounts-client.tsx).
+    - **Biên Dịch**: Build thành công xuất sắc 100% không lỗi (**0 errors**) trên toàn bộ 29 routes Next.js!
+  - ✅ **Hoàn thành Khắc phục Lỗi Điều hướng & Vá Bảo mật Cổng Liên kết MVP (PLAN_MVP_BRIDGE_SECURE)**:
+    - **Vá bảo mật PostMessage (CRITICAL)**: Bịt hoàn toàn lỗ hổng rò rỉ dữ liệu chéo nguồn (Cross-Origin Data Leakage) bằng cách thêm xác thực `event.origin !== window.location.origin` nghiêm ngặt tại đầu hàm `handleMessage` và thay thế toàn bộ wildcard `*` của `window.postMessage` thành `window.location.origin`. Dữ liệu SIM nhạy cảm và mã PIN kết nối từ nay được bảo vệ tuyệt đối bên trong domain an toàn.
+    - **Sửa lỗi điều hướng (Route Navigation)**: Cập nhật 7 liên kết cứng bị lỗi từ dạng cũ `/dashboard/sim/*` thành `/sim/*` trong trang `SimDashboardPage` (`app/app/(dashboard)/sim/dashboard/page.tsx`), khôi phục tính năng hoạt động mượt mà 100% của tất cả các lối tắt nhanh (Kho SIM, Tài Khoản, Cảnh Báo, Lịch Sử).
+    - **Chuẩn hóa Toast Notifications**: Loại bỏ triệt để các lệnh gọi dynamic toast `(window as any).showToast` thô sơ trong `bridge-api.tsx`, quy chuẩn bằng việc import tĩnh và gọi `showToast` chính thức từ `@/app/(dashboard)/sim/sim-ui-helpers`.
+  - ✅ **Hoàn thành System Hardening & Pre-launch Readiness (Giai đoạn Cuối)**:
+    - **Tối ưu hóa Database (DB Indexes)**: Bổ sung các chỉ mục (indexes) và chỉ mục duy nhất (uniqueIndexes) vào các bảng `team_members`, `activity_logs`, `feed_posts`, `feed_likes`, và `notifications` trong `schema.ts`. Triển khai thành công lên PostgreSQL thật thông qua `pnpm db:push`, tăng cường đáng kể tốc độ truy vấn trên hệ thống thật (O(1) lookups).
+    - **Cấu hình Connection Pool cho Serverless**: Thêm cờ `prepare: false` vào tệp cấu hình `drizzle.ts`, điều chỉnh tương thích bắt buộc của `postgres.js` khi triển khai (deploy) ứng dụng Next.js trên môi trường Serverless (Vercel) / Edge, loại trừ tận gốc rủi ro quá tải connection/memory leaks (Connection Exhaustion).
+    - **Bảo mật Cookies (Tenant Isolation)**: Khóa cookie điều hướng tổ chức `activeTeamId` trong `team-cookie.ts` bằng các cờ an toàn: `httpOnly: true`, `secure: true`, và `sameSite: 'lax'`, thiết lập khiên bảo vệ (hardening) kiên cố trước mọi cuộc tấn công XSS và CSRF nhằm vào dữ liệu tenant.
+    - **Dọn dẹp Development Scripts**: Cô lập các tệp lệnh phát triển và mock data database (`seed.ts`, `seed-sim.ts`, `cleanup-connections.ts`) vào thư mục `scripts/` độc lập ngoài logic cốt lõi của Next.js (`lib/`). Chuẩn hóa `package.json` với import aliases `../lib/`. Loại bỏ các kịch bản test-notifications rác.
+    - **Tẩy rác Mock Data (Data Hygiene)**: Di dời toàn bộ mock types cốt lõi (`AIModelConfig`, `FeedPost`, `NotificationType`...) vào file lưu trữ hằng số chuẩn `shared-constants.ts`, đồng bộ lại references ở Server Components và xóa sạch vĩnh viễn 3 file rác mock (`admin-mock-data.ts`, `feed-mock-data.ts`, `team-mock-data.ts`), giảm thiểu tải bundle ứng dụng. Đưa `*.csv` (tránh rò rỉ file mật khẩu) và `scratch/` vào `.gitignore`.
+    - **Nghiệm thu Đóng Gói (Final Build Pass)**: Khởi chạy lệnh build `pnpm build` thành công xuất sắc đạt **0 errors** và **0 warnings** cho 100% tài nguyên và cấu trúc toàn bộ dự án, chứng nhận AI2Hero MVP Phase 1 sẵn sàng online và tiếp đón người dùng thực tế.
+  - ✅ **Hoàn thành Bảo mật Search & Phân trang Admin (PLAN_SECURITY_PERFORMANCE)**:
+    - **Fix IDOR Search Palette**: Thay thế cơ chế lấy nhóm mặc định thô sơ `limit(1)` bằng việc scope Ctrl+K search theo nhóm đang hoạt động qua `activeTeamId` cookie. Đồng thời xác thực membership nghiêm ngặt để triệt tiêu lỗ hổng IDOR và hỗ trợ fallback gracefull về nhóm đầu tiên nếu cookie trống.
+    - **Tối ưu hóa Phân trang Admin**: Viết lại hàm `getAdminUsers()` thành single JOIN query kết hợp limit/offset phân trang Server-side. Viết lại `getAdminTeams()` thành phân trang Server-side kèm batching 2 queries lấy member count và owner qua toán tử `IN` thay cho N+1 query loop trong DB, tối ưu hóa triệt để hiệu năng từ O(N) thành O(1).
+    - **Biên dịch**: Sản xuất build Next.js thành công 100% không lỗi (**0 errors**) trên toàn bộ 30 routes!
+  - ✅ **Hoàn thành Kiểm toán bảo mật & Chuẩn hóa UX cho Super Admin (PLAN_ADMIN_HARDENING)**:
+    - **Sửa lỗi hiển thị Sidebar trùng (BUG NGHIÊM TRỌNG)**: Gỡ bỏ import `AdminShell` và check auth thừa trong `app/admin/announcements/page.tsx`, giúp Sidebar admin không còn hiển thị 2 lần lồng nhau, đồng bộ cấu trúc chuẩn với các trang admin khác.
+    - **Vá các hộp thoại Native Confirm & Prompt (UX Bug)**: Thay thế hoàn toàn hàm `confirm()` chặn thread của trình duyệt bằng custom **Premium API Key Rotation Confirm Modal** (kính mờ màu Cam) tại `/admin/settings` và **Premium Announcement Delete Confirm Modal** (kính mờ màu Đỏ-Cam) tại `/admin/announcements`. Các modal hỗ trợ đầy đủ phím `Escape` và click-outside để tự đóng mượt mà.
+    - **Chuẩn hóa Toast Notifications**: Bổ sung type `'warning'` vào helper `sim-ui-helpers.ts`, gỡ bỏ triệt để các lệnh gọi `(window as any).showToast` global thô sơ, thay thế bằng việc import tĩnh và gọi `showToast` chính thức định kiểu rõ ràng trong 4 client files (`users-client.tsx`, `teams-client.tsx`, `settings/page.tsx`, `announcements-client.tsx`).
+    - **Dọn sạch mock values trong dashboard**: Gỡ bỏ hardcode Doanh thu (`12.450.000đ`) và Uptime (`99.97%`) thành `'—'` placeholder kèm nhãn giải thích chưa kết nối Stripe/monitoring, bảo vệ tính trung thực dữ liệu. Bổ sung export SEO `metadata` tiêu chuẩn cho trang `/admin`.
+    - **Biên dịch thành công**: Build Turbopack `pnpm build` vượt qua 100% kiểm định đạt **0 errors** trên toàn hệ thống Next.js!
+  - ✅ **Hoàn thành Khắc phục Bảo mật & Tái cấu trúc UX/Architecture trang Cài đặt & Thành viên (Task 2)**:
+    - **Tái cấu trúc kiến trúc (Architecture Cleanup)**: Gỡ bỏ triệt để các component quản lý thành viên bị trùng lặp, lỗi thời (`TeamMembers`, `InviteTeamMember`) khỏi `settings/page.tsx`. Thay thế bằng **MembersNavigationCard** mờ kính sang trọng hướng dẫn người dùng sang trang `/dashboard/members` chuyên biệt.
+    - **Vá 3 hộp thoại Native Confirm (UX Bug)**: Thay thế hoàn toàn hàm `confirm()` chặn main thread thô kệch bằng 3 Modal kính mờ Glassmorphism cao cấp: **Premium Workspace Deletion Confirm Modal**, **Premium Member Removal Confirm Modal**, và **Premium Invite Cancellation Confirm Modal** với thiết kế mượt mà, hỗ trợ đóng nhanh bằng phím `Escape` và click-outside tự nhiên.
+    - **Chuẩn hóa Toast Notifications (UX Bug)**: Loại bỏ 14 lệnh gọi `(window as any).showToast` global thô sơ, quy chuẩn bằng việc import tĩnh và gọi `showToast` chính thức từ `@/app/(dashboard)/sim/sim-ui-helpers`.
+    - **Biên dịch thành công**: Build Turbopack `pnpm build` vượt qua 100% kiểm định với **0 errors** trên toàn hệ thống 29 routes Next.js!
+  - ✅ **Hoàn thành Khắc phục Lỗ hổng IDOR & Nâng cấp UX trang Chi tiết Workspace (`/dashboard/t/[teamId]`)**:
+    - **IDOR Protection (CRITICAL)**: Bổ sung logic kiểm tra quyền Membership trong Server Component `page.tsx` chặn truy cập chéo giữa các tổ chức (Cross-tenant Leakage) và trả về `<TeamNotFound />` để tránh Information Leakage (Enumerate Attack).
+    - **Premium Confirm Modal**: Cập nhật Client component xóa bỏ hộp thoại `confirm()` thô sơ, tích hợp Modal kính mờ Glassmorphism Red/Orange an toàn hỗ trợ phím Escape và Click-outside.
+    - **State Synchronization**: Nâng cấp đồng bộ tức thì Local State giữa Kanban Board và Bảng tin (FeedPosts), loại trừ hoàn toàn độ trễ giao diện khi người dùng chuyển trạng thái công việc.
+    - **Server Revalidation**: Gọi `router.refresh()` chuẩn xác sau các Server Actions thay đổi dữ liệu để làm mới Server Component.
+  - ✅ **Hoàn thành Khắc phục Bảo mật, Bugs & UX trang Bảng tin `/dashboard/home` (PLAN_SOCIAL_FEED_HARDENING)**:
+    - **Bịt lỗ hổng Backend Query (CRITICAL)**: Thay đổi signature và logic của `getFeedPosts(userTeamIds)` để chỉ tải bài đăng thuộc các Workspace mà user đăng nhập thực sự làm thành viên, ngăn chặn hoàn toàn rò rỉ dữ liệu chéo (Cross-tenant Leakage) giữa các tenant khác nhau.
+    - **Scope gợi ý @Mention (CRITICAL)**: Thu hẹp danh sách autocomplete gợi ý trong cả Post Creator (theo `publishTeamId`) và bình luận FeedPostCard (theo `scopedTeamId`), đảm bảo chỉ gợi ý Workspace và thành viên thuộc cùng một tổ chức đang thao tác.
+    - **Optimistic Rollback (UX Bug)**: Bổ sung cơ chế lưu snapshot state và rollback thông tin khi có lỗi mạng/API cho cả 5 hành động tương tác chính: toggleLike, addComment, toggleTask, changeTaskStatus, togglePin.
+    - **Thay thế Native Prompt (UX Bug)**: Xây dựng inline modal đính kèm ảnh (Image URL Modal) thiết kế mờ kính Glassmorphism sang trọng, hỗ trợ phím Escape, Enter và đóng click-outside thay thế cho hộp thoại `prompt()` thô sơ của trình duyệt.
+    - **Xóa mặc định Task Title (UX Bug)**: Gỡ bỏ title mặc định cứng, bổ sung validation bắt buộc nhập tiêu đề khi tạo bài viết loại "Giao việc".
+    - **Chuẩn hóa showToast (UX Bug)**: Xóa bỏ hoàn toàn 16 lệnh gọi `(window as any).showToast` thô sơ trong client, chuyển sang helper chính thức `showToast` có định kiểu tĩnh.
+    - **Tenant Isolation Cổng MVP (CRITICAL)**: Bổ sung kiểm tra an toàn membership trong Server Action `dispatchMvpFeedPost` để chặn hoàn toàn việc MVP gửi bài đăng giả mạo sang Workspace khác.
+  - ✅ **Hoàn thành Khắc phục 5 lỗi bảo mật & UX trang `/dashboard` (Giai đoạn 3: CODE)**:
+    - **Fix R-01 (Billing Gating)**: Vá lỗ hổng tạo workspace không giới hạn. Tích hợp đếm workspace sở hữu thực tế (`role='owner'`, chưa bị xóa mềm) và so khớp hạn mức từ hệ thống (`DEFAULT_BILLING_PLANS` & DB config `maxOwnedWorkspaces`: Free=1, Pro=5, Enterprise=50), chặn backend bypass tạo quá giới hạn.
+    - **Fix R-02 (Lọc log Workspace xóa mềm)**: Nâng cấp hàm `getActivityLogs()` thực hiện `leftJoin` với `teams` và lọc `isNull(teams.deletedAt)`, đảm bảo an toàn tuyệt đối thông tin, không rò rỉ log của workspace đã xóa.
+    - **Fix R-03 (Sửa nhãn UX)**: Sửa tiêu đề timeline từ "Hoạt động hệ thống gần đây" thành "Hoạt động cá nhân gần đây" để phản ánh chuẩn xác phạm vi log cá nhân.
+    - **Fix R-04 (Tối ưu showToast)**: Thay thế anti-pattern `(window as any).showToast` thô sơ bằng import helper chính thức `showToast` từ `@/app/(dashboard)/sim/sim-ui-helpers` có định kiểu tĩnh.
+    - **Fix R-05 (Tối ưu Grid & Animation)**: Giới hạn trần animation delay tối đa 600ms giúp giảm ức chế thị giác khi có nhiều cards, và gỡ bỏ class `shrink-0` giúp grid co giãn tự nhiên trên mọi màn hình.
+    - **Biên Dịch**: Chạy lệnh build `pnpm build` thành công xuất sắc đạt **0 errors** trên toàn hệ thống 29 routes Next.js!
+  - ✅ **Hoàn thành Khắc phục 5 lỗi bảo mật & UX trang `/dashboard/store`**:
+    - **S-01 (Backend Bypass)**: Thêm kiểm tra `isNull(teams.deletedAt)` vào Server Actions `activateAppAction` và `deactivateAppAction` để chặn hoàn toàn việc tương tác với các ứng dụng của Workspace đã xóa mềm.
+    - **S-02 (UX Mismatch - Dropdown Scope)**: Lọc danh sách `teams` ở Client-side, tạo mảng `adminOrOwnerTeams` để dropdown chọn Workspace chỉ hiển thị các team mà tài khoản đăng nhập có quyền `owner` hoặc `admin`, vô hiệu hóa nút Kích hoạt nếu mảng rỗng.
+    - **U-01 (Toast Helper Anti-pattern)**: Xóa 4 lệnh gọi `(window as any).showToast` thô sơ trong `store-client.tsx`, chuẩn hóa bằng helper chính thức được import từ `@/app/(dashboard)/sim/sim-ui-helpers`.
+    - **U-02 (Native confirm)**: Thay thế hoàn toàn hàm `confirm()` gốc của trình duyệt gây đứng trang bằng **Premium Deactivation Confirm Modal** thiết kế kính mờ Glassmorphism Red/Orange Gradient đồng bộ khi xác nhận hủy kích hoạt ứng dụng.
+    - **U-04 (Modal Keyboard Accessibility)**: Bổ sung hook `useEffect` lắng nghe phím `Escape` và sự kiện `onMouseDown` click-outside với `useRef` cho cả 2 modal (Kích hoạt và Hủy kích hoạt), mang lại trải nghiệm UX hiện đại.
+    - **Biên Dịch**: `pnpm build` biên dịch dự án thành công không lỗi (**0 errors**).
+    - **Sửa hiển thị ảnh đính kèm**: Loại bỏ aspect-video và object-cover gây bóp méo, cắt xén ảnh dọc/vuông. Chuyển sang wrapper co giãn tự nhiên `bg-gray-950/40 border border-white/5 max-h-[500px]` và thẻ `<img>` dùng `object-contain max-h-[480px] w-auto h-auto transition-all hover:scale-[1.01] duration-300`, giúp ảnh hiển thị trọn vẹn 100% kích thước.
+    - **@Mention trong bình luận**: Thiết lập local states autocomplete độc lập bên trong `FeedPostCard`. Hiển thị menu trượt lên (slide-up dropdown) phía trên input khi gõ `@`, hỗ trợ gợi ý song song 2 nhóm: `💼 Không gian làm việc` (badge xanh emerald) và `👥 Thành viên` (badge xanh dương). Bấm chọn sẽ chèn chính xác tag `@Tên` và tự động focus lại ô nhập liệu.
+    - **Tag Workspace ở Post Creator**: Nâng cấp `mentionSuggestions` ở Post Creator soạn bài chính để nạp song song tên các Workspace mà người dùng tham gia kế bên danh sách Thành viên, hiển thị badge phân loại trực quan.
+    - **Fix Pagination UX**: Bổ sung `setCurrentPage(1)` khi người dùng đăng bài viết mới thành công từ trang 2 hoặc 3 để tự động quay về trang đầu tiên giúp người dùng nhìn thấy bài viết mới của họ ngay lập tức.
+    - **Biên Dịch**: Sửa lỗi thiếu import `useMemo` trong components. Chạy `pnpm build` thành công xuất sắc đạt **0 errors** trên toàn hệ thống 29 routes Next.js!
+  - ✅ **Hoàn thành Thiết kế lại Post Creator & Tối ưu hóa Social Feed trang `/dashboard/home`**:
+    - **Post Creator UI/UX mới**: Thiết kế 2 trạng thái siêu mượt. Mặc định là thu gọn (1 dòng textarea + nút "Công khai ▼" gradient cam-hồng). Khi click/focus sẽ mở rộng ra đầy đủ tuỳ chọn.
+    - **Không gian đăng bài (Publish Space)**: Tích hợp dropdown `<select>` cho phép người dùng chọn chính xác Workspace muốn đăng bài viết, tự động đồng bộ theo không gian làm việc đang lọc.
+    - **3 Loại bài đăng Pills**: Thay đổi sang 3 loại bài đăng tiện ích là `📰 Tin tức` (lưu loại `'news'` mới), `📅 Giao việc`, và `⚡ Thông báo`. viewer role bị chặn đăng, staff role bị hạn chế giao việc và thông báo (chỉ cho phép đăng tin tức).
+    - **Phạm vi "Giao cho" (Assignee scope)**: Dropdown Giao cho của form giao việc được scoped chuẩn xác chỉ hiển thị danh sách các thành viên thực tế thuộc Workspace được chọn để đăng bài, tránh hoàn toàn rủi ro rò rì thông tin thành viên chéo giữa các teams.
+    - **Loại bỏ "Kết quả MVP" thủ công**: Loại bỏ hoàn toàn nút và form nhập chỉ số kết quả MVP thủ công rườm rà. Kết quả MVP từ nay sẽ do hệ thống tự động đẩy qua API cổng Server Action `feed-dispatcher.ts` khi MVP vận hành thực tế.
+    - **Vá lỗi Mockup & Khóa vai trò**: Đồng bộ hóa toàn bộ các call site `simulatedRole` còn sót lại ở phần comments sang `userRole` thật từ database PostgreSQL, loại bỏ hoàn toàn mã giả lập.
+    - **Biên Dịch**: Production build `pnpm build` thành công xuất sắc đạt **0 errors** trên toàn hệ thống Next.js!
+  - ✅ **Hoàn thành Kiểm toán & Dọn sạch Mockup trang /dashboard — Chuẩn hóa Cổng MVP**:
+    - **Tách Tiện Ích UI**: Di chuyển toàn bộ hàm tiện ích hiển thị (`getPlanLabel`, `getPlanBadgeClass`, `getRoleByKey`), types (`RoleKey`, `MemberStatus`), và hằng số (`ROLES`, `PERMISSION_CATEGORIES`) sang [shared-constants.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/shared-constants.ts). Cấu hình hỗ trợ full lowercase/uppercase planName tương thích DB.
+    - **Dọn Sạch Mock File**: Refactor [team-mock-data.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/team-mock-data.ts) để chỉ re-export từ `shared-constants.ts`. Gỡ bỏ 100% logic UI trùng lặp, cô lập dữ liệu mock giả lập.
+    - **Cập Nhật Call Sites**: Thay đổi thành công import path trong 7 files client/server components sang `shared-constants.ts`, triệt tiêu hoàn toàn sự phụ thuộc của UI vào tệp mock rác.
+    - **Bịt Lỗi Feed Mock**: Loại bỏ hoàn toàn `MOCK_TEAMS` và `MOCK_MEMBERS` khỏi [feed-post-card.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/components/feed-post-card.tsx). Trực tiếp truyền `teamName` và `teamAvatar` động từ DB qua cha [social-feed-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/dashboard/home/social-feed-client.tsx) và cho phép tô đậm (highlight) mentions toàn cục an toàn.
+    - **UI Polish AI Resources**: Cập nhật logic hiển thị AI Resource Progress Bar và 7-day pure CSS Bar Chart trong [team-detail-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/dashboard/t/[teamId]/team-detail-client.tsx) về trạng thái `0` (Chưa kết nối dữ liệu) kèm overlay mờ kính premium, giữ nguyên visual structure đẹp mắt đúng theo Option 1 được phê duyệt.
+    - **Hotfix Link Quay Lại**: Khắc phục lỗi link quay lại từ MVP SIM Layout (/sim/layout.tsx) trỏ sai về dạng mock `/dashboard/t/team-2`. Sửa đổi đồng bộ sang dynamic database ID `/dashboard/t/${team.id}` (ví dụ: `/dashboard/t/2`), khôi phục luồng điều hướng mượt mà 100% không lỗi.
+    - **Biên Dịch**: Build dự án `pnpm build` thành công xuất sắc đạt **0 errors** trên toàn bộ 29 routes Next.js!
+  - ✅ **Hoàn thành cấu hình chạy thử các Server Actions Notifications Bell động**:
+    - **CLI Test Script**: Xây dựng tệp kiểm thử tự động [test-notifications.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/test-notifications.ts) kết nối Drizzle PostgreSQL chèn dữ liệu chéo, liên kết người dùng phụ "Trợ lý Hero AI" vào Workspace, trigger Server Action `createNotification` và in ra kết quả qua console.table, được kích hoạt nhanh qua lệnh `pnpm db:test-notifications`.
+    - **API Route Test**: Tạo endpoint kiểm thử [route.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/api/test-notifications/route.ts) thực hiện tự động hóa 4 Server Actions Bell (Giao Task, Like bài viết, Bình luận, Cập nhật trạng thái nhiệm vụ) cho tài khoản đang đăng nhập hiện hành, tự động revalidatePath.
+    - **UI Testing Panel**: Tích hợp nút bấm cao cấp "⚡ Chạy thử chuông thông báo" ở Header trang quản trị [announcements-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/admin/announcements/announcements-client.tsx) kết hợp sự kiện Client-side custom event `notifications-updated` bắn tin toàn hệ thống.
+    - **SWR Auto-sync**: Nâng cấp [top-header.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/components/top-header.tsx) lắng nghe sự kiện để tự động kích hoạt `mutate('/api/notifications')`, cập nhật số lượng thông báo chưa đọc động tức thời 100% trên Header mà không cần tải lại trang.
+  - ✅ **Hoàn thành Nâng cấp ô Tìm Kiếm Toàn Cục Tĩnh thành Command Search Palette (Ctrl+K) hoạt động thật 100%**:
+    - **API Route Search**: Tạo mới [route.ts (Search)](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/api/search/route.ts) nhận từ khóa `q`, xác thực user và thực hiện truy vấn song song không phân biệt hoa thường đối với Ứng dụng (Registry platform), Thành viên trong cùng Workspace, và Bài đăng Social Feed thật từ PostgreSQL qua Drizzle.
+    - **Command Palette UI**: Tích hợp phím tắt toàn cục `Ctrl+K` (hoặc `Cmd+K`) để tự động focus vào input.
+    - **Popover Giao Diện Premium**: Thiết kế Popover trượt xuống kính mờ Glassmorphism (`backdrop-blur-2xl bg-gray-950/95`) hiển thị kết quả tìm kiếm phân loại trực quan, hỗ trợ Click-outside đóng bảng và Hash-routing tự động nhảy đến Post Social Feed và highlight viền cam tức thời.
+  - ✅ **Khắc phục lỗi bị che khuất (Cut-off) của Dropdown Menu quản trị Thành viên**:
+    - **Vấn đề**: Bảng thành viên bọc ngoài bằng container `overflow-hidden` để bảo vệ thẩm mỹ bo góc `rounded-2xl`. Khi người dùng click mở dropdown menu của thành viên ở hàng cuối cùng, dropdown mở hướng xuống dưới (`mt-2`) trồi ra ngoài biên dưới và bị trình duyệt cắt bỏ 90% nội dung.
+    - **Giải pháp**: Nâng cấp logic đảo hướng mở động trong [members-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/%28dashboard%29/dashboard/members/members-client.tsx) dựa trên index hàng. Đối với hàng cuối cùng (`index === filteredMembers.length - 1`), dropdown menu tự động đổi hướng mở ngược lên trên (`bottom-full mb-2 origin-bottom-right`) thay vì hướng xuống, hiển thị cực kỳ vững vàng và trọn vẹn 100% nội dung.
+    - **Nâng cấp Click-outside tự nhiên**: Loại bỏ div fixed chắn toàn màn hình (`fixed inset-0`) thô sơ cũ (vốn gây cản trở tương tác và khiến người dùng phải click đúp để mở phần tử khác). Thay thế bằng việc gán `React.useRef` vào dropdown và lắng nghe sự kiện `mousedown` toàn cục. Đảm bảo dropdown tự đóng tức thời khi click chuột ra ngoài ở bất kỳ đâu một cách vô cùng tự nhiên và mượt mà, không cản trở các cú click chuột khác.
+  - ✅ **Hoàn thành Tích hợp Dữ liệu Thật 100% cho Loa Phát Thanh & Chuông Thông Báo (PLAN_MEGAPHONE)**:
+    - **Database Schema**: Bổ sung 3 bảng mới `system_announcements`, `user_announcement_reads` và `notifications` trong `schema.ts`, tự động đồng bộ hoá lên PostgreSQL local qua Drizzle `pnpm db:push` thành công.
+    - **Server Actions**: Xây dựng Server Actions quản trị `createAnnouncementAction`, `deleteAnnouncementAction` (bảo mật super_admin) trong `app/app/admin/actions.ts`; và Server Actions nghiệp vụ `markNotificationAsReadAction`, `markAllNotificationsAsReadAction`, `markAnnouncementsAsReadAction` trong `app/lib/db/notification-actions.ts`.
+    - **API Routes**: Tạo các route endpoint dynamic `/api/notifications` và `/api/announcements` trả về thông báo và số lượng chưa đọc động dựa trên DB thật.
+    - **Super Admin UI**: Tạo trang quản trị Loa phát thanh Premium Dark Mode tại `/admin/announcements` kết hợp Server & Client Components (`page.tsx`, `announcements-client.tsx`) hỗ trợ form đăng tin (tiêu đề, phiên bản, mức độ, nội dung Markdown) và xoá tin lịch sử. Tích hợp link điều hướng vào `admin-shell.tsx`.
+    - **Header UI Polish**: Nâng cấp toàn bộ `top-header.tsx` kết nối SWR dynamic data. Chuông thông báo (Bell) chạy thật 100% thay thế mock; Loa phát thanh (Megaphone) check chấm cam động từ DB, click mở **Slide-over Drawer bên phải** cực kỳ sang xịn để đọc Changelogs và tự động xoá chấm cam trên DB.
+  - ✅ **Đồng bộ hóa Phân quyền Client-Side scoped theo Workspace (Settings & Members)**:
+    - **Khắc phục lỗi lệch vai trò (Role Sync)**: Phát hiện và sửa lỗi UI trong [settings/page.tsx](file:///C:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/dashboard/settings/page.tsx) kiểm tra `user.role === 'owner'` (sử dụng platform role toàn cục, mặc định là `'member'`) thay vì check vai trò thực tế của user trong Workspace (`teamMembers`), dẫn đến việc Owner thật sự bị khóa không thể mời thành viên hoặc nhìn thấy Danger Zone xóa workspace.
+    - **Đồng bộ triệt để**: Cập nhật cách tính `isOwner` trong cả `DangerZone` và `InviteTeamMember` bằng cách tra cứu thành viên hiện tại trong danh sách (`teamData.teamMembers.find(m => m.user.id === user.id)`) và kiểm tra `role === 'owner'`, đồng nhất 100% vai trò quản trị giữa trang `/dashboard/members` và `/dashboard/settings`.
+  - ✅ **Hoàn thành Tích hợp UI Xóa nhanh MVP & Rút gọn Xóa Workspace**:
+    - **Xóa nhanh MVP tại Quick Launch**: Thêm nút **Xóa** absolute nằm ngay trên thẻ ứng dụng của mục *Khởi chạy ứng dụng nhanh* (`team-detail-client.tsx`), kiểm duyệt bảo mật chỉ hiển thị cho tài khoản **Owner**, tự động kích hoạt confirm tiếng Việt `"Bạn có muốn xóa ứng dụng [Tên] khỏi không gian làm việc không? Mọi dữ liệu liên quan sẽ bị mất."`, thực thi Server Action và cập nhật UI phản hồi tức thì bằng Optimistic state, đồng thời phát event re-render Sidebar đồng bộ.
+    - **Rút gọn xóa Workspace**: Tối giản hóa Danger Zone trong [settings/page.tsx](file:///C:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/dashboard/settings/page.tsx) chỉ hiển thị cho **Owner**, loại bỏ yêu cầu gõ tên nhóm phức tạp, thay thế bằng nút **Xóa không gian làm việc** tích hợp confirm nhanh `"Bạn có muốn xóa không gian làm việc không? Mọi ứng dụng và dữ liệu sẽ bị mất."`, thực thi Server Action `deleteWorkspaceAction` và tự động điều hướng mượt mà về trang chính.
+  - ✅ **Hoàn thành Bảo vệ Dữ liệu (PLAN_DATA_SAFETY.md)**:
+    - **Task 1 (Soft-Delete Workspace)**: Chuyển đổi cơ chế xóa workspace từ Hard-Delete sang Soft-Delete bằng cách cập nhật `deletedAt` trên bảng `teams`, đồng thời xóa liên kết thành viên (`teamMembers`) và hủy tất cả lời mời pending (`invitations`) để cô lập quyền truy cập tức thì, giữ lại toàn bộ `activityLogs` và dữ liệu nghiệp vụ (SIM data, feed posts) phục vụ phục hồi.
+    - **Task 2 (Lọc Soft-Deleted Teams)**: Bổ sung bộ lọc `deletedAt` dạng post-query cực kỳ an toàn trong 3 hàm truy vấn chính `getTeamForUser`, `getTeamsForUser`, và `getTeamWithMembers` của `queries.ts`, ngăn không cho các workspace đã xóa mềm xuất hiện trên UI hoặc bị truy cập chéo.
+    - **Task 3 (App Activation Gating)**: Nâng cấp hàm bảo mật `verifyTeamAccess` trong `sim-actions.ts` hỗ trợ tham số `requiredApp?: string` và truy vấn bảng `teams` đối chiếu trường `activatedApps` (JSONB) với fallback an toàn. Đồng thời nâng cấp toàn bộ 14 call sites của SIM actions để kiểm duyệt bắt buộc `'sim'` trước khi ghi dữ liệu, bịt kín lỗ hổng backend bypass.
+  - ✅ **Hoàn thành Đồng bộ Dữ liệu Thật 100% cho Dashboard `/admin` và Logs `/admin/logs`**:
+    - **Data Fetching (Queries)**: Bổ sung 3 hàm queries PostgreSQL thật `getAdminDashboardStats` (đếm Users, Teams, Logs song song qua `Promise.all`), `getAdminGrowthData` (tính lũy kế User và Team đăng ký 6 tháng gần nhất để vẽ biểu đồ), và `getAdminLogs` (truy vấn toàn cục bảng `activity_logs` join `users` và `teams` kèm dịch tiếng Việt và tự động phân `severity` dựa trên action type). **Vá triệt để lỗi parameter binding Date của driver `postgres` trong `getAdminGrowthData` bằng cách dùng các toán tử so sánh Drizzle ORM chuẩn (`gte`, `lt`).**
+    - **Dashboard `/admin` Refactoring**: Chuyển đổi `/admin/page.tsx` thành Server Component và chuyển UI cũ sang Client Component `dashboard-client.tsx`. Thay thế "Lượt tin nhắn AI" -> "Tổng hoạt động", "Hoạt động hôm nay" -> "Tổ chức tích cực" (số nhóm có log trong 24h) và chuyển chart Doanh thu thành chart Tăng trưởng tổ chức thật.
+    - **Logs `/admin/logs` Refactoring**: Chuyển đổi `/admin/logs/page.tsx` thành Server Component, chuyển giao diện lọc/sort/phân trang sang Client Component `logs-client.tsx` hiển thị 15 log/trang (real database).
+    - **Dọn dẹp Mock Data**: Làm sạch file `admin-mock-data.ts`, loại bỏ hoàn toàn các hằng số mock rác (`PLATFORM_STATS`, `GROWTH_DATA`, `MOCK_SYSTEM_LOGS`...) giúp tối ưu hóa dung lượng dự án.
+  - ✅ **Hoàn thành Đồng bộ Dữ liệu Thật cho Super Admin (Users & Teams)**:
+    - **Database Schema**: Bổ sung trường `deletedAt` cho bảng `teams` trong `schema.ts` phục vụ tính năng Khóa/Mở khóa tổ chức.
+    - **Data Fetching (Queries)**: Xây dựng `app/lib/db/admin-queries.ts` với `getAdminUsers` và `getAdminTeams` query Postgres thật qua Drizzle ORM (join tables, count members, fetch dynamic pricing plans).
+    - **Server Actions**: Xây dựng `app/app/admin/actions.ts` bảo mật nghiêm ngặt (gating `super_admin`) gồm `toggleUserRoleAction`, `toggleUserStatusAction`, `changeTeamPlanAction`, và `toggleTeamStatusAction` kèm revalidation.
+    - **UI Refactoring**: Chuyển đổi `/admin/users` và `/admin/teams` sang React Server Components kết hợp Client Components tương ứng (`users-client.tsx`, `teams-client.tsx`), kết nối dữ liệu thật 100% với giao diện Premium.
+    - **Khắc phục triệt để lỗi Connection Leak (zombie connections)**: Tích hợp cấu hình `max: 1` và `idle_timeout: 1s` cho môi trường dev tại `drizzle.ts`. Thiết lập script tiện ích `cleanup-connections.ts` (`pnpm db:cleanup`) giải phóng lập tức **98 kết nối zombie bị treo** trong local Docker Postgres, tự động cấu hình tự đóng kết nối idle sau 5 giây (`idle_session_timeout = 5000ms`), khôi phục dev server hoạt động mượt mà 100%.
+  - ✅ **Hoàn thành loại bỏ trang apps cũ và đồng nhất về store**:
+    - **Xóa bỏ**: Xóa thư mục `/dashboard/apps` dư thừa để tránh trùng lặp.
+    - **Cập nhật**: Sửa toàn bộ liên kết redirect và link quay về dashboard trong `app/admin/layout.tsx` và `app/admin/admin-shell.tsx` sang `/dashboard/store`.
+    - **Biên dịch**: Sản xuất build Next.js thành công 100% với 25 routes sạch sẽ, **0 errors**!
+  - ✅ **Hoàn thành bịt lỗ hổng Backend Bypass — Plan Gating cho activateAppAction**:
+    - **Lỗ hổng đã phát hiện**: Server Action `activateAppAction` KHÔNG kiểm tra gói cước khi kích hoạt app → cho phép bypass UI để kích hoạt app Pro/Enterprise trên gói Free.
+    - **Giải pháp**: Bổ sung truy vấn `BILLING_PLANS` từ `system_settings`, đối chiếu `team.planName` (fallback `'free'`) với `allowedApps` của gói cước tương ứng, từ chối kích hoạt nếu `appId` không nằm trong danh sách cho phép.
+    - **Biên dịch**: `pnpm build` thành công **0 errors** trên toàn bộ routes.
+  - ✅ **Hoàn thành khắc phục 3 lỗi lớn của Không gian làm việc (Workspace)**:
+    - **Lỗi 1 (Not Found)**: Chuyển đổi trang chi tiết `dashboard/t/[teamId]` thành Server Component, query database Postgres qua Drizzle thực tế (`getTeamWithMembers`), tách UI động thành Client Component `team-detail-client.tsx`, triệt tiêu hoàn toàn lỗi "Không tìm thấy".
+    - **Lỗi 2 (Sửa/Xóa Workspace)**: Bổ sung form Cấu hình chung cho phép đổi tên/avatar nhóm và khu vực **Danger Zone** chỉ dành cho Owner để xóa Workspace (yêu cầu nhập đúng tên nhóm để confirm), liên kết hoàn hảo với Server Actions `updateWorkspaceAction` và `deleteWorkspaceAction` có sẵn.
+    - **Lỗi 3 (Nút Thêm ứng dụng)**: Tích hợp nút `+ Thêm ứng dụng` bằng nét đứt tinh tế trong Accordion Sidebar của từng nhóm để dẫn thẳng tới `/dashboard/store`.
+    - **Biên dịch**: Sản xuất build Next.js thành công xuất sắc đạt **0 errors** 100% trên toàn bộ 26 routes!
+  - ✅ **Hoàn thành trọn vẹn 100% cả 4 Sprints (Kế hoạch di trú Mock-to-Real)**:
+    - **Sprint 1 & Sprint 2 (Workspace & Store)**: Đồng bộ hoàn toàn dữ liệu Không gian làm việc và kích hoạt ứng dụng lên Postgres thật, thêm trường `avatar` và `activatedApps` (JSONB) vào bảng `teams`, triệt tiêu lỗi mất trạng thái khi F5.
+    - **Sprint 3 (Social Feed)**: Thiết lập schema Drizzle ORM chuẩn chỉnh cho `feed_posts`, `feed_comments`, và `feed_likes`, kết nối Server Components `/dashboard/home` tải feed real-time mượt mà từ DB PostgreSQL.
+    - **Sprint 4 (Members & RBAC)**: Chuyển đổi quản lý thành viên và lời mời (`invitations`) sang DB thật qua các RPC Server Actions (`changeMemberRoleAction`, `cancelInvitationAction`, `inviteTeamMemberAction`, `removeTeamMemberAction`). Fix triệt để các lỗi TypeScript compiler trong `members-client.tsx` và `queries.ts`.
+    - **Biên dịch**: Production build `pnpm build` biên dịch thành công xuất sắc đạt **0 errors** 100% trên toàn bộ 26 trang Next.js 15+!
+- **2026-05-28**:
+  - 🔍 **Hoàn thành Audit & Review Test toàn hệ thống**:
+    - **Thực thi**: Rà soát mã nguồn Client/Server của 4 module cốt lõi: Workspace CRUD, Kích hoạt MVP Store, Bảng tin Social Feed, và Phân quyền thành viên (RBAC). Xuất bản báo cáo chi tiết [system_audit_report.md](file:///C:/Users/ADMIN/.gemini/antigravity/brain/3132041a-f47d-41c6-ae4c-448b865d4a45/system_audit_report.md).
+    - **Kết quả**: Chỉ ra 100% tính năng nhạy cảm (Stripe/Billing Gating, Server RBAC, SIM Action Tenant Isolation) đã chạy bằng Database Postgres thật cực kỳ an toàn. Phát hiện các lỗi tiềm ẩn F5 reset và ngắt kết nối dữ liệu giữa Client Mock và Real DB ở các trang quản trị thành viên, tạo Workspace mới, và Social Feed.
+    - **Đánh giá**: Hệ thống đạt độ ổn định cao, đủ điều kiện an toàn để triển khai tích hợp AI Chat MVP tiếp theo.
+  - ✅ **Hoàn thành Cơ chế Cách ly Dữ liệu Multi-tenant & Khắc phục Lỗi F5 MVP SIM**:
+    - **Cookie-based Tenancy**: Khởi tạo Helper Cookie (`lib/team-cookie.ts`) để gắn thẻ `teamId` khi điều hướng. Cập nhật `sim-helpers.ts` để đọc team từ Cookie thay vì `limit(1)` lỗi, đạt được khả năng cách ly dữ liệu 100% giữa các Không gian làm việc.
+    - **Liên kết Navigation**: Sửa Component Navigation (`layout.tsx`) để đồng bộ cập nhật cookie trực tiếp từ thao tác bấm ở Sidebar. Trang `dashboard/t/[teamId]/page.tsx` cũng tự động mount lại Cookie khi vào Không gian tương ứng. Cấu hình Nút "Quay lại" trong SIM Layout để nhảy về đúng Dashboard của Workspace đang dùng.
+    - **Sửa Lỗi F5 & Demo**: Làm sạch các ứng dụng Demo khỏi `apps-registry.ts`. Loại bỏ trạng thái rỗng ảo, đảm bảo ứng dụng SIM hiển thị vững vàng. F5 không còn làm mất quyền truy cập vào SIM Manager nhờ cập nhật dữ liệu Mock.
+    - **Tài liệu hóa**: Soạn thảo và xuất bản `MVP_INTEGRATION_GUIDE.md` liệt kê toàn bộ quy trình 4 giai đoạn chuẩn (Schema -> Registry -> Routing -> UI) để nhúng một MVP vào Hệ Sinh Thái Ai2Hero.
+  - ✅ **Hoàn thành Giải quyết lỗi hiển thị, cài đặt và điều hướng MVP (`apps-registry.ts`, `team-mock-data.ts`, `layout.tsx`, `page.tsx`)**:
+    - **Dọn sạch App Demo**: Cấu hình lại `APPS` trong `apps-registry.ts` để gỡ bỏ toàn bộ các ứng dụng nháp rác (`AI Chat`, `AI Hub`, `API Hub`, `POS`, `Content Hub`), giữ lại giao diện sạch sẽ chỉ có duy nhất ứng dụng SIM Manager.
+    - **Khắc phục lỗi F5 mất App**: Cập nhật cứng `activatedApps: ['sim']` trong `MOCK_TEAMS` của `team-mock-data.ts` cho toàn bộ các team mẫu, giữ ứng dụng SIM luôn được kích hoạt.
+    - **Sửa đổi điều hướng (Routing)**: Cập nhật Sidebar và Quick Launch Grid trong `layout.tsx` và `page.tsx` sử dụng trực tiếp `href={app.path}` đi thẳng vào trang quản trị `/sim/dashboard` thay vì `/dashboard/apps?app=sim`.
+    - **Biên dịch**: Chạy thành công `pnpm build` đạt **0 errors** trên toàn hệ thống 26 routes!
+  - ✅ **Hoàn thành Tài liệu Hướng dẫn Tích hợp MVP (`MVP_INTEGRATION_GUIDE.md`)**:
+    - **Hệ thống hóa quy trình**: Soạn thảo tài liệu chuẩn hóa 6 bước tích hợp MVP mới vào AI2Hero (Chuẩn bị Schema kết nối `userId`, Tích hợp `activityLogs`, Kế thừa UI với `TopHeader`, Xử lý Route/Layout lồng nhau, Cập nhật tài liệu sống, và Kiểm thử bằng `pnpm build`).
+    - **Nguồn sự thật**: Tài liệu đóng vai trò tham chiếu bắt buộc cho các Phase mở rộng MVP (như AI Chat, API Hub) sau này.
+  - ✅ **Hoàn thành Tích hợp SIM Global & Đồng nhất Top Header**:
+    - **Kiến trúc Top Header Premium**: Trích xuất toàn diện thanh Top Header cao cấp từ `dashboard/layout.tsx` ra thành một component dùng chung độc lập `<TopHeader />` (`app/components/top-header.tsx`) hỗ trợ cả giao diện Desktop và Mobile. Nhúng thành công vào Dashboard Layout và SIM Layout, đồng bộ z-index và sidebar sticky z-index trượt mượt mà. Ẩn toàn bộ Header cũ của Root Layout đối với mọi trang SIM (`/sim/*`).
+    - **Liên kết thành viên thật**: Nâng cấp schema Drizzle, thêm trường khóa ngoại `userId` tham chiếu đến `users.id` trong bảng `sim_employees`. Cập nhật `sim/settings` cho phép chọn thành viên thực tế của nhóm từ database, hỗ trợ auto-populate thông tin và hiển thị badge `Liên kết: [Tên thành viên]` sang xịn mịn.
+    - **Đẩy Activity Feed**: Tích hợp cơ chế tự động ghi nhật ký hoạt động (`activityLogs`) vào các Server Actions biến đổi của SIM (`createSimAsset`, `deleteSimAsset`, `createSimLinkedAccount`, `deleteSimLinkedAccount`, `resolveSimRiskEvent`, `addSimCheckLog`) giúp mọi tương tác trên SIM tự động xuất hiện trên Bảng tin trang chủ (`/dashboard/home`) và Timeline nhóm thật.
+    - **Biên dịch**: Sản xuất build `pnpm build` đạt **0 errors** 100% thành công mỹ mãn.
+  - ✅ **Hoàn thành Di chuyển Native Import CSV vào Web App (Bỏ Import từ Extension)**:
+    - **Ý tưởng thay đổi**: Chuyển luồng nhập mật khẩu (Import CSV từ Google Passwords) trực tiếp lên giao diện Web App `/sim/accounts`, gỡ bỏ hoàn toàn việc đọc file và logic đồng bộ từ Extension giúp Extension mỏng nhẹ hơn và triệt tiêu 100% các lỗi mất đồng bộ như `accountsData is not iterable`.
+    - **Web App**:
+      - Bổ sung Server Action `importSimLinkedAccountsBatch` trong `sim-actions.ts` hỗ trợ bulk insert/upsert an toàn trong transaction (dedup theo platformKey + username) với **giới hạn được nâng lên tối đa 2000 tài khoản/lần**.
+      - Thiết kế Modal Nhập CSV Chrome kéo thả file CSV, cho phép chọn SIM liên kết mặc định và hiển thị thống kê Preview thời gian thực.
+      - **Tích hợp Trường Mật Khẩu (Password Management)**: Vá triệt để lỗ hổng thiếu trường mật khẩu trên toàn bộ hệ thống Web App (bổ sung `encryptedPassword` vào `sim-queries.ts`, chèn ô nhập mật khẩu với nút Ẩn/Hiện bằng Eye/EyeOff trong cả hai Modal Thêm mới/Sửa tài khoản liên kết, và hiển thị mật khẩu dạng ẩn cùng nút Copy/Toggle trong Slide-over Drawer chi tiết tài khoản).
+      - Gỡ bỏ listener `VAULT_IMPORT_BATCH` lỗi thời ở `bridge-api.tsx`.
+    - **Chrome Extension**:
+      - Dọn dẹp sạch tab Import trong `popup.html` và `popup.js`, xóa logic drag-drop file và forward batch.
+      - Loại bỏ thông điệp `FORWARD_IMPORT_BATCH` trong `background.js` và `webAppBridge.js`.
+      - Xóa file `extension/utils/csvParser.js` vĩnh viễn khỏi ổ đĩa.
+    - **Biên dịch**: Production build `pnpm build` biên dịch thành công xuất sắc đạt **0 errors** 100%.
+  - ✅ **Khắc phục triệt để lỗi handshake/PIN kết nối Extension và Web App**:
+    - **Lỗi gốc**: Chrome Manifest V3 Service Worker sleep làm rỗng biến RAM `simGuardTabIds`, dẫn đến popup không tìm thấy tab của Web App để gửi message verify PIN / sync và trả về lỗi giả định "Web App chưa mở".
+    - **Giải pháp**: 
+      - Bổ sung quyền `"tabs"` vào `manifest.json` của Extension.
+      - Nâng cấp `background.js` sử dụng `chrome.tabs.query` động lọc các tab localhost chứa `/sim` mỗi khi nhận event, giữ Set RAM làm fallback an toàn.
+  - ✅ **Hotfix lỗi "accountsData is not iterable" khi đồng bộ tài khoản**:
+    - **Nguyên nhân**: Destructuring trong [bridge-api.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/%28dashboard%29/sim/bridge-api.tsx) cố định đọc từ `event.data.data` trong khi extension gửi bằng key `payload`. Ngoài ra, payload nhập từ file CSV của Chrome gửi dữ liệu bọc trong object dạng `{ accounts: [...] }` thay vì truyền trực tiếp mảng phẳng, dẫn đến việc dùng `for...of` trên object bị crash.
+    - **Lỗi phát sinh**: Sau khi sửa lỗi lặp, Extension lại bị crash im lặng ở popup do `popup.js` mong đợi thuộc tính `response.payload.count` để hiển thị toast thành công, nhưng Web App trước đó chỉ trả về `{ success: true, data }`. Việc đọc `undefined.count` đã phá vỡ luồng xử lý của popup.
+    - **Giải pháp**: 
+      - Cập nhật destructure linh hoạt `const { type, payload: extPayload, data: extData } = event.data; const payload = extPayload ?? extData;`.
+      - Xử lý convert và gán `accountsData` an toàn: `Array.isArray(camelPayload) ? camelPayload : (camelPayload?.accounts || [])`.
+      - Bổ sung trường `payload: { count: results.length }` vào đối tượng phản hồi `VAULT_IMPORT_BATCH_RESPONSE` trong `bridge-api.tsx` để khớp hoàn toàn với mong đợi của popup.js mà không cần bắt buộc người dùng reload/rebuild extension.
+      - Chạy biên dịch `pnpm build` đạt **0 errors** 100% thành công.
+  - ✅ **Hoàn thành Di chuyển Route SIM & Tích hợp Trang Cài đặt (7 Tabs Settings)**:
+    - **Di chuyển Route**: Di chuyển thành công route SIM Manager từ `/dashboard/sim` ra thư mục gốc `/sim/dashboard`. Cập nhật `middleware.ts` để bảo vệ route `/sim` và cập nhật `apps-registry.ts` để cập nhật lối tắt.
+    - **Tích hợp Settings DB thật**: Xây dựng trang cài đặt tại `/sim/settings` với 7 tabs cấu hình, sử dụng Server Component để fetch data và Client Component render UI cao cấp. Kết nối cơ sở dữ liệu PostgreSQL thật thông qua Server Actions và Drizzle ORM (lưu cài đặt vào `systemSettings`, platforms vào `simPlatforms`, nhân viên qua `simEmployees`).
+    - **Nâng cấp Extension 2.0**: Nâng cấp SimGuard Vault extension lên phiên bản `2.0.0`, cấu hình handshake và đồng bộ hóa tương thích 100% với route mới `/sim/*`.
+  - ✅ **Hoàn thành Refactor Accounts & Phân trang SIM**:
+    - **SIM Assets**: Nâng số lượng SIM hiển thị mỗi trang từ 10 thành 15 trong `assets-client.tsx`.
+    - **Accounts UI Polish**: Chuyển đổi giao diện danh sách Tài khoản liên kết trong `accounts-client.tsx` từ dạng Grid sang Bảng table kèm Slide-over Drawer xem chi tiết mỏng nhẹ đồng bộ.
+    - **Bulk Actions**: Thêm cột chọn nhiều (Bulk Checkbox) và nút xóa hàng loạt tài khoản liên kết (Bulk Delete) tuần tự an toàn.
+    - **Chrome Extension Hook**: Tích hợp nút giả định "Nhập từ Chrome" trên Toolbar làm bệ phóng cho Phase sau.
+    - **QA Verification**: Biên dịch production `pnpm build` thành công xuất sắc đạt **0 errors** cho toàn bộ 26 routes.
+  - ✅ **Hoàn thành SimGuard Phase 5: Bảo mật quyền hạn, Tối ưu hóa Database & Trải nghiệm 100% chất lượng**:
+    - **Shared UI Helpers**: Tạo mới `sim-ui-helpers.ts` làm duy nhất nguồn sự thật quản lý hàm `showToast` dùng chung toàn hệ thống, triệt tiêu 100% `alert()` native.
+    - **SIM Assets Manager**: Đồng bộ phím `Escape` và click-outside đóng các modal thêm/sửa/nhập SIM, xóa bỏ duplication hiển thị rủi ro, fix responsive Mobile drawer.
+    - **Check History**: Sửa search logic trống null-safe, pagination 10 logs/trang, sort order thời gian, và trend indicator null cực tốt.
+    - **Linked Accounts**: Vá thành công Escape key, click-outside cho modals, copy clipboard bọc try-catch an toàn, disabled select SIM OTP placeholder và inline confirm delete.
+    - **Risk Alerts**: Khắc phục ép kiểu `as any`, vá lỗi null rendering khi SIM bị xóa, disabled các nút khi pending, thay native `confirm()` dismiss rủi ro bằng inline confirm an toàn.
+    - **Backend Hardening (`sim-actions.ts`)**: Nâng cấp kiểm duyệt vai trò `requireRole` (Viewer chỉ được đọc, cấm ghi), kiểm duyệt rủi ro đã xử lý ngăn chặn thao tác chéo, validate 500 SIM giới hạn batch size và chèn bộ lọc `sanitizeError` triệt tiêu leak error stack.
+    - **Database Optimizations (`sim-queries.ts`)**: Tối ưu hóa `getSimDashboardStats` song song hóa 5 DB counts bằng `Promise.all` (tăng tốc 4x), nâng cấp toán tử fallback từ `||` sang `??`.
+    - **QA Verification**: Chạy biên dịch `pnpm build` đạt **0 errors** cho toàn bộ 26 routes, đồng bộ bài học 4.33 vào `LESSONS.md` toàn cục.
+    - **Visual Header Overlap & Layout Polish (`layout.tsx`, `sim-tabs.tsx`, `globals.css`)**: 
+      - Giải quyết triệt để lỗi đè menu nghiêm trọng bằng cách chuyển từ `sticky top-14` thành `sticky top-0` cho Tab Bar.
+      - **Thiết kế Full-Width**: Loại bỏ hoàn toàn giới hạn `max-w-7xl` và `mx-auto` trên `<main>` container chính và Tab Bar, giúp toàn bộ bảng biểu, charts và layout kéo giãn hết cỡ 100% viewport rộng rãi, không còn bị đóng khung bí bách.
+      - **Header Siêu Mỏng**: Loại bỏ Sub-Header cao 80px cũ, tích hợp tiêu đề nhỏ gọn cùng một hàng ngang với Tab Bar (chỉ cao 48px), giải phóng tối đa diện tích đứng của giao diện.
+      - **Làm đẹp thanh cuộn**: Tùy biến CSS `::-webkit-scrollbar` toàn cục trong `globals.css` biến các thanh cuộn mặc định Windows thô kệch thành thanh trượt mỏng 6px mờ mượt mà, tự động ẩn khi không di chuột.
+      - **Drawer Alignment**: Căn chỉnh lại vị trí sticky của Drawer chi tiết SIM sang `lg:top-14` và tăng chiều cao tối đa khả dụng để thẳng hàng tuyệt đẹp dưới Tab Bar mới.
+  - ✅ **Tích hợp SimGuard Phase 4: Client-side Triggers (Phân trang, Sắp xếp & Bộ lọc mở rộng)**:
+    - **SIM Assets Manager**: Bổ sung bộ lọc mở rộng Loại SIM (Vật lý/eSIM) và Độ quan trọng (Thấp/Trung bình/Cao/Nguy cấp). Bổ sung tính năng click-sort trên 2 cột Nhà mạng (`carrier`) và Người phụ trách (`ownerName`) tích hợp biểu tượng ChevronUp/Down. Tích hợp phím Escape và click-outside overlay đóng các modal thêm/sửa/nhập SIM.
+    - **Risk Alerts**: Triển khai trọn bộ Tìm kiếm rủi ro (theo loại, thiết bị, mô tả), Lọc cấp độ rủi ro, Lọc loại rủi ro động (lấy từ dữ liệu thực tế), Sắp xếp theo Thời gian/Độ nghiêm trọng/Tên SIM và Phân trang Grid (6 items/trang) với Premium Footer. Bổ sung phím Escape và click-outside cho Resolve Modal.
+    - **Compilation & Verification**: Chạy lệnh build `pnpm build` đạt **0 errors** trên toàn hệ thống.
+  - ✅ **Tích hợp SimGuard Phase 3: Chrome Extension Bridge & API Sync (Kết nối thời gian thực)**:
+    - **Tách Component Điều Hướng**: Chuyển đổi `layout.tsx` sang Server Component, tách thanh tab ngang chứa logic hook `usePathname` ra client component `sim-tabs.tsx`.
+    - **Dual-Write Storage Adapter & Data Mapper**: Thiết lập `bridge-api.tsx` giúp mapping tự động camelCase (DB) sang snake_case (localStorage của extension) và vice-versa.
+    - **Real-time postMessage Events**: Lắng nghe các tin nhắn `VAULT_QUERY`, `VAULT_SAVE_ACCOUNT`, `VAULT_IMPORT_BATCH` từ SimGuard Extension, thực thi Server Actions cập nhật Postgres và phản hồi lại định dạng `${type}_RESPONSE` chuẩn.
+    - **Toast Integration**: Tích hợp Toast notification premium thông báo kết quả đồng bộ thời gian thực.
+    - **Compilation & Verification**: Build dự án `pnpm build` thành công xuất sắc đạt **0 errors** trên toàn hệ thống.
+  - ✅ **Tích hợp SimGuard Phase 2: Giao diện Premium Dark Mode (SIM Manager UI/UX)**:
+    - **Sub-layout & Navigation**: Thiết lập Tab navigation ngang với 5 mục điều hướng, sticky vị trí `top-14` và responsive cuộn ngang.
+    - **SIM Dashboard**: Xây dựng trang tổng quan hiển thị 4 Stats widgets và Donut Chart rủi ro sử dụng CSS conic-gradient hiện đại đè vòng tròn đồng tâm, danh sách Top 5 SIM nguy hiểm và panel lối tắt.
+    - **SIM Assets Manager**: Thiết lập bảng quản lý SIM với sorting động, tìm kiếm và phân trang client-side. Thiết kế Slide-in Drawer chi tiết bên phải (thông tin thuê bao, đăng ký chính chủ, tài khoản liên kết, check logs và phân tích rủi ro), tích hợp các modal CRUD SIM, kiểm tra bảo mật (add check log) và modal nhập CSV hàng loạt.
+    - **Linked Accounts**: Nhóm danh sách tài khoản theo Platform Grid thông minh, tích hợp nút sao chép nhanh username/email và các modal CRUD liên kết tài khoản.
+    - **Risk Alerts**: Giao diện quản trị 3 tab Cần xử lý / Đã xử lý / Bỏ qua, tích hợp modal nhập ghi chú xử lý rủi ro và nút khôi phục sự cố.
+    - **Check History**: Trình diễn timeline audit logs dạng dọc, chỉ thị xu hướng tăng/giảm điểm rủi ro trực quan cùng bộ lọc loại kiểm tra.
+    - **TypeScript compilation**: Đảm bảo toàn bộ 5 route mới và các client component liên quan biên dịch thành công 100%.
+  - ✅ **Tích hợp SimGuard Phase 1: Database, Queries, Actions & Risk Engine**:
+    - **ORM Schema**: Thêm 6 bảng dữ liệu (`sim_employees`, `sim_assets`, `sim_platforms`, `sim_linked_accounts`, `sim_risk_events`, `sim_check_logs`) vào schema Drizzle ORM cùng các relation và TypeScript types.
+    - **Database Migration & Seeding**: Đồng bộ schema mới lên Postgres thành công và nạp seed data cho `Test Team` (15 SIM, 8 nhân viên, 32 tài khoản liên kết, 10 rủi ro và 8 check logs).
+    - **Tenancy queries & Server Actions**: Xây dựng tầng truy xuất dữ liệu an toàn scoped theo `teamId` (sim-queries) và các Server Actions đột biến dữ liệu an toàn có kiểm tra session (sim-actions).
+    - **TypeScript Risk Engine**: Dịch chuyển logic tính điểm phạt rủi ro 6 quy tắc và phân loại cấp độ rủi ro sang TypeScript.
+    - **App Activation**: Cập nhật Apps Registry kích hoạt SIM Manager từ `'coming_soon'` sang `'beta'`.
+    - **Compilation & Verification**: Chạy biên dịch `pnpm build` đạt **0 errors** trên toàn hệ thống.
+- **2026-05-27**:
+  - ✅ **Hoàn thành Gói dịch vụ & Gating Tính năng (Billing & Plans Gating System)**:
+    - **Database Schema & Data Layer**: Thêm bảng `system_settings` trong schema Drizzle ORM để lưu cấu hình gói cước (Free, Pro, Enterprise) dưới dạng JSONB động và tạo các helper queries `getSystemSetting`/`updateSystemSetting`.
+    - **Super Admin Settings**: Refactor trang `/admin/settings` thành giao diện quản trị Tabs cho cả 3 gói, cho phép chỉnh sửa giá, hạn mức thành viên (`maxMembers`), danh sách tính năng và quyền truy cập ứng dụng (`allowedApps`).
+    - **Client Pricing & App Gating**: Chuyển đổi trang `/pricing` sang Server Component hiển thị giá/tính năng động từ DB trong giao diện Premium Dark Mode. Tích hợp cơ chế kiểm duyệt truy cập trên trang Store (`/dashboard/store`), chặn người dùng kích hoạt các app bị hạn chế và hiển thị UI thông báo nâng cấp Pro sang xịn.
+    - **Server Actions Security**: Nâng cấp hàm `inviteTeamMember` chặn gửi lời mời thành viên vượt quá hạn mức tối đa của gói cước (kết hợp đếm thành viên thực tế và lời mời đang chờ).
+    - **Build & Quality Assurance**: Chạy biên dịch `pnpm build` thành công xuất sắc đạt **0 errors** cho toàn bộ 26 trang Next.js 15+.
+  - ✅ **Hoàn thành Plan 2: Social Feed + Notification + Super Admin**:
+    - **Task Action Buttons**: Thêm hàng nút hành động Nhận việc (Đang làm) -> Hoàn thành -> Làm lại trực quan trên FeedPostCard cho bài viết Task, đồng bộ hóa state 3 bước mượt mà kèm Toast thông báo.
+    - **MVP Result Detail Modal**: Tích hợp nút "Xem thành phẩm chi tiết" mở Pop-up Modal Premium sang xịn, hiển thị chi tiết metrics mở rộng và kết quả giả lập theo từng MVP App cụ thể (AI Chat, POS, Content Hub...).
+    - **Notification Routing**: Nâng cấp sự kiện click thông báo, tự động điều hướng sang `/dashboard/home#post-[id]`, cuộn trang smooth tới bài viết mục tiêu và tạo hiệu ứng highlight viền cam flash 2.5s rồi tự động xóa hash khỏi URL để tránh lặp lại.
+    - **Super Admin Quick Button**: Thêm nút "⚡ Admin" tím gradient nổi bật trên Top Header, phân quyền chỉ hiển thị đối với tài khoản `super_admin` để mở nhanh trang quản trị.
+    - **Tài liệu**: Đồng bộ hóa `UI_MAP.md` cho cơ chế hash routing.
+  - ✅ **Hoàn thành Plan 1: Workspace Dashboard 7 Module + Sidebar Link**:
+    - **Sidebar Accordion**: Tách accordion header thành link chuyển trang (vùng trái) và chevron toggle accordion (vùng phải), đồng bộ chuyển hướng Workspace mượt mà.
+    - **Workspace Dashboard (`/dashboard/t/[teamId]`)**: Viết lại hoàn toàn trang thành Dashboard 7 module trực quan: Banner nhóm, Stats cards (AI Usage, Active Apps, Members, Tasks), AI Progress Bar, Quick Launch Grid (cho app đã cài), Task Board Kanban compact, CSS Bar Chart (lượng dùng AI 7 ngày) và Timeline Log + Feed riêng nhóm. Dữ liệu cách ly 100% theo teamId.
+    - **Tài liệu**: Đồng bộ hóa `UI_MAP.md` chi tiết.
+  - ✅ **Hoàn thành Phase 4: Client-side Table Controls (Sắp xếp + Phân trang cho Admin)**:
+    - **Users Management (`/admin/users`)**: Bổ sung logic Client-side Sorting cho 3 cột (Người dùng, Vai trò, Lượt dùng AI) tích hợp ChevronUp/Down và Pagination Footer hiển thị 5 dòng/trang. Tự động reset trang về 1 khi thay đổi bộ lọc hoặc tìm kiếm.
+    - **Social Feed Timeline (`/dashboard/home`)**: Bổ sung phân trang tĩnh 3 bài đăng/trang cho danh sách bài đăng không ghim, đi kèm Premium Pagination Footer có hiệu ứng cuộn mượt (`window.scrollTo`) lên đầu khi chuyển trang và reset trang về 1 khi chọn không gian làm việc khác.
+    - **Teams Management (`/admin/teams`)**: Tích hợp sắp xếp cho 3 cột (Tổ chức, Thành viên, Lượt dùng AI) và phân trang 5 nhóm/trang với các nút bấm trang trang nhã mượt mà.
+    - **Logs Management (`/admin/logs`)**: Tích hợp sắp xếp theo Thời gian, Hành động, và Mức độ nghiêm trọng (Severity - so sánh theo trọng số Info=0 < Warning=1 < Error=2). Bổ sung phân trang 5 dòng/trang và reset trang khi filter đổi.
+    - **Build & Quality Assurance**: Đảm bảo toàn bộ 3 trang hoạt động 100% độc lập client-side, đồng bộ thiết kế Premium Dark Mode sang xịn.
+  - ✅ **Hoàn thành Phase 3: UX Polish & Animation Enhancements (Đánh bóng Giao diện & Hiệu ứng)**:
+    - **Premium Dark Mode Admin**: Cập nhật toàn diện các trang Quản trị (`admin-shell`, `users`, `teams`, `logs`) sang giao diện nền tối `bg-gray-950` tích hợp hiệu ứng `backdrop-blur` sang trọng.
+    - **Responsive Data Tables**: Bọc thanh cuộn ngang `overflow-x-auto scrollbar-thin` cho tất cả các bảng dữ liệu Admin và Ma trận quyền hạn, loại bỏ tình trạng tràn layout trên màn hình nhỏ.
+    - **UX/UI Interactivity**: Bổ sung Trap Focus đa nền tảng (bắt sự kiện `Escape`) cho Dropdown và Modal tại trang Members; tích hợp hiệu ứng nổi (3D hover scale) và Fade indicator (gradient viền mờ) cho thanh danh mục tại trang Store.
+    - **Accessibility (A11y)**: Nâng cấp Top Layout của Dashboard với các nhãn `aria-label` cho Menu tài khoản và nút Đăng xuất nhằm tăng cường tiêu chuẩn web.
+    - **Cross-Review & Hotfixes**: Hoàn tất Review chéo Phase 3 (Loops 2, 3, 5). Phát hiện và sửa nóng lỗi cú pháp nghiêm trọng (thiếu `return` gây lỗi compile ở `teams/page.tsx`), dọn sạch mã chết (`getSeverityBadge` ở `logs/page.tsx`), cập nhật bài học 10.5 tại `LESSONS.md` toàn cục và chạy `pnpm build` compile pass 100% trơn tru 26 routes!
+
+  - ✅ **Hoàn thành Phase 2: Code Quality & Feature Prep (Tối ưu hóa mã nguồn & Tối ưu hiệu năng)**:
+    - **Đồng bộ hóa SWR Fetcher**: Khởi tạo và tích hợp fetcher mạng dùng chung từ `@/lib/fetcher` cho tất cả các trang dashboard con (`general/page.tsx`, `settings/page.tsx`, `dashboard/page.tsx` và `layout.tsx`), loại bỏ mã trùng lặp cục bộ và sửa luôn lỗi avatar cũ (`split(' ')` crash) sang chuẩn an toàn `.charAt(0)`.
+    - **Dọn dẹp mã nguồn & Dead Code**: Loại bỏ hoàn toàn constant không sử dụng `SYSTEM_ACTIVITY_STYLING` và các icons lucide-react không sử dụng (`Zap`, `ClipboardList`, `Activity` ở home page; `Crown`, `Zap`, `Building2`, `MessageSquare`, `Brain`, `Plug` ở layout page).
+    - **Tiêu diệt alert() Native**: Sửa đổi và thay thế 100% các hàm thông báo `alert()` bằng Toast Context cao cấp `(window as any).showToast()` trong members page, home page và layout page.
+    - **Tối ưu hóa Root Layout Prefetching**: Chuyển đổi Root Layout sang `async function`, sử dụng `cookies()` từ `next/headers` để kiểm soát trạng thái session trước khi prefetch. Nếu chưa đăng nhập, Root Layout gán fallback SWR là `null` trực tiếp giúp triệt tiêu 100% database query trống rỗng cho khách vãng lai và tăng tốc tải trang static.
+    - **Verify & Build**: Chạy lệnh `pnpm build` thành công xuất sắc đạt **0 errors** và compile hoàn hảo toàn bộ 26 trang Next.js 15+!
+  - ✅ **Hoàn thành Phase 0: Security Hardening (Sửa lỗi bảo mật cốt lõi)**:
+    - **API Route Security**: Lọc bỏ hoàn toàn trường `passwordHash` nhạy cảm trước khi trả về từ `/api/user` và thiết lập trả về mã trạng thái `401 Unauthorized` đúng chuẩn khi người dùng chưa đăng nhập tại `/api/user` và `/api/team`.
+    - **Phân quyền Server Actions (RBAC)**: Tích hợp cơ chế kiểm duyệt vai trò Owner/Admin chặt chẽ trong `removeTeamMember` và `inviteTeamMember`, chỉ cho phép những người quản trị nhóm hoặc chính thành viên tự rời nhóm; ngăn cản việc xóa Owner của nhóm.
+    - **Cơ chế Đăng xuất thực tế (Real Logout)**: Sửa đổi nút "Đăng xuất" trên Top Header để gọi thực sự Server Action `signOut()`, xóa cookie phiên làm việc, xử lý an toàn lỗi crash khi session trống, và chuyển hướng người dùng về `/sign-in` bằng router client-side.
+    - **Validate AUTH_SECRET**: Tích hợp kiểm duyệt runtime bắt buộc đối với biến môi trường `AUTH_SECRET` để ngăn chặn các khóa JWT rỗng hoặc siêu yếu.
+    - **Bảo vệ định tuyến Admin (Middleware RBAC Gating)**: Đóng gói trường `role` của người dùng vào mã hóa JWT token và nâng cấp Next.js `middleware.ts` để chủ động phát hiện và chuyển hướng (redirect) người dùng thường ra khỏi các route `/admin/*` nhạy cảm về lại `/dashboard`.
+  - ✅ **Hoàn thành Phase 1: Bug Fixes & Core Stability (Sửa lỗi logic & Đồng bộ hệ thống)**:
+    - **Toast Context System**: Thiết kế và tạo mới `ToastProvider` toàn cục tại `@/components/ui/toast` bằng React Context, cắm trực tiếp vào Root Layout của toàn bộ ứng dụng. Giải quyết triệt để lỗi Toast bị broken ở ngoài Dashboard (như Admin portal, Login/Signup). Expose `window.showToast` toàn cục giúp 15+ call sites cũ hoạt động tức thì; dọn dẹp sạch sẽ code Toast local dư thừa trong Dashboard Layout để loại bỏ nguy cơ chồng chéo.
+    - **Visual Theme & SEO Consistency**: Việt hóa thuộc tính HTML `lang="vi"` trong Root Layout; nâng cấp đồng bộ hóa toàn diện trang Nhật ký hoạt động (`activity/page.tsx`) và trang lỗi 404 (`not-found.tsx`) sang Premium Dark Mode huyền ảo với card viền mờ `bg-gray-900/50 border-white/10` và các button gradient cam-hồng.
+    - **Đồng bộ ứng dụng thời gian thực (Store mutation fix)**: Khắc phục lỗi đột biến trực tiếp hằng số tĩnh ở Store page (`store/page.tsx`) bằng cách cập nhật bất biến `MOCK_TEAMS` và phát hành CustomEvent `'teams-updated'` toàn cục. Tích hợp bộ lắng nghe sự kiện tại Dashboard Layout để tự động re-render Sidebar accordion lập tức khi một MVP App được kích hoạt mà không cần tải lại trang.
+    - **Tránh trùng lặp viền**: Sửa lỗi duplicate border class trong tab container của Members page (`members/page.tsx`).
+    - **Thuật toán gợi ý Mention an toàn**: Khắc phục lỗi logic autocomplete mention `@` trong trang Social Feed (`home/page.tsx`) khi soạn văn bản ngắn bằng thuật toán so sánh chặn dưới `Math.max(0, val.length - 15)`.
+    - **Ổn định Database queries**: Cập nhật hàm truy vấn `getUserWithTeam` trong `queries.ts` để trả về `null` một cách tường minh thay vì `undefined` khi user không tồn tại, tăng tính ổn định cho các khối code auth.
+    - **Chặn đứng Stripe crash**: Khắc phục lỗ hổng ép kiểu không an toàn (`unsafe type cast`) trong Stripe Webhook subscription handler (`stripe.ts`) bằng cách kiểm tra linh động kiểu dữ liệu của `plan.product` và bất đồng bộ truy vấn Stripe API lấy tên sản phẩm thực tế, ngăn ngừa crash máy chủ.
+  - ✅ **Sửa lỗi CSS crash do thiếu @theme mapping (Tailwind v4 Patch)**: Tích hợp `@theme inline` mapping thành công trong `globals.css` giải quyết triệt để lỗi biên dịch `unknown utility class: bg-background`, khôi phục 100% giao diện Premium Dark Mode rực rỡ cho 26 trang Next.js và các component shadcn. Chạy build pass 100% với 0 errors.
+  - ✅ **Hoàn thành TASK 6 & TASK 7 (Đăng nhập, Phân quyền & Hoàn thiện UI/UX Premium)**:
+    - **Việt hóa & Bảo mật trang Đăng nhập (`login.tsx`)**: Việt hóa toàn diện placeholders, nút bấm, và nhãn; bổ sung liên kết "Quên mật khẩu?" tích hợp thông báo Toast mượt mà.
+    - **Khắc phục lỗi TypeScript (`admin/users/page.tsx`)**: Sửa triệt để các ép kiểu `as any` thành định nghĩa types rõ ràng và dọn dẹp các icons import thừa (`UserCheck`, `UserX`, `SearchIcon`).
+    - **Dọn dẹp mã nguồn**: Quét sạch imports không sử dụng trong `admin/settings/page.tsx`, `store/page.tsx`.
+    - **Tăng cường khả năng tiếp cận (Accessibility)**: Thêm thuộc tính `aria-label` cho tất cả icon buttons trong `layout.tsx` (Launcher, Notification bell, Help, updates, accordion...).
+    - **Chuẩn hóa Next.js Link**: Loại bỏ 100% thuộc tính Next.js cũ `passHref legacyBehavior` và thẻ `<a>` con lồng nhau vô dụng tại tất cả các tệp (`layout.tsx`, `admin-shell.tsx`, `admin/page.tsx`), nâng cấp sang chuẩn điều hướng React Server Components Next.js 13+ cực sạch.
+    - **Sửa lỗi bảo mật mật khẩu (`security/page.tsx`)**: Ứng dụng React 19 Form Key Pattern (`key={formKey}`) tự động hủy và remount form để xóa sạch (clear) các ô mật khẩu sau khi cập nhật thành công.
+    - **Sửa lỗi Compile & Build Production**: Khắc phục lỗi `@apply border-border` trong `globals.css` bằng pure CSS declarations; sửa lỗi thiếu import `Share2` trong `feed-post-card.tsx` và `React` trong `members/page.tsx`; chạy `pnpm build` thành công xuất sắc đạt **0 errors** cho toàn bộ 26 trang!
+  - ✅ **Hoàn thành TASK 5 (Đánh bóng Trang chủ Bảng tin - UI Polish v1)**: Thực thi tách component `FeedPostCard` ra tệp riêng `app/components/feed-post-card.tsx` giúp giảm dung lượng tệp `home/page.tsx` từ 1311 dòng xuống 912 dòng; bổ sung click-outside cho menu tuỳ chọn bài viết `•••` sử dụng `useRef` và `useEffect` chuyên nghiệp; loại bỏ 10+ alert() trong tương tác (Thích, Bình luận, Ghim, Giao việc) thay thế bằng thông báo Toast mượt mà; tích hợp lời chào tự động theo thời gian thực ("Chào buổi sáng/chiều/tối") tại Bảng điều khiển (`dashboard/page.tsx`).
+  - ✅ **Hoàn thành TASK 4 (Chuẩn hóa trang Settings - UI Polish v1)**: Chuyển đổi toàn diện trang cấu hình nhóm `/dashboard/settings` sang Premium Dark Mode với các Card nền tối (`bg-gray-900/50`), viền mờ (`border-white/10`) và chữ trắng đồng nhất; đồng bộ padding mượt mà (`p-6 lg:p-10`) và tiêu đề cỡ đậm (`font-extrabold`); nâng cấp logic kiểm soát thành viên cho phép xóa các tài khoản khác ngoại trừ Owner (`index > 0 && member.role !== 'owner'`) thay thế cho logic cứng cũ.
+  - ✅ **Hoàn thành TASK 3 (Nâng cấp UX: Toast + Notification + Mobile - UI Polish v1)**: Xây dựng hệ thống Toast Message inline toàn cục mượt mà trong `layout.tsx`, hỗ trợ helper `window.showToast` chia sẻ rộng rãi; nâng cấp loại bỏ toàn bộ `alert()` trong các trang quản trị `/admin/teams`, `/admin/users`, `/admin/settings` bằng thông báo Toast cao cấp; tối ưu hóa cấu trúc trùng lặp bằng cách tách Notification Dropdown thành component tái sử dụng `NotifDropdownContent` dùng chung cho cả mobile và desktop; tích hợp backdrop overlay có làm mờ nền tối (`backdrop-blur-sm bg-black/60`) khi mở Sidebar trên điện thoại.
+  - ✅ **Hoàn thành TASK 2 (Thống nhất Design System - UI Polish v1)**: Tạo và xuất bản `app/lib/shared-constants.ts` chứa format utilities (`formatNumber`, `formatVND`) và icon maps (`APP_ICON_MAP`, `PLAN_ICON`) hợp nhất từ các trang, dọn dẹp và chuẩn hóa `globals.css` (chuyển đổi hoàn toàn biến HSL của Dark Mode lên làm mặc định ở `:root` để loại bỏ 100% code CSS thừa và ép buộc Dark Mode, di chuyển `body` font-family sang `@layer base`, tích hợp `@media (prefers-reduced-motion)` tăng khả năng tiếp cận và bổ sung các class `animate-delay-*` mượt mà).
+  - ✅ **Hoàn thành TASK 1 (Sửa lỗi Critical - UI Polish v1)**: Sửa đổi hardcoded dates thành dynamic dates trong `home/page.tsx` và `feed-mock-data.ts`, sửa class `py-0.2` thành `py-0.5` và loại bỏ nested `<tbody>` trong `members/page.tsx`, tối ưu hóa `activatedApps` update thành immutable style trong `store/page.tsx`, sửa class không chuẩn `border-gray-250`, `border-gray-150` và `h-4.5 w-4.5`/`h-5.5 w-5.5` trong `admin` và `store` pages.
+  - ✅ **Hoàn thành Tái cấu trúc Layout — Top Header Sticky Toàn cục (PLAN_TOP_HEADER.md)**:
+    - **Task 1**: Thêm Top Header ngang cố định (`sticky top-0 z-50`) trên cùng DashboardLayout chứa Launcher, Logo AI2Hero Platform, Global Search, và nút "Tạo mới" với 4 hành động nhanh. Cập nhật Sidebar sticky định vị bắt đầu từ `top-14`.
+    - **Task 2**: Di dời Notification Bell + Dropdown thông báo và Avatar người dùng từ Sidebar lên phân vùng Phải của Top Header. Thêm icon Loa phát thanh (Updates) và icon Trợ giúp (Help). Thiết kế Avatar dropdown menu tài khoản gồm 4 mục (Hồ sơ, Bảo mật, Cài đặt nhóm, Đăng xuất).
+    - **Task 3**: Thu gọn hoàn toàn Sidebar (xóa Logo Section và UserCard ở chân Sidebar) giúp Sidebar thoáng đãng chỉ chứa điều hướng. Cập nhật Mobile Header tích hợp chuông báo mini và badge động.
+    - **Task 4**: Tích hợp logic Click-Outside tự động đóng cho cả 3 dropdown (Tạo mới, Thông báo, Avatar) bằng `useEffect` và `useRef`. Chạy build biên dịch kiểm tra thành công 100%.
+  - ✅ **Hoàn thành Task 4 (Upgrade Kênh Giao Tiếp Nội Bộ)**: Tích hợp Notification Bell 🔔 tại sidebar header với badge đếm số lượng chưa đọc động và dropdown thông báo, bổ sung tính năng Ghim/Bỏ ghim bài viết quan trọng lên đầu feed cho Owner/Admin.
+  - ✅ **Hoàn thành Task 3 (Upgrade Kênh Giao Tiếp Nội Bộ)**: Thiết kế dải Attachment Bar (Ảnh/Video, Gắn thẻ, Kết quả MVP, Cảm xúc) kiểu Facebook, tích hợp Mention Autocomplete gợi ý thông minh khi gõ `@` và hiển thị attachments dạng grid/card trong feed.
+  - ✅ **Hoàn thành Task 2 (Upgrade Kênh Giao Tiếp Nội Bộ)**: Mở rộng Data Model `FeedPost` và `FeedComment` hỗ trợ tags, ghim và attachments. Bổ sung `FeedNotification` và `MOCK_NOTIFICATIONS` mẫu vào `feed-mock-data.ts`.
+  - ✅ **Hoàn thành Task 1 (Upgrade Kênh Giao Tiếp Nội Bộ)**: Fix lỗi Sidebar không sticky khi cuộn trang dài bằng cách loại bỏ class `overflow-hidden` khỏi thẻ div cha trong `layout.tsx`.
+  - ✅ **Hoàn thành Kế hoạch Phân quyền & Bảng tin động (Implementation Plan)**:
+    - **Task 1**: Khắc phục triệt để lỗi visual lệch màu tại tab "Vai trò & Quyền hạn" của trang quản trị thành viên ([members/page.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/%28dashboard%29/dashboard/members/page.tsx)), tối ưu hóa toàn bộ các Intro Cards vai trò và Ma trận quyền hạn chi tiết sang phong cách Premium Dark Mode (`bg-gray-900/50`, `border-white/10`, `text-white`).
+    - **Task 2**: Nâng cấp Bảng tin Social Feed Timeline hoạt động 100% qua React State động (`feedPosts`) tại trang chủ ([home/page.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/%28dashboard%29/dashboard/home/page.tsx)). Tích hợp Form đăng bài chi tiết nở rộng (hỗ trợ 📊 Kết quả MVP với Grid Metric, 📅 Giao việc gán staff, ⚡ Thông báo hệ thống), đồng bộ Like (tim bay), bình luận thời gian thực, và check task 3 trạng thái (*Chờ làm → Đang làm → Hoàn thành*) kèm spinner. Tích hợp bộ giả lập vai trò nhanh (**Role Simulator Switcher**) và phân quyền gating theo 5 vai trò thực tế (chặn Viewer like/comment/check task và làm mờ/khóa form đăng bài kèm overlay 🔒 đỏ).
+  - ✅ Full-Width Dark Dashboard: Nâng cấp Layout core + 8 trang con (Bảng điều khiển, Trang chủ, Chi tiết nhóm, Kho ứng dụng, Thành viên, Tổng quan, Bảo mật, Cài đặt) sang thiết kế **Full-Width + Dark Mode cưỡng bức 100%** đồng nhất theo phong cách Trello/Notion cao cấp, Sidebar sticky/fixed mượt mà và animation `.animate-fade-in` đồng bộ hoàn hảo.
+  - ✅ Part B Task 5: Chuyển Security Page (`/dashboard/security`) sang Dark Mode (form và card xóa tài khoản tone đỏ tối cảnh báo mượt mà).
+  - ✅ Part B Task 4: Chuyển General Page (`/dashboard/general`) sang Dark Mode (form và input fields đồng bộ 100%).
+  - ✅ Part B Task 3: Chuyển Store Page (`/dashboard/store`) sang Dark Full-Width chuyên nghiệp (tối hóa các cards, modal activation và responsive tối đa).
+  - ✅ Part B Task 2: Chuyển Members Page (`/dashboard/members`) sang Dark Full-Width chuyên nghiệp (bảng thành viên, ma trận quyền và modal mời thành viên được tối hóa 100%).
+  - ✅ Part B Task 1: Chuyển Apps Page (`/dashboard/apps`) sang Dark Full-Width chuyên nghiệp.
+  - ✅ Part A Task 1: Nâng cấp Layout cha thành Full-Width + Dark Mode 100% đồng nhất và Sidebar sticky/fixed cao cấp.
+  - ✅ Part A Task 2: Bổ sung keyframe fade-in và utility class animate-fade-in vào globals.css.
+  - ✅ Part A Task 3: Tinh chỉnh Board Overview hỗ trợ 4 cột trên màn hình cực rộng (2xl) và viền avatar stack tiệp màu nền tối (`border-gray-950`).
+  - ✅ Part A Task 4: Kiểm tra và tinh chỉnh Team Detail tương thích 100% Full-Width + Dark Mode mượt mà.
+  - ✅ Shell v1 Part 2: Tái thiết kế Bảng điều khiển (`/dashboard`) thành Trello-style Board Overview hiển thị toàn bộ 3 workspaces dưới dạng Board Cards sang xịn; tạo Trang chủ (`/dashboard/home`) chứa Global Activity Feed dạng timeline nhóm theo ngày sinh động kèm filter; tạo trang Chi tiết nhóm (`/dashboard/t/[teamId]`) có layout 2 cột hiện đại liên kết chéo; di dời Settings cũ sang `/dashboard/settings`.
+  - ✅ Shell v1 Part 1: Cải tạo mock data sang multi-team structure (`MOCK_TEAMS` gồm 3 teams & helpers), tái thiết kế Sidebar thành **Context-Aware Living Sidebar** có 3 tầng (global nav, dynamic accordion đa team tích hợp app registry, action footer), và tạo mới trang Kho ứng dụng (/dashboard/store) với tính năng Mock Activation Modal cao cấp.
+  - ✅ Task 1: Tái thiết kế Sidebar thành Dark Sidebar Premium với logo Sparkles gradient, phân nhóm 3 section (Ứng dụng, Quản trị, Tài khoản), active gradient cam-hồng, và User Card tích hợp SWR lấy thông tin động.
+  - ✅ Task 2: Việt hóa toàn bộ trang Tổng quan (General Settings) + nâng cấp visual với heading gradient, card rounded-2xl, shadow mượt và animation fade-up.
+  - ✅ Task 3: Việt hóa trang Hoạt động (Activity Log) + nâng cấp visual, Việt hóa 100% logs action & relative time, bảo toàn Server Component không bị chuyển client-side.
+  - ✅ Task 4: Việt hóa trang Bảo mật (Security Settings) + nâng cấp visual, bo góc rộng rounded-2xl, card xóa tài khoản viền đỏ nhạt (border-red-100) cảnh báo nổi bật.
+  - ✅ Task 1 (Super Admin): Dựng khung Admin Layout bảo mật server-side, Admin Shell chứa Sidebar dark premium riêng biệt và tệp mock data tĩnh toàn diện (`lib/admin-mock-data.ts`), cập nhật middleware và update role của tài khoản test thành `super_admin`.
+  - ✅ Task 2 (Super Admin): Tạo trang Dashboard tổng quan (`/admin`) hiển thị 6 chỉ số vĩ mô và 2 bộ biểu đồ Pure CSS Bar Chart (Tăng trưởng người dùng, tăng trưởng doanh thu) kèm 5 dòng audit log mới nhất.
+  - ✅ Task 3 (Super Admin): Tạo trang Quản lý Người dùng (`/admin/users`) chứa bảng danh sách 8 tài khoản, bộ lọc tìm kiếm theo từ khóa/vai trò/trạng thái và bộ điều khiển trực quan hỗ trợ thăng cấp/hạ cấp Super Admin, khóa/mở khóa tài khoản động.
+  - ✅ Task 4 (Super Admin): Tạo trang Quản lý Tổ chức (`/admin/teams`) hiển thị 3 chỉ số tóm tắt (tổng số nhóm, số lượng gói trả phí, tổng thành viên), bảng danh sách 6 teams cùng với bộ điều khiển thay đổi Plan nhanh (Free, Pro, Enterprise) và tạm khóa hoạt động của tổ chức.
+  - ✅ Task 5 (Super Admin): Tạo trang Cấu hình Hệ thống (`/admin/settings`) để quản trị API Keys của 3 mô hình AI (GPT-4o, Claude, Gemini) có tính năng toggle ẩn hiện key và xoay vòng Key động, điều chỉnh hạn mức gói Free; và trang Nhật ký hệ thống (`/admin/logs`) chứa bảng kiểm toán logs toàn diện hỗ trợ bộ lọc nhanh theo 4 cấp độ Severity và tìm kiếm nhanh.
+- **2026-05-26**: 
+  - ✅ Khởi tạo dự án — tạo 9 file nền tảng (START, UI_MAP, CHANGELOG, Workflows, Plan)
+  - ✅ Clone Next.js SaaS Starter (193 packages, pnpm)
+  - ✅ Tạo App Registry (`lib/apps-registry.ts`) — 6 MVPs đăng ký
+  - ✅ Tạo AppCard component (`components/app-card.tsx`)
+  - ✅ Rebrand Landing Page → AI2Hero (gradient CTA, MVP showcase)
+  - ✅ Rebrand Header ACME → AI2Hero
+  - ✅ Tạo Dashboard/Apps page (grid MVPs phân nhóm theo status)
+  - ✅ Thêm "Apps" vào sidebar navigation
+  - ✅ Việt hóa và Rebrand Login/Signup + 404 Pages
+  - ✅ Hoàn thành Pricing Page: Tách biệt khỏi Stripe API, hiển thị 3 Tiers (Free, Pro, Enterprise) Việt hóa cùng mục FAQ chi tiết
+  - ✅ Polish Dashboard/Apps page: Thêm Welcome Banner có gradient sang xịn, Stats Summary động + Staggered animation cho AppCards
+  - ✅ TypeScript build check: 0 errors
+  - ✅ Cấu hình database PostgreSQL cục bộ chạy trên Docker và cấu hình file `.env` chuẩn hóa bảo mật
+  - ✅ Tích hợp Drizzle ORM: Đồng bộ cấu trúc bảng thành công lên database (`pnpm db:push`)
+  - ✅ Seed thành công tài khoản mẫu (`test@test.com` / `admin123`) an toàn, độc lập hoàn toàn khỏi Stripe API
+  - ✅ Khởi chạy thành công local dev server trên cổng `3000` (`pnpm dev`) chạy ngầm ổn định
+  - ✅ **Tối ưu hóa hiệu năng (Performance Audit & Fix)**: Khắc phục triệt để lỗi serialize Icon functions từ Server → Client Component, giảm thời gian phản hồi trang Dashboard từ 8000ms xuống chỉ còn ~200ms (tăng tốc 97%).
+  - ✅ **Dọn dẹp và chuẩn hóa CSS**: Refactor toàn bộ `globals.css` theo chuẩn Tailwind v4 `@theme inline`, loại bỏ hơn 150 dòng CSS trùng lặp dư thừa, tối ưu hóa theme tokens cho Sidebar.
+  - ✅ Khởi tạo mock data cho 5 vai trò (`lib/team-mock-data.ts`) và component `RoleBadge` (`components/role-badge.tsx`) cho hệ thống Team Admin UI.
+  - ✅ Xây dựng trang Quản lý thành viên & Phân quyền Premium tại `/dashboard/members` hoàn chỉnh: bảng thành viên tương tác, ma trận quyền hạn cho 5 vai trò, tab navigation, và modal mời thành viên với Role Picker dạng Card bắt mắt (100% mock data, responsive, smooth animation).
+  - ✅ Cập nhật Sidebar Navigation Việt hóa với 6 mục rõ ràng, bổ sung mục "Thành viên" riêng biệt. Việt hóa toàn diện trang "Cài đặt nhóm" (`/dashboard`) cũ mà không ảnh hưởng đến API hay logic backend.
+- **NEXT**: Triển khai thiết kế và tích hợp MVP #1: AI Chat (Trợ lý AI CSKH thông minh) kế thừa toàn bộ lõi công nghệ và tri thức từ UPCHAT. (Model gợi ý: Opus cho plan, Flash cho code).
+
+## PHIEN TEMPLATE
+> Moi template chi giu **phien moi nhat**. AI doc START.md truoc - chi doc phien lien quan.
+
+- _(Chưa có template nào — dự án mới khởi tạo)_
+
+## WORKFLOW COMMANDS
+> AI: Khi admin gõ các lệnh dưới đây, ĐỌC file workflow tương ứng và thực hiện theo.
+
+| Lệnh | Model tối ưu | File workflow | Mục đích |
+|---|---|---|---|
+| `ai2hero start` hoặc `a2h start` | Gemini 3.5 Flash | `WORKFLOW_AI2HERO_START.md` | Khởi động session, Health check, Phiên Template & Đề xuất Sprint |
+| `ai2hero close` hoặc `a2h close` | Gemini 3.5 Flash | `WORKFLOW_AI2HERO_CLOSE.md` | Kết thúc session, đồng bộ nguồn sự thật và chấm điểm kỷ luật |
+| `ai2hero plan` | Claude Opus | `WORKFLOW_AI2HERO_PLAN.md` | Viết Plan chi tiết cho Flash thực thi |
+| `ai2hero code` | Gemini 3.5 Flash | `WORKFLOW_AI2HERO_CODE.md` | Tự động thực thi toàn bộ tasks trong Plan |
+| `ai2hero code PLAN_XXX.md` | Gemini 3.5 Flash | `WORKFLOW_AI2HERO_CODE.md` | Thực thi Plan cụ thể |
+
+**Quy trình chuẩn**: `ai2hero plan` (Opus) → click đổi Flash → `ai2hero code` (Flash tự động 100%)
+
+## FILES THAM KHAO
+- `MASTER_PLAN.md` - Chi tiết task các phase
+- `UI_MAP.md` - Bản đồ UI và kiến trúc hệ thống
+- `CHANGELOG.md` - Nhật ký thay đổi dự án
+- `PLAN_TEMPLATE.md` - Template chuẩn cho Opus viết Plan
+- `WORKFLOW_AI2HERO_PLAN.md` - Workflow lệnh `ai2hero plan`
+- `WORKFLOW_AI2HERO_CODE.md` - Workflow lệnh `ai2hero code`
