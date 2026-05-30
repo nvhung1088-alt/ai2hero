@@ -4,6 +4,7 @@ import { Manrope } from 'next/font/google';
 import { getUser, getTeamForUser } from '@/lib/db/queries';
 import { SWRConfig } from 'swr';
 import { ToastProvider } from '@/components/ui/toast';
+import NextTopLoader from 'nextjs-toploader';
 
 export const metadata: Metadata = {
   title: 'AI2Hero — AI biến bạn thành Hero',
@@ -43,6 +44,7 @@ export default async function RootLayout({
       className={`bg-white dark:bg-gray-950 text-black dark:text-white ${manrope.className}`}
     >
       <body className="min-h-[100dvh] bg-gray-50">
+        <NextTopLoader color="#f97316" showSpinner={false} />
         <SWRConfig value={{ fallback }}>
           <ToastProvider>
             {children}

@@ -23,6 +23,10 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
 - **Tích hợp MVP mới**: Khi tích hợp một ứng dụng Mini-SaaS (MVP) mới vào hệ thống, BẮT BUỘC phải đọc và tuân thủ quy trình 5 giai đoạn tại [MVP_INTEGRATION_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/MVP_INTEGRATION_GUIDE.md).
 
 - **2026-05-30**:
+  - ⚡ **Hoàn thành Tối ưu trải nghiệm UI/UX và Tốc độ chuyển trang (Performance & UX)**:
+    - **Tích hợp Progress Bar toàn cục**: Cài đặt và nhúng thành công `nextjs-toploader` màu cam vào `app/layout.tsx`. Khắc phục triệt để tình trạng "đứng giao diện" (Frozen UI) khi điều hướng trong Next.js 15 App Router.
+    - **Bổ sung Loading Boundaries**: Tạo các fallback component `loading.tsx` sử dụng Spinner mờ kính (Glassmorphism) cực kỳ mượt mà cho nhánh `(dashboard)` và `(dashboard)/sim`, mang lại phản hồi thị giác (visual feedback) tức thì khi truy vấn Server Components.
+    - **Nghiệm thu**: Biên dịch dự án `pnpm build` thành công xuất sắc đạt **0 errors** và **0 warnings** trên toàn bộ routes.
   - 🚀 **Hoàn thành Cấu hình & Triển khai Database lên Supabase (Production Ready)**:
     - **Tích hợp Pooler Connection**: Thiết lập thành công chuỗi kết nối an toàn đến Supabase Transaction Pooler (port 6543) cho ứng dụng Next.js, tích hợp mật khẩu mã hóa đặc biệt (`%40`).
     - **Migrate Schema**: Tự động hóa quá trình đẩy (push) toàn bộ Schema kiến trúc (Tables, Indexes, Foreign Keys) từ local Drizzle lên Supabase PostgreSQL sử dụng cổng Session-mode (port 5432).

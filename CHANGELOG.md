@@ -1,5 +1,20 @@
 # AI2HERO — CHANGELOG
 
+## 2026-05-30 — Hoàn thành Triển khai Vercel Production & Khởi tạo Database Supabase (Production Launch)
+- **Triển khai Database Supabase (Production)**:
+  - Cấu hình thành công chuỗi kết nối Database với Transaction Pooler (port 6543) vào file `.env` siêu bảo mật, xử lý encode password chứa ký tự đặc biệt (`@` -> `%40`).
+  - Thực thi tự động `pnpm db:push` migrate toàn bộ 100% schema kiến trúc từ Drizzle ORM local lên Supabase PostgreSQL thành công xuất sắc.
+  - Chạy kịch bản `pnpm db:seed` tạo dữ liệu mẫu thành công, thiết lập tài khoản Super Admin mặc định (`test@test.com` / `admin123`) trên database production.
+- **Triển khai Hosting Vercel (Production)**:
+  - Tạo file `.gitignore` an toàn ở root repository để ngăn chặn đẩy các file nhạy cảm (`.env`, `node_modules`).
+  - Đẩy toàn bộ source code từ Local lên Github Repository rỗng thành công bằng dòng lệnh tự động (git init, branch, commit, remote, push).
+  - Khắc phục lỗi `404 NOT FOUND` trên Vercel bằng cách định vị lại **Root Directory** = `app` cho dự án Next.js lồng trong thư mục.
+  - Khắc phục lỗi `No Output Directory named "public" found` bằng cách chỉnh lại **Framework Preset** = `Next.js` trong cài đặt Vercel Build & Development.
+  - Sửa lỗi Build Error (`POSTGRES_URL environment variable is not set`) bằng cách Import toàn bộ các biến môi trường siêu bảo mật từ `.env` local lên Vercel Environment Variables.
+  - Tư vấn UX: Khắc phục cảm giác chuyển tab chậm bằng cách chuyển **Vercel Function Region** về Singapore (`sin1`) để giảm độ trễ (latency) khi truy cập Supabase ở Châu Á. Giải thích nguyên lý cold-start và Data Cache.
+- **Kết quả**: 
+  - Website AI2Hero chính thức Online 100% trên mạng internet thông qua Vercel. 
+  - Đạt 0 lỗi khi Redeploy và Build Production cuối cùng.
 ## 2026-05-29 — Hoàn thành System Hardening & Pre-launch Readiness (Giai đoạn Cuối)
 - **Tối ưu hóa Database (DB Indexes)**: Bổ sung các chỉ mục (indexes) và chỉ mục duy nhất (uniqueIndexes) vào các bảng `team_members`, `activity_logs`, `feed_posts`, `feed_likes`, và `notifications` trong `schema.ts`. Triển khai thành công lên PostgreSQL thật thông qua `pnpm db:push`, tăng cường đáng kể tốc độ truy vấn trên hệ thống thật (O(1) lookups).
 - **Cấu hình Connection Pool cho Serverless**: Thêm cờ `prepare: false` vào tệp cấu hình `drizzle.ts`, điều chỉnh tương thích bắt buộc của `postgres.js` khi triển khai (deploy) ứng dụng Next.js trên môi trường Serverless (Vercel) / Edge, loại trừ tận gốc rủi ro quá tải connection/memory leaks (Connection Exhaustion).
