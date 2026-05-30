@@ -4,7 +4,7 @@
 
 import { deriveKey, decrypt, encrypt, generateSalt, parseSalt } from '../lib/crypto.js';
 
-const API_BASE = 'https://ai2hero.com/api/sim/extension';
+const API_BASE = 'https://www.ai2hero.com/api/sim/extension';
 const ALARM_SYNC = 'herosim-sync';
 const SYNC_INTERVAL_MINUTES = 5;
 

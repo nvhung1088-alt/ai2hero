@@ -30,8 +30,6 @@ export async function OPTIONS() {
 export async function GET(request: NextRequest) {
   try {
     const token = extractBearerToken(request);
-    console.log('[DIAG sync GET] token extracted:', token ? `${token.length} chars` : 'null');
-    
     if (!token) {
       return NextResponse.json(
         { success: false, error: 'Thiếu Bearer Token' },
@@ -40,8 +38,6 @@ export async function GET(request: NextRequest) {
     }
 
     const auth = await verifyExtensionToken(token);
-    console.log('[DIAG sync GET] auth result:', JSON.stringify(auth));
-    
     if (!auth.success || !auth.teamId) {
       return NextResponse.json(
         { success: false, error: auth.error || 'Token không hợp lệ' },

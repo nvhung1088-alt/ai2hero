@@ -132,25 +132,16 @@ export async function verifyExtensionToken(
   bearerToken: string
 ): Promise<{ success: boolean; teamId?: number; userId?: number; tokenId?: number; error?: string }> {
   try {
-    console.log('[DIAG] verifyExtensionToken called, token length:', bearerToken.length);
-    console.log('[DIAG] token first 20 chars:', bearerToken.substring(0, 20));
-    console.log('[DIAG] token last 10 chars:', bearerToken.substring(bearerToken.length - 10));
-
     // Verify JWT signature + expiry
     const { payload } = await jwtVerify(bearerToken, key, { algorithms: ['HS256'] });
-    console.log('[DIAG] Step 1 PASS: JWT verified. Payload:', JSON.stringify(payload));
 
     // Kiểm tra đúng loại extension (không nhầm với session JWT)
     if (payload.type !== 'extension') {
-      console.log('[DIAG] Step 2 FAIL: type =', payload.type, '(expected: extension)');
       return { success: false, error: 'Token không hợp lệ' };
     }
-    console.log('[DIAG] Step 2 PASS: type = extension');
 
     // Kiểm tra hash trong DB + chưa bị revoke
     const tokenHash = createHash('sha256').update(bearerToken).digest('hex');
-    console.log('[DIAG] Step 3: computed hash =', tokenHash);
-
     const [tokenRecord] = await db
       .select()
       .from(extensionTokens)
@@ -164,18 +155,8 @@ export async function verifyExtensionToken(
       .limit(1);
 
     if (!tokenRecord) {
-      console.log('[DIAG] Step 3 FAIL: No matching token in DB');
-      // Query tất cả token chưa revoke của team để so sánh hash
-      const allTokens = await db.select({
-        id: extensionTokens.id,
-        tokenHash: extensionTokens.tokenHash,
-        revokedAt: extensionTokens.revokedAt,
-        expiresAt: extensionTokens.expiresAt,
-      }).from(extensionTokens).limit(10);
-      console.log('[DIAG] All tokens in DB:', JSON.stringify(allTokens));
       return { success: false, error: 'Token đã bị thu hồi hoặc hết hạn' };
     }
-    console.log('[DIAG] Step 3 PASS: Found token id =', tokenRecord.id);
 
     // Cập nhật lastUsedAt
     await db
