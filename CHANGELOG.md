@@ -1,5 +1,23 @@
 # AI2HERO — CHANGELOG
 
+## 2026-05-30 — Hoàn thành Nâng cấp Popup Landing Page Store, Sửa Lỗi UI & Chặn Kích hoạt Trùng lặp & Chuẩn hóa SOP Deploy An toàn
+- **Nâng cấp Giao diện Kho Ứng Dụng (Premium App Details Popup)**:
+  - Thiết kế và xây dựng giao diện Popup Landing Page giới thiệu chi tiết tính năng cao cấp cho từng ứng dụng tại trang `/dashboard/store`.
+  - Mở rộng tệp registry ứng dụng `apps-registry.ts` với các metadata phong phú (slogan, mô tả dài, các tính năng nổi bật, lợi ích và đối tượng khách hàng mục tiêu).
+  - Tích hợp mockup trực quan `SimManagerMockup` với giao diện giả lập Extension, Platform và Alerts sinh động, sang trọng theo phong cách Glassmorphism.
+- **Đồng bộ Header & Sửa Lỗi UI Vặt**:
+  - Khắc phục lỗi hiển thị thừa dấu `+` trên nút "Thêm ứng dụng" ở Sidebar.
+  - Tinh gọn menu "Tạo mới" trên Top Header thành 3 hành động thiết thực nhất: "Tạo không gian mới", "Đăng bài nhanh", và "Thêm ứng dụng".
+  - Mount modal tạo workspace global (`CreateWorkspaceModal`) ẩn tại Sidebar và layout tab SIM, giúp nút thao tác trên Header hoạt động mượt mà ở mọi route.
+- **Bảo mật Backend (Chặn Kích hoạt Trùng lặp)**:
+  - Nâng cấp Server Action `activateAppAction` trong `actions.ts` để kiểm tra và trả về phản hồi lỗi `{ error: "Ứng dụng này đã được kích hoạt trong không gian làm việc này." }` khi người dùng cố gắng kích hoạt lại ứng dụng đã tồn tại trong workspace.
+- **Chuẩn hóa Quy trình Triển khai An toàn & Phân quyền AI (SOP v2)**:
+  - Biên soạn tài liệu hướng dẫn an toàn **DEPLOYMENT_AI2HERO.md** cho việc triển khai dự án Next.js lên Vercel.
+  - Cấu hình linh hoạt cơ chế phân quyền AI, cho phép AI tự động thực thi các lệnh Staging, Commit và Push lên nhánh chính `main` khi có chỉ thị hoặc sự đồng ý rõ ràng từ Admin trong chat.
+- **Kết quả triển khai**:
+  - Chạy `npm run build` thành công xuất sắc đạt **0 errors** trên toàn hệ thống 29 routes Next.js.
+  - Đã tự động tạo 3 commit nhỏ lẻ theo từng cụm tính năng và thực hiện push thành công 100% lên nhánh `main` trên GitHub để kích hoạt Vercel auto-deploy.
+
 ## 2026-05-30 — Hoàn thành Triển khai Vercel Production & Khởi tạo Database Supabase (Production Launch)
 - **Triển khai Database Supabase (Production)**:
   - Cấu hình thành công chuỗi kết nối Database với Transaction Pooler (port 6543) vào file `.env` siêu bảo mật, xử lý encode password chứa ký tự đặc biệt (`@` -> `%40`).
