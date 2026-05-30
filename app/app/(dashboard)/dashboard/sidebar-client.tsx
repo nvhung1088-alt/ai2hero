@@ -76,6 +76,7 @@ export function SidebarClient({ teams: initialTeams, children }: SidebarClientPr
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={true}
                     onClick={() => setIsSidebarOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 cursor-pointer ${
                       isActive
@@ -113,6 +114,7 @@ export function SidebarClient({ teams: initialTeams, children }: SidebarClientPr
                         {/* Vùng trái: Click → chuyển trang Workspace Dashboard */}
                         <Link
                           href={`/dashboard/t/${team.id}`}
+                          prefetch={true}
                           onClick={() => {
                             setIsSidebarOpen(false);
                             setActiveTeamCookie(team.id);
@@ -158,6 +160,7 @@ export function SidebarClient({ teams: initialTeams, children }: SidebarClientPr
                                 <Link
                                   key={appId}
                                   href={app.path}
+                                  prefetch={true}
                                   onClick={() => {
                                     setIsSidebarOpen(false);
                                     setActiveTeamCookie(team.id);
@@ -176,6 +179,7 @@ export function SidebarClient({ teams: initialTeams, children }: SidebarClientPr
                           {/* Thêm ứng dụng Link */}
                           <Link
                             href="/dashboard/store"
+                            prefetch={true}
                             onClick={() => {
                               setIsSidebarOpen(false);
                               setActiveTeamCookie(team.id);
@@ -193,6 +197,7 @@ export function SidebarClient({ teams: initialTeams, children }: SidebarClientPr
                           
                           <Link
                             href="/dashboard/members"
+                            prefetch={true}
                             onClick={() => setIsSidebarOpen(false)}
                             className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] text-gray-400 hover:text-white hover:bg-white/5 transition-all"
                           >
@@ -201,6 +206,7 @@ export function SidebarClient({ teams: initialTeams, children }: SidebarClientPr
                           </Link>
                           <Link
                             href="/dashboard/settings"
+                            prefetch={true}
                             onClick={() => setIsSidebarOpen(false)}
                             className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] text-gray-400 hover:text-white hover:bg-white/5 transition-all"
                           >
@@ -222,6 +228,7 @@ export function SidebarClient({ teams: initialTeams, children }: SidebarClientPr
             <div className="px-1 text-xs">
               <Link 
                 href="/dashboard"
+                prefetch={true}
                 onClick={() => setIsSidebarOpen(false)}
                 className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs text-gray-400 hover:text-white hover:bg-white/5 border border-dashed border-white/10 hover:border-white/20 transition-all text-left"
               >

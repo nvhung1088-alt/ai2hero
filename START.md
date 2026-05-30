@@ -23,6 +23,9 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
 - **Tích hợp MVP mới**: Khi tích hợp một ứng dụng Mini-SaaS (MVP) mới vào hệ thống, BẮT BUỘC phải đọc và tuân thủ quy trình 5 giai đoạn tại [MVP_INTEGRATION_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/MVP_INTEGRATION_GUIDE.md).
 
 - **2026-05-30**:
+  - 🌐 **Triển khai Production thành công (Go-Live)**:
+    - **Kết nối Tên miền**: Trỏ DNS thành công tên miền chính `ai2hero.com` và tên miền phụ `www.ai2hero.com` từ nhà cung cấp iNet về Vercel.
+    - **Bảo mật SSL/HTTPS**: Vercel đã tự động cấp phát và kích hoạt chứng chỉ SSL an toàn (Let's Encrypt). Lỗi cảnh báo bảo mật HTTPS ban đầu trong quá trình đồng bộ DNS đã được khắc phục hoàn toàn. Dự án chính thức hoạt động ổn định trên môi trường Internet.
   - ⚡ **Hoàn thành Tối ưu trải nghiệm UI/UX và Tốc độ chuyển trang (Performance & UX)**:
     - **Tích hợp Progress Bar toàn cục**: Cài đặt và nhúng thành công `nextjs-toploader` màu cam vào `app/layout.tsx`. Khắc phục triệt để tình trạng "đứng giao diện" (Frozen UI) khi điều hướng trong Next.js 15 App Router.
     - **Bổ sung Loading Boundaries**: Tạo các fallback component `loading.tsx` sử dụng Spinner mờ kính (Glassmorphism) cực kỳ mượt mà cho nhánh `(dashboard)` và `(dashboard)/sim`, mang lại phản hồi thị giác (visual feedback) tức thì khi truy vấn Server Components.
