@@ -15,6 +15,7 @@ import { ArrowLeft } from 'lucide-react';
 import SimTabs from './sim-tabs';
 import BridgeAPI from './bridge-api';
 import TopHeader from '@/components/top-header';
+import { CreateWorkspaceModal } from '../dashboard/create-workspace-modal';
 
 export const revalidate = 0;
 
@@ -57,6 +58,7 @@ export default async function SimLayout({
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-950 text-white w-full">
+      <CreateWorkspaceModal hideTrigger={true} />
       {/* Top Header Premium dùng chung */}
       <TopHeader />
 

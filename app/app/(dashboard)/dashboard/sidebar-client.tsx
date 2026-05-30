@@ -47,6 +47,7 @@ export function SidebarClient({ teams: initialTeams, children }: SidebarClientPr
 
   return (
     <div className="dark flex flex-col min-h-screen w-full font-sans bg-gray-950 text-white">
+      <CreateWorkspaceModal hideTrigger={true} />
       {/* Top Header dùng chung, sticky toàn cục hiển thị trên mọi kích thước màn hình */}
       <TopHeader onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
 
@@ -189,7 +190,7 @@ export function SidebarClient({ teams: initialTeams, children }: SidebarClientPr
                             <div className="h-5 w-5 rounded-md bg-orange-500/10 flex items-center justify-center shrink-0">
                               <Plus className="h-3 w-3 text-orange-400" />
                             </div>
-                            <span>+ Thêm ứng dụng</span>
+                            <span>Thêm ứng dụng</span>
                           </Link>
 
                           {/* Shortcuts */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, X, Sparkles } from 'lucide-react';
 import { createWorkspaceAction } from '@/app/(login)/actions';
@@ -8,13 +8,19 @@ import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 
 const EMOJIS = ['💼', '🚀', '⚡', '🤖', '🎮', '🎨', '🦁', '🌟', '🧁', '🎯', '🔥', '🧬'];
 
-export function CreateWorkspaceModal() {
+export function CreateWorkspaceModal({ hideTrigger = false }: { hideTrigger?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('💼');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener('open-create-workspace', handleOpen);
+    return () => window.removeEventListener('open-create-workspace', handleOpen);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,22 +49,24 @@ export function CreateWorkspaceModal() {
   return (
     <>
       {/* Trigger Button */}
-      <button 
-        onClick={() => setIsOpen(true)}
-        className="group border-2 border-dashed border-white/10 hover:border-orange-500/20 bg-transparent rounded-2xl p-6 flex flex-col justify-center items-center gap-3 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/2 w-full text-left"
-      >
-        <div className="h-10 w-10 rounded-full bg-white/5 group-hover:bg-orange-500/10 flex items-center justify-center transition-all">
-          <Plus className="h-5 w-5 text-gray-500 group-hover:text-orange-400 transition-colors" />
-        </div>
-        <div className="text-center">
-          <p className="font-extrabold text-white text-sm group-hover:text-orange-400 transition-colors">
-            Tạo không gian mới
-          </p>
-          <p className="text-xs text-gray-500 mt-1 max-w-[200px]">
-            Thiết lập một nhóm làm việc riêng biệt và quản lý nhanh.
-          </p>
-        </div>
-      </button>
+      {!hideTrigger && (
+        <button 
+          onClick={() => setIsOpen(true)}
+          className="group border-2 border-dashed border-white/10 hover:border-orange-500/20 bg-transparent rounded-2xl p-6 flex flex-col justify-center items-center gap-3 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/2 w-full text-left"
+        >
+          <div className="h-10 w-10 rounded-full bg-white/5 group-hover:bg-orange-500/10 flex items-center justify-center transition-all">
+            <Plus className="h-5 w-5 text-gray-500 group-hover:text-orange-400 transition-colors" />
+          </div>
+          <div className="text-center">
+            <p className="font-extrabold text-white text-sm group-hover:text-orange-400 transition-colors">
+              Tạo không gian mới
+            </p>
+            <p className="text-xs text-gray-500 mt-1 max-w-[200px]">
+              Thiết lập một nhóm làm việc riêng biệt và quản lý nhanh.
+            </p>
+          </div>
+        </button>
+      )}
 
       {/* Modal Overlay */}
       {isOpen && (

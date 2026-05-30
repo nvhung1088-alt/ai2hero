@@ -512,18 +512,35 @@ export default function TopHeader({ onToggleSidebar }: TopHeaderProps) {
               <div className="absolute right-0 mt-2 w-56 bg-gray-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-scale-up">
                 <div className="p-1">
                   {[
-                    { icon: '➕', label: 'Tạo không gian làm việc mới' },
-                    { icon: '📝', label: 'Đăng bài viết mới' },
-                    { icon: '💼', label: 'Giao nhiệm vụ nhanh' },
-                    { icon: '🚀', label: 'Kích hoạt MVP mới' },
+                    { 
+                      icon: '➕', 
+                      label: 'Tạo không gian làm việc mới',
+                      onClick: () => {
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('open-create-workspace'));
+                        }
+                      }
+                    },
+                    { 
+                      icon: '📝', 
+                      label: 'Đăng bài nhanh',
+                      onClick: () => {
+                        router.push('/dashboard/home');
+                      }
+                    },
+                    { 
+                      icon: '🚀', 
+                      label: 'Thêm ứng dụng',
+                      onClick: () => {
+                        router.push('/dashboard/store');
+                      }
+                    },
                   ].map((item) => (
                     <button
                       key={item.label}
                       onClick={() => {
                         setIsCreateOpen(false);
-                        if (typeof window !== 'undefined' && (window as any).showToast) {
-                          (window as any).showToast(`Tính năng "${item.label}" sẽ được tích hợp sớm!`, 'info');
-                        }
+                        item.onClick();
                       }}
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all text-left cursor-pointer"
                     >
