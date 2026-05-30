@@ -20,7 +20,7 @@ export const client =
   globalForDb.client ??
   postgres(process.env.POSTGRES_URL, {
     max: isProd ? 10 : 1, // Only 1 connection in dev mode to completely prevent connection leaks through hot-reloads
-    idle_timeout: isProd ? 20 : 1, // Automatically terminate idle connections after 1s in dev mode to free socket resources
+    idle_timeout: isProd ? 20 : 10, // Automatically terminate idle connections after 10s in dev mode to avoid negative timeouts in Node.js 24+
     connect_timeout: 10,
     prepare: false, // Required for serverless environments (Vercel, Neon)
   });

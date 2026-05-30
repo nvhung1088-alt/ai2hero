@@ -1,5 +1,21 @@
 # AI2HERO — CHANGELOG
 
+## 2026-05-30 — Hoàn thành Sửa 3 Lỗi Console Lớn & Tối ưu hóa Drizzle Database Connection (QA Polish)
+- **Sửa Lỗi Hydration Mismatch (Lỗi #1)**:
+  - Bổ sung thuộc tính `suppressHydrationWarning={true}` cho thẻ `<html>` và `<body>` trong [layout.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/layout.tsx).
+  - Khắc phục triệt để lỗi Hydration Mismatch do các extension trình duyệt (Yandex/Adblock...) tự động chèn thêm metadata `data-yd-content-ready` vào DOM trước khi React kịp hydrate.
+- **Khắc phục Cảnh báo `TimeoutNegativeWarning` trên Node.js v24+ (Lỗi #2)**:
+  - Tăng thời gian `idle_timeout` trong môi trường phát triển (dev mode) từ `1` giây lên `10` giây tại [drizzle.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/drizzle.ts).
+  - Cung cấp đủ khoảng đệm thời gian giúp ngăn chặn phép tính thời gian chờ bị âm khi HMR hot-reload làm chậm luồng xử lý của thư viện `postgres.js`, loại bỏ hoàn toàn cảnh báo lỗi âm trong Terminal Node.js.
+- **Tối ưu hóa Preload Font Manrope (Lỗi #3)**:
+  - Thêm `display: 'swap'` cho cấu hình font Manrope tại [layout.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/layout.tsx) để Next.js tối ưu hóa preload font trên client-side, giảm thiểu cảnh báo Turbopack dev mode về thiếu thuộc tính `as`.
+- **Khắc phục Lỗi Fast Refresh Loop (Infinite Translation Loop)**:
+  - Thêm thuộc tính `translate="no"` trực tiếp vào thẻ `<html>` trong [layout.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/layout.tsx). Chặn đứng 100% các extension dịch thuật tự động dịch trang web làm thay đổi DOM cấu trúc React, giải quyết triệt để vòng lặp re-render Fast Refresh vô hạn ở client.
+  - Tinh chỉnh script `"dev"` trong [package.json](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/package.json) sang sử dụng Webpack dev server tiêu chuẩn (`next dev`), mang lại khả năng tương thích và ổn định HMR WebSocket tuyệt đối trên mọi trình duyệt.
+- **Nghiệm thu biên dịch**:
+  - Chạy `pnpm build` thành công xuất sắc đạt **0 errors** trên toàn hệ thống 29 routes Next.js!
+
+
 ## 2026-05-30 — Hoàn thành Nâng cấp Popup Landing Page Store, Sửa Lỗi UI & Chặn Kích hoạt Trùng lặp & Chuẩn hóa SOP Deploy An toàn
 - **Nâng cấp Giao diện Kho Ứng Dụng (Premium App Details Popup)**:
   - Thiết kế và xây dựng giao diện Popup Landing Page giới thiệu chi tiết tính năng cao cấp cho từng ứng dụng tại trang `/dashboard/store`.

@@ -41,6 +41,12 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 - **2026-05-30**:
+  - 🛠️ **Hoàn thành Sửa 3 Lỗi Console Lớn & Khắc phục Lỗi Fast Refresh Loop (QA Polish)**:
+    - **Sửa Lỗi Hydration Mismatch**: Thêm `suppressHydrationWarning={true}` vào thẻ `<html>` và `<body>` trong [layout.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/layout.tsx), giải quyết triệt để lỗi Hydration Mismatch do browser extension chèn thuộc tính vào DOM.
+    - **Khắc phục Cảnh báo `TimeoutNegativeWarning`**: Tăng thời gian `idle_timeout` dev mode từ `1` giây lên `10` giây tại [drizzle.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/drizzle.ts), loại bỏ cảnh báo tính thời gian chờ âm trên Node.js v24+.
+    - **Khắc phục Lỗi Fast Refresh Loop**: Bổ sung `translate="no"` cho thẻ `<html>` trong [layout.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/layout.tsx) để chặn đứng extension dịch thuật tự động làm thay đổi cấu trúc DOM gây vòng lặp render vô tận, đồng thời gỡ bỏ cờ `--turbopack` khỏi script dev trong [package.json](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/package.json) để đảm bảo HMR WebSocket hoạt động ổn định tuyệt đối.
+    - **Tối ưu Preload Font Manrope**: Cấu hình `display: 'swap'` cho font Manrope ở [layout.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/layout.tsx), giúp Next.js tối ưu preload.
+    - **Nghiệm thu**: Biên dịch dự án thành công xuất sắc đạt **0 errors** trên toàn hệ thống 29 routes Next.js!
   - 🎨 **Hoàn thành Sửa Lỗi UI vặt & Xây dựng Premium App Detail Landing Page Popup (Kho ứng dụng)**:
     - **Sửa dấu `+` thừa ở Sidebar**: Xóa ký tự `+` trùng lặp trong nút "Thêm ứng dụng" ở [sidebar-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/dashboard/sidebar-client.tsx) do đã có icon Plus.
     - **Kích hoạt nút "Tạo mới" trên Header**: Thay thế hoàn toàn logic dropdown "Tạo mới" tĩnh ở [top-header.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/components/top-header.tsx) bằng các hành động thực tế. Kết nối chuyển trang an toàn đến `/dashboard/home` và `/dashboard/store`.

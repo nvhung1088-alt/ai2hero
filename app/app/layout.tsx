@@ -21,7 +21,7 @@ export const viewport: Viewport = {
   maximumScale: 1
 };
 
-const manrope = Manrope({ subsets: ['latin'] });
+const manrope = Manrope({ subsets: ['latin'], display: 'swap' });
 
 import { cookies } from 'next/headers';
 
@@ -41,9 +41,11 @@ export default async function RootLayout({
   return (
     <html
       lang="vi"
+      translate="no"
       className={`bg-white dark:bg-gray-950 text-black dark:text-white ${manrope.className}`}
+      suppressHydrationWarning={true}
     >
-      <body className="min-h-[100dvh] bg-gray-50">
+      <body className="min-h-[100dvh] bg-gray-50" suppressHydrationWarning={true}>
         <NextTopLoader color="#f97316" showSpinner={false} />
         <SWRConfig value={{ fallback }}>
           <ToastProvider>
