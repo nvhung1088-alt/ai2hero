@@ -777,7 +777,7 @@ export async function activateAppAction(data: { teamId: number; appId: string })
 
   const currentApps = Array.isArray(team.activatedApps) ? (team.activatedApps as string[]) : [];
   if (currentApps.includes(appId)) {
-    return { success: 'Ứng dụng đã được kích hoạt sẵn.' };
+    return { error: 'Ứng dụng đã được kích hoạt sẵn trong không gian làm việc này.' };
   }
 
   const updatedApps = [...currentApps, appId];
