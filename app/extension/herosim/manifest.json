@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "HeroSim — AI2Hero Vault",
   "short_name": "HeroSim",
-  "version": "3.0.0",
-  "description": "Đồng bộ và quản lý mật khẩu SIM an toàn với AI2Hero. Kết nối trực tiếp qua Direct Sync API — không cần mở tab web.",
+  "version": "4.0.1",
+  "description": "Tự động điền mật khẩu và OTP an toàn từ AI2Hero Vault. Bảo mật tuyệt đối, Shadow DOM cô lập hoàn toàn.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -22,15 +22,33 @@
     "service_worker": "background/service-worker.js",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": ["https://*/*"],
+      "js": ["content/content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "permissions": [
     "storage",
-    "alarms",
-    "clipboardWrite"
+    "alarms"
   ],
   "host_permissions": [
-    "https://ai2hero.com/api/*"
+    "https://ai2hero.com/api/*",
+    "https://www.ai2hero.com/api/*",
+    "http://localhost:3000/api/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/icon16.png",
+        "icons/icon48.png",
+        "icons/icon128.png"
+      ],
+      "matches": ["https://*/*"]
+    }
+  ]
 }

@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <!-- STATE A: Chưa liên kết -->
-  <div id="state-pair" class="state" style="display:none">
+  <!-- TRẠNG THÁI 1: Chưa đăng nhập (LoggedOut) -->
+  <div id="state-logged-out" class="state" style="display:none">
     <div class="header">
       <div class="logo">
         <img src="../icons/icon48.png" alt="HeroSim" class="logo-icon">
@@ -17,57 +17,87 @@
           <div class="logo-sub">by AI2Hero</div>
         </div>
       </div>
-      <div class="badge badge-new">Kết nối mới</div>
+      <div class="badge badge-new">Đăng nhập</div>
     </div>
 
-    <div class="section">
-      <div class="section-label">Mã liên kết (6 ký tự)</div>
-      <div class="hint">Lấy mã tại <strong>ai2hero.com/sim/settings</strong> → Kết nối Extension</div>
-      <input
-        id="pair-code"
-        class="input input-code"
-        type="text"
-        maxlength="6"
-        placeholder="VD: A3K9BZ"
-        autocomplete="off"
-        spellcheck="false"
-      >
-    </div>
-
-    <div class="section">
-      <div class="section-label">Master PIN <span class="label-hint">(6 chữ số — ghi nhớ, không thể khôi phục)</span></div>
-      <div class="pin-input-wrap">
+    <div class="form-container">
+      <div class="section">
+        <label class="section-label" for="login-email">Email tài khoản</label>
         <input
-          id="pair-pin"
-          class="input input-pin"
-          type="password"
-          inputmode="numeric"
-          pattern="[0-9]{6}"
-          maxlength="6"
-          placeholder="••••••"
-          autocomplete="new-password"
+          id="login-email"
+          class="input"
+          type="email"
+          placeholder="email@example.com"
+          autocomplete="username"
+          spellcheck="false"
         >
-        <button id="toggle-pair-pin" class="toggle-pin">👁</button>
       </div>
-      <div class="hint warning">⚠️ PIN bảo vệ vault của bạn. Nếu quên PIN, cần xóa và kết nối lại.</div>
+
+      <div class="section">
+        <label class="section-label" for="login-password">Mật khẩu ai2hero.com</label>
+        <div class="password-input-wrap">
+          <input
+            id="login-password"
+            class="input"
+            type="password"
+            placeholder="••••••••"
+            autocomplete="current-password"
+          >
+          <button id="toggle-login-password" class="toggle-password-btn" type="button">👁</button>
+        </div>
+        <div class="hint">Đăng nhập trực tiếp bằng tài khoản web của bạn.</div>
+      </div>
+
+      <button id="btn-login" class="btn btn-primary" type="button">
+        <span id="login-spinner" class="spinner" style="display:none"></span>
+        <span>Đăng nhập</span>
+      </button>
+
+      <div id="login-error" class="error-msg" style="display:none"></div>
     </div>
-
-    <button id="btn-pair" class="btn btn-primary">
-      <span id="pair-spinner" class="spinner" style="display:none"></span>
-      🔗 Liên kết ngay
-    </button>
-
-    <div id="pair-error" class="error-msg" style="display:none"></div>
   </div>
 
-  <!-- STATE B: Đã liên kết, chờ unlock PIN -->
-  <div id="state-unlock" class="state" style="display:none">
+  <!-- TRẠNG THÁI 2: Chọn Workspace (SelectWorkspace) -->
+  <div id="state-select-workspace" class="state" style="display:none">
     <div class="header">
       <div class="logo">
         <img src="../icons/icon48.png" alt="HeroSim" class="logo-icon">
         <div>
           <div class="logo-title">HeroSim</div>
-          <div id="unlock-team-name" class="logo-sub"></div>
+          <div class="logo-sub">Không gian làm việc</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-container">
+      <div class="section">
+        <div class="section-label">Chọn không gian làm việc</div>
+        <div class="hint">Tài khoản SIM & mật khẩu sẽ được đồng bộ theo không gian này.</div>
+        
+        <div id="workspace-list" class="workspace-list">
+          <!-- Workspaces radio list chèn động ở đây -->
+        </div>
+      </div>
+
+      <button id="btn-select-workspace" class="btn btn-primary" type="button">
+        <span id="workspace-spinner" class="spinner" style="display:none"></span>
+        <span>Kết nối & Đồng bộ</span>
+      </button>
+
+      <div id="workspace-error" class="error-msg" style="display:none"></div>
+      
+      <button id="btn-workspace-back" class="btn btn-ghost" type="button">Quay lại</button>
+    </div>
+  </div>
+
+  <!-- TRẠNG THÁI 3: Đã khóa (Locked) -->
+  <div id="state-locked" class="state" style="display:none">
+    <div class="header">
+      <div class="logo">
+        <img src="../icons/icon48.png" alt="HeroSim" class="logo-icon">
+        <div>
+          <div class="logo-title">HeroSim</div>
+          <div id="locked-team-name" class="logo-sub"></div>
         </div>
       </div>
       <div class="badge badge-lock">🔒 Đã khóa</div>
@@ -75,47 +105,54 @@
 
     <div class="lock-illustration">
       <div class="lock-icon">🛡️</div>
-      <div class="lock-text">Nhập Master PIN để mở khóa vault</div>
+      <div class="lock-text">Nhập mật khẩu để mở khóa vault</div>
     </div>
 
-    <div class="pin-input-wrap">
-      <input
-        id="unlock-pin"
-        class="input input-pin"
-        type="password"
-        inputmode="numeric"
-        pattern="[0-9]{6}"
-        maxlength="6"
-        placeholder="••••••"
-        autocomplete="current-password"
-        autofocus
-      >
-      <button id="toggle-unlock-pin" class="toggle-pin">👁</button>
+    <div class="form-container">
+      <div class="section">
+        <div class="password-input-wrap">
+          <input
+            id="unlock-password"
+            class="input"
+            type="password"
+            placeholder="Mật khẩu của bạn"
+            autocomplete="current-password"
+            autofocus
+          >
+          <button id="toggle-unlock-password" class="toggle-password-btn" type="button">👁</button>
+        </div>
+      </div>
+
+      <button id="btn-unlock" class="btn btn-primary" type="button">
+        <span id="unlock-spinner" class="spinner" style="display:none"></span>
+        <span>Mở khóa</span>
+      </button>
+
+      <div id="unlock-error" class="error-msg" style="display:none"></div>
+
+      <button id="btn-logout-locked" class="btn btn-ghost" type="button">Đăng xuất</button>
     </div>
-
-    <button id="btn-unlock" class="btn btn-primary">
-      <span id="unlock-spinner" class="spinner" style="display:none"></span>
-      🔓 Mở khóa
-    </button>
-
-    <div id="unlock-error" class="error-msg" style="display:none"></div>
-
-    <button id="btn-unpair" class="btn btn-ghost">Hủy liên kết</button>
   </div>
 
-  <!-- STATE C: Dashboard — Danh sách accounts -->
+  <!-- TRẠNG THÁI 4: Bảng điều khiển (Dashboard) -->
   <div id="state-dashboard" class="state" style="display:none">
     <div class="header">
       <div class="logo">
         <img src="../icons/icon48.png" alt="HeroSim" class="logo-icon">
         <div>
           <div class="logo-title">HeroSim</div>
-          <div id="dashboard-team-name" class="logo-sub"></div>
+          <!-- Dropdown chọn nhanh workspace -->
+          <div class="workspace-switcher-wrap">
+            <select id="dashboard-workspace-select" class="workspace-select-dropdown">
+              <!-- Chèn danh sách workspace động -->
+            </select>
+          </div>
         </div>
       </div>
       <div class="header-actions">
-        <button id="btn-sync" class="icon-btn" title="Sync ngay">↻</button>
+        <button id="btn-sync" class="icon-btn" title="Đồng bộ ngay">↻</button>
         <button id="btn-lock" class="icon-btn" title="Khóa vault">🔒</button>
+        <button id="btn-logout" class="icon-btn" title="Đăng xuất">🚪</button>
       </div>
     </div>
 
@@ -130,13 +167,13 @@
     </div>
 
     <div id="accounts-list" class="accounts-list">
-      <div class="loading-msg">Đang tải...</div>
+      <div class="loading-msg">Đang tải tài khoản...</div>
     </div>
 
     <div id="sync-status" class="sync-status"></div>
   </div>
 
-  <!-- Toast notification -->
+  <!-- Hộp thoại Toast Notification toàn cục -->
   <div id="toast" class="toast" style="display:none"></div>
 
   <script src="popup.js"></script>

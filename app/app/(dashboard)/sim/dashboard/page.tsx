@@ -110,6 +110,55 @@ export default async function SimDashboardPage() {
         </div>
       </div>
 
+      {/* Chrome Extension Banner */}
+      <div className="relative bg-gradient-to-r from-gray-950 via-[#0b1329] to-gray-950 border border-white/10 rounded-2xl p-5 lg:p-6 overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl">
+        <div className="absolute -top-16 -right-16 w-36 h-36 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-36 h-36 bg-pink-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex items-start gap-4 z-10">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-tr from-orange-500 to-pink-500 p-0.5 shrink-0 shadow-lg shadow-orange-500/15">
+            <div className="h-full w-full rounded-[10px] bg-gray-950 flex items-center justify-center">
+              {/* Premium SIM Vault SVG Icon */}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="animate-pulse">
+                <path d="M4 2h10l6 6v12a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" fill="#f97316"/>
+                <rect x="6" y="8" width="8" height="8" rx="1.5" fill="#ffffff" fill-opacity="0.3"/>
+                <path d="M10 8v8M6 12h8M6 10h8M6 14h8" stroke="#ffffff" stroke-width="0.8" stroke-linecap="round" opacity="0.8"/>
+                <circle cx="16" cy="16" r="6" fill="#ec4899" stroke="#ffffff" stroke-width="1.2"/>
+                <path d="M16 13a1.5 1.5 0 00-1.5 1.5v1h-.5v2h4v-2h-.5v-1a1.5 1.5 0 00-1.5-1.5zm0.5 2.5h-1v-1a.5.5 0 111 0v1z" fill="#ffffff"/>
+              </svg>
+            </div>
+          </div>
+          
+          <div className="space-y-1.5 text-left">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="bg-orange-500/10 text-orange-400 font-extrabold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded border border-orange-500/20">NEW COMPANION APP</span>
+              <h3 className="font-extrabold text-sm text-white tracking-tight">Tải tiện ích HeroSim Chrome Extension v4.0.1</h3>
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed max-w-2xl">
+              Tự động điền mật khẩu và mã OTP 2 chiều cực nhạy trên Facebook, Google, Shopee. 
+              Công nghệ Shadow DOM cô lập hoàn toàn giúp chống đọc trộm dữ liệu, tương thích 100% với React state.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 shrink-0 z-10">
+          <Link 
+            href="/sim/settings"
+            className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl text-xs font-black shadow-md shadow-orange-500/15 hover:opacity-90 hover:scale-[1.02] transition-all flex items-center gap-1.5 cursor-pointer select-none"
+          >
+            <Smartphone className="h-4 w-4" /> Tải về tiện ích
+          </Link>
+          
+          <Link 
+            href="/privacy"
+            target="_blank"
+            className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/15 text-gray-300 hover:text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer select-none"
+          >
+            <ShieldCheck className="h-4 w-4" /> Chính sách bảo mật
+          </Link>
+        </div>
+      </div>
+
       {/* Grid Content: Chart + Top Risk Sims */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Donut Chart */}

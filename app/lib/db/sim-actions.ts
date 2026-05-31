@@ -496,17 +496,27 @@ export async function importSimLinkedAccountsBatch(
       const insertedOrUpdated = [];
 
       for (const account of rawAccounts) {
-        // Tìm tài khoản trùng lặp dựa trên platformKey và username
+        // Tìm tài khoản trùng lặp
+        let existingCondition;
+        if (account.platformKey === 'other') {
+          existingCondition = and(
+            eq(simLinkedAccounts.teamId, teamId),
+            eq(simLinkedAccounts.platformKey, account.platformKey),
+            eq(simLinkedAccounts.username, account.username || ''),
+            eq(simLinkedAccounts.loginUrl, account.loginUrl || '')
+          );
+        } else {
+          existingCondition = and(
+            eq(simLinkedAccounts.teamId, teamId),
+            eq(simLinkedAccounts.platformKey, account.platformKey),
+            eq(simLinkedAccounts.username, account.username || '')
+          );
+        }
+
         const [existing] = await tx
           .select()
           .from(simLinkedAccounts)
-          .where(
-            and(
-              eq(simLinkedAccounts.teamId, teamId),
-              eq(simLinkedAccounts.platformKey, account.platformKey),
-              eq(simLinkedAccounts.username, account.username || '')
-            )
-          )
+          .where(existingCondition)
           .limit(1);
 
         if (existing) {

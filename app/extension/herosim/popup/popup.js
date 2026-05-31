@@ -1,7 +1,7 @@
-// HeroSim Extension — popup/popup.js
-// Điều khiển 3 trạng thái UI + giao tiếp với Service Worker
+// HeroSim Extension v4.0 — popup/popup.js
+// Điều khiển luồng UI 4 trạng thái & Giao tiếp với Service Worker
 
-// ─── Platform icon map ─────────────────────────────────────────────────────────
+// ─── Platform Icon Map ─────────────────────────────────────────────────────────
 const PLATFORM_ICONS = {
   facebook: '📘', google: '🔵', tiktok: '🎵', zalo: '💬',
   instagram: '📸', twitter: '🐦', youtube: '▶️', shopee: '🛒',
@@ -18,8 +18,13 @@ function getPlatformIcon(platformKey) {
   return PLATFORM_ICONS.default;
 }
 
-// ─── State management ─────────────────────────────────────────────────────────
+// ─── State Management ─────────────────────────────────────────────────────────
 let allAccounts = [];
+let tempAuthData = {
+  tempToken: '',
+  password: '',
+  workspaces: []
+};
 
 function showState(stateName) {
   document.querySelectorAll('.state').forEach(el => el.style.display = 'none');
@@ -29,9 +34,11 @@ function showState(stateName) {
 
 function showToast(msg, duration = 2000) {
   const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.style.display = 'block';
-  setTimeout(() => { toast.style.display = 'none'; }, duration);
+  if (toast) {
+    toast.textContent = msg;
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, duration);
+  }
 }
 
 function setLoading(btnId, spinnerId, loading) {
@@ -67,14 +74,15 @@ function sendMsg(type, payload = {}) {
   });
 }
 
-// ─── Accounts rendering ────────────────────────────────────────────────────────
+// ─── Render Accounts ───────────────────────────────────────────────────────────
 function renderAccounts(accounts) {
   const list = document.getElementById('accounts-list');
+  if (!list) return;
 
   if (!accounts || accounts.length === 0) {
     list.innerHTML = `<div class="empty-msg">
-      Chưa có tài khoản nào.<br>
-      <small>Đồng bộ từ <strong>ai2hero.com/sim</strong> trước.</small>
+      Không tìm thấy tài khoản nào khớp.<br>
+      <small>Vui lòng thêm tài khoản trên web <strong>ai2hero.com</strong> rồi bấm đồng bộ.</small>
     </div>`;
     return;
   }
@@ -93,7 +101,7 @@ function renderAccounts(accounts) {
     </div>
   `).join('');
 
-  // Copy button handlers
+  // Lắng nghe sự kiện Click Copy
   list.querySelectorAll('.copy-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const value = btn.dataset.value;
@@ -101,28 +109,29 @@ function renderAccounts(accounts) {
 
       try {
         await navigator.clipboard.writeText(value);
-        const original = btn.textContent;
-        btn.textContent = '✓ Đã copy!';
+        const originalText = btn.textContent;
+        btn.textContent = '✓';
         btn.classList.add('copied');
 
-        // Xóa clipboard sau 30 giây (bảo mật)
+        // Tự động xóa clipboard sau 30 giây nếu là password
         if (type === 'pw') {
           setTimeout(async () => {
             try {
-              const current = await navigator.clipboard.readText();
-              if (current === value) {
+              const currentText = await navigator.clipboard.readText();
+              if (currentText === value) {
                 await navigator.clipboard.writeText('');
+                console.log('[HeroSim] Đã tự động xóa password khỏi clipboard để bảo mật.');
               }
             } catch (_) {}
           }, 30000);
         }
 
         setTimeout(() => {
-          btn.textContent = original;
+          btn.textContent = originalText;
           btn.classList.remove('copied');
-        }, 2000);
+        }, 1500);
       } catch (err) {
-        showToast('Không thể copy — thử lại');
+        showToast('Không thể sao chép');
       }
     });
   });
@@ -137,7 +146,8 @@ function filterAccounts(query) {
   const filtered = allAccounts.filter(acc =>
     (acc.accountName || '').toLowerCase().includes(q) ||
     (acc.username || '').toLowerCase().includes(q) ||
-    (acc.platformKey || '').toLowerCase().includes(q)
+    (acc.platformKey || '').toLowerCase().includes(q) ||
+    (acc.loginEmail || '').toLowerCase().includes(q)
   );
   renderAccounts(filtered);
 }
@@ -152,16 +162,40 @@ function escapeAttr(str) {
   return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// ─── Load accounts và hiển thị dashboard ──────────────────────────────────────
-async function loadDashboard(teamName) {
-  if (teamName) {
-    document.getElementById('dashboard-team-name').textContent = teamName;
+// ─── Render Workspace List ─────────────────────────────────────────────────────
+function renderWorkspaces(workspaces) {
+  const container = document.getElementById('workspace-list');
+  if (!container) return;
+
+  if (!workspaces || workspaces.length === 0) {
+    container.innerHTML = '<div class="empty-msg">Bạn không thuộc về workspace nào.</div>';
+    return;
   }
 
+  container.innerHTML = workspaces.map((ws, idx) => `
+    <div class="workspace-item ${idx === 0 ? 'selected' : ''}" data-id="${ws.id}">
+      <input type="radio" name="workspace-radio" class="workspace-radio" value="${ws.id}" ${idx === 0 ? 'checked' : ''}>
+      <span class="workspace-name">${escapeHtml(ws.name)}</span>
+      <span class="workspace-role">${escapeHtml(ws.role)}</span>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.workspace-item').forEach(item => {
+    item.addEventListener('click', () => {
+      container.querySelectorAll('.workspace-item').forEach(i => i.classList.remove('selected'));
+      item.classList.add('selected');
+      const radio = item.querySelector('.workspace-radio');
+      if (radio) radio.checked = true;
+    });
+  });
+}
+
+// ─── Load Dashboard ────────────────────────────────────────────────────────────
+async function loadDashboard() {
   try {
     const res = await sendMsg('GET_ACCOUNTS');
     if (res.locked) {
-      showState('unlock');
+      showState('locked');
       return;
     }
     if (res.success) {
@@ -169,182 +203,288 @@ async function loadDashboard(teamName) {
       renderAccounts(allAccounts);
     }
   } catch (err) {
-    document.getElementById('accounts-list').innerHTML =
-      `<div class="empty-msg">Lỗi tải danh sách: ${err.message}</div>`;
+    const list = document.getElementById('accounts-list');
+    if (list) list.innerHTML = `<div class="empty-msg">Lỗi tải dữ liệu: ${err.message}</div>`;
   }
 
-  // Hiển thị thời gian sync cuối
-  const stored = await chrome.storage.local.get(['herosim_last_sync']);
+  // Cập nhật thông tin Sync cuối
+  const stored = await chrome.storage.local.get(['herosim_last_sync', 'herosim_team_id']);
   if (stored.herosim_last_sync) {
     const date = new Date(stored.herosim_last_sync);
-    document.getElementById('sync-status').textContent =
-      `Sync cuối: ${date.toLocaleTimeString('vi-VN')}`;
+    const syncStatus = document.getElementById('sync-status');
+    if (syncStatus) {
+      syncStatus.textContent = `Sync cuối: ${date.toLocaleTimeString('vi-VN')} | ${date.toLocaleDateString('vi-VN')}`;
+    }
+  }
+
+  // Dựng dropdown switcher workspace
+  const localData = await chrome.storage.local.get(['herosim_workspaces', 'herosim_team_id']);
+  const workspaces = localData.herosim_workspaces || [];
+  const activeTeamId = localData.herosim_team_id;
+
+  const select = document.getElementById('dashboard-workspace-select');
+  if (select && workspaces.length > 0) {
+    select.innerHTML = workspaces.map(ws => `
+      <option value="${ws.id}" ${ws.id === activeTeamId ? 'selected' : ''}>
+        💼 ${escapeHtml(ws.name)} (${escapeHtml(ws.role)})
+      </option>
+    `).join('');
   }
 }
 
-// ─── Init: kiểm tra trạng thái ban đầu ────────────────────────────────────────
+// ─── Khởi tạo kiểm tra ban đầu (Init) ──────────────────────────────────────────
 async function init() {
   try {
-    const status = await sendMsg('GET_STATUS');
+    const status = await sendMsg('GET_STATE');
 
-    if (!status.paired) {
-      showState('pair');
+    if (status.state === 'logged_out') {
+      showState('logged-out');
       return;
     }
 
-    if (status.locked) {
-      showState('unlock');
-      const teamEl = document.getElementById('unlock-team-name');
-      if (teamEl && status.teamName) teamEl.textContent = status.teamName;
-      // Auto focus PIN input
+    if (status.state === 'locked') {
+      showState('locked');
+      const lockedSub = document.getElementById('locked-team-name');
+      if (lockedSub && status.teamName) {
+        lockedSub.textContent = status.teamName;
+      }
       setTimeout(() => {
-        const pinEl = document.getElementById('unlock-pin');
-        if (pinEl) pinEl.focus();
-      }, 100);
+        const passInput = document.getElementById('unlock-password');
+        if (passInput) passInput.focus();
+      }, 150);
       return;
     }
 
+    // Đã mở khóa -> Chuyển thẳng vào Dashboard
     showState('dashboard');
-    await loadDashboard(status.teamName);
+    await loadDashboard();
   } catch (err) {
-    // Service Worker chưa ready — mặc định state pair
-    showState('pair');
+    showState('logged-out');
   }
 }
 
-// ─── Event listeners ────────────────────────────────────────────────────────────
+// ─── Sự kiện DOM ───────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   init();
 
-  // ── STATE A: Pair ──────────────────────────────────────────────────────
-  const pairCode = document.getElementById('pair-code');
-  if (pairCode) {
-    pairCode.addEventListener('input', (e) => {
-      e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // ── 1. Màn hình LoggedOut (Đăng nhập) ────────────────────────────────────────
+  const toggleLoginPass = document.getElementById('toggle-login-password');
+  if (toggleLoginPass) {
+    toggleLoginPass.addEventListener('click', () => {
+      const input = document.getElementById('login-password');
+      if (input) {
+        input.type = input.type === 'password' ? 'text' : 'password';
+      }
     });
   }
 
-  // Filter: chỉ nhận số cho PIN inputs
-  document.getElementById('pair-pin')?.addEventListener('input', (e) => {
-    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
-  });
-  document.getElementById('unlock-pin')?.addEventListener('input', (e) => {
-    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
-  });
+  const btnLogin = document.getElementById('btn-login');
+  if (btnLogin) {
+    btnLogin.addEventListener('click', async () => {
+      hideError('login-error');
+      const email = document.getElementById('login-email')?.value.trim();
+      const password = document.getElementById('login-password')?.value;
 
-  document.getElementById('toggle-pair-pin')?.addEventListener('click', () => {
-    const pin = document.getElementById('pair-pin');
-    pin.type = pin.type === 'password' ? 'text' : 'password';
-  });
-
-  document.getElementById('btn-pair')?.addEventListener('click', async () => {
-    hideError('pair-error');
-    const code = document.getElementById('pair-code')?.value.trim();
-    const pin = document.getElementById('pair-pin')?.value;
-
-    if (!code || code.length < 4) {
-      showError('pair-error', 'Vui lòng nhập mã liên kết hợp lệ (4-6 ký tự)');
-      return;
-    }
-    if (!/^\d{6}$/.test(pin)) {
-      showError('pair-error', 'Master PIN phải gồm đúng 6 chữ số (VD: 123456)');
-      return;
-    }
-
-    setLoading('btn-pair', 'pair-spinner', true);
-    try {
-      const res = await sendMsg('PAIR', { linkCode: code, masterPin: pin });
-      if (res.success) {
-        showToast(`✅ Đã liên kết với ${res.teamName || 'Workspace'}!`);
-        showState('dashboard');
-        await loadDashboard(res.teamName);
-      } else {
-        showError('pair-error', res.error || 'Lỗi liên kết. Vui lòng thử lại.');
+      if (!email || !password) {
+        showError('login-error', 'Vui lòng nhập đầy đủ email và mật khẩu');
+        return;
       }
-    } catch (err) {
-      showError('pair-error', `Lỗi kết nối: ${err.message}`);
-    } finally {
-      setLoading('btn-pair', 'pair-spinner', false);
-    }
-  });
 
-  // Enter key pair
-  document.getElementById('pair-pin')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('btn-pair')?.click();
-  });
+      setLoading('btn-login', 'login-spinner', true);
+      try {
+        const res = await sendMsg('LOGIN', { email, password });
+        if (res.success) {
+          // Lưu tạm thông tin xác thực để chuyển bước chọn Workspace
+          tempAuthData = {
+            tempToken: res.tempToken,
+            password: password,
+            workspaces: res.workspaces
+          };
 
-  // ── STATE B: Unlock ────────────────────────────────────────────────────
-  document.getElementById('toggle-unlock-pin')?.addEventListener('click', () => {
-    const pin = document.getElementById('unlock-pin');
-    pin.type = pin.type === 'password' ? 'text' : 'password';
-  });
+          // Lưu danh sách workspaces để dùng cho dropdown switcher sau này
+          await chrome.storage.local.set({ herosim_workspaces: res.workspaces });
 
-  document.getElementById('btn-unlock')?.addEventListener('click', async () => {
-    hideError('unlock-error');
-    const pin = document.getElementById('unlock-pin')?.value;
-
-    if (!/^\d{6}$/.test(pin)) {
-      showError('unlock-error', 'Vui lòng nhập đúng 6 chữ số');
-      return;
-    }
-
-    setLoading('btn-unlock', 'unlock-spinner', true);
-    try {
-      const res = await sendMsg('UNLOCK', { masterPin: pin });
-      if (res.success) {
-        const stored = await chrome.storage.local.get(['herosim_team_name']);
-        showState('dashboard');
-        await loadDashboard(stored.herosim_team_name);
-      } else {
-        showError('unlock-error', res.error || 'PIN không đúng. Vui lòng thử lại.');
+          renderWorkspaces(res.workspaces);
+          showState('select-workspace');
+        } else {
+          showError('login-error', res.error || 'Thông tin đăng nhập không hợp lệ');
+        }
+      } catch (err) {
+        showError('login-error', err.message || 'Lỗi kết nối máy chủ');
+      } finally {
+        setLoading('btn-login', 'login-spinner', false);
       }
-    } catch (err) {
-      showError('unlock-error', `Lỗi: ${err.message}`);
-    } finally {
-      setLoading('btn-unlock', 'unlock-spinner', false);
+    });
+  }
+
+  // Đăng nhập bằng phím Enter
+  document.getElementById('login-password')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') btnLogin?.click();
+  });
+
+  // ── 2. Màn hình Chọn Workspace ───────────────────────────────────────────────
+  const btnSelectWorkspace = document.getElementById('btn-select-workspace');
+  if (btnSelectWorkspace) {
+    btnSelectWorkspace.addEventListener('click', async () => {
+      hideError('workspace-error');
+      const selectedItem = document.querySelector('.workspace-item.selected');
+      if (!selectedItem) {
+        showError('workspace-error', 'Vui lòng chọn một không gian làm việc');
+        return;
+      }
+      const teamId = Number(selectedItem.dataset.id);
+
+      setLoading('btn-select-workspace', 'workspace-spinner', true);
+      try {
+        const res = await sendMsg('SELECT_WORKSPACE', {
+          tempToken: tempAuthData.tempToken,
+          teamId,
+          password: tempAuthData.password
+        });
+
+        if (res.success) {
+          showToast(`✓ Đã kết nối với ${res.teamName}`);
+          showState('dashboard');
+          await loadDashboard();
+        } else {
+          showError('workspace-error', res.error || 'Kết nối thất bại');
+        }
+      } catch (err) {
+        showError('workspace-error', err.message);
+      } finally {
+        setLoading('btn-select-workspace', 'workspace-spinner', false);
+      }
+    });
+  }
+
+  document.getElementById('btn-workspace-back')?.addEventListener('click', () => {
+    showState('logged-out');
+  });
+
+  // ── 3. Màn hình Khóa (Locked) ────────────────────────────────────────────────
+  const toggleUnlockPass = document.getElementById('toggle-unlock-password');
+  if (toggleUnlockPass) {
+    toggleUnlockPass.addEventListener('click', () => {
+      const input = document.getElementById('unlock-password');
+      if (input) {
+        input.type = input.type === 'password' ? 'text' : 'password';
+      }
+    });
+  }
+
+  const btnUnlock = document.getElementById('btn-unlock');
+  if (btnUnlock) {
+    btnUnlock.addEventListener('click', async () => {
+      hideError('unlock-error');
+      const password = document.getElementById('unlock-password')?.value;
+
+      if (!password) {
+        showError('unlock-error', 'Vui lòng nhập mật khẩu');
+        return;
+      }
+
+      setLoading('btn-unlock', 'unlock-spinner', true);
+      try {
+        const res = await sendMsg('UNLOCK', { password });
+        if (res.success) {
+          showState('dashboard');
+          await loadDashboard();
+        } else {
+          showError('unlock-error', res.error || 'Mật khẩu không đúng');
+        }
+      } catch (err) {
+        showError('unlock-error', err.message);
+      } finally {
+        setLoading('btn-unlock', 'unlock-spinner', false);
+      }
+    });
+  }
+
+  document.getElementById('unlock-password')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') btnUnlock?.click();
+  });
+
+  document.getElementById('btn-logout-locked')?.addEventListener('click', async () => {
+    if (confirm('Đăng xuất tài khoản khỏi thiết bị này?')) {
+      await sendMsg('UNPAIR');
+      showState('logged-out');
+      showToast('Đã đăng xuất');
     }
   });
 
-  document.getElementById('unlock-pin')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('btn-unlock')?.click();
-  });
-
-  document.getElementById('btn-unpair')?.addEventListener('click', async () => {
-    if (!confirm('Xóa liên kết Extension này? Cần sinh mã mới từ ai2hero.com để kết nối lại.')) return;
-    await sendMsg('UNPAIR');
-    showState('pair');
-    showToast('Đã hủy liên kết');
-  });
-
-  // ── STATE C: Dashboard ─────────────────────────────────────────────────
+  // ── 4. Màn hình Bảng điều khiển (Dashboard) ──────────────────────────────────
   document.getElementById('btn-lock')?.addEventListener('click', async () => {
     await sendMsg('LOCK');
-    showState('unlock');
-    showToast('🔒 Vault đã khóa');
-    setTimeout(() => document.getElementById('unlock-pin')?.focus(), 100);
+    showState('locked');
+    showToast('🔒 Đã khóa vault');
+    setTimeout(() => {
+      const pass = document.getElementById('unlock-password');
+      if (pass) pass.focus();
+    }, 150);
   });
 
   document.getElementById('btn-sync')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-sync');
-    btn.style.opacity = '0.5';
-    btn.style.pointerEvents = 'none';
+    if (btn) {
+      btn.style.opacity = '0.5';
+      btn.style.pointerEvents = 'none';
+    }
     try {
-      const res = await sendMsg('SYNC_NOW');
+      const res = await sendMsg('SYNC');
       if (res.success) {
-        showToast(`✓ Đồng bộ ${res.count} tài khoản`);
+        showToast(`✓ Đã đồng bộ ${res.count} tài khoản`);
         await loadDashboard();
       } else if (res.locked) {
-        showState('unlock');
+        showState('locked');
       } else {
         showToast(`Lỗi sync: ${res.error}`);
       }
     } finally {
-      btn.style.opacity = '';
-      btn.style.pointerEvents = '';
+      if (btn) {
+        btn.style.opacity = '';
+        btn.style.pointerEvents = '';
+      }
+    }
+  });
+
+  document.getElementById('btn-logout')?.addEventListener('click', async () => {
+    if (confirm('Đăng xuất tài khoản khỏi thiết bị này?')) {
+      await sendMsg('UNPAIR');
+      showState('logged-out');
+      showToast('Đã đăng xuất');
     }
   });
 
   document.getElementById('search-input')?.addEventListener('input', (e) => {
     filterAccounts(e.target.value);
   });
+
+  // Xử lý chuyển workspace nhanh trên Dashboard
+  const workspaceSelect = document.getElementById('dashboard-workspace-select');
+  if (workspaceSelect) {
+    workspaceSelect.addEventListener('change', async (e) => {
+      const targetTeamId = Number(e.target.value);
+      
+      // Chuyển sang trạng thái đăng nhập lại để chọn Workspace nhằm đảm bảo quy trình bảo mật (sinh Key/Token mới)
+      // Nhưng để mượt mà nhất, chúng ta có thể chuyển thẳng sang trạng thái "Chọn Workspace" nếu tempToken vẫn còn trong session.
+      // Nếu không, yêu cầu đăng nhập lại.
+      if (tempAuthData.tempToken && tempAuthData.password) {
+        renderWorkspaces(tempAuthData.workspaces);
+        showState('select-workspace');
+        // Auto select target team
+        const items = document.querySelectorAll('.workspace-item');
+        items.forEach(item => {
+          if (Number(item.dataset.id) === targetTeamId) {
+            item.click();
+          }
+        });
+        showToast('Nhập lại mật khẩu để đổi Workspace');
+      } else {
+        // Hết tempToken -> Logout bắt buộc nhập mật khẩu để đảm bảo derived key được tạo lại chuẩn xác.
+        await sendMsg('UNPAIR');
+        showState('logged-out');
+        showToast('Vui lòng đăng nhập lại để chuyển Workspace');
+      }
+    });
+  }
 });

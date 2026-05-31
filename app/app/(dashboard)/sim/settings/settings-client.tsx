@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useTransition } from 'react';
+import Link from 'next/link';
 import { 
   Save, Bell, Key, Clock, ShieldCheck, Zap, Send, Layers, 
   Trash2, Users, Plus, Edit2, UserX, UserCheck, Smartphone, 
-  KeyRound, RefreshCw, Globe, CheckCircle2, AlertTriangle, Info
+  KeyRound, RefreshCw, Globe, CheckCircle2, AlertTriangle, Info,
+  Shield, ExternalLink
 } from 'lucide-react';
 import { createSimEmployee, updateSimEmployee } from '@/lib/db/sim-actions';
 import { 
@@ -180,78 +182,7 @@ export default function SettingsClient({
     };
   });
 
-  // Extension Link Code State (HeroSim v3.0)
-  const [linkCode, setLinkCode] = useState<string | null>(null);
-  const [linkCodeExpiry, setLinkCodeExpiry] = useState<Date | null>(null);
-  const [linkCountdown, setLinkCountdown] = useState(0);
-  const [linkedDevices, setLinkedDevices] = useState<any[]>([]);
-  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
 
-  // Load danh sách thiết bị đã liên kết khi mount
-  useEffect(() => {
-    import('./actions').then(({ getLinkedDevicesAction }) => {
-      getLinkedDevicesAction(teamId).then((res) => {
-        if (res.success && res.data) setLinkedDevices(res.data);
-      });
-    });
-  }, [teamId]);
-
-  // Countdown timer cho link code
-  useEffect(() => {
-    if (!linkCodeExpiry) return;
-    const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.floor((linkCodeExpiry.getTime() - Date.now()) / 1000));
-      setLinkCountdown(remaining);
-      if (remaining === 0) {
-        setLinkCode(null);
-        setLinkCodeExpiry(null);
-        clearInterval(interval);
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [linkCodeExpiry]);
-
-  const handleGenerateLinkCode = async () => {
-    setIsGeneratingCode(true);
-    try {
-      const { generateLinkCodeAction } = await import('./actions');
-      const res = await generateLinkCodeAction(teamId, userId);
-      if (res.success && res.code && res.expiresAt) {
-        setLinkCode(res.code);
-        setLinkCodeExpiry(new Date(res.expiresAt));
-        setLinkCountdown(5 * 60);
-      } else {
-        showToast(res.error || 'Lỗi sinh mã liên kết', 'error');
-      }
-    } finally {
-      setIsGeneratingCode(false);
-    }
-  };
-
-  const handleRevokeDevice = async (tokenId: number) => {
-    const { revokeDeviceAction } = await import('./actions');
-    const res = await revokeDeviceAction(teamId, tokenId);
-    if (res.success) {
-      setLinkedDevices((prev) => prev.filter((d) => d.id !== tokenId));
-      showToast('Đã thu hồi quyền truy cập thiết bị!', 'success');
-    } else {
-      showToast(res.error || 'Lỗi thu hồi thiết bị', 'error');
-    }
-  };
-
-  const formatCountdown = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const s = (seconds % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
-  };
-
-  const formatRelativeTime = (date: string | Date) => {
-    const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-    if (diff < 60) return 'vừa xong';
-    if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
-    return `${Math.floor(diff / 86400)} ngày trước`;
-  };
 
 
   // Platforms State
@@ -435,77 +366,6 @@ export default function SettingsClient({
                   </div>
                 </div>
 
-                {/* HeroSim Chrome Extension — Kết nối mới */}
-                <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl space-y-4">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-500">
-                      <Smartphone className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-extrabold text-white">🔗 Kết nối Chrome Extension HeroSim v3.0</h3>
-                      <p className="text-[10px] text-gray-400 mt-0.5">Sinh mã liên kết để ghép nối Extension với Workspace này. Đồng bộ mật khẩu 2 chiều an toàn qua API bảo mật.</p>
-                    </div>
-                  </div>
-
-                  {/* Hiển thị mã liên kết + countdown */}
-                  {linkCode ? (
-                    <div className="flex items-center gap-4 mt-2">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-3xl font-black tracking-[8px] font-mono text-orange-400 bg-black/40 px-5 py-2.5 rounded-xl border border-orange-500/20 select-all">
-                          {linkCode}
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-bold">
-                          Hết hạn sau: <span className={`font-mono ${linkCountdown < 60 ? 'text-red-400' : 'text-orange-400'}`}>{formatCountdown(linkCountdown)}</span>
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-gray-400 leading-relaxed">
-                        <p className="font-bold text-gray-200 mb-1">Cách dùng:</p>
-                        <p>1. Mở Extension HeroSim</p>
-                        <p>2. Nhập mã này vào popup</p>
-                        <p>3. Đặt Master PIN cá nhân</p>
-                        <p>4. Bấm "Liên kết ngay"</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-[10px] text-gray-500 italic">Bấm nút bên dưới để sinh mã liên kết mới (hiệu lực 5 phút).</p>
-                  )}
-
-                  <button
-                    onClick={handleGenerateLinkCode}
-                    disabled={isGeneratingCode}
-                    className="px-3.5 py-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:opacity-90 text-white border-0 rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw className={`h-3 w-3 ${isGeneratingCode ? 'animate-spin' : ''}`} />
-                    {isGeneratingCode ? 'Đang sinh mã...' : 'Sinh mã liên kết mới'}
-                  </button>
-
-                  {/* Danh sách thiết bị đã liên kết */}
-                  {linkedDevices.length > 0 && (
-                    <div className="border-t border-white/5 pt-4 space-y-2">
-                      <p className="text-[10px] font-extrabold text-gray-300">Thiết bị đã liên kết ({linkedDevices.length})</p>
-                      {linkedDevices.map((device) => (
-                        <div key={device.id} className="flex items-center justify-between gap-3 px-3 py-2 bg-white/[0.02] rounded-xl border border-white/5">
-                          <div>
-                            <p className="text-[11px] font-bold text-white">{device.deviceName || 'Chrome Extension'}</p>
-                            <p className="text-[9px] text-gray-500">
-                              {device.lastUsedAt ? `Dùng ${formatRelativeTime(device.lastUsedAt)}` : `Liên kết ${formatRelativeTime(device.createdAt)}`}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => handleRevokeDevice(device.id)}
-                            className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-[9px] font-black transition-all cursor-pointer"
-                          >
-                            Thu hồi
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {linkedDevices.length === 0 && (
-                    <p className="text-[10px] text-gray-500 italic border-t border-white/5 pt-3">Chưa có thiết bị nào được liên kết.</p>
-                  )}
-                </div>
               </div>
             )}
 
@@ -679,43 +539,136 @@ export default function SettingsClient({
               <div className="space-y-6 animate-fade-in">
                 <div>
                   <h2 className="text-base font-extrabold text-white">API & Tích hợp</h2>
-                  <p className="text-[11px] text-gray-400 mt-1">Cấu hình kết nối cổng API xác thực định dạng số điện thoại viễn thông.</p>
+                  <p className="text-[11px] text-gray-400 mt-1">Cấu hình kết nối cổng API viễn thông và tiện ích mở rộng Chrome Extension của hệ thống.</p>
                 </div>
 
-                {/* Hướng dẫn đăng ký API Numverify */}
-                <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl space-y-2 text-gray-400 text-[11px] leading-relaxed">
-                  <p className="font-extrabold text-white flex items-center gap-1.5">
-                    <Info className="h-4 w-4 text-orange-400 shrink-0" />
-                    Hướng dẫn lấy Numverify API Key:
-                  </p>
-                  <ol className="list-decimal pl-4 space-y-1">
-                    <li>Truy cập trang chủ <a href="https://numverify.com" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:underline font-bold">numverify.com</a>.</li>
-                    <li>Đăng ký một tài khoản miễn phí (Free Plan hỗ trợ 100 requests/tháng, đủ cho nhu cầu check định kỳ shop nhỏ).</li>
-                    <li>Sau khi đăng nhập, truy cập Dashboard để lấy <b>API Access Key</b> của bạn.</li>
-                    <li>Dán khóa vào ô nhập liệu bên dưới và bấm nút <b>Test kết nối API</b> để kiểm tra, sau đó bấm <b>Lưu cấu hình</b> ở góc dưới.</li>
-                  </ol>
-                </div>
+                {/* Phần 1: Cấu hình Numverify API */}
+                <div className="bg-white/[0.01] border border-white/5 p-5 rounded-2xl space-y-4">
+                  <h3 className="text-xs font-extrabold text-white flex items-center gap-1.5 text-orange-400">
+                    <Key className="h-4 w-4" /> 1. Cấu hình Numverify API (Kiểm tra định dạng SIM)
+                  </h3>
 
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-300">Numverify API Access Key</label>
-                    <input
-                      type="password"
-                      className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-orange-500/50 focus:bg-white/8 transition-all"
-                      value={config.numverifyKey}
-                      onChange={(e) => setConfig({ ...config, numverifyKey: e.target.value })}
-                    />
-                    <span className="text-[10px] text-gray-500 mt-1 block">Khóa API dùng để truy xuất thông tin quốc gia, nhà mạng và độ hợp lệ của SIM khi check tự động.</span>
+                  {/* Hướng dẫn đăng ký API Numverify */}
+                  <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl space-y-2 text-gray-400 text-[11px] leading-relaxed">
+                    <p className="font-extrabold text-white flex items-center gap-1.5">
+                      <Info className="h-4 w-4 text-orange-400 shrink-0" />
+                      Hướng dẫn lấy Numverify API Key:
+                    </p>
+                    <ol className="list-decimal pl-4 space-y-1">
+                      <li>Truy cập trang chủ <a href="https://numverify.com" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:underline font-bold">numverify.com</a>.</li>
+                      <li>Đăng ký một tài khoản miễn phí (Free Plan hỗ trợ 100 requests/tháng, đủ cho nhu cầu check định kỳ shop nhỏ).</li>
+                      <li>Sau khi đăng nhập, truy cập Dashboard để lấy <b>API Access Key</b> của bạn.</li>
+                      <li>Dán khóa vào ô nhập liệu bên dưới và bấm nút <b>Test kết nối API</b> để kiểm tra, sau đó bấm <b>Lưu cấu hình</b> ở góc dưới.</li>
+                    </ol>
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={handleTestNumverify}
-                    className="px-3.5 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black text-gray-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    <KeyRound className="h-3.5 w-3.5" /> {isPending ? 'Đang test...' : 'Test kết nối API'}
-                  </button>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-gray-300">Numverify API Access Key</label>
+                      <input
+                        type="password"
+                        className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-orange-500/50 focus:bg-white/8 transition-all"
+                        value={config.numverifyKey}
+                        onChange={(e) => setConfig({ ...config, numverifyKey: e.target.value })}
+                      />
+                      <span className="text-[10px] text-gray-500 mt-1 block">Khóa API dùng để truy xuất thông tin quốc gia, nhà mạng và độ hợp lệ của SIM khi check tự động.</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={handleTestNumverify}
+                      className="px-3.5 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black text-gray-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <KeyRound className="h-3.5 w-3.5" /> {isPending ? 'Đang test...' : 'Test kết nối API'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Phần 2: HeroSim Chrome Extension v4.0.1 */}
+                <div className="bg-white/[0.01] border border-white/5 p-5 rounded-2xl space-y-5 relative overflow-hidden">
+                  <div className="absolute -top-12 -right-12 w-32 h-32 bg-orange-500/10 rounded-full blur-2xl pointer-events-none" />
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-orange-500 to-pink-500 p-0.5 shrink-0 shadow-lg shadow-orange-500/10">
+                        <div className="h-full w-full rounded-[9px] bg-gray-950 flex items-center justify-center">
+                          {/* SIM Vault SVG Logo */}
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 2h10l6 6v12a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" fill="#f97316"/>
+                            <rect x="6" y="8" width="8" height="8" rx="1.5" fill="#ffffff" fill-opacity="0.3"/>
+                            <path d="M10 8v8M6 12h8M6 10h8M6 14h8" stroke="#ffffff" stroke-width="0.8" stroke-linecap="round" opacity="0.8"/>
+                            <circle cx="16" cy="16" r="6" fill="#ec4899" stroke="#ffffff" stroke-width="1.2"/>
+                            <path d="M16 13a1.5 1.5 0 00-1.5 1.5v1h-.5v2h4v-2h-.5v-1a1.5 1.5 0 00-1.5-1.5zm0.5 2.5h-1v-1a.5.5 0 111 0v1z" fill="#ffffff"/>
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-xs font-extrabold text-white">HeroSim Chrome Extension (Official)</h3>
+                          <span className="text-[9px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-400 border border-orange-500/25 leading-none">
+                            v4.0.1
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 leading-normal max-w-xl">
+                          Trình quản lý Vault mật khẩu di động tích hợp Closed Shadow DOM cô lập. Tự động điền mật khẩu và mã OTP 2 chiều an toàn tuyệt đối.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3 Bước Hướng Dẫn cài đặt nhanh */}
+                  <div className="border-t border-white/5 pt-4 space-y-3">
+                    <h4 className="text-[11px] font-bold text-gray-300">3 bước thiết lập & đồng bộ an toàn:</h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {/* Step 1 */}
+                      <div className="bg-white/[0.02] border border-white/5 p-3.5 rounded-xl space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-5 w-5 rounded-full bg-orange-500/10 text-orange-400 font-extrabold text-[10px] flex items-center justify-center border border-orange-500/20 shrink-0">1</span>
+                          <strong className="text-white text-[11px]">Tải tiện ích</strong>
+                        </div>
+                        <p className="text-[10px] text-gray-400 leading-relaxed">Nhấp tải extension trực tiếp từ Chrome Web Store dưới đây (đang triển khai).</p>
+                      </div>
+
+                      {/* Step 2 */}
+                      <div className="bg-white/[0.02] border border-white/5 p-3.5 rounded-xl space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-5 w-5 rounded-full bg-orange-500/10 text-orange-400 font-extrabold text-[10px] flex items-center justify-center border border-orange-500/20 shrink-0">2</span>
+                          <strong className="text-white text-[11px]">Liên kết Workspace</strong>
+                        </div>
+                        <p className="text-[10px] text-gray-400 leading-relaxed">Copy **Mã liên kết 6 chữ số** tại tab <strong className="text-gray-300">Cấu hình chung</strong>, dán vào extension popup để ghép đôi.</p>
+                      </div>
+
+                      {/* Step 3 */}
+                      <div className="bg-white/[0.02] border border-white/5 p-3.5 rounded-xl space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-5 w-5 rounded-full bg-orange-500/10 text-orange-400 font-extrabold text-[10px] flex items-center justify-center border border-orange-500/20 shrink-0">3</span>
+                          <strong className="text-white text-[11px]">Cam kết bảo mật</strong>
+                        </div>
+                        <p className="text-[10px] text-gray-400 leading-relaxed">Chúng tôi sử dụng cơ chế giải mã RAM an toàn, không thu thập lịch sử web của bạn.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nút CTAs */}
+                  <div className="border-t border-white/5 pt-4 flex flex-wrap gap-2.5">
+                    <a 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); showToast('Đường dẫn download đang được cấu hình trên Chrome Web Store...', 'info'); }}
+                      className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl text-[10px] font-black tracking-wide shadow-md shadow-orange-500/15 hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Smartphone className="h-3.5 w-3.5" /> Tải về Chrome Extension
+                    </a>
+                    
+                    <Link 
+                      href="/privacy" 
+                      target="_blank"
+                      className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Shield className="h-3.5 w-3.5" /> Chính sách bảo mật <ExternalLink className="h-3 w-3 text-gray-500" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             )}

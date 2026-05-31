@@ -360,7 +360,7 @@ export const simLinkedAccounts = pgTable('sim_linked_accounts', {
   encryptedPassword: text('encrypted_password'),
   notes: text('notes'),
   loginEmail: varchar('login_email', { length: 255 }),
-  linkedPhoneAssetId: integer('linked_phone_asset_id').notNull().references(() => simAssets.id, { onDelete: 'restrict' }),
+  linkedPhoneAssetId: integer('linked_phone_asset_id').references(() => simAssets.id, { onDelete: 'restrict' }),
   backupEmail: varchar('backup_email', { length: 255 }),
   backupPhoneAssetId: integer('backup_phone_asset_id').references(() => simAssets.id, { onDelete: 'set null' }),
   ownerEmployeeId: integer('owner_employee_id').references(() => simEmployees.id, { onDelete: 'set null' }),

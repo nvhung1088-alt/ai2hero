@@ -149,7 +149,7 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Vai trò**: MVP App Home (Server Component + Sub-Sidebar dọc)
 - **Đọc/Ghi data**: 
   - **Đọc**: Thống kê, SIM, cảnh báo từ DB qua `getCurrentTeamId()` & `sim-queries.ts`. Đọc live thông tin Workspace (Tên Team & Gói plan) trực tiếp từ database `teams` table.
-  - **Đồng bộ Bridge API**: Component `<BridgeAPI />` chạy ngầm trên client đồng bộ `vaultData` sang `snake_case` lưu tại `localStorage` cho Chrome Extension. Lắng nghe qua `window.postMessage` các tác vụ `VAULT_QUERY`, `VAULT_SAVE_ACCOUNT` và `VAULT_IMPORT_BATCH` để gọi Server Actions cập nhật DB thời gian thực.
+  - **Đồng bộ API trực tiếp (Extension v4.0)**: Loại bỏ cơ chế Bridge API cũ kém an toàn (qua localStorage/postMessage). Extension v4.0 kết nối và đồng bộ mật khẩu trực tiếp 2 chiều với máy chủ qua giao thức HTTPS và Bearer Token JWT (90 ngày) bền vững, tăng độ bảo mật lên mức tối đa.
 - **Liên kết**: → /sim/assets, → /sim/accounts, → /sim/alerts, → /sim/history, → /sim/settings, → Nút quay lại Workspace Dashboard nhanh (`/dashboard/t/team-[id]`)
 
 ### Quản lý SIM (`/sim/assets`)

@@ -6,7 +6,7 @@ import {
   simAssets,
 } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { encryptField } from '@/lib/sim-crypto';
+import { encryptField, decryptField } from '@/lib/sim-crypto';
 
 // CORS headers — Extension cần cross-origin access
 const CORS_HEADERS = {
@@ -45,16 +45,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Lấy danh sách tài khoản — trả encryptedPassword GIỮ NGUYÊN (chưa giải mã)
-    // Extension sẽ cache + mã hóa thêm lớp AES-GCM client-side
-    const accounts = await db
+    // Lấy danh sách tài khoản từ DB
+    const rawAccounts = await db
       .select({
         id: simLinkedAccounts.id,
         platformKey: simLinkedAccounts.platformKey,
         accountName: simLinkedAccounts.accountName,
         loginUrl: simLinkedAccounts.loginUrl,
         username: simLinkedAccounts.username,
-        encryptedPassword: simLinkedAccounts.encryptedPassword, // Vẫn mã hóa server-side
+        encryptedPassword: simLinkedAccounts.encryptedPassword,
         loginEmail: simLinkedAccounts.loginEmail,
         notes: simLinkedAccounts.notes,
         linkedPhoneAssetId: simLinkedAccounts.linkedPhoneAssetId,
@@ -64,6 +63,35 @@ export async function GET(request: NextRequest) {
       })
       .from(simLinkedAccounts)
       .where(eq(simLinkedAccounts.teamId, auth.teamId));
+
+    // Giải mã password server-side trước khi gửi về Extension
+    // Kênh truyền bảo mật: HTTPS + Bearer Token 90 ngày
+    // Extension sẽ mã hóa lại bằng Master PIN (AES-GCM) ở local cache
+    const accounts = rawAccounts.map((acc) => {
+      let password: string | null = null;
+      if (acc.encryptedPassword) {
+        try {
+          password = decryptField(acc.encryptedPassword);
+        } catch {
+          // Dữ liệu cũ chưa mã hóa — giữ nguyên
+          password = acc.encryptedPassword;
+        }
+      }
+      return {
+        id: acc.id,
+        platformKey: acc.platformKey,
+        accountName: acc.accountName,
+        loginUrl: acc.loginUrl,
+        username: acc.username,
+        password, // Đã giải mã — plaintext
+        loginEmail: acc.loginEmail,
+        notes: acc.notes,
+        linkedPhoneAssetId: acc.linkedPhoneAssetId,
+        importanceLevel: acc.importanceLevel,
+        status: acc.status,
+        updatedAt: acc.updatedAt,
+      };
+    });
 
     return NextResponse.json(
       {

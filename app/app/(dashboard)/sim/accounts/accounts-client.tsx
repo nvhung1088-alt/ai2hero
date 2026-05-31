@@ -285,6 +285,8 @@ export default function AccountsClient({
   const [importFileName, setImportFileName] = useState('');
   const [parsedImportAccounts, setParsedImportAccounts] = useState<ParsedAccount[]>([]);
   const [importTargetSimId, setImportTargetSimId] = useState<string>('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
   
   const importStats = useMemo(() => {
     let newCount = 0;
@@ -339,32 +341,51 @@ export default function AccountsClient({
     setImportTargetSimId('');
   };
 
-  const handleImportSubmit = (e: React.FormEvent) => {
+  const handleImportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (parsedImportAccounts.length === 0) return;
-    if (!importTargetSimId) {
-      showToast('Vui lòng chọn thiết bị SIM nhận OTP liên kết mặc định', 'error');
-      return;
-    }
 
-    startTransition(async () => {
-      const accountsWithSim = parsedImportAccounts.map(acc => ({
-        ...acc,
-        linkedPhoneAssetId: parseInt(importTargetSimId),
-        importanceLevel: 'medium',
-        status: 'active'
-      }));
+    setIsImporting(true);
+    setImportProgress(0);
 
-      const res = await importSimLinkedAccountsBatch(teamId, accountsWithSim);
-      if (res.success) {
-        showToast(`Đồng bộ thành công ${res.data?.length} tài khoản lên Web App! 🎉`, 'success');
+    const accountsWithSim = parsedImportAccounts.map(acc => ({
+      ...acc,
+      linkedPhoneAssetId: importTargetSimId ? parseInt(importTargetSimId) : null,
+      importanceLevel: 'medium',
+      status: 'active'
+    }));
+
+    const BATCH_SIZE = 50;
+    const totalBatches = Math.ceil(accountsWithSim.length / BATCH_SIZE);
+    let successCount = 0;
+    let hasError = false;
+
+    try {
+      for (let i = 0; i < totalBatches; i++) {
+        const batch = accountsWithSim.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+        const res = await importSimLinkedAccountsBatch(teamId, batch);
+        if (res.success) {
+          successCount += res.data?.length || 0;
+        } else {
+          showToast(`Lỗi ở lô ${i + 1}: ${res.error}`, 'error');
+          hasError = true;
+          break; // Stop on first major batch error
+        }
+        setImportProgress(Math.round(((i + 1) / totalBatches) * 100));
+      }
+
+      if (!hasError || successCount > 0) {
+        showToast(`Đồng bộ thành công ${successCount} tài khoản lên Web App! 🎉`, 'success');
         setIsImportOpen(false);
         resetImportState();
         router.refresh();
-      } else {
-        showToast(res.error || 'Import thất bại', 'error');
       }
-    });
+    } catch (err) {
+      showToast('Có lỗi bất ngờ xảy ra khi tải lên', 'error');
+    } finally {
+      setIsImporting(false);
+      setImportProgress(0);
+    }
   };
 
   // Form states
@@ -543,10 +564,6 @@ export default function AccountsClient({
       showToast('Vui lòng điền đủ Tên tài khoản và Username', 'error');
       return;
     }
-    if (!formLinkedSimId) {
-      showToast('Tài khoản liên kết bắt buộc phải chọn thiết bị SIM OTP', 'error');
-      return;
-    }
 
     startTransition(async () => {
       const res = await createSimLinkedAccount(teamId, {
@@ -556,7 +573,7 @@ export default function AccountsClient({
         loginEmail: formLoginEmail || null,
         loginUrl: formLoginUrl || null,
         importanceLevel: formImportanceLevel,
-        linkedPhoneAssetId: parseInt(formLinkedSimId),
+        linkedPhoneAssetId: formLinkedSimId ? parseInt(formLinkedSimId) : null,
         encryptedPassword: formPassword || null,
         backupEmail: formBackupEmail || null,
         backupPhoneAssetId: formBackupSimId ? parseInt(formBackupSimId) : null,
@@ -579,10 +596,6 @@ export default function AccountsClient({
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAccountId || !formAccountName || !formUsername) return;
-    if (!formLinkedSimId) {
-      showToast('Tài khoản liên kết bắt buộc phải chọn thiết bị SIM OTP', 'error');
-      return;
-    }
 
     startTransition(async () => {
       const res = await updateSimLinkedAccount(teamId, selectedAccountId, {
@@ -592,7 +605,7 @@ export default function AccountsClient({
         loginEmail: formLoginEmail || null,
         loginUrl: formLoginUrl || null,
         importanceLevel: formImportanceLevel,
-        linkedPhoneAssetId: parseInt(formLinkedSimId),
+        linkedPhoneAssetId: formLinkedSimId ? parseInt(formLinkedSimId) : null,
         encryptedPassword: formPassword || null,
         backupEmail: formBackupEmail || null,
         backupPhoneAssetId: formBackupSimId ? parseInt(formBackupSimId) : null,
@@ -648,6 +661,29 @@ export default function AccountsClient({
 
   return (
     <div className="space-y-6">
+      {/* Cam kết Bảo mật Vault 2.0 */}
+      <div className="bg-emerald-950/10 border border-emerald-500/25 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between shadow-lg shadow-emerald-950/5 select-none">
+        <div className="flex gap-3 items-start">
+          <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl shrink-0">
+            <Lock className="h-5 w-5" />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-xs text-white flex items-center gap-1.5 flex-wrap">
+              Cam kết Bảo mật Vault 2.0
+              <span className="text-[9px] font-black tracking-wider uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">Military Grade AES-256-CBC</span>
+              <span className="text-[9px] font-black tracking-wider uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded-md">Zero-Knowledge</span>
+            </h4>
+            <p className="text-[11px] text-gray-400 mt-1 leading-relaxed max-w-4xl">
+              Để bảo vệ tuyệt đối dữ liệu doanh nghiệp, toàn bộ mật khẩu liên kết được mã hóa đối xứng an toàn trước khi ghi vào cơ sở dữ liệu. Hệ thống cam kết nguyên tắc <strong>Zero-Knowledge</strong>: Kể cả Super Admin, Kỹ sư hệ thống hay bên thứ ba đều <strong>tuyệt đối không thể đọc được mật khẩu gốc</strong> của bạn.
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2 items-center text-[10px] text-emerald-400 font-bold shrink-0 border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 rounded-xl">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+          Đang mã hóa thời gian thực
+        </div>
+      </div>
+
       {/* Tool Bar */}
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         {/* Search */}
@@ -718,29 +754,6 @@ export default function AccountsClient({
             <Plus className="h-3.5 w-3.5" />
             Liên kết tài khoản
           </button>
-        </div>
-      </div>
-
-      {/* Cam kết Bảo mật Vault 2.0 */}
-      <div className="bg-emerald-950/10 border border-emerald-500/25 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between shadow-lg shadow-emerald-950/5 select-none">
-        <div className="flex gap-3 items-start">
-          <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl shrink-0">
-            <Lock className="h-5 w-5" />
-          </div>
-          <div>
-            <h4 className="font-extrabold text-xs text-white flex items-center gap-1.5 flex-wrap">
-              Cam kết Bảo mật Vault 2.0
-              <span className="text-[9px] font-black tracking-wider uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">Military Grade AES-256-CBC</span>
-              <span className="text-[9px] font-black tracking-wider uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded-md">Zero-Knowledge</span>
-            </h4>
-            <p className="text-[11px] text-gray-400 mt-1 leading-relaxed max-w-4xl">
-              Để bảo vệ tuyệt đối dữ liệu doanh nghiệp, toàn bộ mật khẩu liên kết được mã hóa đối xứng an toàn trước khi ghi vào cơ sở dữ liệu. Hệ thống cam kết nguyên tắc <strong>Zero-Knowledge</strong>: Kể cả Super Admin, Kỹ sư hệ thống hay bên thứ ba đều <strong>tuyệt đối không thể đọc được mật khẩu gốc</strong> của bạn.
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2 items-center text-[10px] text-emerald-400 font-bold shrink-0 border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 rounded-xl">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-          Đang mã hóa thời gian thực
         </div>
       </div>
 
@@ -1186,14 +1199,13 @@ export default function AccountsClient({
 
                 {/* SIM nhận OTP */}
                 <div className="space-y-1.5">
-                  <label className="text-gray-400 font-semibold">SIM nhận OTP chính *</label>
+                  <label className="text-gray-400 font-semibold">SIM nhận OTP chính (Tùy chọn)</label>
                   <select
                     value={formLinkedSimId}
                     onChange={(e) => setFormLinkedSimId(e.target.value)}
-                    required
                     className="w-full px-3 py-2 bg-gray-950 border border-white/10 rounded-xl text-white focus:outline-none focus:border-orange-500"
                   >
-                    <option value="" disabled>— Chọn SIM nhận OTP —</option>
+                    <option value="">— Không liên kết với SIM nào —</option>
                     {assets.map(sim => (
                       <option key={sim.id} value={sim.id}>{sim.name} ({sim.value})</option>
                     ))}
@@ -1394,14 +1406,13 @@ export default function AccountsClient({
 
                 {/* SIM nhận OTP */}
                 <div className="space-y-1.5">
-                  <label className="text-gray-400 font-semibold">SIM nhận OTP chính *</label>
+                  <label className="text-gray-400 font-semibold">SIM nhận OTP chính (Tùy chọn)</label>
                   <select
                     value={formLinkedSimId}
                     onChange={(e) => setFormLinkedSimId(e.target.value)}
-                    required
                     className="w-full px-3 py-2 bg-gray-950 border border-white/10 rounded-xl text-white focus:outline-none focus:border-orange-500"
                   >
-                    <option value="" disabled>— Chọn SIM nhận OTP —</option>
+                    <option value="">— Không liên kết với SIM nào —</option>
                     {assets.map(sim => (
                       <option key={sim.id} value={sim.id}>{sim.name} ({sim.value})</option>
                     ))}
@@ -1560,15 +1571,14 @@ export default function AccountsClient({
               {/* Chọn SIM OTP Nhận mặc định */}
               {parsedImportAccounts.length > 0 && (
                 <div className="space-y-1.5 bg-white/[0.01] border border-white/5 p-4 rounded-xl">
-                  <label className="text-gray-400 font-semibold block">SIM OTP liên kết mặc định *</label>
-                  <span className="text-[10px] text-gray-500 block mb-2">Vì tài khoản SimGuard bắt buộc phải gắn với SIM để nhận mã OTP, vui lòng chọn SIM mặc định cho các tài khoản import.</span>
+                  <label className="text-gray-400 font-semibold block">SIM OTP liên kết mặc định (Tùy chọn)</label>
+                  <span className="text-[10px] text-gray-500 block mb-2">Bạn có thể chọn một SIM để quản lý tập trung OTP cho các tài khoản được import.</span>
                   <select
                     value={importTargetSimId}
                     onChange={(e) => setImportTargetSimId(e.target.value)}
-                    required
                     className="w-full px-3 py-2 bg-gray-950 border border-white/10 rounded-xl text-white focus:outline-none focus:border-orange-500 font-bold"
                   >
-                    <option value="" disabled>— Chọn SIM liên kết mặc định —</option>
+                    <option value="">— Không liên kết SIM —</option>
                     {assets.map(sim => (
                       <option key={sim.id} value={sim.id}>{sim.name} ({sim.value})</option>
                     ))}
@@ -1601,20 +1611,37 @@ export default function AccountsClient({
                 </div>
               )}
 
+              {/* Tiến trình Upload (Progress Bar) */}
+              {isImporting && (
+                <div className="space-y-1.5 pt-2">
+                  <div className="flex justify-between items-center text-[10px] font-bold">
+                    <span className="text-orange-400">Đang đồng bộ dữ liệu lên Web App...</span>
+                    <span className="text-white">{importProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-950 rounded-full h-1.5 overflow-hidden border border-white/5">
+                    <div 
+                      className="bg-gradient-to-r from-orange-500 to-pink-500 h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${importProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-3 justify-end pt-3 border-t border-white/5">
                 <button
                   type="button"
                   onClick={() => { setIsImportOpen(false); resetImportState(); }}
-                  className="px-4 py-2 bg-white/[0.02] border border-white/10 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 font-bold"
+                  disabled={isImporting}
+                  className="px-4 py-2 bg-white/[0.02] border border-white/10 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 font-bold disabled:opacity-30"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  disabled={isPending || parsedImportAccounts.length === 0}
+                  disabled={isImporting || parsedImportAccounts.length === 0}
                   className="px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl text-white font-bold hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  {isPending ? 'Đang đồng bộ...' : 'Đồng bộ lên Web App'}
+                  {isImporting ? 'Đang đồng bộ...' : 'Đồng bộ lên Web App'}
                 </button>
               </div>
             </form>
