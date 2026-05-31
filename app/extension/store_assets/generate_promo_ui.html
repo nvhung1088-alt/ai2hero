@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HeroSim - CWS Promo Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: white;
+            padding: 20px;
+        }
+        .canvas-container {
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
+            background: #000;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .text-gradient {
+            background: linear-gradient(to right, #f97316, #db2777);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .bg-gradient-custom {
+            background: linear-gradient(135deg, #0f172a 0%, #31132e 100%);
+        }
+        .btn-download {
+            background: linear-gradient(to right, #f97316, #db2777);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-block;
+            margin-bottom: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="max-w-4xl mx-auto mb-10 text-center">
+        <h1 class="text-3xl font-bold mb-2">HeroSim Promo Assets Generator</h1>
+        <p class="text-slate-400 mb-6">Click the buttons below to generate and download high-quality images for Chrome Web Store.</p>
+    </div>
+
+    <!-- 1. Screenshot 1 (1280x800) -->
+    <div>
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-xl font-bold">Screenshot 1: Authentication (1280x800)</h2>
+            <button class="btn-download" onclick="downloadImage('screenshot1', 'screenshot_1_1280x800.png')">Download PNG</button>
+        </div>
+        <div id="screenshot1" class="canvas-container bg-gradient-custom flex items-center justify-between px-20" style="width: 1280px; height: 800px;">
+            <!-- Left Text -->
+            <div class="w-1/2 pr-10">
+                <div class="inline-flex items-center space-x-2 bg-white/10 px-4 py-2 rounded-full mb-6">
+                    <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+                    <span class="text-sm font-semibold tracking-wider uppercase text-orange-200">Zero-Knowledge Security</span>
+                </div>
+                <h1 class="text-6xl font-extrabold leading-tight mb-6">
+                    Your Digital Identity,<br>
+                    <span class="text-gradient">Absolute Vaulted.</span>
+                </h1>
+                <p class="text-2xl text-slate-300 leading-relaxed">
+                    Military-grade AES-256-GCM encryption. Your Master PIN never leaves your device. 
+                    Protecting your passwords against any threat.
+                </p>
+                <div class="mt-10 flex space-x-4">
+                    <div class="flex items-center space-x-2 text-slate-300">
+                        <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span class="text-lg">End-to-End Encrypted</span>
+                    </div>
+                    <div class="flex items-center space-x-2 text-slate-300">
+                        <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span class="text-lg">Shadow DOM Isolated</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Mockup -->
+            <div class="w-[420px] relative">
+                <!-- Decorative elements -->
+                <div class="absolute -inset-1 bg-gradient-to-r from-orange-500 to-pink-500 rounded-3xl blur opacity-30"></div>
+                <div class="relative glass-panel rounded-2xl p-8">
+                    <!-- Extension Header -->
+                    <div class="flex items-center justify-between mb-8">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-xl">HeroSim</h3>
+                                <p class="text-xs text-orange-400">Vault Locked</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Fake Inputs -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-sm text-slate-400 block mb-1">Email</label>
+                            <div class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-300">john.doe@example.com</div>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-400 block mb-1">Master PIN</label>
+                            <div class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-300 tracking-widest">••••••••</div>
+                        </div>
+                        <div class="pt-4">
+                            <div class="w-full bg-gradient-to-r from-orange-500 to-pink-600 text-center py-3 rounded-lg font-bold text-white shadow-lg">
+                                Unlock Vault
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Screenshot 2 (1280x800) -->
+    <div>
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-xl font-bold">Screenshot 2: Autofill (1280x800)</h2>
+            <button class="btn-download" onclick="downloadImage('screenshot2', 'screenshot_2_1280x800.png')">Download PNG</button>
+        </div>
+        <div id="screenshot2" class="canvas-container bg-[#0f172a] flex items-center justify-between px-20" style="width: 1280px; height: 800px; background-image: radial-gradient(circle at top right, #31132e, #0f172a);">
+            <!-- Left Mockup -->
+            <div class="w-[420px] relative">
+                <div class="absolute -inset-1 bg-gradient-to-r from-pink-500 to-orange-500 rounded-3xl blur opacity-30"></div>
+                <div class="relative glass-panel rounded-2xl p-6 h-[500px] flex flex-col">
+                    <!-- Extension Header -->
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                            </div>
+                            <h3 class="font-bold text-xl">My Accounts</h3>
+                        </div>
+                    </div>
+                    <!-- Search -->
+                    <div class="mb-4">
+                        <div class="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2.5 text-slate-400 text-sm flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            Search credentials...
+                        </div>
+                    </div>
+                    <!-- Accounts List -->
+                    <div class="flex-1 space-y-3 overflow-hidden">
+                        <!-- Account 1 -->
+                        <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 flex items-center justify-between cursor-pointer hover:border-orange-500 transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded bg-blue-600 flex items-center justify-center font-bold">F</div>
+                                <div>
+                                    <div class="font-bold text-sm">Facebook</div>
+                                    <div class="text-xs text-slate-400">john.doe@gmail.com</div>
+                                </div>
+                            </div>
+                            <div class="text-orange-400 text-xs bg-orange-400/10 px-2 py-1 rounded">Autofill</div>
+                        </div>
+                        <!-- Account 2 -->
+                        <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 flex items-center justify-between cursor-pointer">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded bg-red-500 flex items-center justify-center font-bold">G</div>
+                                <div>
+                                    <div class="font-bold text-sm">Google</div>
+                                    <div class="text-xs text-slate-400">john.doe@gmail.com</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Account 3 -->
+                        <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 flex items-center justify-between cursor-pointer">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded bg-slate-700 flex items-center justify-center font-bold">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-sm">GitHub</div>
+                                    <div class="text-xs text-slate-400">johndoe_dev</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Text -->
+            <div class="w-1/2 pl-10 text-right">
+                <div class="inline-flex items-center space-x-2 bg-white/10 px-4 py-2 rounded-full mb-6">
+                    <span class="text-sm font-semibold tracking-wider uppercase text-pink-300">Frictionless Experience</span>
+                    <div class="w-3 h-3 rounded-full bg-pink-500"></div>
+                </div>
+                <h1 class="text-6xl font-extrabold leading-tight mb-6">
+                    1-Click Autofill.<br>
+                    <span class="text-gradient">Everywhere.</span>
+                </h1>
+                <p class="text-2xl text-slate-300 leading-relaxed ml-auto max-w-lg">
+                    Automatically inject passwords safely across complex login forms like Google and Facebook. No typing. No hassle.
+                </p>
+                <div class="mt-10 flex justify-end space-x-4">
+                    <div class="flex items-center space-x-2 text-slate-300 bg-slate-800/50 px-4 py-2 rounded-lg">
+                        <span class="font-bold">Multi-step Login</span> Support
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Promo Small (440x280) -->
+    <div>
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-xl font-bold">Small Promo (440x280)</h2>
+            <button class="btn-download" onclick="downloadImage('promo_small', 'promo_small_440x280.png')">Download PNG</button>
+        </div>
+        <div id="promo_small" class="canvas-container bg-gradient-custom flex flex-col items-center justify-center text-center" style="width: 440px; height: 280px; background: linear-gradient(135deg, #0f172a 0%, #4c0519 100%);">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center mb-4 shadow-xl shadow-orange-500/20">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            </div>
+            <h1 class="text-4xl font-extrabold mb-1">HeroSim</h1>
+            <p class="text-lg text-pink-300 tracking-widest uppercase font-semibold">AI2Hero Vault</p>
+        </div>
+    </div>
+
+    <!-- 4. Marquee Promo (1400x560) -->
+    <div>
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-xl font-bold">Marquee Promo (1400x560)</h2>
+            <button class="btn-download" onclick="downloadImage('promo_marquee', 'promo_marquee_1400x560.png')">Download PNG</button>
+        </div>
+        <div id="promo_marquee" class="canvas-container bg-[#0f172a] flex items-center justify-center overflow-hidden relative" style="width: 1400px; height: 560px;">
+            <!-- Background effects -->
+            <div class="absolute top-0 right-0 w-96 h-96 bg-pink-600 rounded-full blur-[120px] opacity-40"></div>
+            <div class="absolute bottom-0 left-0 w-96 h-96 bg-orange-600 rounded-full blur-[120px] opacity-30"></div>
+            
+            <div class="relative z-10 flex items-center w-full max-w-6xl justify-between">
+                <!-- Text -->
+                <div class="w-1/2">
+                    <h1 class="text-7xl font-extrabold leading-tight mb-6">
+                        The Future of <br>
+                        <span class="text-gradient">Password Security</span>
+                    </h1>
+                    <p class="text-2xl text-slate-300 leading-relaxed mb-8">
+                        Securely vault, autofill, and synchronize your digital identity across all devices. Powered by AI2Hero.
+                    </p>
+                    <div class="flex space-x-4">
+                        <div class="bg-gradient-to-r from-orange-500 to-pink-600 px-6 py-3 rounded-lg font-bold text-lg text-white shadow-lg shadow-orange-500/30">
+                            AES-256 Encrypted
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Abstract UI Representation -->
+                <div class="w-5/12 relative">
+                    <div class="glass-panel rounded-2xl p-6 shadow-2xl rotate-3 transform translate-x-10 border-slate-700/50">
+                        <div class="flex items-center space-x-4 mb-6">
+                            <div class="w-12 h-12 rounded-xl bg-orange-500 flex items-center justify-center">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                            </div>
+                            <div>
+                                <div class="h-4 w-32 bg-slate-600 rounded-full mb-2"></div>
+                                <div class="h-3 w-20 bg-slate-700 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="h-12 w-full bg-slate-800 rounded-lg flex items-center px-4 justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-6 h-6 rounded-full bg-blue-500"></div>
+                                    <div class="h-3 w-24 bg-slate-600 rounded-full"></div>
+                                </div>
+                                <div class="h-3 w-16 bg-slate-700 rounded-full"></div>
+                            </div>
+                            <div class="h-12 w-full bg-slate-800 rounded-lg flex items-center px-4 justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-6 h-6 rounded-full bg-red-500"></div>
+                                    <div class="h-3 w-32 bg-slate-600 rounded-full"></div>
+                                </div>
+                                <div class="h-3 w-12 bg-slate-700 rounded-full"></div>
+                            </div>
+                            <div class="h-12 w-full bg-slate-800 rounded-lg flex items-center px-4 justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-6 h-6 rounded-full bg-slate-600"></div>
+                                    <div class="h-3 w-20 bg-slate-600 rounded-full"></div>
+                                </div>
+                                <div class="h-3 w-16 bg-slate-700 rounded-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="absolute -bottom-10 -left-10 glass-panel rounded-2xl p-6 shadow-2xl -rotate-6 transform border-slate-700/50 w-72">
+                        <div class="flex items-center justify-center mb-4">
+                            <div class="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
+                                <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                        </div>
+                        <div class="text-center font-bold text-xl mb-1 text-white">Autofilled</div>
+                        <div class="text-center text-sm text-slate-400">Securely injected into page</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function downloadImage(elementId, filename) {
+            const element = document.getElementById(elementId);
+            html2canvas(element, {
+                scale: 1, // Để ảnh chính xác kích thước gốc
+                backgroundColor: null,
+                useCORS: true
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = filename;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>

@@ -723,7 +723,8 @@ function showSaveBanner({ username, password, isUpdate, platformKey, loginUrl })
     saveBtn.textContent = '⏳ Đang lưu...';
     saveBtn.disabled = true;
 
-    const hostname = window.location.hostname.replace('www.', '').split('.')[0];
+    const parts = window.location.hostname.replace('www.', '').split('.');
+    const hostname = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
     const res = await swMsg('PUSH_ACCOUNT', {
       platformKey: platformKey || hostname,
       accountName: username,
@@ -736,9 +737,9 @@ function showSaveBanner({ username, password, isUpdate, platformKey, loginUrl })
       saveBtn.textContent = '✓ Thành công!';
       setTimeout(hideSaveBanner, 1500);
     } else {
-      saveBtn.textContent = '✕ Lỗi kết nối';
+      saveBtn.textContent = '✕ ' + (res.error || 'Lỗi kết nối');
       saveBtn.disabled = false;
-      setTimeout(hideSaveBanner, 2000);
+      setTimeout(hideSaveBanner, 3000);
     }
   });
 
@@ -778,7 +779,8 @@ function attachSubmitListener(form) {
 
     if (!check.success) return;
 
-    const hostname = window.location.hostname.replace('www.', '').split('.')[0];
+    const parts = window.location.hostname.replace('www.', '').split('.');
+    const hostname = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
     const loginUrl = window.location.origin;
 
     if (!check.found) {

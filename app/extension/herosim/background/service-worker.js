@@ -429,8 +429,8 @@ function matchDomain(pageUrl, loginUrl, platformKey) {
     try {
       let accHost = new URL(loginUrl).hostname.toLowerCase();
       if (accHost.startsWith('www.')) accHost = accHost.slice(4);
-      // Exact match hoặc suffix match (ví dụ: login.facebook.com khớp facebook.com)
-      if (pageHost === accHost || pageHost.endsWith('.' + accHost)) {
+      // Exact match hoặc suffix match (2 chiều, ví dụ: login.facebook.com khớp facebook.com và ngược lại)
+      if (pageHost === accHost || pageHost.endsWith('.' + accHost) || accHost.endsWith('.' + pageHost)) {
         return true;
       }
     } catch {}

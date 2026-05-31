@@ -141,19 +141,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Lấy SIM đầu tiên của workspace làm default linkedPhoneAssetId
+    // Lấy SIM đầu tiên của workspace làm default linkedPhoneAssetId, cho phép null nếu chưa có SIM
     const [firstAsset] = await db
       .select({ id: simAssets.id })
       .from(simAssets)
       .where(eq(simAssets.teamId, auth.teamId))
       .limit(1);
-
-    if (!firstAsset) {
-      return NextResponse.json(
-        { success: false, error: 'Workspace chưa có SIM nào. Vui lòng thêm SIM trước.' },
-        { status: 400, headers: CORS_HEADERS }
-      );
-    }
 
     let synced = 0;
 
@@ -198,7 +191,7 @@ export async function POST(request: NextRequest) {
           username: username || '',
           loginUrl: loginUrl || null,
           encryptedPassword,
-          linkedPhoneAssetId: firstAsset.id,
+          linkedPhoneAssetId: firstAsset ? firstAsset.id : null,
           importanceLevel: 'medium',
           status: 'active',
         });
