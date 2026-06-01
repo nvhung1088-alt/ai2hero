@@ -442,3 +442,38 @@ input[type="checkbox"] {
   text-align: center;
   margin-top: 20px;
 }
+
+/* =========================================================================
+   ẨN CÁC TÁC VỤ THỪA CỦA CAT-CATCH ĐỂ CHUẨN HÓA THƯƠNG HIỆU HEROVIDEO DL
+   ========================================================================= */
+.icon.copy, #copy,
+.icon.invoke, #invoke,
+.icon.aria2, #aria2,
+.icon.mqtt, #mqtt,
+.icon.send, #send2local,
+#catDownFFmpeg, .send2ffmpeg,
+#catDown, .cat-down,
+#maybeKeyTab, #maybeKey,
+.Tabs div:nth-child(2), /* Ẩn tab Trang Khác */
+#otherTab,
+#otherOptions,
+#send2localSelect,
+#mergeDown,
+#AllCopy,
+#invertSelection,
+#openFilter,
+#more,
+#enable,
+#popup {
+  display: none !important;
+}
+
+/* Tinh gọn khoảng cách Tabs */
+.Tabs {
+  display: flex !important;
+  justify-content: center !important;
+}
+.Tabs .TabButton {
+  flex: 1 !important;
+  text-align: center !important;
+}

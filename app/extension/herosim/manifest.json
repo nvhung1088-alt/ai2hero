@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "HeroSim — AI2Hero Vault",
   "short_name": "HeroSim",
-  "version": "4.0.2",
+  "version": "4.0.5",
   "description": "Tự động điền mật khẩu và OTP an toàn từ AI2Hero Vault. Bảo mật tuyệt đối, Shadow DOM cô lập hoàn toàn.",
   "icons": {
     "16": "icons/icon16.png",

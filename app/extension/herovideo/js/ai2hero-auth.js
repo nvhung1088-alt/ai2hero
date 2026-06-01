@@ -24,15 +24,40 @@ $(document).ready(function() {
                                 <span class="hero-email">${email}</span>
                             </div>
                         </div>
-                        <button id="hero-btn-logout" title="Đăng xuất">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                        </button>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <button id="hero-btn-switch-ws" title="Đổi Workspace" style="background: transparent; border: none; cursor: pointer; color: #a1a1aa; padding: 6px; display: flex; align-items: center; border-radius: 6px; transition: all 0.2s ease;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2.1l4 4-4 4"></path><path d="M3 22v-6c0-1.1.9-2 2-2h11"></path><path d="M7 21.9l-4-4 4-4"></path><path d="M21 2v6c0 1.1-.9 2-2 2H7"></path></svg>
+                            </button>
+                            <button id="hero-btn-logout" title="Đăng xuất" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #a1a1aa; padding: 6px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                            </button>
+                        </div>
                     </div>
                 `);
 
+                // Event Switch Workspace
+                $('#hero-btn-switch-ws').hover(
+                    function() { $(this).css({background: 'rgba(249, 115, 22, 0.15)', color: '#fb923c'}); },
+                    function() { $(this).css({background: 'transparent', color: '#a1a1aa'}); }
+                ).on('click', function() {
+                    chrome.storage.local.get(['herovideo_workspaces', 'herovideo_temp_auth'], function(res) {
+                        if (res.herovideo_workspaces && res.herovideo_temp_auth) {
+                            tempToken = res.herovideo_temp_auth.tempToken;
+                            renderWorkspaces(res.herovideo_workspaces, res.herovideo_temp_auth.password);
+                            $appView.hide();
+                            $authView.show();
+                            $loginForm.hide();
+                            $workspaceForm.show();
+                        }
+                    });
+                });
+
                 // Gán event logout
-                $('#hero-btn-logout').on('click', function() {
-                    chrome.storage.local.remove(['herovideo_token', 'herovideo_workspace', 'herovideo_email', 'herovideo_ws_name', 'herovideo_subfolder'], function() {
+                $('#hero-btn-logout').hover(
+                    function() { $(this).css({background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185', borderColor: 'rgba(244, 63, 94, 0.3)'}); },
+                    function() { $(this).css({background: 'rgba(255, 255, 255, 0.05)', color: '#a1a1aa', borderColor: 'rgba(255, 255, 255, 0.1)'}); }
+                ).on('click', function() {
+                    chrome.storage.local.remove(['herovideo_token', 'herovideo_workspace', 'herovideo_email', 'herovideo_ws_name', 'herovideo_subfolder', 'herovideo_workspaces', 'herovideo_temp_auth'], function() {
                         checkAuth();
                     });
                 });
@@ -75,6 +100,10 @@ $(document).ready(function() {
             if (res.ok && data.tempToken && data.workspaces) {
                 tempToken = data.tempToken;
                 renderWorkspaces(data.workspaces, password);
+                chrome.storage.local.set({
+                    'herovideo_workspaces': data.workspaces,
+                    'herovideo_temp_auth': { email, password, tempToken }
+                });
                 $loading.hide();
                 $workspaceForm.show();
             } else {

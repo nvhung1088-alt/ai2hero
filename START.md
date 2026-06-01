@@ -18,12 +18,13 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tối ưu UX Badge: Rút gọn chỉ còn 2 trạng thái Đã kết nối / Chưa kết nối (Báo lỗi sai tài khoản). Sửa lỗi Type TypeScript và import Icon.
   - `[x]` Loại bỏ hoàn toàn hardcode API địa chỉ `localhost:3000` của Extension khi xác thực và đồng bộ video sang Production URL `https://www.ai2hero.com`.
   - `[x]` Tích hợp nút 1-click **Mở thư mục** (Open Folder) thông minh trên Web App Dashboard, kết nối trực tiếp với API của Extension thông qua cơ chế Content-Script Bridge.
+  - `[x]` Tích hợp tính năng **Dọn dẹp video lỗi** thủ công trên Dashboard: Tự động quét và loại bỏ các file video rỗng (< 500b), video trùng lặp (size + base name), video hỏng hoặc chỉ có âm thanh (không có khung hình) bằng DOM `<video>` ẩn chạy trên RAM.
 Tagline:      "AI biến bạn thành Hero"
 Domain:       ai2hero.com
 Phase:        1 — Xây dựng các MVP Apps & Extensions
 Tech stack:   Next.js 16 + React 19 + TypeScript + PostgreSQL + Drizzle ORM + Stripe + Tailwind CSS + shadcn/ui
-Extension:    herosim (v4.0.5), herovideo (v1.0.2 - Standalone Extension)
-Cap nhat HeroVideo: 2026-06-01 - Harden token bridge, validate sync API, chuan hoa cloud sync helper va folder UX.
+Extension:    herosim (v4.0.5), herovideo (v1.0.4 - Standalone Extension)
+Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang chrome.storage.local để lưu trữ lịch sử tải vĩnh viễn, khắc phục triệt để lỗi load lại video cũ khi mở lại popup.
 
 ## QUYET DINH DA CHOT
 - **Core concept**: Nền tảng Super App miễn phí chứa nhiều MVP (AI Chat, AI Hub, API Hub, HeroSim...). Đăng ký 1 tài khoản → dùng tất cả.
@@ -55,6 +56,17 @@ Cap nhat HeroVideo: 2026-06-01 - Harden token bridge, validate sync API, chuan h
 - Sử dụng Next.js 15 App Router (Server Components & Server Actions).
 - Database: Drizzle ORM kết nối Supabase (Pooler mode port 6543 cho Production, Session mode port 5432 cho Migration).
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
+
+- **2026-06-01 (herovideo mvp web integration)**:
+  - 🧹 **Tích hợp nút Dọn dẹp Video Lỗi thủ công trên Dashboard**:
+    - Bổ sung nút bấm "Dọn dẹp video lỗi" phối màu rose cao cấp sang trọng, đồng bộ trạng thái loading xoay vòng bằng `isCleaning` state.
+    - Xây dựng thuật toán quét lỗi: lọc file rỗng (< 500 bytes), so khớp dung lượng và base filename (dùng regex xóa cụm " (1)", "(2)" của Chrome) để loại bỏ video trùng lặp, dùng đối tượng `video` DOM ẩn chạy ngầm trên RAM để phát hiện video không giải mã được hoặc chỉ có âm thanh (không có khung hình: `videoWidth === 0 && videoHeight === 0`).
+    - Tự động gọi hàm xóa sâu `deleteVideoFile` trực tiếp trên ổ cứng người dùng và cập nhật lại giao diện ngay tức thì bằng `fetchFiles()`.
+
+- **2026-06-01 (herovideo v1.0.4)**:
+  - 🛠️ **Chuyển đổi cơ chế lọc trùng (deduplication) sang chrome.storage.local**:
+    - Chuyển lịch sử video đã tải từ `sessionStorage` (bị xóa khi đóng popup) sang `chrome.storage.local` để lưu vĩnh viễn dữ liệu.
+    - Đồng bộ hóa các hàm bất đồng bộ lúc khởi chạy để popup đọc xong dữ liệu lịch sử tải trước khi render giao diện lần đầu.
 
 - **2026-06-01 (herovideo v1.0.2)**:
   - 🛠️ **Sửa lỗi thiếu cấu hình thư mục lưu trữ & đồng bộ đám mây tải lẻ**:

@@ -242,6 +242,15 @@ async function init() {
       return;
     }
 
+    if (status.state === 'select_workspace') {
+      if (status.tempAuth) {
+        tempAuthData = status.tempAuth;
+        renderWorkspaces(tempAuthData.workspaces);
+      }
+      showState('select-workspace');
+      return;
+    }
+
     if (status.state === 'locked') {
       showState('locked');
       const lockedSub = document.getElementById('locked-team-name');
@@ -357,7 +366,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  document.getElementById('btn-workspace-back')?.addEventListener('click', () => {
+  document.getElementById('btn-workspace-back')?.addEventListener('click', async () => {
+    await chrome.storage.local.remove(['herosim_temp_auth']);
+    tempAuthData = { tempToken: '', password: '', workspaces: [] };
     showState('logged-out');
   });
 

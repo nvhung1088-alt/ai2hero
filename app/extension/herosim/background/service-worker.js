@@ -3,21 +3,13 @@
 
 import { deriveKey, decrypt, encrypt, generateSalt, parseSalt } from '../lib/crypto.js';
 
-const isDev = !('update_url' in chrome.runtime.getManifest());
-let API_BASE = isDev 
-  ? 'http://localhost:3000/api/sim/extension' 
-  : 'https://www.ai2hero.com/api/sim/extension';
+let API_BASE = 'https://www.ai2hero.com/api/sim/extension';
+
+// Đã loại bỏ cơ chế đọc herosim_api_base từ local theo yêu cầu chuyển cứng sang production
+console.log(`[HeroSim Background] Kết nối trực tiếp máy chủ chính thức: ${API_BASE}`);
 
 const ALARM_SYNC = 'herosim-sync';
 const SYNC_INTERVAL_MINUTES = 5;
-
-// Load API base dynamic (phục vụ local dev testing hoặc override nếu cần)
-chrome.storage.local.get(['herosim_api_base']).then((res) => {
-  if (res.herosim_api_base) {
-    API_BASE = res.herosim_api_base;
-  }
-  console.log(`[HeroSim Background] Sử dụng API Base: ${API_BASE}`);
-});
 
 // ─── Export/Import CryptoKey sang Base64 để lưu vào chrome.storage.session ─────
 async function exportKey(key) {
@@ -37,7 +29,7 @@ async function importKey(keyB64) {
 }
 
 async function getDerivedKey() {
-  const stored = await chrome.storage.session.get(['herosim_derived_key']);
+  const stored = await chrome.storage.local.get(['herosim_derived_key']);
   if (!stored.herosim_derived_key) return null;
   try {
     return await importKey(stored.herosim_derived_key);
@@ -49,16 +41,22 @@ async function getDerivedKey() {
 
 async function setDerivedKey(key) {
   if (!key) {
-    await chrome.storage.session.remove(['herosim_derived_key']);
+    await chrome.storage.local.remove(['herosim_derived_key']);
     return;
   }
   const keyB64 = await exportKey(key);
-  await chrome.storage.session.set({ herosim_derived_key: keyB64 });
+  await chrome.storage.local.set({ herosim_derived_key: keyB64 });
 }
 
 // ─── Startup & Alarms ────────────────────────────────────────────────────────
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+
+chrome.runtime.onStartup.addListener(async () => {
+  console.log('[HeroSim Background] Trình duyệt khởi động. Khóa Vault...');
+  await setDerivedKey(null);
+  await chrome.storage.local.set({ herosim_locked: true });
+});
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === ALARM_SYNC) {
@@ -92,6 +90,15 @@ async function handleMessage(message, sendResponse) {
           sendResponse({ success: false, error: data.error });
           return;
         }
+
+        // Lưu tạm thông tin đăng nhập vào local storage để tồn tại qua F5 / đóng popup
+        await chrome.storage.local.set({
+          herosim_temp_auth: {
+            tempToken: data.tempToken,
+            password: password,
+            workspaces: data.workspaces
+          }
+        });
 
         sendResponse({
           success: true,
@@ -139,6 +146,9 @@ async function handleMessage(message, sendResponse) {
           herosim_token_expires: data.expiresAt,
           herosim_locked: false,
         });
+
+        // Xóa temp auth vì đã paired thành công
+        await chrome.storage.local.remove(['herosim_temp_auth']);
 
         // Bắt đầu alarm sync định kỳ
         await chrome.alarms.create(ALARM_SYNC, { periodInMinutes: SYNC_INTERVAL_MINUTES });
@@ -204,20 +214,24 @@ async function handleMessage(message, sendResponse) {
           'herosim_paired',
           'herosim_locked',
           'herosim_team_name',
-          'herosim_last_sync'
+          'herosim_last_sync',
+          'herosim_temp_auth'
         ]);
         const key = await getDerivedKey();
         
         let state = 'logged_out';
         if (stored.herosim_paired) {
           state = (key && !stored.herosim_locked) ? 'unlocked' : 'locked';
+        } else if (stored.herosim_temp_auth) {
+          state = 'select_workspace';
         }
 
         sendResponse({
           success: true,
           state,
           teamName: stored.herosim_team_name || '',
-          lastSync: stored.herosim_last_sync || null
+          lastSync: stored.herosim_last_sync || null,
+          tempAuth: stored.herosim_temp_auth || null
         });
       } catch (err) {
         sendResponse({ success: false, error: err.message });
@@ -466,9 +480,8 @@ async function syncAccounts() {
 
     if (!res.ok) {
       if (res.status === 401) {
-        // Token hết hạn đột ngột hoặc bị thu hồi ở server -> Lock
-        await setDerivedKey(null);
-        await chrome.storage.local.set({ herosim_locked: true });
+        console.warn('[HeroSim Background] Token không hợp lệ hoặc hết hạn (401). Không khóa vault để giữ trải nghiệm offline-first.');
+        return { success: false, error: 'Token đã cũ hoặc hết hạn. Vui lòng Đăng xuất (Ngắt kết nối) và Đăng nhập lại.' };
       }
       return { success: false, error: `Lỗi kết nối HTTP ${res.status}` };
     }

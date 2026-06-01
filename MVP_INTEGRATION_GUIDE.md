@@ -138,8 +138,48 @@ Tích hợp code là chưa đủ. Để hệ thống luôn nhất quán và các
    ```
 
 3. **Cơ chế tự động hóa:**
-   - Hàm `dispatchMvpFeedPost` sẽ tự động chuẩn hóa dữ liệu an toàn để tránh crash trang Social Feed client-side.
    - Hàm sẽ tự động tạo thông báo chuông (Bell Notification) thời gian thực gửi tới toàn bộ thành viên khác trong cùng Workspace.
+
+## Giai đoạn 8: Kích hoạt MVP trong Cài đặt Quản trị (Admin Settings)
+
+Để MVP có thể được kích hoạt và kiểm soát quyền truy cập theo từng gói dịch vụ, bạn cần phải thêm MVP vào danh sách kiểm soát ở trang Admin:
+
+1. **Mở tệp `app/app/admin/settings/page.tsx`:**
+2. **Thêm MVP vào mảng `AVAILABLE_APPS`:**
+   ```typescript
+   const AVAILABLE_APPS = [
+     { id: 'chat', name: 'AI Chat' },
+     { id: 'sim', name: 'HeroSim' },
+     // Thêm MVP của bạn vào đây:
+     { id: 'my-mvp', name: 'Tên Ứng Dụng Của Bạn' },
+   ];
+   ```
+   Điều này giúp Super Admin có thể Tick/Untick quyền truy cập ứng dụng của bạn cho từng gói dịch vụ (Free/Pro/Enterprise) ở mục "Cho phép truy cập các MVP Apps".
+
+## Giai đoạn 9: Xác thực API từ External Client (VD: Chrome Extension)
+
+Nếu MVP của bạn có các Client chạy độc lập bên ngoài nền tảng Web (ví dụ như Chrome Extension của `HeroVideo` hoặc `HeroSim`), hãy áp dụng cơ chế **Bearer Token (JWT)** được sinh ra dành riêng cho Team:
+
+1. **Sử dụng API Auth dùng chung:**
+   External Client nên gọi API Đăng nhập chung của hệ thống (hiện tại có thể dùng tái sử dụng logic ở `/api/sim/extension/auth` hoặc tạo endpoint auth riêng theo cấu trúc tương tự).
+
+2. **Cách ly & Xác thực API Endpoint:**
+   Khi nhận payload (ví dụ `/api/video/extension/sync`), bạn bắt buộc phải kiểm tra Token thông qua helper `verifyExtensionToken` trong `extension-actions.ts`:
+
+   ```typescript
+   import { verifyExtensionToken } from '@/lib/db/extension-actions';
+   
+   // ...
+   const token = extractBearerToken(request);
+   const auth = await verifyExtensionToken(token);
+   
+   if (!auth.success || !auth.teamId) {
+     return NextResponse.json({ error: 'Token không hợp lệ' }, { status: 401 });
+   }
+   
+   // Token đã xác minh, an toàn chèn vào DB với auth.teamId
+   await db.insert(videoAssets).values({ teamId: auth.teamId, ... });
+   ```
 
 ---
 

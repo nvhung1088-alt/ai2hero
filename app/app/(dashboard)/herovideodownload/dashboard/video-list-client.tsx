@@ -11,9 +11,10 @@ interface VideoListClientProps {
 }
 
 function VideoGrid({ workspaceSlug }: VideoListClientProps) {
-  const { hasPermission, dirHandle, requestPermission, verifyExistingPermission, getAllVideoFiles } = useFileSystem();
+  const { hasPermission, dirHandle, requestPermission, verifyExistingPermission, getAllVideoFiles, deleteVideoFile } = useFileSystem();
   const [files, setFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCleaning, setIsCleaning] = useState(false);
 
   const fetchFiles = useCallback(async () => {
     if (!hasPermission) return;
@@ -26,12 +27,113 @@ function VideoGrid({ workspaceSlug }: VideoListClientProps) {
     }
   }, [getAllVideoFiles, hasPermission]);
 
+  const checkVideoValidity = (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+      
+      const objectUrl = URL.createObjectURL(file);
+      
+      const cleanup = () => {
+        URL.revokeObjectURL(objectUrl);
+        video.onerror = null;
+        video.onloadedmetadata = null;
+      };
+
+      video.onloadedmetadata = () => {
+        // Neu videoWidth = 0 va videoHeight = 0 -> File audio-only hoac khong co khung hinh
+        const hasVisual = video.videoWidth > 0 && video.videoHeight > 0;
+        cleanup();
+        resolve(hasVisual);
+      };
+
+      video.onerror = () => {
+        // File hong, decode error
+        cleanup();
+        resolve(false);
+      };
+
+      video.src = objectUrl;
+    });
+  };
+
+  const handleCleanupErrorVideos = async () => {
+    if (files.length === 0) {
+      showToast('Không có video nào để dọn dẹp.', 'info');
+      return;
+    }
+
+    setIsCleaning(true);
+    try {
+      const filesToDelete: string[] = [];
+      const seen = new Map<string, string>(); // uniqueKey -> fileName
+      const candidatesForVisualCheck: File[] = [];
+
+      // 1. Quet file rong va trung lap
+      for (const file of files) {
+        // Check file rong (< 500 bytes)
+        if (file.size < 500) {
+          filesToDelete.push(file.name);
+          continue;
+        }
+
+        // Lam sach ten video, loai bo cac ky tu copy cua Chrome nhu " (1)", "(2)" truoc extension
+        const baseName = file.name.replace(/\s*\(\d+\)(?=\.[^.]+$)/i, '');
+        const uniqueKey = `${file.size}_${baseName.toLowerCase()}`;
+
+        if (seen.has(uniqueKey)) {
+          // File trung lap, cho vao danh sach xoa
+          filesToDelete.push(file.name);
+        } else {
+          seen.set(uniqueKey, file.name);
+          candidatesForVisualCheck.push(file);
+        }
+      }
+
+      // 2. Quet video hong hoac audio-only (chay tuan tu de khong qua tai DOM)
+      for (const file of candidatesForVisualCheck) {
+        const isValid = await checkVideoValidity(file);
+        if (!isValid) {
+          filesToDelete.push(file.name);
+        }
+      }
+
+      if (filesToDelete.length === 0) {
+        showToast('Tuyệt vời! Thư mục sạch sẽ, không có video lỗi hoặc trùng lặp.', 'success');
+        return;
+      }
+
+      // 3. Thuc hien xoa file truc tiep khoi o cung
+      let deletedCount = 0;
+      for (const fileName of filesToDelete) {
+        const success = await deleteVideoFile(fileName);
+        if (success) {
+          deletedCount++;
+        }
+      }
+
+      if (deletedCount > 0) {
+        showToast(`Đã dọn dẹp xong! Xóa thành công ${deletedCount} video lỗi và trùng lặp.`, 'success');
+        await fetchFiles();
+      } else {
+        showToast('Không thể dọn dẹp các video được đánh dấu lỗi.', 'error');
+      }
+    } catch (error) {
+      console.error('Cleanup error:', error);
+      showToast('Đã xảy ra lỗi trong quá trình dọn dẹp.', 'error');
+    } finally {
+      setIsCleaning(false);
+    }
+  };
+
   const handleOpenFolder = async () => {
     const folderPath = `HeroVideo\\${workspaceSlug}`;
 
-    try {
+      try {
       await navigator.clipboard?.writeText(folderPath);
-      showToast('Da copy ten folder workspace. Extension se tao/mo dung thu muc workspace.', 'success');
+      showToast('Đã copy tên thư mục Workspace. Extension sẽ tạo/mở đúng thư mục Workspace.', 'success');
     } catch (error) {
       console.warn('Clipboard copy failed:', error);
     }
@@ -49,21 +151,28 @@ function VideoGrid({ workspaceSlug }: VideoListClientProps) {
         <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 px-4 mb-2">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-sm text-emerald-400 font-medium">Da ket noi folder workspace: {workspaceSlug}</span>
+            <span className="text-sm text-emerald-400 font-medium">Đã kết nối thư mục Workspace: {workspaceSlug}</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleOpenFolder}
-              className="text-xs px-3 py-1.5 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded transition-all flex items-center gap-1 font-semibold shadow-md active:scale-95"
+              className="text-xs px-3 py-1.5 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded transition-all flex items-center gap-1 font-semibold shadow-md active:scale-95 animate-fade-in"
             >
-              Mo thu muc
+              Mở thư mục
+            </button>
+            <button
+              onClick={handleCleanupErrorVideos}
+              disabled={isLoading || isCleaning}
+              className="text-xs px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 border border-rose-500/20 rounded transition-all flex items-center gap-1 disabled:opacity-50 font-medium active:scale-95"
+            >
+              {isCleaning ? <Loader2 className="w-3 h-3 animate-spin text-rose-400" /> : '🧹'} Dọn dẹp video lỗi
             </button>
             <button
               onClick={fetchFiles}
-              disabled={isLoading}
+              disabled={isLoading || isCleaning}
               className="text-xs px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded transition-colors flex items-center gap-1 disabled:opacity-50"
             >
-              {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Quet'} video moi
+              {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Quét'} video mới
             </button>
           </div>
         </div>
@@ -73,11 +182,11 @@ function VideoGrid({ workspaceSlug }: VideoListClientProps) {
         <div className="flex flex-col items-center justify-center p-6 bg-zinc-900/50 border border-zinc-800 rounded-xl relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-pink-500/10 to-rose-500/10 pointer-events-none" />
           <FolderKey className="w-10 h-10 text-pink-400 mb-3 relative z-10" />
-          <h3 className="text-lg font-bold text-white relative z-10">Ket noi folder workspace</h3>
+          <h3 className="text-lg font-bold text-white relative z-10">Kết nối thư mục Workspace</h3>
           <p className="text-sm text-zinc-400 max-w-md text-center mt-2 relative z-10">
             {dirHandle
-              ? `Ban da ket noi folder truoc do. Hay xac nhan lai quyen truy cap folder workspace: ${workspaceSlug}.`
-              : `De doc/xoa video dung workspace, hay chon truc tiep folder workspace "${workspaceSlug}" trong Downloads/HeroVideo.`}
+              ? `Bạn đã kết nối thư mục trước đó. Hãy xác nhận lại quyền truy cập thư mục Workspace: ${workspaceSlug}.`
+              : `Để đọc/xóa video đúng Workspace, hãy chọn trực tiếp thư mục Workspace "${workspaceSlug}" trong Downloads/HeroVideo.`}
           </p>
           <div className="flex items-center gap-3 mt-4 relative z-10">
             {dirHandle ? (
@@ -86,13 +195,13 @@ function VideoGrid({ workspaceSlug }: VideoListClientProps) {
                   onClick={verifyExistingPermission}
                   className="px-6 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-pink-500/20"
                 >
-                  Tiep tuc cap quyen
+                  Tiếp tục cấp quyền
                 </button>
                 <button
                   onClick={requestPermission}
                   className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-lg transition-all"
                 >
-                  Doi folder
+                  Đổi thư mục
                 </button>
               </>
             ) : (
@@ -100,7 +209,7 @@ function VideoGrid({ workspaceSlug }: VideoListClientProps) {
                 onClick={requestPermission}
                 className="px-6 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-pink-500/20"
               >
-                Cap quyen va chon folder
+                Cấp quyền và chọn thư mục
               </button>
             )}
           </div>
@@ -109,12 +218,12 @@ function VideoGrid({ workspaceSlug }: VideoListClientProps) {
 
       {hasPermission && files.length === 0 && !isLoading && (
         <div className="text-center py-12 text-zinc-500 border border-dashed border-zinc-800 rounded-xl">
-          Chua co video nao trong folder <b>{workspaceSlug}</b>. <br /> Hay dung extension de tai video ve.
+          Chưa có video nào trong thư mục <b>{workspaceSlug}</b>. <br /> Hãy dùng Extension để tải video về.
         </div>
       )}
 
       {hasPermission && files.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {files.map((file) => (
             <VideoCard key={file.name} file={file} onDeleteSuccess={fetchFiles} />
           ))}

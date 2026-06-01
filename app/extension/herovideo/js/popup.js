@@ -37,6 +37,8 @@ let activeTab = true;
 const downData = [];
 // 图标地址
 const favicon = new Map();
+// Lọc trùng
+let downloadedUrls = new Set();
 // 当前页面DOM
 let pageDOM = undefined;
 
@@ -333,6 +335,18 @@ function AddMedia(data, currentTab = true) {
 
         });
         syncHeroVideosToCloud(data);
+
+        // AI2Hero: Lọc trùng & Tự động xóa khỏi danh sách khi đã bấm tải lẻ
+        downloadedUrls.add(data.url);
+        chrome.storage.local.set({ 'herovideo_downloaded_urls': Array.from(downloadedUrls) });
+        data.html.hide();
+        if (currentTab) {
+            currentCount = Math.max(0, currentCount - 1);
+        } else {
+            allCount = Math.max(0, allCount - 1);
+        }
+        UItoggle();
+
         return false;
     });
     // 调用
@@ -587,6 +601,19 @@ $('#DownFile').click(function () {
             Tips("Da dong bo " + result.synced + " video len AI2Hero!", 3000);
         }
     });
+
+    // AI2Hero: Lọc trùng & Tự động xóa khỏi danh sách khi tải hàng loạt
+    checkedData.forEach(function (data) {
+        downloadedUrls.add(data.url);
+        data.html.hide();
+        if (activeTab) {
+            currentCount = Math.max(0, currentCount - 1);
+        } else {
+            allCount = Math.max(0, allCount - 1);
+        }
+    });
+    chrome.storage.local.set({ 'herovideo_downloaded_urls': Array.from(downloadedUrls) });
+    UItoggle();
 });
 // 合并下载
 $mergeDown.click(function () {
@@ -853,100 +880,114 @@ const interval = setInterval(async function () {
         _type == "window" && $("#currentPage").show();
     }
 
-    // 获取页面DOM
-    if (G.getHtmlDOM) {
-        pageDOM = getPageDOM();
-    }
-    // 填充数据
-    chrome.runtime.sendMessage(chrome.runtime.id, { Message: "getData", tabId: G.tabId }, function (data) {
-        if (!data || data === "OK") {
-            $tips.html(i18n.noData);
-            $tips.attr("data-i18n", "noData");
-            return;
+    // AI2Hero: Lấy lịch sử tải từ chrome.storage.local trước khi nạp dữ liệu
+    chrome.storage.local.get(['herovideo_downloaded_urls'], function (result) {
+        if (result.herovideo_downloaded_urls && Array.isArray(result.herovideo_downloaded_urls)) {
+            downloadedUrls = new Set(result.herovideo_downloaded_urls);
         }
-        currentCount = data.length;
-        if (currentCount >= 500 && confirm(i18n("confirmLoading", [currentCount]))) {
+
+        // 获取页面DOM
+        if (G.getHtmlDOM) {
+            pageDOM = getPageDOM();
+        }
+        // 填充数据
+        chrome.runtime.sendMessage(chrome.runtime.id, { Message: "getData", tabId: G.tabId }, function (data) {
+            if (!data || data === "OK") {
+                $tips.html(i18n.noData);
+                $tips.attr("data-i18n", "noData");
+                return;
+            }
+            // AI2Hero: Lọc trùng video đã tải trong phiên làm việc
+            const filteredData = data.filter(item => !downloadedUrls.has(item.url));
+            currentCount = filteredData.length;
+            if (currentCount >= 500 && confirm(i18n("confirmLoading", [currentCount]))) {
+                $mediaList.append($current);
+                UItoggle();
+                return;
+            }
+            for (let key = 0; key < currentCount; key++) {
+                $current.append(AddMedia(filteredData[key]));
+            }
             $mediaList.append($current);
             UItoggle();
-            return;
-        }
-        for (let key = 0; key < currentCount; key++) {
-            $current.append(AddMedia(data[key]));
-        }
-        $mediaList.append($current);
-        UItoggle();
-    });
-    // 监听资源数据
-    chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
-        if (!Message.Message || !Message.data) { return; }
-        // 添加资源
-        if (Message.Message == "popupAddData") {
-            const html = AddMedia(Message.data, Message.data.tabId == G.tabId);
-            if (Message.data.tabId == G.tabId) {
-                !currentCount && $mediaList.append($current);
-                currentCount++;
-                $current.append(html);
-                UItoggle();
-            } else if (allCount) {
-                allCount++;
-                $all.append(html);
-                UItoggle();
+        });
+        // 监听资源数据
+        chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
+            if (!Message.Message || !Message.data) { return; }
+            // 添加资源
+            if (Message.Message == "popupAddData") {
+                // AI2Hero: Lọc trùng video đã tải trong phiên làm việc
+                if (downloadedUrls.has(Message.data.url)) {
+                    sendResponse("OK");
+                    return true;
+                }
+                const html = AddMedia(Message.data, Message.data.tabId == G.tabId);
+                if (Message.data.tabId == G.tabId) {
+                    !currentCount && $mediaList.append($current);
+                    currentCount++;
+                    $current.append(html);
+                    UItoggle();
+                } else if (allCount) {
+                    allCount++;
+                    $all.append(html);
+                    UItoggle();
+                }
+                sendResponse("OK");
+                return true;
             }
-            sendResponse("OK");
-            return true;
-        }
-        // 添加疑似密钥
-        if (Message.Message == "popupAddKey") {
-            $("#maybeKeyTab").show();
-            chrome.tabs.query({}, function (tabs) {
-                let tabId = -1;
-                for (let item of tabs) {
-                    if (item.url == Message.url) {
-                        tabId = item.id;
-                        break;
-                    }
-                }
-                if (tabId == -1 || tabId == G.tabId) {
-                    $maybeKey.append(AddKey(Message.data));
-                }
-                !$("#maybeKey .panel").length && $("#maybeKey").append($maybeKey);
-            });
-            sendResponse("OK");
-            return true;
-        }
-    });
-    // 获取模拟手机 自动下载 捕获 状态
-    updateButton();
-
-    // 上一次设定的倍数
-    $("#playbackRate").val(G.playbackRate);
-
-    loadCSS();
-
-    const observer = new MutationObserver(updateDownHeight);
-    observer.observe($down[0], { childList: true, subtree: true, attributes: true });
-    setInterval(() => { updateDownHeight(); }, 233);
-    // 疑似密钥
-    chrome.webNavigation.getAllFrames({ tabId: G.tabId }, function (frames) {
-        if (!frames) { return; }
-        for (let frame of frames) {
-            chrome.tabs.sendMessage(G.tabId, { Message: "getKey" }, { frameId: frame.frameId }, function (result) {
-                if (chrome.runtime.lastError || !result || result.length == 0) { return; }
+            // 添加疑似密钥
+            if (Message.Message == "popupAddKey") {
                 $("#maybeKeyTab").show();
-                for (let key of result) {
-                    $maybeKey.append(AddKey(key));
-                }
-                $("#maybeKey").append($maybeKey);
-                UItoggle();
-            });
-        }
-    });
+                chrome.tabs.query({}, function (tabs) {
+                    let tabId = -1;
+                    for (let item of tabs) {
+                        if (item.url == Message.url) {
+                            tabId = item.id;
+                            break;
+                        }
+                    }
+                    if (tabId == -1 || tabId == G.tabId) {
+                        $maybeKey.append(AddKey(Message.data));
+                    }
+                    !$("#maybeKey .panel").length && $("#maybeKey").append($maybeKey);
+                });
+                sendResponse("OK");
+                return true;
+            }
+        });
+        // 获取模拟手机 自动下载 捕获 状态
+        updateButton();
 
-    // 是否屏蔽网站
-    chrome.runtime.sendMessage(chrome.runtime.id, { Message: "damnUrlHas" }, function (response) {
-        if (response && G.damn) {
-            $tips.html(i18n("isBlockedSite"));
-        }
+        // 上一次设定的倍数
+        $("#playbackRate").val(G.playbackRate);
+
+        loadCSS();
+
+        const observer = new MutationObserver(updateDownHeight);
+        observer.observe($down[0], { childList: true, subtree: true, attributes: true });
+        setInterval(() => { updateDownHeight(); }, 233);
+        // 疑似密钥
+        chrome.webNavigation.getAllFrames({ tabId: G.tabId }, function (frames) {
+            if (!frames) { return; }
+            for (let frame of frames) {
+                chrome.tabs.sendMessage(G.tabId, { Message: "getKey" }, { frameId: frame.frameId }, function (result) {
+                    if (chrome.runtime.lastError || !result || result.length == 0) { return; }
+                    $("#maybeKeyTab").show();
+                    for (let key of result) {
+                        $maybeKey.append(AddKey(key));
+                    }
+                    $("#maybeKey").append($maybeKey);
+                    UItoggle();
+                });
+            }
+        });
+
+        // 是否屏蔽网站
+        chrome.runtime.sendMessage(chrome.runtime.id, { Message: "damnUrlHas" }, function (response) {
+            if (response && G.damn) {
+                $tips.html(i18n("isBlockedSite"));
+            }
+        });
     });
 }, 0);
 /********************绑定事件END********************/
