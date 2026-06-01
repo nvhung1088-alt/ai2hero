@@ -3,6 +3,7 @@ import { db } from './drizzle';
 import { activityLogs, teamMembers, teams, users, systemSettings, feedPosts, feedComments, feedLikes, invitations } from './schema';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/session';
+import { getActiveTeamCookie } from '@/lib/team-cookie';
 
 export async function getUser() {
   const sessionCookie = (await cookies()).get('session');
@@ -112,6 +113,39 @@ export async function getTeamForUser() {
     return null;
   }
 
+  // 1. Thử lấy activeTeamId từ cookie
+  const activeTeamId = await getActiveTeamCookie();
+  if (activeTeamId) {
+    const result = await db.query.teamMembers.findFirst({
+      where: and(
+        eq(teamMembers.userId, user.id),
+        eq(teamMembers.teamId, activeTeamId)
+      ),
+      with: {
+        team: {
+          with: {
+            teamMembers: {
+              with: {
+                user: {
+                  columns: {
+                    id: true,
+                    name: true,
+                    email: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (result && result.team && !result.team.deletedAt) {
+      return result.team;
+    }
+  }
+
+  // 2. Fallback nếu không có cookie activeTeamId hoặc không tìm thấy team/user tương ứng
   const result = await db.query.teamMembers.findFirst({
     where: eq(teamMembers.userId, user.id),
     with: {

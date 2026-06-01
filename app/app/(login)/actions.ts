@@ -23,7 +23,7 @@ import { comparePasswords, hashPassword, setSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createCheckoutSession } from '@/lib/payments/stripe';
-import { getUser, getUserWithTeam, getSystemSetting, updateSystemSetting } from '@/lib/db/queries';
+import { getUser, getUserWithTeam, getSystemSetting, updateSystemSetting, DEFAULT_BILLING_PLANS } from '@/lib/db/queries';
 import { createNotification } from '@/lib/db/notification-actions';
 import {
   validatedAction,
@@ -619,13 +619,15 @@ export async function createWorkspaceAction(data: { name: string; avatar?: strin
     for (const membership of ownedTeamMemberships) {
       const planId = (membership.planName || 'free').toLowerCase();
       const matchedPlan = billingPlans.find((p: any) => p.id === planId);
-      const maxWs = matchedPlan?.maxOwnedWorkspaces ?? 1;
+      const defaultPlan = DEFAULT_BILLING_PLANS.find((dp: any) => dp.id === planId);
+      const maxWs = matchedPlan?.maxOwnedWorkspaces ?? defaultPlan?.maxOwnedWorkspaces ?? 1;
       if (maxWs > bestMaxWorkspaces) bestMaxWorkspaces = maxWs;
     }
     // Nếu user chưa sở hữu workspace nào → dùng default Free plan
     if (ownedTeamMemberships.length === 0) {
       const freePlan = billingPlans.find((p: any) => p.id === 'free');
-      bestMaxWorkspaces = freePlan?.maxOwnedWorkspaces ?? 1;
+      const defaultFreePlan = DEFAULT_BILLING_PLANS.find((dp: any) => dp.id === 'free');
+      bestMaxWorkspaces = freePlan?.maxOwnedWorkspaces ?? defaultFreePlan?.maxOwnedWorkspaces ?? 1;
     }
   }
 

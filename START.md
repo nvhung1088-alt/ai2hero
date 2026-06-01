@@ -57,6 +57,12 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Database: Drizzle ORM kết nối Supabase (Pooler mode port 6543 cho Production, Session mode port 5432 cho Migration).
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
+- **2026-06-01 (workspace fixes & gating limits)**:
+  - 🛠️ **Sửa lỗi dùng chung dữ liệu Workspace**:
+    - Nâng cấp hàm `getTeamForUser()` tại `app/lib/db/queries.ts` để đọc và ưu tiên lấy `activeTeamId` từ cookie người dùng trước khi fallback về workspace đầu tiên, giải quyết triệt để lỗi chuyển workspace trên UI nhưng Settings & Members vẫn hiển thị workspace cũ.
+  - 🚀 **Khắc phục lỗi Gating Workspace hạn chế Pro**:
+    - Cập nhật Server Action `createWorkspaceAction` tại `app/app/(login)/actions.ts` sử dụng `DEFAULT_BILLING_PLANS` làm fallback khi DB setting bị thiếu trường `maxOwnedWorkspaces`, cho phép các tài khoản Pro (như `test@test.com`) tạo đầy đủ tối đa 5 workspace như thiết kế.
+
 - **2026-06-01 (herovideo mvp web integration)**:
   - 🧹 **Tích hợp nút Dọn dẹp Video Lỗi thủ công trên Dashboard**:
     - Bổ sung nút bấm "Dọn dẹp video lỗi" phối màu rose cao cấp sang trọng, đồng bộ trạng thái loading xoay vòng bằng `isCleaning` state.
