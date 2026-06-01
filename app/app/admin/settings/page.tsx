@@ -28,6 +28,7 @@ const AVAILABLE_APPS = [
   { id: 'sim', name: 'HeroSim' },
   { id: 'pos', name: 'POS Bán hàng' },
   { id: 'content', name: 'Content Hub' },
+  { id: 'herovideo', name: 'HeroVideo' },
 ];
 
 export default function AdminSettingsPage() {
