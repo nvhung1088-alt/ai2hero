@@ -278,7 +278,7 @@ export const DEFAULT_BILLING_PLANS = [
     ],
     maxMembers: 1,
     maxOwnedWorkspaces: 1,
-    allowedApps: ['chat', 'hub'],
+    allowedApps: ['chat', 'hub', 'herovideo'],
     cta: 'Bắt đầu ngay'
   },
   {
@@ -297,7 +297,7 @@ export const DEFAULT_BILLING_PLANS = [
     ],
     maxMembers: 10,
     maxOwnedWorkspaces: 5,
-    allowedApps: ['chat', 'hub', 'api', 'sim', 'pos', 'content'],
+    allowedApps: ['chat', 'hub', 'api', 'sim', 'pos', 'content', 'herovideo'],
     cta: 'Nâng cấp Pro'
   },
   {
@@ -316,7 +316,7 @@ export const DEFAULT_BILLING_PLANS = [
     ],
     maxMembers: 9999,
     maxOwnedWorkspaces: 50,
-    allowedApps: ['chat', 'hub', 'api', 'sim', 'pos', 'content'],
+    allowedApps: ['chat', 'hub', 'api', 'sim', 'pos', 'content', 'herovideo'],
     cta: 'Liên hệ ngay'
   }
 ];

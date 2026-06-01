@@ -1,0 +1,444 @@
+/* AI2HERO PREMIUM GLASSMORPHISM THEME */
+:root {
+  /* Ghi đè biến toàn cục cho cả Light/Dark */
+  --background-color: #09090b !important; /* Zinc 950 */
+  --background-color-opacity: rgba(9, 9, 11, 0.85) !important;
+  --background-color-two: rgba(255, 255, 255, 0.05) !important;
+  
+  --text-color: #fafafa !important; /* Zinc 50 */
+  --text2-color: #fb923c !important; /* Orange 400 */
+  --link-color: #f472b6 !important; /* Pink 400 */
+  
+  --button-color: rgba(255, 255, 255, 0.08) !important;
+  --button-text-color: #fafafa !important;
+  --button-border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  --button-hover-color: rgba(255, 255, 255, 0.15) !important;
+  
+  --button2-color: linear-gradient(135deg, #f97316 0%, #db2777 100%) !important; /* AI2Hero Brand Gradient */
+  --button2-text-color: #ffffff !important;
+  --button2-border: none !important;
+  --button2-hover-color: linear-gradient(135deg, #ea580c 0%, #be185d 100%) !important;
+  
+  --scrollbar-track-color: rgba(0,0,0,0) !important;
+  --scrollbar-thumb-color: rgba(249, 115, 22, 0.5) !important;
+  --input-border: 1px solid rgba(255,255,255,0.15) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Đảm bảo Dark mode giữ nguyên brand */
+    --background-color: #09090b !important;
+    --background-color-opacity: rgba(9, 9, 11, 0.85) !important;
+    --background-color-two: rgba(255, 255, 255, 0.05) !important;
+    --text-color: #fafafa !important;
+    --text2-color: #fb923c !important;
+  }
+}
+
+body {
+  background: var(--background-color) !important;
+  color: var(--text-color) !important;
+  font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+/* Các thẻ (Tabs) mượt mà */
+.Tabs {
+  background: rgba(0, 0, 0, 0.2) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding-top: 4px;
+}
+
+.TabButton {
+  border: none !important;
+  border-radius: 8px 8px 0 0 !important;
+  padding: 6px 12px !important;
+  color: #a1a1aa !important; /* Zinc 400 */
+  transition: all 0.2s ease !important;
+}
+
+.TabButton.Active {
+  background: var(--background-color-two) !important;
+  color: #fb923c !important; /* Orange 400 */
+  border-bottom: 2px solid #f97316 !important;
+}
+
+/* Box chứa link (Panel Glassmorphism) */
+.panel {
+  background: rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  margin: 6px 8px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  overflow: hidden;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.panel:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  transform: translateY(-1px);
+}
+
+.panel-heading {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  padding: 8px 10px !important;
+}
+
+.panel-heading .name {
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  color: #f4f4f5 !important;
+}
+
+.panel-heading .size {
+  color: #fb923c !important;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Các nút bấm bo góc hiện đại */
+button, .button, .button2 {
+  border-radius: 6px !important;
+  padding: 5px 10px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.2px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+button.button2 {
+  text-shadow: 0 1px 1px rgba(0,0,0,0.2) !important;
+}
+
+/* Thanh điều hướng bên dưới */
+#down, .more {
+  background: rgba(9, 9, 11, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 8px 6px !important;
+}
+
+/* Input / Select hiện đại */
+input, select {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 6px !important;
+  color: #fff !important;
+  padding: 4px 8px !important;
+  outline: none !important;
+}
+
+input:focus, select:focus {
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important;
+}
+
+/* Checkbox tuỳ chỉnh nhẹ */
+input[type="checkbox"] {
+  accent-color: #f97316 !important;
+}
+
+/* Tooltip & Tips */
+#Tips, #TipsFixed {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.9) 0%, rgba(219, 39, 119, 0.9) 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 20px !important;
+  padding: 6px 16px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3) !important;
+  backdrop-filter: blur(4px) !important;
+  margin-top: 8px !important;
+}
+
+/* Scrollbar tinh tế */
+::-webkit-scrollbar {
+  width: 6px !important;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-radius: 10px !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(249, 115, 22, 0.8) !important;
+}
+
+/* AI2HERO FOOTER BUTTONS */
+.ai2hero-footer {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 12px !important;
+  background: rgba(9, 9, 11, 0.95) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.hero-btn {
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 8px 16px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 90px !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2) !important;
+}
+
+.hero-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.hero-btn:active {
+  transform: translateY(0) !important;
+}
+
+.hero-btn.primary {
+  background: linear-gradient(135deg, #f97316 0%, #db2777 100%) !important;
+  color: white !important;
+}
+
+.hero-btn.primary:hover {
+  background: linear-gradient(135deg, #fb923c 0%, #f472b6 100%) !important;
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4) !important;
+}
+
+.hero-btn.danger {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+.hero-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+.hero-btn.secondary {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #e4e4e7 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.hero-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Account Bar (Top of App View) */
+.hero-account-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.hero-account-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hero-account-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f97316 0%, #db2777 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+  font-size: 14px;
+}
+.hero-account-details {
+  display: flex;
+  flex-direction: column;
+}
+.hero-ws-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+.hero-email {
+  font-size: 11px;
+  color: #a1a1aa;
+}
+#hero-btn-logout {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a1a1aa;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+#hero-btn-logout:hover {
+  background: rgba(244, 63, 94, 0.15); /* rose-500/15 */
+  color: #fb7185; /* rose-400 */
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+/* AI2HERO AUTH UI */
+.hero-auth-container {
+  width: 100%;
+  height: 100vh;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+  background: radial-gradient(circle at 50% 0%, rgba(219, 39, 119, 0.15), transparent 50%), 
+              radial-gradient(circle at 100% 100%, rgba(249, 115, 22, 0.1), transparent 50%),
+              #09090b !important;
+}
+
+.hero-auth-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.hero-logo {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+}
+
+.hero-auth-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  background: linear-gradient(135deg, #f97316 0%, #db2777 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-auth-header p {
+  color: #a1a1aa;
+  font-size: 14px;
+  margin: 0;
+}
+
+#hero-login-form, #hero-workspace-form {
+  width: 100%;
+  max-width: 320px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.hero-input-group {
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.hero-input-group label {
+  display: block;
+  color: #d4d4d8;
+  font-size: 13px;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.hero-input-group input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  transition: all 0.2s !important;
+}
+
+.hero-input-group input:focus {
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important;
+}
+
+.hero-error {
+  color: #f87171;
+  font-size: 13px;
+  min-height: 20px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.hero-workspace-item {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hero-workspace-item:hover {
+  background: rgba(249, 115, 22, 0.1);
+  border-color: rgba(249, 115, 22, 0.3);
+  transform: translateY(-1px);
+}
+
+.hero-workspace-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #f97316, #db2777);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+}
+
+.hero-workspace-info h4 {
+  margin: 0 0 2px 0;
+  font-size: 14px;
+  color: white;
+}
+
+.hero-workspace-info span {
+  font-size: 12px;
+  color: #a1a1aa;
+}
+
+/* Spinner */
+.hero-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-radius: 50%;
+  border-top-color: #f97316;
+  animation: hero-spin 1s ease-in-out infinite;
+  margin: 0 auto;
+}
+
+@keyframes hero-spin {
+  to { transform: rotate(360deg); }
+}
+
+#hero-auth-loading {
+  text-align: center;
+  margin-top: 20px;
+}

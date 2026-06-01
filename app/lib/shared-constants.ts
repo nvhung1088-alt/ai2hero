@@ -8,6 +8,7 @@ import {
   Zap,
   Crown,
   Building2,
+  Video,
   type LucideIcon
 } from 'lucide-react';
 
@@ -35,6 +36,7 @@ export const APP_ICON_MAP: Record<string, LucideIcon> = {
   sim: Smartphone,
   pos: ShoppingCart,
   content: FileText,
+  Video,
 };
 
 // PLAN_ICON gộp từ layout.tsx và dashboard/page.tsx

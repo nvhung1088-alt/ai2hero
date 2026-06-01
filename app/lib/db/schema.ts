@@ -509,6 +509,28 @@ export type NewExtensionToken = typeof extensionTokens.$inferInsert;
 export type ExtensionLinkCode = typeof extensionLinkCodes.$inferSelect;
 export type NewExtensionLinkCode = typeof extensionLinkCodes.$inferInsert;
 
+// ============================================================
+// HEROVIDEO MVP MODULE
+// ============================================================
 
+export const videoAssets = pgTable('video_assets', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 255 }).notNull(),
+  url: text('url').notNull(),
+  size: varchar('size', { length: 50 }),
+  mimeType: varchar('mime_type', { length: 100 }),
+  thumbnailUrl: text('thumbnail_url'),
+  status: varchar('status', { length: 20 }).notNull().default('active'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
 
+export const videoAssetsRelations = relations(videoAssets, ({ one }) => ({
+  team: one(teams, { fields: [videoAssets.teamId], references: [teams.id] }),
+  user: one(users, { fields: [videoAssets.userId], references: [users.id] }),
+}));
 
+export type VideoAsset = typeof videoAssets.$inferSelect;
+export type NewVideoAsset = typeof videoAssets.$inferInsert;

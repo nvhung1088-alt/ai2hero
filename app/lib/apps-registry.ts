@@ -42,6 +42,29 @@ export const APPS: AppDefinition[] = [
     ],
     targetUsers: 'Doanh nghiệp Retail, MMO, Ads Teams, Fintech, và các đội nhóm quản lý số lượng lớn tài khoản liên kết SIM.'
   },
+  {
+    id: 'herovideo',
+    name: 'HeroVideoDownload',
+    description: 'Quản lý tài nguyên video, tự động đồng bộ từ Extension. Thu thập hàng ngàn video sạch không logo.',
+    icon: 'Video',
+    path: '/herovideodownload/dashboard',
+    status: 'beta',
+    tier: 'free',
+    category: 'management',
+    color: 'from-pink-500 to-rose-400',
+    slogan: 'Ngân hàng nguyên liệu Video Tiktok/Douyin không giới hạn',
+    longDesc: 'Quản lý và tổ chức hàng ngàn video nguyên liệu chất lượng cao tải về từ TikTok, Douyin. Tự động đồng bộ với HeroVideo Extension, không còn rác, không còn watermark.',
+    features: [
+      'Đồng bộ hóa trực tiếp video từ Extension',
+      'Lọc video rác, video âm thanh ngay trên trình duyệt',
+      'Quản lý danh sách video nguyên liệu trực quan'
+    ],
+    benefits: [
+      'Tiết kiệm 80% thời gian tìm kiếm và tải nguyên liệu',
+      'Kho video sạch sẽ, quản lý tập trung, dễ dàng tái sử dụng'
+    ],
+    targetUsers: 'Content Creators, TikTokers, Affiliate Marketers, Video Editors.'
+  },
 ];
 
 // === Helper Functions ===

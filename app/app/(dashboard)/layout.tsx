@@ -97,7 +97,7 @@ function Header() {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isDashboardOrSim = pathname.startsWith('/dashboard') || pathname.startsWith('/sim');
+  const isDashboardOrSim = pathname.startsWith('/dashboard') || pathname.startsWith('/sim') || pathname.startsWith('/herovideodownload');
 
   return (
     <section className="flex flex-col min-h-screen">

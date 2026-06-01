@@ -4,11 +4,26 @@
 ## TRANG THAI
 Mode:         Build
 Ten du an:    AI2Hero Platform (Free AI MVP Super App)
+### 3. HeroVideo (MVP Mới - Ngân hàng nguyên liệu Video)
+- **Status:** `Beta`
+- **Mô tả:** Extension thu thập video không logo từ Tiktok/Douyin, tự động đồng bộ (sync) trực tiếp vào tài khoản AI2Hero.
+- **Tiến độ tích hợp:**
+  - `[x]` Tối giản giao diện Extension (Chỉ giữ Tải xuống, Xóa, Cài đặt).
+  - `[x]` Tích hợp luồng Login & Chọn Workspace trực tiếp trong Extension (dùng chung API Auth của HeroSim).
+  - `[x]` Nâng cấp UX: Thêm thanh Account Bar trên Extension & Trạng thái kết nối Extension trên Dashboard.
+  - `[x]` Tích hợp **Zero-Cost Local Web Player**: Ứng dụng HTML5 File System Access API để quét và phát trực tiếp các video `.mp4` nằm trong thư mục Downloads của Máy tính lên Web App.
+  - `[x]` Hỗ trợ Xóa đồng thời (Deep Delete): Cấp quyền `readwrite` cho phép xóa thẳng file trên máy tính.
+  - `[x]` Nâng cấp Local File Manager: Bỏ hoàn toàn query DB `video_assets`. Render mảng File object từ Folder.
+  - `[x]` Tự động đồng bộ Workspace: Web tự động truyền tên Workspace qua Ping-Pong, Extension tự động config thư mục tải về `Downloads/herovideo/ten-workspace`.
+  - `[x]` Tối ưu UX Badge: Rút gọn chỉ còn 2 trạng thái Đã kết nối / Chưa kết nối (Báo lỗi sai tài khoản). Sửa lỗi Type TypeScript và import Icon.
+  - `[x]` Loại bỏ hoàn toàn hardcode API địa chỉ `localhost:3000` của Extension khi xác thực và đồng bộ video sang Production URL `https://www.ai2hero.com`.
+  - `[x]` Tích hợp nút 1-click **Mở thư mục** (Open Folder) thông minh trên Web App Dashboard, kết nối trực tiếp với API của Extension thông qua cơ chế Content-Script Bridge.
 Tagline:      "AI biến bạn thành Hero"
 Domain:       ai2hero.com
-Phase:        1 — Xây dựng các MVP Apps (MVP Apps Phase)
+Phase:        1 — Xây dựng các MVP Apps & Extensions
 Tech stack:   Next.js 16 + React 19 + TypeScript + PostgreSQL + Drizzle ORM + Stripe + Tailwind CSS + shadcn/ui
-Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
+Extension:    herosim (v4.0.5), herovideo (v1.0.2 - Standalone Extension)
+Cap nhat HeroVideo: 2026-06-01 - Harden token bridge, validate sync API, chuan hoa cloud sync helper va folder UX.
 
 ## QUYET DINH DA CHOT
 - **Core concept**: Nền tảng Super App miễn phí chứa nhiều MVP (AI Chat, AI Hub, API Hub, HeroSim...). Đăng ký 1 tài khoản → dùng tất cả.
@@ -21,6 +36,7 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
 - **Quy trình AI**: Kế thừa 100% workflow từ UPCHAT (ai2hero start/plan/code/close).
 - **LESSONS**: Dùng chung file LESSONS.md toàn cục tại C:\Users\ADMIN\.gemini\LESSONS.md
 - **Tích hợp MVP mới**: Khi tích hợp một ứng dụng Mini-SaaS (MVP) mới vào hệ thống, BẮT BUỘC phải đọc và tuân thủ quy trình 5 giai đoạn tại [MVP_INTEGRATION_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/MVP_INTEGRATION_GUIDE.md).
+- **Định hướng herovideo**: Quyết định xây dựng `herovideo` dưới dạng **Extension Chrome thuần túy độc lập 100% (Hướng 2)**. Xử lý toàn bộ logic sniffing, download và ghép HLS bằng ffmpeg.wasm trực tiếp ở phía client (client-side) trong Extension, không đồng bộ dữ liệu lên máy chủ Next.js nhằm đảm bảo tính gọn nhẹ, bảo mật cao và 0đ chi phí vận hành server.
 
 ## TIÊU CHUẨN CÔNG NGHỆ MVP (CORE STANDARDS)
 > Nhằm đảm bảo hệ thống mở rộng đến hàng chục MVP nhưng vẫn duy trì được độ ổn định, BẮT BUỘC áp dụng các chuẩn sau cho mọi MVP:
@@ -39,6 +55,40 @@ Base repo:    github.com/nextjs/saas-starter (MIT License, miễn phí)
 - Sử dụng Next.js 15 App Router (Server Components & Server Actions).
 - Database: Drizzle ORM kết nối Supabase (Pooler mode port 6543 cho Production, Session mode port 5432 cho Migration).
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
+
+- **2026-06-01 (herovideo v1.0.2)**:
+  - 🛠️ **Sửa lỗi thiếu cấu hình thư mục lưu trữ & đồng bộ đám mây tải lẻ**:
+    - **Tự động gán Subfolder khi đăng nhập**: Tích hợp hàm `slugify` chuyển đổi tên Workspace sang slug an toàn. Tự động lưu `herovideo_subfolder: "HeroVideo/" + workspaceSlug` vào `chrome.storage.local` ngay khi đăng nhập trực tiếp từ popup. Bổ sung dọn dẹp key này khi Đăng xuất (logout).
+    - **Đồng bộ đám mây cho Tải lẻ**: Cập nhật hàm click của nút tải đơn `#download` lấy thêm `herovideo_token` từ storage và tự động kích hoạt `fetch` đồng bộ thông tin meta video lên API Endpoint `/api/video/extension/sync` trên server AI2Hero.
+- **2026-06-01 (herovideo v1.0.1)**:
+  - 🛠️ **Khắc phục lỗi tạo thư mục lưu trữ video**:
+    - Xử lý triệt để lỗi video lưu sai vị trí. Chèn cơ chế tự động đọc `herovideo_subfolder` bao quanh toàn bộ các lệnh gọi `chrome.downloads.download` (trong `downloader.js`, `background.js`, `m3u8.js`, `popup.js`). Mọi video tải từ HLS, Douyin, Popup, hay Auto-downloader đều được điều hướng chính xác về thư mục `HeroVideo/[workspaceSlug]`.
+    - UX Nút "Mở thư mục": Do Chrome chặn extension mở path tùy chỉnh, ứng dụng tự động gọi `chrome.downloads.showDefaultFolder()` kết hợp copy path vào Clipboard, giúp user nhảy nhanh vào thư mục chỉ bằng 1 lệnh Paste.
+
+- **2026-06-01 (herovideo v1.0.0 - Cat-Catch Core)**:
+  - 🚀 **Đập bỏ mã nguồn cũ, kế thừa 100% Cat-Catch**:
+    - **Kiến trúc mới**: Nhằm khắc phục triệt để các rào cản sniff link khó nhằn của YouTube/Facebook/Douyin mà không tốn hàng trăm giờ code lại, toàn bộ thư mục `herovideo` cũ đã được xóa bỏ và thay thế bằng phiên bản clone gốc của repository [xifangczy/cat-catch](https://github.com/xifangczy/cat-catch).
+    - **Rebranding thành Hero Video Assistant**: Đã can thiệp vào `manifest.json` và hệ thống ngôn ngữ `_locales` (8 ngôn ngữ) để đổi tên hiển thị từ "cat-catch" / "猫抓" thành "Hero Video Assistant", giữ nguyên sự đồng bộ với thương hiệu AI2Hero.
+    - **Tính năng nổi bật**: Giờ đây extension sở hữu bộ core sniffing cực kỳ đồ sộ với RegExp tối ưu, bắt được mọi luồng HLS/Dash, tải và ghép file mp4/m3u8 mượt mà, hỗ trợ Regex Filter và Catch-script bypass.
+
+- **2026-05-31 (v4.0.5-development)**:
+  - 🛠️ **Chuyển cứng kết nối sang máy chủ Production chính thức**:
+    - **Loại bỏ môi trường Local**: Theo yêu cầu của user, loại bỏ hoàn toàn cơ chế ping tự động đến `localhost:3000`. Extension giờ đây kết nối cứng trực tiếp tới `https://www.ai2hero.com` dưới mọi điều kiện hoạt động.
+    - **Bản phát hành**: Cập nhật `manifest.json` lên phiên bản `v4.0.5` sạch sẽ.
+
+- **2026-05-31 (v4.0.4-development)**:
+  - 🛠️ **Hoàn thành vá lỗi "Failed to fetch" khi bấm đồng bộ (Auto-fallback API)**:
+    - **Cơ chế tự động phát hiện API Endpoint**: Thay vì gán cứng địa chỉ `localhost:3000` cho unpacked extension khi chạy dưới dạng file cài đặt cục bộ, viết thêm cơ chế tự động ping nhanh `localhost:3000` trong 1 giây khi khởi động.
+    - **Tự động chuyển sang Production**: Nếu không kết nối được tới server local (connection refused / server local không chạy), Service Worker sẽ tự động fallback sang `https://www.ai2hero.com` một cách êm ái. Giúp người dùng có thể đồng bộ tức thì trên trang thật mà không cần chạy server cục bộ.
+    - **Bản phát hành**: Cập nhật `manifest.json` lên phiên bản `v4.0.4` sạch sẽ.
+
+- **2026-05-31 (v4.0.3-development)**:
+  - 🛠️ **Hoàn thành sửa lỗi văng phiên (F5/Sync) & Cơ chế chỉ khóa khi tắt trình duyệt**:
+    - **Bền bỉ qua F5/Reload**: Di chuyển `herosim_derived_key` từ `chrome.storage.session` sang `chrome.storage.local` giúp giữ trạng thái đăng nhập nguyên vẹn khi F5 popup hoặc reload extension.
+    - **Chỉ khóa khi tắt Chrome**: Bổ sung `chrome.runtime.onStartup` lắng nghe sự kiện khởi động trình duyệt để chủ động xóa `herosim_derived_key` và đưa trạng thái về `herosim_locked: true` chỉ khi toàn bộ trình duyệt khởi động lại.
+    - **Lưu trạng thái Chọn Workspace**: Tự động lưu `herosim_temp_auth` (chứa `tempToken`, `password`, `workspaces`) vào `chrome.storage.local` khi `LOGIN` thành công. Cập nhật `GET_STATE` trả về trạng thái `select_workspace` và khôi phục giao diện này trong `init()` của `popup.js` nếu popup bị đóng/mở hoặc F5 đột ngột. Xóa dữ liệu tạm khi hoàn thành `SELECT_WORKSPACE` hoặc bấm nút "Quay lại" (Back).
+    - **Nới lỏng bảo mật 401 khi Sync**: Đổi cơ chế tự động khóa vault (Lock) thô bạo khi server local trả về lỗi 401 sang chỉ ghi log warning để hỗ trợ tốt nhất triết lý Offline-first (người dùng vẫn có thể xem/copy mật khẩu đã cache local khi server gặp sự cố hoặc token hết hạn).
+    - **Bản phát hành**: Cập nhật `manifest.json` lên phiên bản `v4.0.3` sạch sẽ.
 
 - **2026-05-31 (v4.0.1-development)**:
   - 🛠️ **Hoàn thành tích hợp đồng bộ hai chiều (2-way Sync) & Nâng cấp Brand Logo đặc trưng cho HeroSim**:

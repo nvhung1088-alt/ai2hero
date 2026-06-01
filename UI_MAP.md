@@ -25,6 +25,7 @@ graph TB
             SIM[HeroSim<br>/sim/dashboard]
             POS[POS<br>/dashboard/pos]
             CONTENT[Content Hub<br>/dashboard/content]
+            VIDEO[HeroVideo<br>/herovideodownload/dashboard]
         end
     end
 
@@ -189,6 +190,15 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Đọc/Ghi data**:
   - **Đọc**: Đọc danh sách nhân viên qua `getSimEmployees`, platforms qua `getSimPlatforms`, system settings qua Server Action `getSystemSetting`, và cấu hình backup qua `getBackupConfig`.
   - **Ghi**: Thêm/sửa nhân viên qua `createSimEmployee`/`updateSimEmployee`, platforms qua `createSimPlatformAction`/`deleteSimPlatformAction`, cấu hình hệ thống qua `saveSystemSetting`, lưu backup qua `saveBackupConfigAction`, và trigger gửi backup thủ công qua `triggerManualBackupAction`.
+
+### HeroVideo Dashboard (`/herovideodownload/dashboard`)
+- **Chức năng**: Giao diện bảng điều khiển tải video không logo. Hỗ trợ Zero-Cost Local Web Player để quét và phát trực tiếp các video đã tải xuống thông qua File System Access API.
+  - **Nút Mở thư mục 1-Click thông minh**: Tự động sao chép đường dẫn thư mục `Downloads/herovideo/workspace-slug` vào Clipboard và phát đi tín hiệu `HERO_VIDEO_OPEN_FOLDER` qua `window.postMessage` giúp Extension mở thư mục của hệ thống ngay lập tức.
+  - **Duyệt video offline 0s độ trễ**: Render danh sách video trực tiếp từ Folder local của người dùng mà không cần query cơ sở dữ liệu.
+- **Vai trò**: MVP App (Offline-first & Local Storage)
+- **Đọc/Ghi data**: Đọc/ghi các tệp video trực tiếp từ File System của máy tính cá nhân. Đồng bộ danh sách video lên máy chủ AI2Hero qua API của Extension.
+- **Liên kết**: → /dashboard, nút "📂 Mở thư mục"
+
 
 
 
