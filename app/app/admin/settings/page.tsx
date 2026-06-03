@@ -29,6 +29,7 @@ const AVAILABLE_APPS = [
   { id: 'pos', name: 'POS Bán hàng' },
   { id: 'content', name: 'Content Hub' },
   { id: 'herovideo', name: 'HeroVideo' },
+  { id: 'connect-hub', name: 'Connect Hub' },
 ];
 
 export default function AdminSettingsPage() {

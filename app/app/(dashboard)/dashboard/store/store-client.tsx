@@ -99,10 +99,10 @@ const SimManagerMockup = () => {
 interface StoreClientProps {
   user: any;
   teams: any[];
-  billingPlans: any[];
+  billingPlans?: any[];
 }
 
-export function StoreClient({ user, teams: initialTeams, billingPlans }: StoreClientProps) {
+export function StoreClient({ user, teams: initialTeams, billingPlans = [] }: StoreClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof CATEGORY_INFO>('all');
   const [teams, setTeams] = useState(initialTeams);
@@ -177,8 +177,8 @@ export function StoreClient({ user, teams: initialTeams, billingPlans }: StoreCl
     setIsPlanLimitError(false);
 
     // Check plan limits
-    const planConfig = billingPlans.find(
-      (p) => p.name.toLowerCase() === (team.planName || 'free').toLowerCase()
+    const planConfig = (billingPlans || []).find(
+      (p) => p.name?.toLowerCase() === (team.planName || 'free').toLowerCase()
     );
 
     if (planConfig && !planConfig.allowedApps.includes(selectedApp.id)) {

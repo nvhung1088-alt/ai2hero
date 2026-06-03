@@ -11,7 +11,7 @@ interface VideoListClientProps {
 }
 
 function VideoGrid({ workspaceSlug }: VideoListClientProps) {
-  const { hasPermission, dirHandle, requestPermission, verifyExistingPermission, getAllVideoFiles, deleteVideoFile } = useFileSystem();
+  const { hasPermission, dirHandle, folderName, requestPermission, verifyExistingPermission, getAllVideoFiles, deleteVideoFile } = useFileSystem();
   const [files, setFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
@@ -129,17 +129,24 @@ function VideoGrid({ workspaceSlug }: VideoListClientProps) {
   };
 
   const handleOpenFolder = async () => {
-    const folderPath = `HeroVideo\\${workspaceSlug}`;
+    // Chỉ fallback về workspaceSlug nếu chưa có kết nối Folder
+    const displayFolderName = folderName || workspaceSlug;
 
-      try {
-      await navigator.clipboard?.writeText(folderPath);
-      showToast('Đã copy tên thư mục Workspace. Extension sẽ tạo/mở đúng thư mục Workspace.', 'success');
+    try {
+      await navigator.clipboard?.writeText(displayFolderName);
+      showToast(`Đã copy tên thư mục Workspace: ${displayFolderName}. Extension sẽ mở đúng thư mục này.`, 'success');
     } catch (error) {
       console.warn('Clipboard copy failed:', error);
     }
 
-    window.postMessage({ type: 'HERO_VIDEO_ENSURE_WORKSPACE_FOLDER', workspaceSlug, open: true }, window.location.origin);
+    window.postMessage({ type: 'HERO_VIDEO_OPEN_FOLDER', workspaceSlug, customSubfolder: folderName || undefined, open: true }, window.location.origin);
   };
+
+  useEffect(() => {
+    if (hasPermission && dirHandle) {
+      window.postMessage({ type: 'HERO_VIDEO_ENSURE_WORKSPACE_FOLDER', workspaceSlug, customSubfolder: dirHandle.name, open: false }, window.location.origin);
+    }
+  }, [hasPermission, dirHandle, workspaceSlug]);
 
   useEffect(() => {
     fetchFiles();
@@ -151,7 +158,7 @@ function VideoGrid({ workspaceSlug }: VideoListClientProps) {
         <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 px-4 mb-2">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-sm text-emerald-400 font-medium">Đã kết nối thư mục Workspace: {workspaceSlug}</span>
+            <span className="text-sm text-emerald-400 font-medium">Đã kết nối thư mục Workspace: {folderName || workspaceSlug}</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -174,6 +181,13 @@ function VideoGrid({ workspaceSlug }: VideoListClientProps) {
             >
               {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Quét'} video mới
             </button>
+            <button
+              onClick={requestPermission}
+              disabled={isLoading || isCleaning}
+              className="text-xs px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded transition-colors flex items-center gap-1 disabled:opacity-50 font-medium"
+            >
+              Đổi thư mục
+            </button>
           </div>
         </div>
       )}
@@ -185,8 +199,8 @@ function VideoGrid({ workspaceSlug }: VideoListClientProps) {
           <h3 className="text-lg font-bold text-white relative z-10">Kết nối thư mục Workspace</h3>
           <p className="text-sm text-zinc-400 max-w-md text-center mt-2 relative z-10">
             {dirHandle
-              ? `Bạn đã kết nối thư mục trước đó. Hãy xác nhận lại quyền truy cập thư mục Workspace: ${workspaceSlug}.`
-              : `Để đọc/xóa video đúng Workspace, hãy chọn trực tiếp thư mục Workspace "${workspaceSlug}" trong Downloads/HeroVideo.`}
+              ? `Bạn đã kết nối thư mục trước đó. Hãy xác nhận lại quyền truy cập thư mục Workspace: ${folderName || workspaceSlug}.`
+              : `Lưu ý quan trọng: Vui lòng vào thư mục Downloads của máy tính, vào thư mục "HeroVideo" và tạo (hoặc chọn) đúng thư mục có tên "${workspaceSlug}" để làm Workspace. Extension chỉ có thể tải file vào bên trong Downloads/HeroVideo/ do bảo mật của Chrome.`}
           </p>
           <div className="flex items-center gap-3 mt-4 relative z-10">
             {dirHandle ? (
@@ -218,7 +232,7 @@ function VideoGrid({ workspaceSlug }: VideoListClientProps) {
 
       {hasPermission && files.length === 0 && !isLoading && (
         <div className="text-center py-12 text-zinc-500 border border-dashed border-zinc-800 rounded-xl">
-          Chưa có video nào trong thư mục <b>{workspaceSlug}</b>. <br /> Hãy dùng Extension để tải video về.
+          Chưa có video nào trong thư mục <b>{folderName || workspaceSlug}</b>. <br /> Hãy dùng Extension để tải video về.
         </div>
       )}
 

@@ -22,7 +22,6 @@ export function ExtensionStatusBadge({ teamId, workspaceSlug }: { teamId: number
            setStatus('wrong_team');
         } else {
            setStatus('connected');
-           window.postMessage({ type: 'HERO_VIDEO_ENSURE_WORKSPACE_FOLDER', workspaceSlug, open: false }, window.location.origin);
         }
       }
     };

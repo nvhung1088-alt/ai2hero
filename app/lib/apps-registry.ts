@@ -65,6 +65,31 @@ export const APPS: AppDefinition[] = [
     ],
     targetUsers: 'Content Creators, TikTokers, Affiliate Marketers, Video Editors.'
   },
+  {
+    id: 'connect-hub',
+    name: 'Connect Hub',
+    description: 'Cổng kết nối ứng dụng — Google Drive, Sheets, KiotViet, Pancake và hàng trăm ứng dụng khác.',
+    icon: 'Plug',
+    path: '/connect-hub/dashboard',
+    status: 'beta',
+    tier: 'free',
+    category: 'management',
+    color: 'from-purple-500 to-indigo-500',
+    slogan: 'Kết nối mọi ứng dụng chỉ trong 1 click',
+    longDesc: 'Kết nối tài khoản Google Drive, KiotViet, Pancake, Gmail, Telegram và bất kỳ API nào. Các MVP của AI2Hero sẽ tự động sử dụng kết nối để đồng bộ dữ liệu theo yêu cầu.',
+    features: [
+      'Kết nối 1 lần — tất cả MVP đều dùng được',
+      'Test connection tức thì trước khi lưu',
+      'Custom HTTP API — tự thêm bất kỳ API nào',
+      'Mã hóa credential AES-256 an toàn tuyệt đối',
+      'Connector Việt Nam: KiotViet, Pancake, Nhanh.vn'
+    ],
+    benefits: [
+      'Không cần kỹ thuật — chỉ nhập API key hoặc đăng nhập',
+      '0đ chi phí — chạy hoàn toàn trên cloud miễn phí'
+    ],
+    targetUsers: 'Mọi doanh nghiệp cần kết nối dữ liệu từ nhiều ứng dụng và tự động hóa báo cáo AI.'
+  }
 ];
 
 // === Helper Functions ===

@@ -53,14 +53,13 @@ function openDownloadWhenComplete(downloadId, sendResponse) {
     chrome.downloads.onChanged.addListener(listener);
 }
 
-function ensureWorkspaceFolder(workspaceSlug, openFolder, sendResponse) {
-    const safeSlug = sanitizeWorkspaceSlug(workspaceSlug);
-    if (!safeSlug) {
-        sendResponse?.({ ok: false, error: "missing_workspace_slug" });
+function ensureWorkspaceFolder(subfolderPath, openFolder, sendResponse) {
+    if (!subfolderPath) {
+        sendResponse?.({ ok: false, error: "missing_subfolder_path" });
         return;
     }
 
-    const filename = `HeroVideo/${safeSlug}/${AI2HERO_FOLDER_MARKER}`;
+    const filename = `${subfolderPath}/${AI2HERO_FOLDER_MARKER}`;
     const markerText = "AI2Hero folder marker. Safe to keep.";
     const url = "data:text/plain;charset=utf-8," + encodeURIComponent(markerText);
 
@@ -77,7 +76,7 @@ function ensureWorkspaceFolder(workspaceSlug, openFolder, sendResponse) {
 
         chrome.storage.local.get([AI2HERO_MARKER_DOWNLOADS_KEY], function (res) {
             const markers = res[AI2HERO_MARKER_DOWNLOADS_KEY] || {};
-            markers[safeSlug] = downloadId;
+            markers[subfolderPath] = downloadId;
             chrome.storage.local.set({ [AI2HERO_MARKER_DOWNLOADS_KEY]: markers });
         });
 
@@ -395,7 +394,8 @@ chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
 
     // [AI2HERO] Mở thư mục download mặc định của Chrome
     if (Message.Message == "ensureWorkspaceFolder") {
-        ensureWorkspaceFolder(Message.workspaceSlug, Boolean(Message.open), sendResponse);
+        const targetPath = Message.subfolderPath || Message.workspaceSlug;
+        ensureWorkspaceFolder(targetPath, Boolean(Message.open), sendResponse);
         return true;
     }
 
@@ -403,16 +403,15 @@ chrome.runtime.onMessage.addListener(function (Message, sender, sendResponse) {
         try {
             chrome.storage.local.get(['herovideo_subfolder'], function(res) {
                 const subfolder = res.herovideo_subfolder || "";
-                const workspaceSlug = subfolder.split('/').filter(Boolean).pop();
-                if (workspaceSlug) {
-                    ensureWorkspaceFolder(workspaceSlug, true, sendResponse);
+                if (subfolder) {
+                    ensureWorkspaceFolder(subfolder, true, sendResponse);
                     return;
                 }
                 chrome.downloads.showDefaultFolder();
                 sendResponse("ok");
             });
         } catch (err) {
-            console.error("Lỗi khi mở thư mục mặc định:", err);
+            console.error("Error opening default folder:", err);
             sendResponse("error");
         }
         return true;

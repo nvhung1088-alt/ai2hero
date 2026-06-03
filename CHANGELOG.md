@@ -1,5 +1,105 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-02 — Mở rộng Năng lực API Pancake POS phục vụ Kế toán & Kinh doanh (Connect Hub Lite)
+- **Tích hợp 4 Nhóm Nghiệp vụ Nâng cao**: Bổ sung các nhóm "Kế toán / Thuế", "Báo cáo & Chiến lược", "Marketing & Bán hàng", và "Quản lý tồn kho" bên cạnh 4 nhóm cơ bản ban đầu (Cửa hàng, Đơn hàng, Kho hàng, Địa lý).
+- **Thiết lập 10 Năng lực API Chuyên nghiệp**: Thiết kế chi tiết các tác vụ nghiệp vụ gồm:
+  - *Kế toán / Thuế*: Báo cáo doanh thu kế toán, Đối soát thanh toán (COD/Bank/Cash), Tổng hợp hóa đơn VAT.
+  - *Báo cáo & Chiến lược*: Top sản phẩm bán chạy/chậm, Hiệu suất kênh bán hàng, Phân tích RFM khách hàng, Báo cáo biên lợi nhuận sản phẩm.
+  - *Marketing & Bán hàng*: Lên kế hoạch xả hàng tồn kho, Sinh nội dung marketing tự động, Danh sách remarketing win-back.
+  - *Quản lý tồn kho*: Xem tồn kho theo kho/vị trí, Kiểm tra chênh lệch phát hiện thất thoát, Cảnh báo điểm đặt hàng lại (Reorder Point).
+- **Cấu trúc hướng dẫn AI (`aiInstruction`)**: Mô tả chính xác bằng ngôn ngữ tự nhiên tối ưu hóa cao cho AI. Hướng dẫn chi tiết từng bước truy vấn, kết hợp Server Actions (get_orders, get_products, get_warehouses...), tính toán số học phức tạp (biên lợi nhuận gộp, điểm RFM, Reorder Point lý thuyết) và kết xuất bảng dữ liệu chuẩn VNĐ.
+- **Nghiệm thu Hệ thống**: Đồng bộ thành công cấu trúc dữ liệu trong `mapping-manager-client.tsx` lên 8 nhóm chính thức và biên dịch thành công 100% không lỗi.
+
+## 2026-06-02 — Thiết lập cấu trúc Data Mapper chung và Tích hợp Normalization (Connect Hub Lite)
+- **Tạo mới Standard Interfaces (`types.ts`)**: Định nghĩa cấu trúc dữ liệu E-commerce/POS chuẩn hóa toàn cục gồm `StandardCustomer`, `StandardProduct`, và `StandardOrder` để đảm bảo tính đồng nhất cho toàn hệ thống AI2Hero.
+- **Xây dựng Data Mapper Pattern (`mapper.ts`)**: Hiện thực hóa bộ lọc ánh xạ an toàn chuyển đổi dữ liệu thô của Pancake POS API (`list_orders`, `list_products`, `list_customers`) sang các Standard Interfaces.
+- **Vá lỗi Toán tử Logical OR đối với Số**: Áp dụng triệt để toán tử nullish coalescing (`??`) thay vì logical OR (`||`) cho các trường số (price, quantity, totalAmount, discount) để bảo vệ giá trị `0` trong kinh doanh không bị ghi đè bởi fallbacks.
+- **Tích hợp Server Action `runActionAction`**: Bổ sung cờ tùy chọn `normalize?: boolean` vào Server Action. Khi bật, tự động chuẩn hóa dữ liệu trả về thông qua hàm `normalizeData`. Đảm bảo backward compatibility 100% cho các call sites và hệ thống lưu log.
+- **Nghiệm thu Chất lượng**: Typecheck tĩnh `tsc --noEmit` hoàn tất thành công đạt **0 errors** và **0 warnings** trên toàn hệ thống.
+
+## 2026-06-02 — Tích hợp sâu kết nối API thật cho Pancake POS (Connect Hub Lite)
+- **Triển khai Logic Gọi API Thật**: Viết mới 100% runner `runPancakePos` tại [pancake-pos.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/connectors/runners/pancake-pos.ts) để gọi API thật của `pos.pages.fm` thay thế dữ liệu Mock giả lập.
+- **Action Lấy Đơn Hàng (`list_orders`)**: Gọi endpoint `GET /shops/{shopId}/orders?api_key={apiKey}` lấy dữ liệu đơn hàng thật và trả về mảng danh sách trơn tru.
+- **Action Lấy Khách Hàng (`list_customers`)**: Gọi endpoint `GET /shops/{shopId}/customers?api_key={apiKey}` trích xuất danh bạ CRM khách hàng thật.
+- **Action Lấy Sản Phẩm (`list_products`)**: Bổ sung endpoint `GET /shops/{shopId}/products?api_key={apiKey}` lấy thông tin chi tiết danh sách sản phẩm từ Pancake POS.
+- **Action Tạo Đơn Hàng (`create_order`)**: Gọi endpoint `POST /shops/{shopId}/orders?api_key={apiKey}` với payload JSON được mapping linh hoạt cả snake_case và camelCase từ input, đi kèm fallback giá trị mặc định để chống lỗi 400.
+- **Bảo mật & Error Handling**: Bọc try/catch toàn bộ các tác vụ mạng để dịch thông điệp HTTP Status code lỗi thành thông báo tiếng Việt thân thiện, chống crash server.
+- **Nghiệm thu Biên dịch**: Chạy `pnpm build` tại thư mục `/app` biên dịch thành công xuất sắc đạt **0 errors** trên toàn hệ thống 38 routes của AI2Hero Platform.
+
+## 2026-06-02 — Cải tiến UI API Connection Modal & Tích hợp API Capabilities (Connect Hub Lite)
+- **Tái cấu trúc API Connection Modal**: Thiết lập cấu trúc `flex-col max-h-[90vh] overflow-hidden` cho Modal Container, giúp Header và Footer cố định (`shrink-0`), còn Body hỗ trợ cuộn dọc độc lập (`flex-1 overflow-y-auto`). Giải quyết triệt để lỗi tràn layout trên mobile/màn hình nhỏ.
+- **Khắc phục lỗi đè z-index (z-index collision)**: Sửa z-index trên Modal Wrapper trong [apps-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/connect-hub/apps/apps-client.tsx) từ `z-50` lên `z-[100]`, giúp Modal nằm đè lên trên thanh TopHeader (`z-50` sticky) của Dashboard, giải quyết triệt để lỗi che khuất tiêu đề và nút đóng "X" ở phần Header của modal.
+- **Hiển thị API Capabilities**: Tích hợp danh sách các actions hỗ trợ (`selectedApp.actions`) ngay trong Modal Body bên dưới tên kết nối gợi nhớ. Render dạng Grid Card Dark Mode tinh xảo với visual feedback đẹp mắt, giúp người dùng nắm bắt khả năng API ngay lập tức.
+- **Vá lỗi TypeScript cản trở compile**:
+  - Sửa lỗi trong `apps-client.tsx` do check filter category `'vietnam'` không tồn tại trên `ConnectorDefinition`.
+  - Sửa lỗi trong [google-drive.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/connectors/definitions/google-drive.ts) do gán sai `authType` thành `'oauth2_manual'` thay vì `'oauth2'` hợp lệ.
+  - Sửa lỗi trong [pancake-pos.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/connectors/definitions/pancake-pos.ts) do gán `category` thành `'sales'` thay vì `'pos'` hợp lệ.
+- **Nghiệm thu Biên dịch**: Chạy `pnpm build` tại thư mục `/app` biên dịch thành công xuất sắc đạt **0 errors** trên toàn hệ thống 38 routes của AI2Hero Platform.
+
+## 2026-06-02 — Fix Bug Khẩn cấp (Hotfix): Lỗi kẹt Loading Drizzle Pooler & Date Serialization
+- **Sửa Lỗi Kẹt Loading Vô tận (Connection Pool Exhaustion)**: Tăng `max` connection từ 1 lên 5 và giảm `idle_timeout` xuống 1 trong `drizzle.ts` ở môi trường dev để tránh tắc nghẽn queue gây hiệu ứng thắt cổ chai treo ngầm toàn bộ ứng dụng.
+- **Sửa Lỗi Date Serialization Drizzle (RSC Crash)**: Khắc phục lỗi `TypeError: Received an instance of Date` do việc lồng Date object vào `sql\`` ở `getConnectionStats`. Đã đổi sang toán tử `gte()` chuẩn của Drizzle ORM.
+- **Bổ sung Kiến Thức**: Đã cập nhật Bài học 16.6 vào `LESSONS.md` lưu trữ hiện tượng kẹt loading do Supabase Transaction Pooler timeout.
+
+## 2026-06-02 — Hoàn thành Tích hợp Cổng Kết nối API Trung tâm "Connect Hub Lite" (MVP Mới)
+- **Thiết lập Cơ sở dữ liệu & Tự động Migration**:
+  - Định nghĩa hai bảng Drizzle ORM mới: `connectHubConnections` (lưu trữ thông tin cấu hình API, mã hóa đối xứng AES-256-GCM) và `connectHubUsageLogs` (nhật ký thực thi) trong [schema.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/schema.ts).
+  - Chạy di trú dữ liệu `pnpm db:push` thành công lên Supabase PostgreSQL Production.
+- **Xây dựng Connector Registry & Types**:
+  - Tạo file [types.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/connectors/types.ts) quy định cấu trúc TypeScript của Connector Definition, Auth Fields và Action Input Fields.
+  - Định nghĩa chi tiết cấu trúc cho 5 connectors ban đầu: `Custom HTTP API`, `KiotViet` (POS Việt Nam), `Google Sheets`, `Gmail`, và `Telegram`.
+  - Biên soạn file [registry.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/connectors/registry.ts) làm trung tâm đăng ký và export mảng `ALL_CONNECTORS` toàn cục.
+- **Hiện thực hóa Runner Logic & Engine**:
+  - Tích hợp logic gọi API thực tế cho [custom-http.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/connectors/runners/custom-http.ts) hỗ trợ các cơ chế xác thực đa dạng (Bearer Token, API Key Header, Basic Auth) với các request `GET`/`POST`.
+  - Tích hợp logic [kiotviet.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/connectors/runners/kiotviet.ts) tự động lấy access token qua OAuth client credentials trước khi truy vấn sản phẩm, đơn hàng hoặc khách hàng.
+  - Thiết lập bộ điều phối trung tâm [engine.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/connectors/engine.ts) hỗ trợ thực thi hành động API thực tế và giả lập (mock) phản hồi cho Sheets, Gmail, Telegram phục vụ kiểm thử UI mượt mà.
+- **Xây dựng Queries & Server Actions**:
+  - Viết các hàm lấy dữ liệu scoped chặt chẽ theo `teamId` (Multi-tenant isolation) tại [connect-hub-queries.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/connect-hub-queries.ts).
+  - Tạo các Server Actions chính tại [connect-hub-actions.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/connect-hub-actions.ts):
+    - `createConnectionAction`: mã hóa toàn bộ dữ liệu credentials nhạy cảm của người dùng sang chuỗi JSON và bảo mật bằng thuật toán AES-256-GCM.
+    - `testConnectionAction`: giải mã credentials và thực hiện ping kiểm thử API thực tế trước khi lưu kết nối.
+    - `runActionAction`: giải mã thông tin, thực thi hành động API, ghi nhận thời gian thực hiện (`durationMs`) và lưu vào bảng log.
+- **Đăng ký MVP và phân quyền Admin**:
+  - Đăng ký Connect Hub trong danh sách ứng dụng chính thức tại [apps-registry.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/apps-registry.ts).
+  - Tích hợp `connect-hub` vào mảng `AVAILABLE_APPS` ở trang cấu hình Admin Settings tại [page.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/admin/settings/page.tsx), cho phép Super Admin điều chỉnh kích hoạt ứng dụng trên từng gói cước.
+- **Triển khai API Routes Gateway**:
+  - Thiết lập API Route [route.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/api/connect-hub/run-action/route.ts) nhận request `POST /api/connect-hub/run-action` để các MVP ứng dụng khác trong AI2Hero gọi hành động kết nối on-demand.
+  - Thiết lập API Route [route.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/api/connect-hub/connections/route.ts) cung cấp danh sách kết nối hiện có, đã được che mờ (mask) và dọn sạch credentials nhạy cảm để đảm bảo an toàn tuyệt đối.
+- **Tích hợp giao diện UI Premium**:
+  - Thiết kế Server Component layout tại [layout.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/connect-hub/layout.tsx) bọc các trang con, tích hợp `TopHeader` dùng chung và liên kết Không gian hoạt động.
+  - Tạo Client Component điều hướng [connect-hub-sidebar-menu.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/connect-hub/connect-hub-sidebar-menu.tsx) sử dụng `usePathname` để làm nổi bật trang hiện tại mượt mà.
+  - Thiết kế trang Dashboard tại [page.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/connect-hub/dashboard/page.tsx) hiển thị các thông tin: 4 thẻ Stats Cards, danh sách 5 kết nối tích hợp mới nhất và 5 logs sử dụng API gần nhất kèm lối tắt.
+  - Xây dựng trang App Store [apps-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/connect-hub/apps/apps-client.tsx) hỗ trợ lọc danh mục Pill Cards, tìm kiếm động và popup **Dynamic Connect Modal** nhập cấu hình credentials, hỗ trợ nút "Kiểm thử kết nối" và "Lưu kết nối" liên kết trực tiếp với các Server Actions.
+  - Xây dựng trang Connections Manager [connections-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/connect-hub/connections/connections-client.tsx) hỗ trợ inline ping-test triggers, slide-over details drawer và Premium Glassmorphism Delete Confirmation Modal.
+  - Xây dựng trang nhật ký Logs Viewer [logs-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/(dashboard)/connect-hub/logs/logs-client.tsx) hỗ trợ phân trang mượt mà (15 dòng/trang), tìm kiếm thời gian thực, bộ lọc theo trạng thái và tooltip hiển thị bong bóng popup báo lỗi chi tiết khi gọi API ngoài lỗi.
+- **Kiểm định Sản xuất (TSC & Production Build)**:
+  - Sửa lỗi TypeScript import path trong `apps-client.tsx` trỏ chính xác về `@/lib/connect-hub/connectors/types`.
+  - Thực hiện build sản xuất Next.js thành công xuất sắc đạt **0 errors** trên toàn bộ 38 routes Next.js!
+- **Tài liệu hệ thống**:
+  - Đồng bộ và mô tả chi tiết 4 trang con Connect Hub đầy đủ chức năng, data flow, links vào [UI_MAP.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/UI_MAP.md).
+  - Cập nhật trạng thái và tiến độ chi tiết của MVP Connect Hub Lite vào file [START.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/START.md).
+
+## 2026-06-01 — Hoàn tác Tính Năng Chọn Thư Mục Tự Do & Khôi Phục Ràng Buộc HeroVideo/
+- **Hoàn tác Chọn Thư Mục Tự Do (Dashboard & UI)**:
+  - Khôi phục kiểm tra tên thư mục nghiêm ngặt trong `file-system-context.tsx`, bắt buộc tên thư mục được kết nối trên đĩa phải trùng khớp 100% với `workspaceSlug` hiện tại. Nếu chọn sai thư mục sẽ hiển thị Alert cảnh báo chi tiết và từ chối cấp quyền.
+  - Cập nhật UI hướng dẫn kết nối folder tại `video-list-client.tsx` chỉ dẫn rõ ràng người dùng vào thư mục `Downloads/`, tìm tới `HeroVideo` và tạo hoặc chọn đúng thư mục trùng tên workspace để kết nối.
+- **Khôi phục Tiền tố "HeroVideo/" trong Extension**:
+  - Khôi phục tiền tố `"HeroVideo/"` trong storage `herovideo_subfolder` khi Đăng nhập/Chọn Workspace trong `ai2hero-auth.js`.
+  - Khôi phục và đảm bảo tiền tố `"HeroVideo/"` luôn được tự động thêm vào trước tên folder khi đồng bộ hoặc mở thư mục qua `content-script.js`, đảm bảo tất cả video tải về luôn nằm gọn gàng bên trong `Downloads/HeroVideo/[workspaceSlug]`, tránh làm rác thư mục Downloads chung của người dùng.
+- **Duy trì Bản Vá Lỗi Ổn Định**:
+  - Giữ vững cơ chế chống F5 spam tải file rác (chỉ đồng bộ config ngầm bằng `HERO_VIDEO_ENSURE_WORKSPACE_FOLDER`, chỉ mở thư mục khi click active bằng `HERO_VIDEO_OPEN_FOLDER`).
+  - Loại bỏ hoàn toàn dòng lệnh `setFolderName` thừa gây lỗi crash runtime trước đó.
+- **Biên Dịch & Nghiệm Thu**:
+  - Xác thực biên dịch sản xuất `pnpm build` thành công xuất sắc đạt **0 errors** trên toàn bộ 36 routes Next.js!
+
+## 2026-06-01 — Hoàn thành Sửa lỗi Dùng chung Workspace & Khắc phục Gating Giới hạn Gói Pro
+- **Sửa lỗi dùng chung dữ liệu Workspace**:
+  - Nâng cấp hàm `getTeamForUser()` tại `app/lib/db/queries.ts` để đọc và ưu tiên lấy `activeTeamId` từ cookie người dùng trước khi fallback về workspace đầu tiên, giải quyết triệt để lỗi chuyển workspace trên UI nhưng Settings & Members vẫn hiển thị workspace cũ.
+- **Khắc phục lỗi Gating Workspace hạn chế Pro**:
+  - Cập nhật Server Action `createWorkspaceAction` tại `app/app/(login)/actions.ts` sử dụng `DEFAULT_BILLING_PLANS` làm fallback khi DB setting bị thiếu trường `maxOwnedWorkspaces`, cho phép các tài khoản Pro (như `test@test.com`) tạo đầy đủ tối đa 5 workspace như thiết kế.
+- **Đẩy thành công mã nguồn lên Server (Auto-deploy Production)**:
+  - Xác thực build thành công (`pnpm build` pass) và thực hiện deploy trực tiếp thông qua các lệnh Git (`git add`, `git commit`, `git push`) lên remote main branch, kích hoạt Vercel auto-deploy trên `www.ai2hero.com`.
+
 ## 2026-06-01 — Hoàn thành Sửa đổi API Production & Tích hợp Mở Thư Mục 1-Click thông minh cho HeroVideo
 - **Loại bỏ Lỗi Hardcode API (Production Ready)**:
   - Thay đổi toàn bộ các endpoint cứng `http://localhost:3000` của Extension sang `https://www.ai2hero.com` tại các file `ai2hero-auth.js` (luồng đăng nhập và chọn Workspace) và `popup.js` (luồng đồng bộ video lên Cloud). Sẵn sàng cho việc đóng gói và xuất bản chính thức (Production).

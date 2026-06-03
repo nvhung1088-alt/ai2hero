@@ -534,3 +534,75 @@ export const videoAssetsRelations = relations(videoAssets, ({ one }) => ({
 
 export type VideoAsset = typeof videoAssets.$inferSelect;
 export type NewVideoAsset = typeof videoAssets.$inferInsert;
+
+// ============================================================
+// CONNECT HUB MVP MODULE
+// ============================================================
+
+export const connectHubConnections = pgTable('connect_hub_connections', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  appSlug: varchar('app_slug', { length: 100 }).notNull(),
+  appName: varchar('app_name', { length: 255 }).notNull(),
+  connectionName: varchar('connection_name', { length: 255 }).notNull(),
+  authType: varchar('auth_type', { length: 50 }).notNull(),
+  // Credential mã hóa AES-256-GCM — KHÔNG BAO GIỜ lưu plaintext
+  encryptedCredentials: text('encrypted_credentials').notNull(),
+  status: varchar('status', { length: 50 }).default('connected').notNull(),
+  usedByModules: jsonb('used_by_modules').default('[]'),
+  lastTestedAt: timestamp('last_tested_at'),
+  lastUsedAt: timestamp('last_used_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const connectHubUsageLogs = pgTable('connect_hub_usage_logs', {
+  id: serial('id').primaryKey(),
+  connectionId: integer('connection_id').notNull().references(() => connectHubConnections.id, { onDelete: 'cascade' }),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  callerModule: varchar('caller_module', { length: 100 }),
+  appSlug: varchar('app_slug', { length: 100 }),
+  actionName: varchar('action_name', { length: 255 }),
+  status: varchar('status', { length: 50 }).notNull(),
+  durationMs: integer('duration_ms'),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// --- Relations ---
+export const connectHubConnectionsRelations = relations(connectHubConnections, ({ one, many }) => ({
+  team: one(teams, { fields: [connectHubConnections.teamId], references: [teams.id] }),
+  user: one(users, { fields: [connectHubConnections.userId], references: [users.id] }),
+  usageLogs: many(connectHubUsageLogs),
+}));
+
+export const connectHubUsageLogsRelations = relations(connectHubUsageLogs, ({ one }) => ({
+  team: one(teams, { fields: [connectHubUsageLogs.teamId], references: [teams.id] }),
+  connection: one(connectHubConnections, { fields: [connectHubUsageLogs.connectionId], references: [connectHubConnections.id] }),
+}));
+
+// --- Types ---
+export type ConnectHubConnection = typeof connectHubConnections.$inferSelect;
+export type NewConnectHubConnection = typeof connectHubConnections.$inferInsert;
+export type ConnectHubUsageLog = typeof connectHubUsageLogs.$inferSelect;
+export type NewConnectHubUsageLog = typeof connectHubUsageLogs.$inferInsert;
+
+export const connectHubMappingConfigs = pgTable('connect_hub_mapping_configs', {
+  id: serial('id').primaryKey(),
+  appSlug: varchar('app_slug', { length: 100 }).notNull(),
+  teamId: integer('team_id').references(() => teams.id, { onDelete: 'cascade' }),
+  config: jsonb('config').notNull().default('{}'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  appTeamIdx: uniqueIndex('connect_hub_mapping_configs_app_team_idx').on(table.appSlug, table.teamId),
+}));
+
+export const connectHubMappingConfigsRelations = relations(connectHubMappingConfigs, ({ one }) => ({
+  team: one(teams, { fields: [connectHubMappingConfigs.teamId], references: [teams.id] }),
+}));
+
+export type ConnectHubMappingConfig = typeof connectHubMappingConfigs.$inferSelect;
+export type NewConnectHubMappingConfig = typeof connectHubMappingConfigs.$inferInsert;
+

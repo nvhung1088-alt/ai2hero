@@ -69,6 +69,7 @@ function idbSet(key: string, val: unknown): Promise<void> {
 interface FileSystemContextType {
   hasPermission: boolean;
   dirHandle: WorkspaceDirectoryHandle | null;
+  folderName: string | null;
   requestPermission: () => Promise<void>;
   verifyExistingPermission: () => Promise<boolean>;
   getAllVideoFiles: () => Promise<File[]>;
@@ -115,9 +116,11 @@ export function FileSystemProvider({
 
   const isExpectedWorkspaceFolder = useCallback(
     (handle: WorkspaceDirectoryHandle) => {
-      if (handle.name === workspaceSlug) return true;
-      alert(`Hay chon dung thu muc workspace: ${workspaceSlug}`);
-      return false;
+      if (handle.name !== workspaceSlug) {
+        alert(`Vui lòng chọn đúng thư mục của Workspace này: "${workspaceSlug}".\n(Lưu ý: Thư mục này cần nằm trong Downloads/HeroVideo/${workspaceSlug})`);
+        return false;
+      }
+      return true;
     },
     [workspaceSlug],
   );
@@ -216,7 +219,15 @@ export function FileSystemProvider({
 
   return (
     <FileSystemContext.Provider
-      value={{ hasPermission, dirHandle, requestPermission, verifyExistingPermission, getAllVideoFiles, deleteVideoFile }}
+      value={{
+        hasPermission,
+        dirHandle,
+        folderName: dirHandle ? dirHandle.name : null,
+        requestPermission,
+        verifyExistingPermission,
+        getAllVideoFiles,
+        deleteVideoFile,
+      }}
     >
       {children}
     </FileSystemContext.Provider>

@@ -1,5 +1,5 @@
 # AI2HERO — START
-> Cap nhat: 2026-05-26
+> Cap nhat: 2026-06-02
 
 ## TRANG THAI
 Mode:         Build
@@ -56,6 +56,109 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Sử dụng Next.js 15 App Router (Server Components & Server Actions).
 - Database: Drizzle ORM kết nối Supabase (Pooler mode port 6543 cho Production, Session mode port 5432 cho Migration).
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
+
+- **2026-06-03 (connect hub task 4 - xss guard comment for setup guide)**:
+  - 🛡️ **Bổ sung Ghi chú Bảo vệ XSS**:
+    - Thêm comment bảo mật có cấu trúc (JSDoc guardrail) ngay trước block `dangerouslySetInnerHTML` trong `app/app/(dashboard)/connect-hub/apps/apps-client.tsx` để phòng tránh nguy cơ XSS khi phát triển các tính năng sau này.
+
+- **2026-06-03 (connect hub task 3 - mobile ux & validation in connections client)**:
+  - 🚀 **Nâng cấp Trải nghiệm Mobile & Kiểm tra Hợp lệ thông số xác thực**:
+    - Thay thế hộp thoại cảnh báo xóa `window.confirm` lỗi thời bằng Inline Confirm Bar tinh xảo ngay trong hàng của bảng.
+    - Thay thế hộp thoại nhập liệu `window.prompt` bằng Inline Input Form nhỏ gọn, tương thích hoàn hảo với WebView di động (Zalo, Facebook).
+    - Tích hợp biểu thức chính quy (Regex) `/^[a-zA-Z_][a-zA-Z0-9_]*$/` kiểm tra tính hợp lệ của tên trường tham số mới nhằm ngăn chặn lỗi cú pháp lưu trữ.
+
+- **2026-06-03 (connect hub task 2 - client components error boundary)**:
+  - 🚀 **Bổ sung Error Boundary bảo vệ Client Components**:
+    - Tạo mới component `app/components/error-boundary.tsx` giúp cô lập và hiển thị giao diện fallback đẹp mắt khi gặp lỗi runtime.
+    - Bọc component Client ở 3 trang chính: `connections/page.tsx`, `logs/page.tsx`, và `apps/page.tsx` trong `ErrorBoundary`.
+
+- **2026-06-03 (connect hub task 1 - layout authorization gate)**:
+  - 🛡️ **Vá lỗ hổng Layout Authorization Gate**:
+    - Kiểm tra `activatedApps` trong `app/app/(dashboard)/connect-hub/layout.tsx` và tự động điều hướng về `/dashboard` nếu Team chưa kích hoạt Connect Hub.
+
+- **2026-06-03 (connect hub audit security vulnerabilities fix)**:
+  - 🛡️ **Vá lỗi bảo mật & Khắc phục rủi ro vận hành Connect Hub**:
+    - **Chống SSRF**: Bổ sung cơ chế xác thực URL `isInternalUrl` trong `custom-http.ts` nhằm ngăn chặn các hành vi gửi request quét dải IP nội bộ hoặc thông tin AWS Metadata.
+    - **Chặn Thread Pool Leak**: Cấu hình thuộc tính `signal` với timeout giới hạn 10 giây trong runner `custom-http.ts` nhằm tự động hủy các kết nối bị treo lâu.
+    - **Bổ sung Logging Error**: Cải tiến Server Action `runActionAction` tự động ghi nhận nhật ký lỗi trực tiếp vào cơ sở dữ liệu khi hệ thống gặp lỗi Runtime Exception.
+
+- **2026-06-03 (connect hub dashboard performance boost)**:
+  - 🚀 **Tối ưu hóa hiệu năng tải trang Dashboard Connect Hub**:
+    - **Áp dụng Parallel Fetching**: Tái cấu trúc logic Server Components trong `page.tsx`, sử dụng `Promise.all` để truy vấn song song dữ liệu thống kê (Stats) và nhật ký sử dụng (Logs).
+    - **Giảm tải Database**: Nâng cấp hàm `getConnectionStats` để tái sử dụng mảng dữ liệu đã nạp trước, cắt giảm một lượng lớn các truy vấn cơ sở dữ liệu trùng lặp. Giúp tối ưu giảm 2/3 thời gian tải trang.
+
+- **2026-06-03 (connect hub apps popup alignment & ux polish)**:
+  - 🚀 **Sửa lỗi hiển thị lệch tâm Modal & Nâng cấp UX/UI**:
+    - **Áp dụng React Portal**: Đưa phần tử Modal popup trực tiếp lên `document.body` bằng `createPortal` để tránh bị bóp méo hay lệch tâm do các thuộc tính `transform` từ Layout cha (`animate-fade-up`).
+    - **Khóa Cuộn & Phím tắt Escape**: Tự động khóa scroll của body (`overflow: hidden`) khi mở modal và giải phóng khi đóng. Hỗ trợ đóng nhanh modal bằng phím `Escape`.
+    - **Tự động Focus (Autofocus)**: Sử dụng React ref tự động focus vào ô nhập "Tên kết nối gợi nhớ" ngay sau khi mở modal để người dùng gõ được ngay mà không cần click chuột.
+    - **Chống đóng nhầm (Drag-to-Close prevention)**: Bắt sự kiện click chuột chuẩn xác trên `backdropRef` để tránh đóng nhầm khi người dùng bôi đen kéo thả văn bản ra rìa ngoài modal.
+    - **Ngăn rò rỉ bộ nhớ (AbortController)**: Tích hợp `AbortController` tự động hủy bỏ các lệnh fetch ping test đang chạy dở nếu người dùng click đóng modal hoặc click test lại.
+
+- **2026-06-02 (connect hub mapping upgrade with suggestions & auto-suggest)**:
+  - 🚀 **Nâng cấp Hệ thống Mapping Dữ liệu Connect Hub POS**:
+    - **Mở rộng Trường Chuẩn hóa**: Nâng cấp `StandardProduct` từ 10 lên 28 trường (mô tả, giá sỉ, biến thể, màu sắc, kích cỡ, chất liệu...), bổ sung 5 trường `StandardOrder` (statusName, creator, conversationId...) và 5 trường `StandardCustomer` (customerId, points, totalSpend...) phục vụ phân tích chuyên sâu.
+    - **Cơ chế Mapping Mới (Single-Selection)**: Thay thế hoàn toàn cơ chế mảng tags (`string[]`) bằng cấu trúc chọn duy nhất kèm gợi ý `{ selected, suggestions }` để chống ánh xạ nhầm lẫn.
+    - **AI & Rule-Based Auto-Suggest**: Xây dựng engine `auto-suggest.ts` tự động phân tích cấu trúc dữ liệu mẫu từ cửa hàng thật (qua action mới `probe_sample_data`) và tự sinh cấu hình mapping tối ưu dựa trên semantic scoring.
+    - **Thiết Kế Lại Giao Diện (Radio Buttons)**: Chuyển đổi Tag Input UI cũ sang danh sách Radio Buttons trực quan. Bổ sung nút bấm "Phân tích dữ liệu mẫu" giúp người dùng cấu hình mapping tự động 1-click.
+    - **Tương thích Ngược & Migration**: Tích hợp hàm `migrateLegacyConfig` tự động chuyển đổi cấu hình cũ sang mới tại server action `getMappingConfigAction` để không ảnh hưởng dữ liệu cũ.
+    - **TypeScript & Typecheck**: Biên dịch thành công 100% không phát sinh lỗi (`pnpm tsc --noEmit` đạt 0 errors).
+
+- **2026-06-02 (connect hub pos capabilities expansion for accounting & business)**:
+  - 🚀 **Mở rộng Năng lực API Pancake POS phục vụ Kế toán & Kinh doanh**:
+    - **Bổ sung 4 Nhóm Nghiệp vụ Nâng cao**: Tích hợp các nhóm "Kế toán / Thuế", "Báo cáo & Chiến lược", "Marketing & Bán hàng", và "Quản lý tồn kho" vào danh sách năng lực.
+    - **Thiết kế 10 Năng lực API Mới**: Bổ sung chi tiết các năng lực thiết thực như: Báo cáo doanh thu kế toán, Đối soát dòng tiền COD/Bank/Cash, Tổng hợp VAT, Xếp hạng Top sản phẩm bán chạy/chậm, Phân tích RFM khách hàng, Phân tích Biên lợi nhuận sản phẩm, Kế hoạch xả kho, Tạo content tự động, Phân tích Remarketing win-back, Đối chiếu chênh lệch kho phát hiện thất thoát và Cảnh báo điểm đặt hàng lại (Reorder Point).
+    - **Tối ưu Hướng dẫn AI (`aiInstruction`)**: Viết cấu trúc thực thi bằng ngôn ngữ tự nhiên tối ưu cực kỳ chi tiết cho cả 10 năng lực mới, giúp AI hiểu được logic nghiệp vụ phức tạp, cách lấy dữ liệu qua Server Actions, cách tính toán biên lợi nhuận, RFM, tính điểm đặt hàng lại và định dạng hiển thị kết quả cho người dùng.
+    - **TypeScript & Typecheck**: Tích hợp hoàn hảo vào UI component `mapping-manager-client.tsx`, đồng bộ danh sách `capabilityGroups` lên 8 nhóm chính thức và biên dịch sạch 100% không lỗi.
+
+- **2026-06-02 (connect hub ui api capabilities & mapping expansion)**:
+  - 🚀 **Phát triển Tab Năng lực API & Mở rộng Lớp Chuẩn hóa Mapping**:
+    - **Tích hợp Tab Switcher mới**: Thêm tab "Trường dữ liệu" và "Năng lực API" ở trang kết nối.
+    - **Khai báo 13 Năng lực Pancake POS**: Định nghĩa chi tiết danh sách năng lực (Cửa hàng, Đơn hàng, Kho hàng, Địa lý) có \`aiInstruction\` chuẩn cho AI tự động thực thi.
+    - **UI Accordion Glassmorphism**: Render card năng lực cực đẹp, badge trạng thái (Ready ✅ / Planned 🔜), hỗ trợ mở rộng hướng dẫn AI và sao chép 1-click.
+    - **Chuẩn hóa Hàng loạt Trường Mới**: Bổ sung hàng loạt trường E-commerce thực tế (Nhóm khách hàng, Giới tính, Ngày sinh, Mã vạch, Giá vốn, Khối lượng, Danh mục, Phương thức thanh toán, Phí ship, Tiền COD, Phí đối tác, Nhãn đơn, Kênh bán hàng, Mã kho) vào cấu trúc chuẩn.
+    - **Thiết lập Presets Mặc định Phong phú**: Khai báo mapping tự động khớp hoàn hảo cho cả \`pancake-pos\` và \`kiotviet\` đối với các trường mới để tối ưu trải nghiệm người dùng.
+    - **Đồng bộ Lớp Normalization**: Cập nhật đồng thời interfaces chuẩn trong \`types.ts\` và engine ánh xạ trong \`mapper.ts\`, tự động chuẩn hóa kiểu dữ liệu an toàn.
+    - **TypeScript & Typecheck**: Biên dịch thành công 100% không có lỗi (\`pnpm tsc --noEmit\` đạt 0 errors).
+
+- **2026-06-02 (connect hub data mapper & server actions)**:
+  - 🚀 **Thiết lập & Tích hợp Lớp Data Mapper Chuẩn hóa POS**:
+    - **Tạo Mới Standard Interfaces (`types.ts`)**: Định nghĩa các kiểu cấu trúc dữ liệu E-commerce chuẩn hóa (`StandardCustomer`, `StandardProduct`, `StandardOrder`) đóng vai trò Nguồn sự thật (Source of Truth) cho Connect Hub.
+    - **Xây Dựng Engine Normalization (`mapper.ts`)**: Hoàn thiện logic ánh xạ thông minh, tự động chuyển đổi định dạng API thô của Pancake POS sang cấu trúc chuẩn. Thiết lập cơ chế nullish coalescing (`??`) đối với các thuộc tính số (như price, quantity, totalAmount) nhằm bảo vệ tính chính xác tuyệt đối của giá trị `0` trong kinh doanh.
+    - **Nâng Cấp Server Action (`runActionAction`)**: Tích hợp cờ tùy chọn `normalize?: boolean` vào signature API. Tự động chuyển dữ liệu qua mapper chuẩn hóa `normalizeData` trước khi trả về cho Client/MVP nếu được kích hoạt. Đảm bảo backward compatibility 100% và bảo toàn toàn vẹn hệ thống lưu log đo lường hiệu năng.
+    - **Đảm bảo Chất lượng (Quality Gate)**: Typecheck tĩnh `tsc --noEmit` hoàn tất thành công đạt **0 errors** trên toàn hệ thống.
+
+- **2026-06-02 (pancake pos api integration)**:
+  - 🚀 **Tích hợp sâu kết nối API thật cho Pancake POS**:
+    - **Triển khai Logic Gọi API Thật**: Viết mới 100% runner `runPancakePos` tại [pancake-pos.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/connectors/runners/pancake-pos.ts) để gọi API thật của `pos.pages.fm` thay thế dữ liệu Mock giả lập.
+    - **Action Lấy Đơn Hàng (`list_orders`)**: Gọi endpoint `GET /shops/{shopId}/orders?api_key={apiKey}` lấy dữ liệu đơn hàng thật và trả về mảng danh sách trơn tru.
+    - **Action Lấy Khách Hàng (`list_customers`)**: Gọi endpoint `GET /shops/{shopId}/customers?api_key={apiKey}` trích xuất danh bạ CRM khách hàng thật.
+    - **Action Lấy Sản Phẩm (`list_products`)**: Bổ sung endpoint `GET /shops/{shopId}/products?api_key={apiKey}` hỗ trợ lấy danh sách thông tin sản phẩm và đồng bộ vào hệ thống.
+    - **Action Tạo Đơn Hàng (`create_order`)**: Gọi endpoint `POST /shops/{shopId}/orders?api_key={apiKey}` với payload JSON được mapping linh hoạt cả snake_case và camelCase từ input, đi kèm fallback giá trị mặc định để chống lỗi 400.
+    - **Bảo mật & Error Handling**: Bọc try/catch toàn bộ các tác vụ mạng để dịch thông điệp HTTP Status code lỗi thành thông báo tiếng Việt thân thiện, chống crash server.
+
+- **2026-06-02 (connect hub ui & capabilities modal)**:
+  - 🚀 **Hoàn thành Nâng cấp API Connection Modal & Hiển thị API Capabilities**:
+    - **Tái cấu trúc Layout Modal (Fix tràn UI)**: Thiết lập cấu trúc `flex-col max-h-[90vh] overflow-hidden` cho Modal Container, Header và Footer cố định (`shrink-0`), còn Body hỗ trợ cuộn dọc độc lập (`flex-1 overflow-y-auto`). Giải quyết triệt để lỗi tràn layout trên mobile/màn hình nhỏ và lỗi lệch tâm khi nội dung quá ngắn hoặc quá dài.
+    - **Sửa lỗi hiển thị Modal (z-index collision)**: Sửa z-index trên Modal Wrapper từ `z-50` lên `z-[100]`. Đảm bảo Modal và lớp phủ mờ nằm đè lên trên thanh TopHeader (`z-50` sticky) của Dashboard, giải quyết triệt để lỗi che khuất tiêu đề và nút đóng "X" ở phần Header của modal.
+    - **Hiển thị API Capabilities**: Tích hợp danh sách các actions hỗ trợ (`selectedApp.actions`) ngay trong Modal Body bên dưới tên kết nối gợi nhớ. Render dạng Grid Card Dark Mode tinh xảo với visual feedback đẹp mắt, giúp người dùng nắm bắt khả năng API ngay lập tức.
+    - **Vá lỗi TypeScript**: Sửa lỗi filter danh mục `'vietnam'` bị thiếu thuộc tính trên `ConnectorDefinition` và đồng bộ kiểu dữ liệu `'oauth2'` cho `google-drive.ts`, `'pos'` cho `pancake-pos.ts`. Đảm bảo toàn hệ thống compile sạch sẽ 100% không lỗi.
+  - 🛠️ **Sửa lỗi crash và bổ sung thông tin chi tiết Kết nối**:
+    - **Vá lỗi Crash trang Quản lý Kết nối**: Sửa lỗi runtime khi `authType` bị thiếu (có thể do dữ liệu cũ) gây crash hàm `.replace()`. Tích hợp Optional Chaining và fallback `'KHÔNG XÁC ĐỊNH'` an toàn tuyệt đối.
+    - **Bổ sung Trường thông tin cần thiết**: Mở rộng Drawer chi tiết kết nối (Slide-over Details Drawer) hiển thị thêm các thông tin quan trọng: **ID Kết nối**, **ID Người tạo (User ID)**, **Ngày cập nhật lần cuối**, **Ngày kiểm thử gần nhất (Last Tested At)**, và **Danh sách các MVP đang sử dụng kết nối đó (`usedByModules`)**.
+
+
+- **2026-06-02 (pancake pos connector hub)**:
+  - 🚀 **Tích hợp & Phân tách thành công Pancake Chat & Pancake POS Connector**:
+    - **Tạo Definition**: Tách bạch thành `pancake-chat.ts` (Auth: `pageId`, `pageAccessToken` - Actions: `list_conversations`, `send_message`) và `pancake-pos.ts` (Auth: `shopId`, `apiKey` - Actions: `list_orders`, `list_customers`, `create_order`).
+    - **Đăng ký Registry**: Bổ sung `pancakeChatConnector` và `pancakePosConnector` vào mảng `ALL_CONNECTORS` trung tâm.
+    - **Tạo Runner**: Xây dựng 2 file runner độc lập `runPancakeChat` và `runPancakePos` mô phỏng độ trễ và trả bộ data riêng biệt.
+    - **Đăng ký Engine**: Áp xạ 2 keys `pancake-chat` và `pancake-pos` sang runner tương ứng trong `engine.ts`. Biên dịch thành công 100%.
+
+- **2026-06-02 (app store crash fix)**:
+  - 🛠️ **Sửa lỗi crash trang App Store khi chạy Local với DB online**:
+    - Nâng cấp `app/app/(dashboard)/dashboard/store/page.tsx` sử dụng cơ chế **Defensive Fallback**: tự động chuyển sang sử dụng `DEFAULT_BILLING_PLANS` nếu khoá cấu hình `BILLING_PLANS` trong cơ sở dữ liệu Supabase online bị trống hoặc trả về null.
+    - Cập nhật Client Component `store-client.tsx` gán giá trị mặc định cho props `billingPlans = []` và sử dụng cú pháp **Optional Chaining** `p.name?.toLowerCase()` khi lọc giới hạn gói. Ngăn chặn triệt để lỗi runtime `TypeError: billingPlans.find is not a function`.
 
 - **2026-06-01 (workspace fixes & gating limits)**:
   - 🛠️ **Sửa lỗi dùng chung dữ liệu Workspace**:

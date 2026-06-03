@@ -7,9 +7,13 @@
         ].includes(origin);
     }
 
-    function setWorkspaceSubfolder(workspaceSlug) {
-        if (!workspaceSlug) return;
-        chrome.storage.local.set({ herovideo_subfolder: "HeroVideo/" + workspaceSlug });
+    function setWorkspaceSubfolder(workspaceSlug, customSubfolder) {
+        if (customSubfolder) {
+            const finalPath = customSubfolder.startsWith("HeroVideo/") ? customSubfolder : "HeroVideo/" + customSubfolder;
+            chrome.storage.local.set({ herovideo_subfolder: finalPath });
+        } else if (workspaceSlug) {
+            chrome.storage.local.set({ herovideo_subfolder: "HeroVideo/" + workspaceSlug });
+        }
     }
 
     // [AI2HERO] Ping-Pong cơ chế nhận diện
@@ -17,10 +21,7 @@
         if (event.source !== window) return;
         if (!isAllowedAi2HeroOrigin(event.origin)) return;
         if (event.data && event.data.type === 'HERO_VIDEO_EXT_CHECK') {
-            const { workspaceSlug } = event.data;
-            setWorkspaceSubfolder(workspaceSlug);
-            
-            chrome.storage.local.get(['herovideo_token', 'herovideo_workspace'], function(result) {
+            chrome.storage.local.get(['herovideo_token', 'herovideo_workspace', 'herovideo_email', 'herovideo_ws_name'], function(result) {
                 window.postMessage({ 
                     type: 'HERO_VIDEO_EXT_PING', 
                     hasAuth: Boolean(result.herovideo_token),
@@ -31,17 +32,16 @@
 
         // Nhận diện sự kiện yêu cầu mở thư mục downloads mặc định
         if (event.data && event.data.type === 'HERO_VIDEO_OPEN_FOLDER') {
-            setWorkspaceSubfolder(event.data.workspaceSlug);
-            chrome.runtime.sendMessage({ Message: "ensureWorkspaceFolder", workspaceSlug: event.data.workspaceSlug, open: true });
+            setWorkspaceSubfolder(event.data.workspaceSlug, event.data.customSubfolder);
+            const rawSubfolder = event.data.customSubfolder || event.data.workspaceSlug;
+            const subfolderPath = rawSubfolder.startsWith("HeroVideo/") ? rawSubfolder : "HeroVideo/" + rawSubfolder;
+            chrome.runtime.sendMessage({ Message: "ensureWorkspaceFolder", subfolderPath: subfolderPath, open: true });
         }
 
+        // Nhận diện sự kiện kết nối/cập nhật thư mục từ Web App (Dashboard)
         if (event.data && event.data.type === 'HERO_VIDEO_ENSURE_WORKSPACE_FOLDER') {
-            setWorkspaceSubfolder(event.data.workspaceSlug);
-            chrome.runtime.sendMessage({
-                Message: "ensureWorkspaceFolder",
-                workspaceSlug: event.data.workspaceSlug,
-                open: Boolean(event.data.open)
-            });
+            setWorkspaceSubfolder(event.data.workspaceSlug, event.data.customSubfolder);
+            // Chỉ cập nhật cấu hình nội bộ. KHÔNG tải file marker (sẽ làm rác thư mục mỗi khi F5 web).
         }
     });
 
