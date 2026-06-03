@@ -12,8 +12,7 @@ export const telegramConnector: ConnectorDefinition = {
         <h4 class="text-sm font-semibold text-blue-600 mb-2">🤖 Hướng dẫn lấy Telegram Bot Token</h4>
         <ol class="list-decimal list-inside text-sm text-muted-foreground space-y-2 mt-2">
           <li>Mở ứng dụng Telegram và tìm kiếm <a href="https://t.me/BotFather" target="_blank" class="text-blue-500 hover:underline font-medium">@BotFather</a> (có tích xanh).</li>
-          <li>Gõ lệnh <code class="bg-muted px-1.5 py-0.5 rounded text-primary">/newbot</code>, sau đó nhập <b>Tên hiển thị</b> của Bot (Vd: <i class="text-foreground">ai2hero</i>).</li>
-          <li>Tiếp theo, nhập <b>Username</b> cho Bot. <span class="text-amber-500 font-medium">Lưu ý: Bắt buộc phải kết thúc bằng chữ <code>bot</code></span> (Vd: <code class="bg-muted px-1 py-0.5 rounded text-foreground">ai2hero_bot</code>).</li>
+          <li>Gõ lệnh <code class="bg-muted px-1.5 py-0.5 rounded text-primary">/newbot</code>, sau đó nhập <b>Username</b> cho Bot. <span class="text-amber-500 font-medium">Lưu ý: Bắt buộc phải kết thúc bằng chữ <code>bot</code></span> (Vd: <code class="bg-muted px-1 py-0.5 rounded text-foreground">ai2hero_bot</code>).</li>
           <li>Khi thành công, BotFather sẽ cấp một đoạn mã HTTP API (Vd: <code>8804769040:AAHLIKxpN4...</code>). Đó chính là <b>Bot Token</b>.</li>
           <li>Sao chép toàn bộ chuỗi Token đó và dán vào ô bên dưới.</li>
         </ol>
