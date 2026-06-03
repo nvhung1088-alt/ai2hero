@@ -472,3 +472,50 @@ export async function runActionAction(
     return { success: false, error: sanitizeError(error) };
   }
 }
+
+/**
+ * Lấy thống kê Tỷ lệ kết nối thành công (API Health Monitor)
+ */
+export async function getConnectorHealthStats(teamId: number, appSlug: string) {
+  try {
+    await verifyConnectHubAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+
+    const logs = await db
+      .select({ 
+        status: connectHubUsageLogs.status, 
+        durationMs: connectHubUsageLogs.durationMs 
+      })
+      .from(connectHubUsageLogs)
+      .where(
+        and(
+          eq(connectHubUsageLogs.teamId, teamId),
+          eq(connectHubUsageLogs.appSlug, appSlug)
+        )
+      );
+
+    const totalRequests = logs.length;
+    if (totalRequests === 0) {
+      return { success: true, data: { totalRequests: 0, successRate: 0, avgDuration: 0 } };
+    }
+
+    const successfulRequests = logs.filter(l => l.status === 'success').length;
+    const successRate = (successfulRequests / totalRequests) * 100;
+    
+    const successfulLogs = logs.filter(l => l.status === 'success' && l.durationMs);
+    const avgDuration = successfulLogs.length > 0 
+      ? successfulLogs.reduce((acc, curr) => acc + (curr.durationMs || 0), 0) / successfulLogs.length
+      : 0;
+
+    return { 
+      success: true, 
+      data: { 
+        totalRequests, 
+        successRate: Number(successRate.toFixed(1)), 
+        avgDuration: Math.round(avgDuration) 
+      } 
+    };
+  } catch (error: any) {
+    console.error('Error fetching connector health stats:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}

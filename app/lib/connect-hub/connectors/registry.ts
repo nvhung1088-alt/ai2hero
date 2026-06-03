@@ -21,14 +21,16 @@ import { googleDriveConnector } from './definitions/google-drive';
 import { facebookConnector } from './definitions/facebook';
 import { zaloConnector } from './definitions/zalo';
 import { tiktokConnector } from './definitions/tiktok';
+import { chiasegpuConnector } from './definitions/chiasegpu';
 
-export const ALL_CONNECTORS: ConnectorDefinition[] = [
+const RAW_CONNECTORS: ConnectorDefinition[] = [
   openaiConnector,
   anthropicConnector,
   geminiConnector,
   grokConnector,
   deepseekConnector,
   qwenConnector,
+  chiasegpuConnector,
   runwayConnector,
   lumaConnector,
   sapoConnector,
@@ -46,6 +48,45 @@ export const ALL_CONNECTORS: ConnectorDefinition[] = [
   telegramConnector,
   customHttpConnector
 ];
+
+const READY_SLUGS = [
+  'custom-http',
+  'kiotviet',
+  'pancake-pos',
+  'pancake-chat',
+  'google-sheets',
+  'gmail',
+  'telegram',
+  'openai',
+  'chiasegpu'
+];
+
+export const ALL_CONNECTORS: ConnectorDefinition[] = RAW_CONNECTORS.map(connector => {
+  let badge = connector.badge;
+  
+  // Tự động gán nhãn cho các Cổng AI
+  if (!badge && connector.category === 'ai') {
+    if (connector.slug === 'chiasegpu') {
+      badge = { text: 'Premium', variant: 'premium' };
+    } else {
+      badge = { text: 'Free', variant: 'free' };
+    }
+  }
+
+  return {
+    ...connector,
+    badge,
+    status: (READY_SLUGS.includes(connector.slug) ? 'ready' : 'updating') as 'ready' | 'updating'
+  };
+}).sort((a, b) => {
+  // 💡 HƯỚNG DẪN STICK ỨNG DỤNG LÊN ĐẦU (PIN-TO-TOP):
+  // Muốn đưa một App khác lên đầu danh sách? 
+  // Rất đơn giản, hãy thay chữ 'chiasegpu' bằng slug của app bạn muốn (ví dụ: 'openai', 'gemini'...)
+  if (a.slug === 'chiasegpu') return -1;
+  if (b.slug === 'chiasegpu') return 1;
+  return 0; // Giữ nguyên thứ tự của các app còn lại
+});
+
 
 export function getConnectorBySlug(slug: string): ConnectorDefinition | undefined {
   return ALL_CONNECTORS.find((c) => c.slug === slug);

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ConnectorDefinition, AuthField } from '@/lib/connect-hub/connectors/types';
-import { createConnectionAction } from '@/lib/db/connect-hub-actions';
+import { createConnectionAction, getConnectorHealthStats } from '@/lib/db/connect-hub-actions';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 import {
   Search,
@@ -32,7 +32,10 @@ import {
   SmartphoneNfc,
   HardDrive,
   Share2,
-  MessageSquare
+  MessageSquare,
+  Activity,
+  Clock,
+  Target
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -153,6 +156,10 @@ export default function ConnectHubAppsClient({
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
 
+  // Health Stats State
+  const [healthStats, setHealthStats] = useState<{ totalRequests: number; successRate: number; avgDuration: number } | null>(null);
+  const [loadingHealth, setLoadingHealth] = useState(false);
+
   // SSR Hydration Fix
   const [isMounted, setIsMounted] = useState(false);
 
@@ -194,6 +201,21 @@ export default function ConnectHubAppsClient({
       return () => clearTimeout(timer);
     }
   }, [selectedApp]);
+
+  // Load Health Stats
+  useEffect(() => {
+    if (selectedApp) {
+      setLoadingHealth(true);
+      getConnectorHealthStats(teamId, selectedApp.slug).then((res) => {
+        if (res.success && res.data) {
+          setHealthStats(res.data as any);
+        }
+        setLoadingHealth(false);
+      });
+    } else {
+      setHealthStats(null);
+    }
+  }, [selectedApp, teamId]);
 
   // Bộ lọc danh mục
   const categories = [
@@ -476,15 +498,35 @@ export default function ConnectHubAppsClient({
                     <div className={`p-2.5 rounded-xl bg-gradient-to-tr ${getConnectorColor(app.slug)} text-white shadow-md shadow-purple-500/5 group-hover:scale-105 transition-transform duration-300`}>
                       {getConnectorIcon(app.slug)}
                     </div>
-                    {isConnected ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-green-500/10 text-green-400 border border-green-500/20 shadow-sm">
-                        <Check className="h-3 w-3" /> Đã kết nối
-                      </span>
-                    ) : (
-                      <span className="text-[9px] text-gray-500 font-bold bg-white/5 border border-white/5 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                        Chưa liên kết
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end pl-2">
+                      {app.badge && (
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap shadow-sm border ${
+                          app.badge.variant === 'premium' ? 'bg-fuchsia-500/20 text-fuchsia-400 border-fuchsia-500/30' : 
+                          app.badge.variant === 'free' ? 'bg-sky-500/20 text-sky-400 border-sky-500/30' : 
+                          'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                        }`}>
+                          {app.badge.text}
+                        </span>
+                      )}
+                      {app.status === 'ready' ? (
+                        <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap">
+                          Sẵn sàng
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap">
+                          Đang cập nhật
+                        </span>
+                      )}
+                      {isConnected ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-green-500/10 text-green-400 border border-green-500/20 shadow-sm whitespace-nowrap">
+                          <Check className="h-3 w-3" /> Đã kết nối
+                        </span>
+                      ) : (
+                        <span className="text-[9px] text-gray-500 font-bold bg-white/5 border border-white/5 px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap">
+                          Chưa liên kết
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Title & Desc */}
@@ -589,6 +631,40 @@ export default function ConnectHubAppsClient({
                   </div>
                 </div>
               )}
+
+              {/* API Health Monitor Card */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block flex items-center gap-1.5">
+                  <Activity className="h-3 w-3" /> Theo dõi kết nối (Health Monitor)
+                </label>
+                {loadingHealth ? (
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-center justify-center animate-pulse">
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                  </div>
+                ) : healthStats ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col items-center justify-center text-center">
+                      <Target className="h-4 w-4 text-emerald-400 mb-1.5" />
+                      <span className="text-sm font-black text-white">{healthStats.successRate}%</span>
+                      <span className="text-[9px] text-gray-500 font-medium">Tỷ lệ Thành công</span>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col items-center justify-center text-center">
+                      <Activity className="h-4 w-4 text-blue-400 mb-1.5" />
+                      <span className="text-sm font-black text-white">{healthStats.totalRequests.toLocaleString()}</span>
+                      <span className="text-[9px] text-gray-500 font-medium">Tổng Requests</span>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex flex-col items-center justify-center text-center">
+                      <Clock className="h-4 w-4 text-amber-400 mb-1.5" />
+                      <span className="text-sm font-black text-white">{healthStats.avgDuration} <span className="text-[10px] font-normal">ms</span></span>
+                      <span className="text-[9px] text-gray-500 font-medium">Độ trễ trung bình</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 text-center">
+                    <span className="text-[10px] text-gray-500">Chưa có dữ liệu theo dõi kết nối</span>
+                  </div>
+                )}
+              </div>
 
               {/* Setup Guide Alert */}
               {selectedApp.setupGuide && (

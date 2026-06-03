@@ -1,5 +1,22 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-03 — Hoàn thành Giai đoạn 4: Gia cố (Hardening) & Chuẩn bị Production cho Connect Hub MVP
+- **Nâng cấp Hệ sinh thái AI2Hero (Cổng 1) & Tích hợp API Health Monitor**:
+  - Tinh giản giao diện thành 8 Năng lực (Capabilities) tập trung sâu vào các dòng mô hình Generative AI (Chat, Ảnh, Video, Lập trình).
+  - Tích hợp Server Action đọc log từ CSDL để hiển thị Báo cáo Sức khỏe (Ping trễ, Request, Tỷ lệ Thành Công %) của cổng AI dạng Thẻ trực quan (Health Card) bên trong Modal Kết nối.
+  - Cập nhật chuẩn hóa cấu trúc Bảng giá Models & bổ sung Code Hướng dẫn cURL để người dùng gọi API trực tiếp vào `https://api.vilao.ai/v1`.
+- **Bảo mật truy cập (Authorization Gating)**: Bổ sung cơ chế bảo vệ tại Layout `app/app/(dashboard)/connect-hub/layout.tsx`. Chặn đứng mọi truy cập nếu Workspace (Team) chưa đăng ký kích hoạt ứng dụng Connect Hub, tự động điều hướng người dùng về trang Dashboard tổng.
+- **Bảo mật & Cải thiện UX/UI Client Components**: 
+  - Tạo mới `app/components/error-boundary.tsx` để cô lập lỗi giao diện (runtime error) và hiển thị UI fallback tối màu sang trọng thay vì gây "trắng trang" (white screen of death).
+  - Tích hợp ErrorBoundary vào tất cả các Client Components quan trọng (`connections`, `logs`, `apps`), đảm bảo trải nghiệm người dùng liền mạch dù có lỗi cục bộ xảy ra.
+  - Thay thế hoàn toàn các hộp thoại chặn luồng `window.confirm` và `window.prompt` bằng Inline Confirm Bar và Form nhập liệu tích hợp trực tiếp trên giao diện `ConnectionsClient`, tương thích hoàn hảo với Mobile WebView.
+  - Bổ sung kiểm duyệt Regex khắt khe `/^[a-zA-Z_][a-zA-Z0-9_]*$/` cho tên trường thiết lập cấu hình, chống injection và lỗi lưu trữ.
+- **Bảo vệ mã nguồn chống XSS**: Chèn khối ghi chú cảnh báo bảo mật cấu trúc (Security JSDoc) ngay xung quanh khu vực render cấu hình `setupGuide` thông qua `dangerouslySetInnerHTML` tại trang Store, đảm bảo duy trì chuẩn bảo mật dài hạn cho đội ngũ bảo trì.
+- **Kiên cố hóa Cơ sở Dữ liệu (Database Stability)**: Bọc toàn bộ các hàm truy vấn trong `lib/db/connect-hub-queries.ts` bằng cấu trúc `try-catch` an toàn. Tự động trả về fallback (mảng rỗng hoặc null) khi cơ sở dữ liệu bị Timeout do khởi động chậm (Cold-start) hoặc đứt kết nối, loại bỏ tận gốc tình trạng Next.js Dev Server bị crash sập cục bộ (exit code 1).
+- **Kết quả triển khai Production**:
+  - Gói mã nguồn và lưu trữ thành công các thay đổi.
+  - Triển khai và Push toàn bộ source code V1.0 API Connect Hub & POS Integration lên GitHub main branch để Vercel Auto-deploy lên hệ thống `ai2hero.com`.
+
 ## 2026-06-02 — Mở rộng Năng lực API Pancake POS phục vụ Kế toán & Kinh doanh (Connect Hub Lite)
 - **Tích hợp 4 Nhóm Nghiệp vụ Nâng cao**: Bổ sung các nhóm "Kế toán / Thuế", "Báo cáo & Chiến lược", "Marketing & Bán hàng", và "Quản lý tồn kho" bên cạnh 4 nhóm cơ bản ban đầu (Cửa hàng, Đơn hàng, Kho hàng, Địa lý).
 - **Thiết lập 10 Năng lực API Chuyên nghiệp**: Thiết kế chi tiết các tác vụ nghiệp vụ gồm:

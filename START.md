@@ -57,6 +57,26 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Database: Drizzle ORM kết nối Supabase (Pooler mode port 6543 cho Production, Session mode port 5432 cho Migration).
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
+- **2026-06-03 (connect hub - api health monitor & 24 capabilities)**:
+  - 🚀 **Xây dựng Năng lực API & Thẻ theo dõi sức khoẻ (ChiaSeGPU)**:
+    - **Hồ sơ năng lực (Capabilities)**: Khai báo 24 Action Definition dựa trên API v2 của Vilao (Quản lý Ví, OS Container, VPS và Marketplace Models) biến Cổng 1 thành siêu hệ sinh thái Cloud.
+    - **Health Stats (Server Action)**: Viết hàm truy vấn `getConnectorHealthStats` đọc trực tiếp từ bảng `connect_hub_usage_logs` để tính tổng Requests, Độ trễ TB (ms) và Tỷ lệ thành công (%).
+    - **Giao diện Giám sát (UI)**: Tích hợp Thẻ (Card) Health Monitor vào cửa sổ Connection Modal, giúp admin thấy ngay hiệu suất mạng của cổng khi chuẩn bị kết nối.
+
+- **2026-06-03 (connect hub - automatic badge and pin-to-top)**:
+  - 🚀 **Tích hợp thuật toán gán nhãn tự động & Ghim ứng dụng lên đầu**:
+    - **Types linh hoạt**: Thêm thuộc tính `badge` tùy chọn vào `ConnectorDefinition` để giao diện có thể render mác tuỳ biến.
+    - **Tự động hóa**: Thay vì khai báo tĩnh, thuật toán trong `registry.ts` tự động quét danh mục AI, gán nhãn "Premium" cho AI2Hero và "Free" cho các Cổng AI khác, đồng thời đẩy AI2Hero (`chiasegpu`) lên index 0 bằng hàm `.sort()`.
+    - **Ghi chú hướng dẫn**: Chèn comment chú thích chi tiết (Pin-To-Top) ngay trước vòng `.sort()` giúp nhà phát triển/AI đời sau có thể tự do ghim ứng dụng khác dễ dàng.
+    - **Giao diện thẻ (UI)**: Vẽ mã JSX hiển thị thẻ Tag (Fuchsia cho Premium, Sky cho Free) với thiết kế Glassmorphism tinh xảo.
+
+- **2026-06-03 (connect hub - chiasegpu api gateway connector)**:
+  - 🚀 **Tích hợp ChiaSeGPU (LLM API Gateway) vào Connect Hub**:
+    - **Tạo Definition**: Định nghĩa `chiasegpuConnector` trong `definitions/chiasegpu.ts` với chế độ `authType: 'none'` (dùng key admin hệ thống).
+    - **Tạo Runner**: Xây dựng `runChiaSeGPU` trong `runners/chiasegpu.ts` giao tiếp với `https://vilao.ai/v1`, thiết lập `AbortController` timeout (30s cho chat, 10s cho models) và xử lý lỗi model bị dừng hỗ trợ.
+    - **Đăng ký Connector**: Tích hợp `chiasegpuConnector` vào `registry.ts` (RAW_CONNECTORS, READY_SLUGS) và `runChiaSeGPU` vào `engine.ts` (RUNNERS).
+    - **Cấu hình ENV**: Thêm biến môi trường `CHIASEGPU_API_KEY` vào `.env` và `.env.example`.
+
 - **2026-06-03 (connect hub task 4 - xss guard comment for setup guide)**:
   - 🛡️ **Bổ sung Ghi chú Bảo vệ XSS**:
     - Thêm comment bảo mật có cấu trúc (JSDoc guardrail) ngay trước block `dangerouslySetInnerHTML` trong `app/app/(dashboard)/connect-hub/apps/apps-client.tsx` để phòng tránh nguy cơ XSS khi phát triển các tính năng sau này.

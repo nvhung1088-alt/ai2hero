@@ -3,6 +3,8 @@ import { runKiotViet } from './runners/kiotviet';
 import { runPancakeChat } from './runners/pancake-chat';
 import { runPancakePos } from './runners/pancake-pos';
 import { runOpenAI } from './runners/openai';
+import { runChiaSeGPU } from './runners/chiasegpu';
+
 
 const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promise<any>> = {
   'custom-http': runCustomHttp,
@@ -10,6 +12,7 @@ const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promis
   'pancake-chat': runPancakeChat,
   'pancake-pos': runPancakePos,
   'openai': runOpenAI,
+  'chiasegpu': runChiaSeGPU,
 };
 
 export async function executeAction(

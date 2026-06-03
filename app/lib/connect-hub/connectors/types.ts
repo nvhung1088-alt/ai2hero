@@ -37,6 +37,13 @@ export interface ConnectorDefinition {
   actions: ActionDefinition[];
   popular?: boolean;
   setupGuide?: string; // Hướng dẫn HTML/Text chi tiết cách lấy API/ID
+  status?: 'ready' | 'updating'; // Trạng thái hoàn thiện của API
+  
+  // Hiển thị nhãn nổi bật (Ví dụ: Premium, Free) trên thẻ ứng dụng
+  badge?: {
+    text: string;
+    variant: 'premium' | 'free' | 'default';
+  };
   
   // Quản lý quy trình cải tiến, quét lỗi và vòng đời API (Lifecycle Management)
   lifecycle?: {
