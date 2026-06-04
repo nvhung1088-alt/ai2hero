@@ -1,7 +1,7 @@
 import { runCustomHttp } from './runners/custom-http';
 import { runKiotViet } from './runners/kiotviet';
 import { runPancakeChat } from './runners/pancake-chat';
-import { runPancakePos } from './runners/pancake-pos';
+import { runPancakePos } from './runners/pancake-pos/index';
 import { runOpenAI } from './runners/openai';
 import { runChiaSeGPU } from './runners/chiasegpu';
 

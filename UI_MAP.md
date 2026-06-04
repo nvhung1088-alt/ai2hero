@@ -27,6 +27,7 @@ graph TB
             CONTENT[Content Hub<br>/dashboard/content]
             VIDEO[HeroVideo<br>/herovideodownload/dashboard]
             CONNECT[Connect Hub<br>/connect-hub/dashboard]
+            REPORT[Hero Report<br>/hero-report/dashboard]
         end
     end
 
@@ -141,9 +142,9 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Liên kết**: → /dashboard
 
 ### `/connect-hub/mapping`
-- **Chức năng**: Giao diện chuẩn hóa trường dữ liệu (POS Field Mapping) giữa các hệ thống nguồn và chuẩn nội bộ Ai2Hero. Sử dụng cơ chế mapping chọn duy nhất với gợi ý `{ selected, suggestions }` được render dạng danh sách Radio Buttons trực quan. Bổ sung nút bấm "Phân tích dữ liệu mẫu" (AI Auto-Suggest) giúp tự động dò cấu trúc dữ liệu thô (đơn hàng, sản phẩm, khách hàng) từ cửa hàng thật (qua API `probe_sample_data`) và tự sinh đề xuất mapping tối ưu bằng thuật toán chấm điểm độ tương đồng ngữ nghĩa. Tích hợp Tab **"Năng lực API" (AI Capabilities)** hiển thị danh sách các năng lực API được phân loại chi tiết đi kèm cấu trúc hướng dẫn thực hiện cho AI (`aiInstruction`) và nút sao chép nhanh 1-click.
+- **Chức năng**: Giao diện chuẩn hóa trường dữ liệu (POS Field Mapping) giữa các hệ thống nguồn và chuẩn nội bộ Ai2Hero. Sử dụng cơ chế mapping chọn duy nhất với gợi ý `{ selected, suggestions }` được render dạng danh sách Radio Buttons trực quan. Bổ sung nút bấm "Phân tích dữ liệu mẫu" (AI Auto-Suggest) giúp tự động dò cấu trúc dữ liệu thô (đơn hàng, sản phẩm, khách hàng) từ cửa hàng thật (qua API `probe_sample_data`) và tự sinh đề xuất mapping tối ưu bằng thuật toán chấm điểm độ tương đồng ngữ nghĩa. Tích hợp Tab **"Năng lực API" (AI Capabilities)** hiển thị danh sách các năng lực API được phân loại chi tiết đi kèm cấu trúc hướng dẫn thực hiện cho AI (`aiInstruction`) và nút sao chép nhanh 1-click. Ngoài ra còn hỗ trợ **Modal Chạy thử (Test Run Modal)** trực quan cho phép lập trình viên chạy thử tức thời bất kỳ Năng lực API nào bằng cách nhập JSON payload mẫu và hiển thị log output trực tiếp từ API Gateway.
 - **Vai trò**: UI Quản lý cấu hình mapping động và năng lực AI vận hành
-- **Đọc/Ghi data**: Đọc/Ghi cấu hình mapping vào `connectHubMappingConfigs` (tự động chạy `migrateLegacyConfig` để nâng cấp cấu hình cũ), truy vấn danh mục từ `PANCAKE_CAPABILITIES` (tab Năng lực API)
+- **Đọc/Ghi data**: Đọc/Ghi cấu hình mapping vào `connectHubMappingConfigs` (tự động chạy `migrateLegacyConfig` để nâng cấp cấu hình cũ), truy vấn danh mục từ `PANCAKE_CAPABILITIES` (tab Năng lực API), gọi Server Action thực thi test qua `runActionAction` với cờ `isTest` được bật.
 - **Liên kết**: Sidebar -> Quản lý ánh xạ (hoặc Mapping)
 
 ### API Hub (`/dashboard/api`) — MVP #3
@@ -230,6 +231,12 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Vai trò**: MVP Audit Trail
 - **Đọc/Ghi data**: Đọc từ bảng `connect_hub_usage_logs` PostgreSQL thật.
 - **Liên kết**: → /connect-hub/dashboard
+
+### Hero Report Dashboard (`/hero-report/dashboard`)
+- **Chức năng**: Giao diện chính của Hero Report. Hiển thị danh sách lịch báo cáo tự động đã thiết lập, trạng thái hoạt động (Active/Paused), lịch chạy tiếp theo, lịch sử gửi gần nhất cùng lượng token AI tiêu thụ. Tích hợp Form tạo mới 5 bước (chọn nguồn, loại báo cáo, prompt AI tùy chọn, đặt lịch gửi, cấu hình chat Telegram nhận tin) và nút Gửi thử trực tiếp để kiểm tra định dạng báo cáo.
+- **Vai trò**: MVP App UI
+- **Đọc/Ghi data**: Đọc/Ghi dữ liệu từ 2 bảng `hero_report_schedules` và `hero_report_runs` thông qua Server Actions trong `hero-report-actions.ts`.
+- **Liên kết**: → /dashboard, → /connect-hub/connections (nếu chưa có API kết nối)
 
 
 

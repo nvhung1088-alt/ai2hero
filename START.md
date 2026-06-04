@@ -1,5 +1,5 @@
 # AI2HERO — START
-> Cap nhat: 2026-06-02
+> Cap nhat: 2026-06-04
 
 ## TRANG THAI
 Mode:         Build
@@ -19,6 +19,18 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Loại bỏ hoàn toàn hardcode API địa chỉ `localhost:3000` của Extension khi xác thực và đồng bộ video sang Production URL `https://www.ai2hero.com`.
   - `[x]` Tích hợp nút 1-click **Mở thư mục** (Open Folder) thông minh trên Web App Dashboard, kết nối trực tiếp với API của Extension thông qua cơ chế Content-Script Bridge.
   - `[x]` Tích hợp tính năng **Dọn dẹp video lỗi** thủ công trên Dashboard: Tự động quét và loại bỏ các file video rỗng (< 500b), video trùng lặp (size + base name), video hỏng hoặc chỉ có âm thanh (không có khung hình) bằng DOM `<video>` ẩn chạy trên RAM.
+### 4. Hero Report (MVP Báo cáo tự động)
+- **Status:** `Beta`
+- **Mô tả:** Hệ thống lập lịch tự động kéo dữ liệu POS (Pancake, KiotViet), tính toán số liệu bằng code và gọi AI ChiaSeGPU viết nhận xét gợi ý, gửi trực tiếp báo cáo tới Telegram.
+- **Tiến độ tích hợp:**
+  - `[x]` Thiết kế schema database (`heroReportSchedules`, `heroReportRuns`).
+  - `[x]` Đăng ký app vào `apps-registry.ts` và admin settings.
+  - `[x]` Viết Server Actions CRUD và stub actions cho UI.
+  - `[x]` Thiết kế giao diện Quản lý (UI) Dashboard phẳng, tab lịch sử và Form wizard 5 bước có chức năng Gửi thử ngay.
+  - `[x]` Viết Metric Aggregator thô chi tiết, engine điều phối chạy AI nhận xét và Telegram bot sender có fallback plain-text.
+  - `[x]` Tạo API Cron Endpoint `/api/cron/reports` có cơ chế Lock chống race condition.
+  - `[x]` Sửa lỗi lọc ngày Pancake POS lệch múi giờ trên server (ép timezone UTC 'Z' cho chuỗi ngày thô) và bổ sung ghi chú chi tiết.
+  - `[x]` Tích hợp dropdown chọn nhà cung cấp AI và chọn model động (Wizard Step 3) và engine xử lý động.
 Tagline:      "AI biến bạn thành Hero"
 Domain:       ai2hero.com
 Phase:        1 — Xây dựng các MVP Apps & Extensions
@@ -37,6 +49,7 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - **Quy trình AI**: Kế thừa 100% workflow từ UPCHAT (ai2hero start/plan/code/close).
 - **LESSONS**: Dùng chung file LESSONS.md toàn cục tại C:\Users\ADMIN\.gemini\LESSONS.md
 - **Tích hợp MVP mới**: Khi tích hợp một ứng dụng Mini-SaaS (MVP) mới vào hệ thống, BẮT BUỘC phải đọc và tuân thủ quy trình 5 giai đoạn tại [MVP_INTEGRATION_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/MVP_INTEGRATION_GUIDE.md).
+- **Tích hợp & Gọi API**: Khi tích hợp nền tảng API mới hoặc gọi API từ MVP nội bộ, BẮT BUỘC tuân thủ 2 bộ chuẩn tại [CONNECT_HUB_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/CONNECT_HUB_GUIDE.md). Cấm gọi API trực tiếp, mọi lệnh phải qua `connector-service.ts`.
 - **Định hướng herovideo**: Quyết định xây dựng `herovideo` dưới dạng **Extension Chrome thuần túy độc lập 100% (Hướng 2)**. Xử lý toàn bộ logic sniffing, download và ghép HLS bằng ffmpeg.wasm trực tiếp ở phía client (client-side) trong Extension, không đồng bộ dữ liệu lên máy chủ Next.js nhằm đảm bảo tính gọn nhẹ, bảo mật cao và 0đ chi phí vận hành server.
 
 ## TIÊU CHUẨN CÔNG NGHỆ MVP (CORE STANDARDS)
@@ -56,6 +69,95 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Sử dụng Next.js 15 App Router (Server Components & Server Actions).
 - Database: Drizzle ORM kết nối Supabase (Pooler mode port 6543 cho Production, Session mode port 5432 cho Migration).
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
+
+
+- **2026-06-04 (hero-report - fix timezone bug & explicit date label)**:
+  - 🚀 **Khắc phục triệt để lỗi báo cáo ngày hôm qua trả về 0**:
+    - **Engine**: Tạo helper `getReportDateStrings` tính toán chính xác `startDate` và `endDate` theo múi giờ GMT+7, truyền xuống Core Service với tham số `pageSize` lớn (250) để đảm bảo không bị thiếu dữ liệu do phân trang ngầm của API.
+    - **Tính toán Dữ liệu**:
+      - Sửa lỗi hiển thị "Sản phẩm không rõ tên" trong bảng Top Sản phẩm bán chạy do API Pancake POS lưu trữ thông tin ở `variation_info.name` thay vì trường `product_name` gốc.
+      - **Nâng cấp công thức tính doanh thu (Net Revenue)**: Loại bỏ các đơn hàng có trạng thái Hủy/Hoàn/Thất bại khỏi tổng doanh thu và số lượng đơn. Sử dụng `total_price_after_sub_discount` (giá sau chiết khấu) và `variation_info.exact_price` để khớp 100% với báo cáo Doanh Thu thực tế trên màn hình POS.
+    - **API Capabilities**: 
+      - Bổ sung 2 năng lực mới vào Pancake POS: `get_sales_by_channel` và `get_sales_by_employee`. Triển khai thuật toán xử lý dữ liệu ở backend.
+      - Bổ sung toàn bộ Năng lực API cho cổng `chiasegpu` (Cổng AI2Hero số 1), thêm 6 API: `chat_completion`, `code_generation`, `image_generation`, `video_generation`, `vision_analysis`, và các chức năng Quản trị Models. Mọi thông tin (endpoint, group, status, instruction) đã hiển thị đẹp mắt tại `/connect-hub/mapping`.
+      - Bổ sung định nghĩa Năng lực API cho `telegram` (Gửi tin nhắn).
+      - Sửa lỗi nghiêm trọng của tính năng Chạy thử (Test Modal): Form giờ đây đã nhận diện đúng mảng `inputSchema` để hiển thị chính xác các trường Select Dropdown, Textarea và Input thay vì hiển thị toàn bộ dưới dạng input text thô.
+    - **Connect Hub UI**: Cập nhật logic UI để chỉ hiển thị tab "Trường dữ liệu (Mapping)" đối với các ứng dụng thuộc danh mục `pos`. Với các ứng dụng khác (Telegram, AI), tab Mapping sẽ bị ẩn đi để tránh gây nhầm lẫn.
+    - **Telegram Format**: Cập nhật nhãn ngày `rangeLabel` để hiển thị ngày tháng cụ thể trong tin nhắn Telegram (VD: "Hôm qua (2026-06-03)" thay vì chỉ "Hôm qua").
+    - **Connector**: Sửa lỗi `data-actions.ts` của Pancake POS để hỗ trợ parse cả `pageSize` (camelCase) và `page_size` (snake_case).
+
+- **2026-06-04 (hero-report - timezone & dynamic ai model)**:
+  - 🚀 **Sửa lỗi múi giờ Pancake POS & Thêm lựa chọn AI Model động**:
+    - **Sửa lỗi ngày giờ**: Chuẩn hóa hàm lọc đơn hàng theo múi giờ Việt Nam (+07:00) chính xác, xử lý thêm timezone UTC 'Z' cho chuỗi ngày thô từ Pancake POS để đồng nhất việc parse date trên mọi môi trường máy chủ.
+    - **Năng lực AI**: Khai báo inputSchema chi tiết cho action chat_completion của ChiaSeGPU.
+    - **UI Lập lịch Báo cáo**: Thêm lựa chọn AI Provider và AI Model động tại Bước 3 trong Wizard và hiển thị thông tin ra giao diện quản lý.
+    - **Engine Báo cáo**: Bóc tách model AI từ reportSpec và gọi API qua model cấu hình thay vì hardcode gpt-3.5-turbo.
+    - **TypeScript & Typecheck**: Biên dịch thành công 100% không phát sinh bất kỳ lỗi nào.
+
+- **2026-06-04 (connect hub refactoring - phase 4)**:
+  - 🚀 **Hoàn thành Phase 4: Nâng cấp Usage Logs**:
+    - **Thêm cột `isTest`**: Bổ sung cờ `isTest` vào schema database `connectHubUsageLogs` và thực thi (push) lên Postgres thành công.
+    - **Update Core Service**: Cập nhật hàm `runConnectorAction` truyền chính xác `isTest` vào DB để phân biệt và loại bỏ dữ liệu test khỏi thống kê chính thức.
+
+- **2026-06-04 (connect hub refactoring - phase 3)**:
+  - 🚀 **Hoàn thành Phase 3: Refactor Hero Report → Gọi qua Core Service**:
+    - **Tích hợp Core Service**: Sửa đổi toàn bộ module thực thi của MVP Hero Report (`app/lib/hero-report/engine.ts`) để gọi hàm `runConnectorAction` từ `connector-service.ts` thay vì sử dụng trực tiếp engine `executeAction`.
+    - **Bảo mật và Tinh gọn**: Loại bỏ hoàn toàn quy trình giải mã credential (PII) thủ công ở cấp độ ứng dụng. Module Hero Report giờ đây chỉ truyền `connectionId` và `teamId`, Core Service sẽ đóng gói trọn bộ quy trình xác thực, giải mã và logging.
+    - **Type Check**: Đảm bảo 100% type safety.
+
+- **2026-06-04 (connect hub refactoring - phase 2)**:
+  - 🚀 **Hoàn thành Phase 2: Tách Core Service + PII Redaction cho logs**:
+    - **Tạo log-redactor utility (`log-redactor.ts`) [NEW]**: Phát triển thuật toán đệ quy lọc bỏ dữ liệu cá nhân nhạy cảm (PII) như SĐT, Email, Địa chỉ và Credentials trong JSON/text thô phục vụ việc ghi nhật ký database an toàn.
+    - **Xây dựng Core Service (`connector-service.ts`) [NEW]**: Viết hàm trung tâm `runConnectorAction` chạy độc lập với session cookie để quản lý chu kỳ gọi API, giải mã credentials, thực thi engine, chuẩn hóa dữ liệu, cập nhật trạng thái connection và ghi usage logs.
+    - **Refactor Server Action (`connect-hub-actions.ts`)**: Tái cấu trúc hàm `runActionAction` để delegate hoàn toàn logic thực thi sang Core Service `runConnectorAction`, giúp tinh giản mã nguồn và loại bỏ import dư thừa.
+    - **Kiểm thử & Typecheck**: Chạy thành công script test PII scrub và đảm bảo biên dịch `npx tsc --noEmit` đạt 0 lỗi.
+
+- **2026-06-04 (connect hub refactoring - phase 1)**:
+  - 🚀 **Hoàn thành Phase 1: SSOT — Capabilities derive từ Definitions**:
+    - **Mở rộng ActionDefinition (`types.ts`)**: Bổ sung các trường metadata UI/AI (`group`, `httpMethod`, `endpoint`, `status`, `outputFields`, `aiInstruction`) và test tự động (`testStrategy`, `sampleFrom`).
+    - **Cập nhật Connector Definitions**: Di chuyển toàn bộ metadata tĩnh từ client component vào `definitions/pancake-pos.ts` và `definitions/pancake-chat.ts` (bao gồm cả các action planned) làm nguồn dữ liệu chuẩn duy nhất (SSOT).
+    - **Tách presets & capabilities (`presets.ts`, `index.ts`)**: Di chuyển cấu hình mapping chuẩn ra file presets riêng và xây dựng helper `getCapabilities(appSlug)` để tạo capabilities động dựa trên registry.
+    - **Refactor Giao Diện (`mapping-manager-client.tsx`, `page.tsx`)**: Rút ngắn file client từ ~1038 dòng xuống ~520 dòng bằng cách loại bỏ data hardcode, sử dụng imports động và presets. Loại bỏ connection Pancake Chat giả lập trên page loader.
+    - **Kiểm thử tsc**: Dự án compile sạch 100% không có bất kỳ lỗi typescript nào (sau khi đã exclude thư mục scratch trong `tsconfig.json`).
+
+- **2026-06-04 (connect hub - pancake-pos data actions & index)**:
+  - 🚀 **Hoàn thành Phase 2: Viết Data Actions & Đăng Ký Hệ Thống**:
+    - **Viết Data Actions (`data-actions.ts`)**: Hỗ trợ 10 actions dữ liệu (orders, products, customers, warehouses, inventory, shop info). Tích hợp **PII Masking** bảo vệ dữ liệu khách hàng khi xuất danh sách hàng loạt (SĐT: `098***4321`, Email: `a***b@gmail.com`).
+    - **Đăng Ký Router & Engine**: Tạo file `index.ts` làm router trung tâm, cập nhật import trong `engine.ts` trỏ đến router mới, và xóa bỏ file runner cũ `runners/pancake-pos.ts`.
+    - **Cập Nhật Định Nghĩa (`definitions/pancake-pos.ts`)**: Khai báo đầy đủ **13 actions** read-only mới kèm input schema và mô tả rõ ràng phục vụ UI và AI.
+    - **Kiểm thử Typecheck**: Đạt chất lượng compile sạch 100% không còn bất kỳ lỗi typecheck nào ở dự án chính (`pnpm tsc --noEmit` đạt 0 errors ở `app/lib`).
+
+- **2026-06-04 (connect hub - pancake-pos client & report actions)**:
+  - 🚀 **Hoàn thành Phase 1: Viết Client & Report Actions Pancake POS**:
+    - **Viết HTTP Client chuẩn (`client.ts`)**: Tích hợp timeout 15s, tự động retry 2 lần khi gặp lỗi mạng/429/5xx (kèm exponential backoff và tuân thủ `Retry-After`), che API Key trong log/lỗi, và serialize mảng tham số (`filter_status[]`).
+    - **Viết Report Engine (`report-actions.ts`)**: Hiện thực hóa cơ chế **Tự động Fallback** khi statistics bị chặn quyền. Tự động tính toán các metrics (Gross Sales, Collected Revenue, Profit, Shipping/Partner Fee, Số đơn chốt, GTTB) và sửa lỗi lệch múi giờ.
+    - **Kiểm thử Thực tế**: Viết và chạy thành công script `app/scratch/test-report-engine.ts`. Kết quả trả về từ API đối soát khớp 100% về số đơn và COD (23 đơn chốt, 50.075đ thực thu, lợi nhuận 8.736đ).
+
+- **2026-06-04 (connect hub - pancake-pos reconstitution & probe)**:
+  - 🚀 **Hoàn thành Phase 0: Probe Endpoints Pancake POS**:
+    - **Viết Script Probe**: Tạo file `app/scratch/probe-pancake-pos.js` và `app/scratch/analyze-probe.js` gọi API thật.
+    - **Xác nhận Lỗi Lệch Múi Giờ**: Phát hiện Pancake POS trả về `inserted_at` dạng UTC không kèm chữ `Z` khiến JS tự động parse lệch lùi 7 tiếng. Đã tìm ra giải pháp xử lý triệt để.
+    - **Xác nhận Phân Quyền**: Endpoint `/orders/statistics` bị báo lỗi quyền với API Key cửa hàng. Đã chuyển hướng chính thức sang giải pháp Fallback qua endpoint `/orders` kèm `filter_status` và đọc trường `aggs`.
+    - **Đối Soát Thành Công**: Tổng số đơn chốt và doanh số từ API khớp gần như tuyệt đối (Doanh số khớp 100% đạt 186.100đ, Collected Revenue lệch ~2.7% đạt 47.082đ so với 48.416đ Dashboard, số đơn lệch 1 do có đơn phát sinh ngay lúc test).
+
+- **2026-06-04 (connect hub - pancake-pos normalization fix)**:
+  - 🛠️ **Sửa lỗi chuẩn hóa dữ liệu Pancake POS**:
+    - **Sửa hàm runActionAction**: Giải quyết triệt để lỗi dữ liệu trích xuất bị trống rỗng khi bật `normalize: true` bằng cách tự động bóc tách (unpack) trường `data` từ API response thô của Pancake POS trước khi truyền vào hàm `normalizeData`.
+    - **Kiểm định CLI**: Viết script test local để chạy trực tiếp trên database thật, kiểm tra toàn diện và xác thực dữ liệu chuẩn hóa của 10 đơn hàng thành công.
+
+
+
+- **2026-06-03 (hero-report - mvp bot v1)**:
+  - 🚀 **Hoàn thành MVP Hero Report Bot (V1)**:
+    - **Database Schema**: Thêm 2 bảng `heroReportSchedules` (cấu hình) và `heroReportRuns` (log runs) vào schema.ts.
+    - **Apps Registry**: Đăng ký `hero-report` vào registry.ts và admin page.
+    - **Server Actions**: Xây dựng file `hero-report-actions.ts` cung cấp đầy đủ các action CRUD, kích hoạt, gỡ bỏ và chạy thử.
+    - **Giao diện quản lý (UI)**: Thiết kế trang dashboard phẳng, tabs lịch sử, form tạo mới 5 bước dạng Wizard có hỗ trợ preview (Gửi thử ngay).
+    - **Engine chạy báo cáo**: Viết `aggregator.ts` tổng hợp dữ liệu POS thuần code, `telegram-sender.ts` kết nối Telegram Bot API kèm plain-text fallback, `engine.ts` điều phối chạy báo cáo tự động kết hợp AI ChiaSeGPU nhận xét.
+    - **Cron Endpoint**: Tạo API `/api/cron/reports` với cơ chế lock chống trùng và tự động giải phóng lock sau 10 phút.
+
+- **2026-06-03 (connect hub - ui updates)**:
+  - 🚀 **Cải tiến Telegram Setup Guide**: Tối ưu khối Hướng dẫn (Setup Guide) lấy Token của Cổng Telegram, gộp bước "Tên hiển thị" và nhấn mạnh yếu tố `_bot` cho Username giúp luồng cài đặt mạch lạc hơn.
 
 - **2026-06-03 (connect hub - api health monitor & 24 capabilities)**:
   - 🚀 **Xây dựng Năng lực API & Thẻ theo dõi sức khoẻ (ChiaSeGPU)**:

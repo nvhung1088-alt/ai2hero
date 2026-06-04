@@ -567,6 +567,7 @@ export const connectHubUsageLogs = pgTable('connect_hub_usage_logs', {
   status: varchar('status', { length: 50 }).notNull(),
   durationMs: integer('duration_ms'),
   errorMessage: text('error_message'),
+  isTest: integer('is_test').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -605,4 +606,112 @@ export const connectHubMappingConfigsRelations = relations(connectHubMappingConf
 
 export type ConnectHubMappingConfig = typeof connectHubMappingConfigs.$inferSelect;
 export type NewConnectHubMappingConfig = typeof connectHubMappingConfigs.$inferInsert;
+
+// ============================================================================
+// HERO REPORT — MVP Báo cáo tự động (V1: POS → Code Aggregator → AI nhận xét → Telegram)
+// ============================================================================
+
+/**
+ * Bảng cấu hình lịch báo cáo.
+ * Mỗi schedule = 1 báo cáo tự động: nguồn đầu vào + reportSpec + đích đến + lịch chạy.
+ * 
+ * reportSpec (jsonb) chứa cấu hình chuẩn hóa thay vì prompt tự do:
+ * {
+ *   reportType: "daily_sales" | "low_stock" | "pending_orders" | "top_products",
+ *   dateRange: "yesterday" | "today" | "last_7_days",
+ *   metrics: ["total_revenue", "total_orders", "top_products", "low_stock"],
+ *   filters: { lowStockLessThan: 10, topN: 5 },
+ *   aiSummaryStyle: "short_business" | "detailed" | "alert_only",
+ *   customPrompt: "Nhấn mạnh sản phẩm bán chạy..." // yêu cầu thêm tùy chọn
+ * }
+ */
+export const heroReportSchedules = pgTable('hero_report_schedules', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  name: varchar('name', { length: 255 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('active'),
+  // status: 'active' | 'paused'
+
+  // --- Input Source ---
+  inputConnectionId: integer('input_connection_id').notNull()
+    .references(() => connectHubConnections.id, { onDelete: 'cascade' }),
+  inputProvider: varchar('input_provider', { length: 50 }).notNull(),
+  // inputProvider: 'pancake-pos' | 'kiotviet'
+
+  // --- Report Spec (JSON chuẩn, KHÔNG prompt tự do) ---
+  reportSpec: jsonb('report_spec').notNull().default('{}'),
+
+  // --- Output (V1: chỉ Telegram) ---
+  outputType: varchar('output_type', { length: 50 }).notNull().default('telegram'),
+  outputConnectionId: integer('output_connection_id').notNull()
+    .references(() => connectHubConnections.id, { onDelete: 'cascade' }),
+  outputConfig: jsonb('output_config').notNull().default('{}'),
+  // outputConfig: { chatId: "-100123456789" }
+
+  // --- Scheduler & Cron Lock ---
+  scheduleType: varchar('schedule_type', { length: 20 }).notNull().default('manual'),
+  // scheduleType: 'manual' | 'daily' | 'hourly' | 'weekly'
+  cronExpression: varchar('cron_expression', { length: 100 }),
+  timezone: varchar('timezone', { length: 50 }).default('Asia/Ho_Chi_Minh'),
+  nextRunAt: timestamp('next_run_at'),
+  lastRunAt: timestamp('last_run_at'),
+  lastSuccessAt: timestamp('last_success_at'),
+  lockedAt: timestamp('locked_at'),   // Chống chạy trùng cron
+  lockedBy: varchar('locked_by', { length: 100 }), // ID tiến trình đang lock
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+/**
+ * Bảng lịch sử chạy báo cáo.
+ * Mỗi run = 1 lần hệ thống thực thi báo cáo (thủ công hoặc cron).
+ * Lưu snapshot metrics + nội dung AI + token consumed để kiểm soát chi phí.
+ */
+export const heroReportRuns = pgTable('hero_report_runs', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  scheduleId: integer('schedule_id').notNull()
+    .references(() => heroReportSchedules.id, { onDelete: 'cascade' }),
+
+  status: varchar('status', { length: 20 }).notNull().default('running'),
+  // status: 'running' | 'success' | 'failed'
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  finishedAt: timestamp('finished_at'),
+
+  // --- Data snapshot ---
+  metricsJson: jsonb('metrics_json'),   // Số liệu aggregated bằng code
+  reportText: text('report_text'),       // Nội dung báo cáo AI viết
+
+  errorMessage: text('error_message'),
+  retryCount: integer('retry_count').default(0),
+
+  // --- AI cost tracking ---
+  aiModel: varchar('ai_model', { length: 100 }),
+  aiInputTokens: integer('ai_input_tokens'),
+  aiOutputTokens: integer('ai_output_tokens'),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// --- Hero Report Relations ---
+export const heroReportSchedulesRelations = relations(heroReportSchedules, ({ one, many }) => ({
+  team: one(teams, { fields: [heroReportSchedules.teamId], references: [teams.id] }),
+  user: one(users, { fields: [heroReportSchedules.userId], references: [users.id] }),
+  inputConnection: one(connectHubConnections, { fields: [heroReportSchedules.inputConnectionId], references: [connectHubConnections.id] }),
+  outputConnection: one(connectHubConnections, { fields: [heroReportSchedules.outputConnectionId], references: [connectHubConnections.id] }),
+  runs: many(heroReportRuns),
+}));
+
+export const heroReportRunsRelations = relations(heroReportRuns, ({ one }) => ({
+  team: one(teams, { fields: [heroReportRuns.teamId], references: [teams.id] }),
+  schedule: one(heroReportSchedules, { fields: [heroReportRuns.scheduleId], references: [heroReportSchedules.id] }),
+}));
+
+// --- Hero Report Types ---
+export type HeroReportSchedule = typeof heroReportSchedules.$inferSelect;
+export type NewHeroReportSchedule = typeof heroReportSchedules.$inferInsert;
+export type HeroReportRun = typeof heroReportRuns.$inferSelect;
+export type NewHeroReportRun = typeof heroReportRuns.$inferInsert;
 

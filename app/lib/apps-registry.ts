@@ -89,6 +89,31 @@ export const APPS: AppDefinition[] = [
       '0đ chi phí — chạy hoàn toàn trên cloud miễn phí'
     ],
     targetUsers: 'Mọi doanh nghiệp cần kết nối dữ liệu từ nhiều ứng dụng và tự động hóa báo cáo AI.'
+  },
+  {
+    id: 'hero-report',
+    name: 'Hero Report',
+    description: 'Báo cáo tự động — kéo dữ liệu từ POS, AI viết nhận xét, gửi Telegram theo giờ.',
+    icon: 'BarChart3',
+    path: '/hero-report/dashboard',
+    status: 'beta',
+    tier: 'free',
+    category: 'analytics',
+    color: 'from-emerald-500 to-teal-500',
+    slogan: 'Báo cáo kinh doanh tự động, gửi thẳng vào nhóm',
+    longDesc: 'Kết nối với nguồn dữ liệu POS (Pancake, KiotViet), hệ thống tự tính toán số liệu chuẩn xác rồi dùng AI viết nhận xét thông minh. Tự động gửi báo cáo vào nhóm Telegram theo lịch bạn đặt.',
+    features: [
+      'Tự tính doanh thu, top sản phẩm, tồn kho thấp',
+      'AI viết nhận xét & gợi ý hành động',
+      'Gửi Telegram tự động theo giờ đặt lịch',
+      'Gửi thử ngay 1 click trước khi lưu lịch',
+      'Lịch sử chạy báo cáo chi tiết'
+    ],
+    benefits: [
+      'Không cần mở dashboard — báo cáo tự đến nhóm chat',
+      'Số liệu chính xác 100% do code tính (không AI đoán)'
+    ],
+    targetUsers: 'Chủ shop, Quản lý kinh doanh, Kế toán cần báo cáo tự động hàng ngày.'
   }
 ];
 

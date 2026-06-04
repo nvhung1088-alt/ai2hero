@@ -44,6 +44,10 @@ export const telegramConnector: ConnectorDefinition = {
       slug: 'send_message',
       name: 'Gửi tin nhắn',
       description: 'Gửi tin nhắn text (hỗ trợ Markdown) đến Chat ID mong muốn.',
+      group: 'Giao tiếp & Thông báo',
+      httpMethod: 'POST',
+      endpoint: '/sendMessage',
+      status: 'ready',
       inputSchema: [
         {
           name: 'chatId',
@@ -61,7 +65,10 @@ export const telegramConnector: ConnectorDefinition = {
           placeholder: '🔔 *Thông báo từ AI2Hero Connect Hub*:\nĐã phát sinh đơn hàng mới!',
           helpText: 'Hỗ trợ định dạng Telegram MarkdownV2 hoặc HTML cơ bản.'
         }
-      ]
+      ],
+      outputFields: ['message_id'],
+      aiInstruction: 'Bước 1: Gọi Action send_message với chatId và text.\nBước 2: Có thể dùng MarkdownV2 để bôi đậm, in nghiêng.\nBước 3: Trả về thành công nếu message_id tồn tại.',
+      testStrategy: 'direct'
     }
   ],
   popular: true

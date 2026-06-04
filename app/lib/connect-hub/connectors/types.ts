@@ -24,6 +24,22 @@ export interface ActionDefinition {
   name: string;
   description: string;
   inputSchema: InputField[];
+  
+  // === MỚI: Metadata cho Capabilities UI & AI ===
+  group?: string;               // Nhóm nghiệp vụ (Báo cáo, Đơn hàng, Kho, ...)
+  httpMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  endpoint?: string;            // Endpoint tham chiếu (hiển thị trên UI)
+  status?: 'ready' | 'planned'; // Trạng thái sẵn sàng
+  outputFields?: string[];      // Các trường đầu ra chính
+  aiInstruction?: string;       // Hướng dẫn cho AI thực thi
+  
+  // === MỚI: Metadata cho Test tự động ===
+  testStrategy?: 'direct' | 'requires_sample'; // direct = test ngay, requires_sample = cần ID mẫu
+  sampleFrom?: {                // Chỉ dùng khi testStrategy = 'requires_sample'
+    actionSlug: string;         // Action lấy danh sách (vd: 'list_orders')
+    path: string;               // JSONPath lấy ID (vd: 'data[0].id')
+    inputKey: string;           // Key truyền vào action test (vd: 'orderId')
+  };
 }
 
 export interface ConnectorDefinition {

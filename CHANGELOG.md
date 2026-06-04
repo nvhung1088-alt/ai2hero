@@ -1,10 +1,22 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-04 — Hoàn thành Tái cấu trúc Connect Hub thành API Gateway Trung tâm (Phase 1-4)
+- **Tái cấu trúc Connect Hub Gateway (Phase 1-4)**:
+  - *Phase 1 (SSOT)*: Di chuyển metadata năng lực tĩnh vào definitions [pancake-pos.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/connectors/definitions/pancake-pos.ts), tối giản hóa UI và file mapping.
+  - *Phase 2 (Core Service)*: Tạo bộ lọc PII bảo mật log [log-redactor.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/utils/log-redactor.ts) và Service Gateway [connector-service.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/connector-service.ts) chứa hàm `runConnectorAction`.
+  - *Phase 3 (Hero Report Refactor)*: Chuyển đổi module báo cáo [engine.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/hero-report/engine.ts) gọi qua Gateway trung tâm thay vì bypass cửa sau.
+  - *Phase 4 (Usage Logs Upgrade)*: Thêm cột `isTest` vào DB schema, sinh migration [0001_lyrical_justice.sql](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/lib/db/migrations/0001_lyrical_justice.sql), và lưu log chính xác khi chạy thử.
+- **Tài liệu chuẩn hóa phát triển**: 
+  - Tạo tài liệu lập trình viên [CONNECT_HUB_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/CONNECT_HUB_GUIDE.md) định hình 2 bộ chuẩn: Chuẩn tích hợp API mới & Chuẩn gọi API từ các MVP nội bộ.
+- **Nâng cấp Giao diện & Test Runner**:
+  - Triển khai **Test Run Modal** trực quan cho các Năng lực API trên giao diện Mapping, giúp lập trình viên chạy test trực tiếp các action với dữ liệu JSON.
+
 ## 2026-06-03 — Hoàn thành Giai đoạn 4: Gia cố (Hardening) & Chuẩn bị Production cho Connect Hub MVP
 - **Nâng cấp Hệ sinh thái AI2Hero (Cổng 1) & Tích hợp API Health Monitor**:
   - Tinh giản giao diện thành 8 Năng lực (Capabilities) tập trung sâu vào các dòng mô hình Generative AI (Chat, Ảnh, Video, Lập trình).
   - Tích hợp Server Action đọc log từ CSDL để hiển thị Báo cáo Sức khỏe (Ping trễ, Request, Tỷ lệ Thành Công %) của cổng AI dạng Thẻ trực quan (Health Card) bên trong Modal Kết nối.
   - Cập nhật chuẩn hóa cấu trúc Bảng giá Models & bổ sung Code Hướng dẫn cURL để người dùng gọi API trực tiếp vào `https://api.vilao.ai/v1`.
+- **Cải tiến Giao diện (UX/UI)**: Tối ưu khối Hướng dẫn (Setup Guide) lấy Token của Cổng Telegram, gộp bước "Tên hiển thị" và nhấn mạnh yếu tố `_bot` cho Username giúp luồng cài đặt mạch lạc hơn.
 - **Bảo mật truy cập (Authorization Gating)**: Bổ sung cơ chế bảo vệ tại Layout `app/app/(dashboard)/connect-hub/layout.tsx`. Chặn đứng mọi truy cập nếu Workspace (Team) chưa đăng ký kích hoạt ứng dụng Connect Hub, tự động điều hướng người dùng về trang Dashboard tổng.
 - **Bảo mật & Cải thiện UX/UI Client Components**: 
   - Tạo mới `app/components/error-boundary.tsx` để cô lập lỗi giao diện (runtime error) và hiển thị UI fallback tối màu sang trọng thay vì gây "trắng trang" (white screen of death).

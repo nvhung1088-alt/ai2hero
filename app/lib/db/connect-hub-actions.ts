@@ -11,10 +11,9 @@ import {
 } from './schema';
 import { getUser } from './queries';
 import { encryptField, decryptField } from '../sim-crypto';
-import { executeAction } from '../connect-hub/connectors/engine';
-import { normalizeData } from '../connect-hub/utils/mapper';
 import { getMappingConfigAction } from './connect-hub-mapping-actions';
 import { revalidatePath } from 'next/cache';
+import { runConnectorAction } from '../connect-hub/connector-service';
 
 // Helper kiểm tra quyền truy cập không gian làm việc và kích hoạt app Connect Hub
 async function verifyConnectHubAccess(targetTeamId: number, requireRole?: string[]) {
@@ -366,110 +365,31 @@ export async function runActionAction(
     normalize?: boolean;
   }
 ) {
-  const startTime = Date.now();
-  let connection: any = null;
-  
   try {
     await verifyConnectHubAccess(teamId, ['owner', 'admin', 'manager', 'member']);
 
-    const [fetchedConnection] = await db
-      .select()
-      .from(connectHubConnections)
-      .where(
-        and(
-          eq(connectHubConnections.teamId, teamId),
-          eq(connectHubConnections.id, data.connectionId)
-        )
-      )
-      .limit(1);
-
-    if (!fetchedConnection) {
-      return { success: false, error: 'Không tìm thấy kết nối API thích hợp.' };
-    }
-    
-    connection = fetchedConnection;
-
-    // Giải mã credential
-    const decryptedJson = decryptField(connection.encryptedCredentials) || '{}';
-    const credentials = JSON.parse(decryptedJson);
-
-    // Thực thi action qua connector engine
-    const executionResult = await executeAction(
-      connection.appSlug,
-      credentials,
-      data.actionSlug,
-      data.input
-    );
-
-    if (data.normalize && executionResult.success) {
-      const configRes = await getMappingConfigAction(connection.appSlug);
-      const mappingConfig: any = configRes.success ? configRes.data : {};
-
-      executionResult.data = normalizeData(
-        connection.appSlug,
-        data.actionSlug,
-        executionResult.data,
-        mappingConfig
-      );
-    }
-
-    const durationMs = Date.now() - startTime;
-
-    // Ghi Usage Log
-    await db.insert(connectHubUsageLogs).values({
-      connectionId: connection.id,
+    const result = await runConnectorAction({
       teamId,
+      connectionId: data.connectionId,
+      actionSlug: data.actionSlug,
+      input: data.input,
       callerModule: data.callerModule || 'connect-hub-ui',
-      appSlug: connection.appSlug,
-      actionName: data.actionSlug,
-      status: executionResult.success ? 'success' : 'error',
-      durationMs,
-      errorMessage: executionResult.error || null,
-      createdAt: new Date()
+      normalize: data.normalize,
     });
 
-    // Cập nhật mốc sử dụng cho Connection
-    await db
-      .update(connectHubConnections)
-      .set({
-        lastUsedAt: new Date(),
-        status: executionResult.success ? 'connected' : 'error',
-        updatedAt: new Date()
-      })
-      .where(eq(connectHubConnections.id, connection.id));
-
-
+    // Revalidate UI paths
     revalidatePath('/connect-hub/logs');
     revalidatePath('/connect-hub/dashboard');
     revalidatePath('/connect-hub/connections');
 
     return {
-      success: executionResult.success,
-      data: executionResult.data,
-      error: executionResult.error
+      success: result.success,
+      data: result.data,
+      error: result.error
     };
   } catch (error: any) {
-    const durationMs = Date.now() - startTime;
-    console.error('Error running API action:', error);
-    
-    // Ghi Usage Log lỗi vào DB khi xảy ra Exception ngoài luồng
-    try {
-      await db.insert(connectHubUsageLogs).values({
-        connectionId: data.connectionId,
-        teamId,
-        callerModule: data.callerModule || 'connect-hub-ui',
-        appSlug: connection?.appSlug || 'unknown',
-        actionName: data.actionSlug,
-        status: 'error',
-        durationMs,
-        errorMessage: sanitizeError(error),
-        createdAt: new Date()
-      });
-    } catch (logDbError) {
-      console.error('Lỗi khi ghi nhận log lỗi vào database:', logDbError);
-    }
-    
-    return { success: false, error: sanitizeError(error) };
+    console.error('Error running API action in server action:', error);
+    return { success: false, error: error.message || 'Lỗi hệ thống khi thực thi Action.' };
   }
 }
 

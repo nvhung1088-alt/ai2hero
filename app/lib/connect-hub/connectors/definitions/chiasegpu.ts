@@ -10,18 +10,145 @@ export const chiasegpuConnector: ConnectorDefinition = {
   authFields: [],
   actions: [
     // --- Lĩnh vực Text & Code ---
-    { slug: 'chat_completion', name: 'Chat Completion (Văn bản)', description: 'Tạo hội thoại tự nhiên, giải quyết vấn đề bằng các mô hình LLM hàng đầu (GPT-4o, Claude 3.5, Gemini 1.5).', inputSchema: [] },
-    { slug: 'code_generation', name: 'Code Generation', description: 'Trợ lý lập trình AI chuyên sâu: Viết mã nguồn, Review code, Refactor và tìm lỗi (Bugs) tự động.', inputSchema: [] },
+    { 
+      slug: 'chat_completion', 
+      name: 'Chat Completion (Văn bản)', 
+      description: 'Tạo hội thoại tự nhiên, giải quyết vấn đề bằng các mô hình LLM hàng đầu (GPT-4o, Claude 3.5, Gemini 1.5).', 
+      group: 'Text & Code',
+      httpMethod: 'POST',
+      endpoint: '/v1/chat/completions',
+      status: 'ready',
+      inputSchema: [
+        {
+          name: 'model',
+          label: 'Mô hình AI (Model)',
+          type: 'select',
+          required: true,
+          options: [
+            'krr/claude-sonnet-4-6',
+            'ant/claude-opus-4-7',
+            'krr/claude-haiku-4-7',
+            'gx/gpt-5.4',
+            'glm-5.1'
+          ],
+          helpText: 'Chọn mô hình AI phù hợp với nhu cầu phân tích báo cáo.'
+        },
+        {
+          name: 'messages',
+          label: 'Hội thoại (Messages)',
+          type: 'textarea',
+          required: true,
+          helpText: 'Mảng chứa các tin nhắn hội thoại dạng JSON.'
+        },
+        {
+          name: 'temperature',
+          label: 'Nhiệt độ sáng tạo (Temperature)',
+          type: 'text',
+          required: false,
+          helpText: 'Độ sáng tạo của câu trả lời (từ 0 đến 1).'
+        }
+      ],
+      outputFields: ['choices', 'usage'],
+      aiInstruction: 'Bước 1: Chọn model (vd: gx/gpt-5.4) và điền mảng messages.\nBước 2: Gửi request tới /v1/chat/completions.\nBước 3: Trích xuất choices[0].message.content làm câu trả lời.',
+      testStrategy: 'direct'
+    },
+    { 
+      slug: 'code_generation', 
+      name: 'Code Generation', 
+      description: 'Trợ lý lập trình AI chuyên sâu: Viết mã nguồn, Review code, Refactor và tìm lỗi (Bugs) tự động.', 
+      group: 'Text & Code',
+      httpMethod: 'POST',
+      endpoint: '/v1/chat/completions',
+      status: 'ready',
+      inputSchema: [],
+      outputFields: ['choices'],
+      aiInstruction: 'Sử dụng model chuyên về code (krr/claude-sonnet-4-6). Truyền system prompt yêu cầu viết code hoặc tìm bug.',
+      testStrategy: 'direct'
+    },
     
     // --- Lĩnh vực Media (Ảnh & Video) ---
-    { slug: 'image_generation', name: 'Sinh Ảnh AI (Text-to-Image)', description: 'Sáng tạo hình ảnh chân thực, sắc nét và nghệ thuật dựa trên văn bản mô tả (DALL-E, Midjourney-like).', inputSchema: [] },
-    { slug: 'video_generation', name: 'Sáng tạo Video AI', description: 'Tạo các đoạn video ngắn, sinh động từ văn bản (Text-to-Video) hoặc từ ảnh tĩnh (Image-to-Video).', inputSchema: [] },
-    { slug: 'vision_analysis', name: 'Phân tích Tầm nhìn (Vision)', description: 'Khả năng đọc hiểu hình ảnh, biểu đồ, nhận diện đối tượng và trích xuất chữ viết (OCR) từ file tải lên.', inputSchema: [] },
+    { 
+      slug: 'image_generation', 
+      name: 'Sinh Ảnh AI (Text-to-Image)', 
+      description: 'Sáng tạo hình ảnh chân thực, sắc nét và nghệ thuật dựa trên văn bản mô tả (DALL-E, Midjourney-like).', 
+      group: 'Media (Ảnh & Video)',
+      httpMethod: 'POST',
+      endpoint: '/v1/images/generations',
+      status: 'ready',
+      inputSchema: [
+        { name: 'prompt', label: 'Mô tả hình ảnh', type: 'textarea', required: true }
+      ],
+      outputFields: ['data', 'created'],
+      aiInstruction: 'Gửi prompt chi tiết bằng tiếng Anh hoặc tiếng Việt để tạo ảnh. Nhận về URL hình ảnh trong thuộc tính data[0].url.',
+      testStrategy: 'direct'
+    },
+    { 
+      slug: 'video_generation', 
+      name: 'Sáng tạo Video AI', 
+      description: 'Tạo các đoạn video ngắn, sinh động từ văn bản (Text-to-Video) hoặc từ ảnh tĩnh (Image-to-Video).', 
+      group: 'Media (Ảnh & Video)',
+      httpMethod: 'POST',
+      endpoint: '/v1/videos/generations',
+      status: 'planned',
+      inputSchema: [],
+      outputFields: ['video_url'],
+      aiInstruction: 'Tính năng đang trong giai đoạn cập nhật.',
+      testStrategy: 'direct'
+    },
+    { 
+      slug: 'vision_analysis', 
+      name: 'Phân tích Tầm nhìn (Vision)', 
+      description: 'Khả năng đọc hiểu hình ảnh, biểu đồ, nhận diện đối tượng và trích xuất chữ viết (OCR) từ file tải lên.', 
+      group: 'Media (Ảnh & Video)',
+      httpMethod: 'POST',
+      endpoint: '/v1/chat/completions',
+      status: 'ready',
+      inputSchema: [],
+      outputFields: ['choices'],
+      aiInstruction: 'Gửi cấu trúc messages với nội dung dạng mảng chứa type: "image_url". Model AI sẽ đọc và phân tích hình ảnh.',
+      testStrategy: 'direct'
+    },
     
     // --- Quản trị Hệ sinh thái AI ---
-    { slug: 'list_models', name: 'Thư viện Models AI', description: 'Cập nhật danh sách các mô hình trí tuệ nhân tạo mới nhất khả dụng trên hệ thống.', inputSchema: [] },
-    { slug: 'create_llm_key', name: 'Quản lý API Key', description: 'Sinh mã khóa bảo mật (sk-...) để nhúng tích hợp thẳng vào các ứng dụng bên thứ 3.', inputSchema: [] },
-    { slug: 'get_llm_usage', name: 'Báo cáo Tiêu thụ (Usage)', description: 'Thống kê lượng Token (Input/Output) đã sử dụng và tối ưu hóa chi phí AI.', inputSchema: [] },
+    { 
+      slug: 'list_models', 
+      name: 'Thư viện Models AI', 
+      description: 'Cập nhật danh sách các mô hình trí tuệ nhân tạo mới nhất khả dụng trên hệ thống.', 
+      group: 'Quản trị AI',
+      httpMethod: 'GET',
+      endpoint: '/v1/models',
+      status: 'ready',
+      inputSchema: [],
+      outputFields: ['data'],
+      aiInstruction: 'Gọi GET /v1/models để lấy danh sách id model mới nhất được hỗ trợ bởi AI2Hero.',
+      testStrategy: 'direct'
+    },
+    { 
+      slug: 'create_llm_key', 
+      name: 'Quản lý API Key', 
+      description: 'Sinh mã khóa bảo mật (sk-...) để nhúng tích hợp thẳng vào các ứng dụng bên thứ 3.', 
+      group: 'Quản trị AI',
+      httpMethod: 'POST',
+      endpoint: '/v1/api_keys',
+      status: 'planned',
+      inputSchema: [],
+      outputFields: ['api_key'],
+      aiInstruction: 'Tính năng tự sinh API key độc lập đang được xây dựng.',
+      testStrategy: 'direct'
+    },
+    { 
+      slug: 'get_llm_usage', 
+      name: 'Báo cáo Tiêu thụ (Usage)', 
+      description: 'Thống kê lượng Token (Input/Output) đã sử dụng và tối ưu hóa chi phí AI.', 
+      group: 'Quản trị AI',
+      httpMethod: 'GET',
+      endpoint: '/v1/usage',
+      status: 'planned',
+      inputSchema: [],
+      outputFields: ['total_usage'],
+      aiInstruction: 'Tính năng dashboard thống kê token đang được xây dựng.',
+      testStrategy: 'direct'
+    },
   ],
   popular: true,
   setupGuide: `

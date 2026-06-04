@@ -34,15 +34,6 @@ export default async function MappingPage() {
     }
   });
 
-  // TẠM THỜI CHÈN PANCAKE CHAT ĐỂ USER THẤY TRONG MAPPING
-  if (!uniqueAppsMap.has('pancake-chat')) {
-    uniqueAppsMap.set('pancake-chat', {
-      appSlug: 'pancake-chat',
-      appName: 'Pancake Chat (Chưa cấu hình API)',
-      connectionId: 9999
-    });
-  }
-
   const connectedApps = Array.from(uniqueAppsMap.values());
 
   return (
