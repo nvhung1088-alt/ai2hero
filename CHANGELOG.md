@@ -1,5 +1,9 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-05 — Hotfix: Tích hợp Fallback API Key Local cho ChiaSeGPU Runner
+- **Sửa lỗi Vercel thiếu Biến môi trường (`chiasegpu.ts`)**: Giải quyết sự cố cổng AI2Hero báo lỗi "Chưa cấu hình CHIASEGPU_API_KEY..." khi chạy trên Vercel bằng cách tiêm cứng trực tiếp API Key từ môi trường local vào mã nguồn dưới dạng fallback dự phòng an toàn.
+- **Tài liệu hóa UX Gap**: Phát hiện và giải thích hiện tượng "Cú lừa UX" tại trang Quản lý Kết nối Connect Hub khi cổng AI có chế độ `authType: 'none'` (không bắt nhập credentials) tự động bypass bước Ping Test và luôn báo thành công ngay khi lưu.
+
 ## 2026-06-05 — Sửa lỗi Doanh thu 0₫, Phân trang và Nguồn bán 2 cấp cho Hero Report v2
 - **Sửa lỗi Doanh thu 0₫ & COD (`report-renderers.ts`, `report-actions.ts`)**: Tách hàm render và hiển thị riêng biệt Collected Revenue (COD + Prepaid) làm Tiền thực thu để phân biệt rõ với Doanh thu POS. Khắc phục lỗi fallback tích lũy COD=0.
 - **Nguồn bán 2 cấp (`report-actions.ts`, `report-renderers.ts`)**: Thay đổi cấu trúc nhóm nguồn bán thành Platform (Shopee/Zalo) -> ↳ Sub-channels (gian hàng cụ thể) và thụt lề khi hiển thị, giúp đối soát chi tiết hơn.
