@@ -71,6 +71,17 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 
+- **2026-06-05 (hero-report - cancel rate, status breakdown & customer analysis)**:
+  - 🚀 **Bổ sung Tỷ lệ hủy đơn & Tình trạng đơn hàng**:
+    - **Runner Pancake POS (`report-actions.ts`)**: Cải tiến action `get_statistics` để lấy status breakdown cho toàn bộ đơn hàng trong ngày (chuyển sang call API `/orders` không filter status, sau đó tự đếm số lượng của từng status code và lọc đơn chốt CONFIRMED để chạy thuật toán tính doanh thu như cũ). Tích hợp status breakdown cho cả API thống kê chính thức và fallback.
+    - **Renderer (`report-renderers.ts`)**: Sửa `renderTotalRevenue` để đọc `data.statusBreakdown`, tính tỷ lệ hủy đơn (`cancelRate = (cancelled / totalAll) * 100`) và hiển thị bảng chi tiết trạng thái xử lý đơn hàng (Mới, Đang đóng gói, Chờ CPN, Đang giao, Đã giao, Đã hủy, Hoàn trả).
+  - 🚀 **Tích hợp tính năng Phân tích khách quen / khách mới**:
+    - **Definition (`pancake-pos.ts`)**: Thêm virtual capability `customer_analysis` với các hướng dẫn AI (`aiInstruction`).
+    - **Aggregator (`aggregator.ts`)**: Viết hàm `aggregateCustomerAnalysis` tự động phân loại đơn hàng dựa trên `customer_id` hoặc số điện thoại so với tập đơn của 90 ngày trước đó (để xác định khách quen, khách mới, khách vãng lai).
+    - **Engine (`engine.ts`)**: Bổ sung case `customer_analysis` để tự động tính khoảng thời gian 90 ngày trước đó, gọi API `/orders` phân trang (tải tối đa 15 trang để chống timeout) và chuyển đổi dữ liệu qua aggregator.
+    - **Renderer (`report-renderers.ts`)**: Viết `renderCustomerAnalysis` hiển thị biểu đồ phân bố đơn hàng và doanh thu theo nhóm khách hàng mới/quen. Đăng ký registry capability.
+  - 🚀 **Kiểm thử & Deploy**: Chạy `npx tsc --noEmit` đạt 0 lỗi. Commit và push thành công lên origin main để tự động deploy production.
+
 - **2026-06-05 (hero-report - fix revenue_summary renderer + runner pagination)**:
   - 🛠️ **Sửa lỗi "Doanh thu 0₫" lặp lại trong báo cáo**:
     - **Nguyên nhân**: `revenue_summary` và `get_statistics` dùng chung cùng 1 renderer, nhưng `revenue_summary` trả về `{ cod, prepaid, collected_revenue }` (không có `total_revenue`) → renderer hiển thị Tổng doanh số = 0₫.
