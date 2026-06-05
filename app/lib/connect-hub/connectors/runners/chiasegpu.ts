@@ -5,7 +5,8 @@ export async function runChiaSeGPU(
   action: string,
   input: any
 ): Promise<any> {
-  const apiKey = process.env.CHIASEGPU_API_KEY;
+  // Fallback to local hardcoded key if Vercel environment variable is missing
+  const apiKey = process.env.CHIASEGPU_API_KEY || 'sk-85ab4cf3cf86c3ed380f5b9f3f27d24647e2fd3330a3b0b50ec85afd522b12e4';
   if (!apiKey) {
     throw new Error('Chưa cấu hình CHIASEGPU_API_KEY trong biến môi trường server. Vui lòng liên hệ quản trị viên.');
   }
