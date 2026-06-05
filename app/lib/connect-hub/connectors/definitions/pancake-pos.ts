@@ -263,6 +263,33 @@ export const pancakePosConnector: ConnectorDefinition = {
       outputFields: ['data'],
       aiInstruction: 'Bước 1: Gọi Action probe_sample_data.\nBước 2: Hệ thống tự động fetch 1 record của order, product và customer để làm chuẩn tham chiếu cấu trúc.',
       testStrategy: 'direct'
+    },
+    // === Virtual slugs dành cho Hero Report (không gọi API trực tiếp, engine xử lý nội bộ) ===
+    {
+      slug: 'low_stock_products',
+      name: 'Cảnh báo tồn kho thấp',
+      description: 'Tự động quét và liệt kê các sản phẩm có số lượng tồn kho dưới ngưỡng cảnh báo (mặc định < 10).',
+      group: 'Báo cáo nâng cao',
+      httpMethod: 'GET',
+      endpoint: '/products',
+      status: 'ready',
+      inputSchema: [],
+      outputFields: ['data'],
+      aiInstruction: 'Xem xét danh sách sản phẩm tồn kho thấp và đề xuất ưu tiên nhập hàng cho sản phẩm bán chạy nhất.',
+      testStrategy: 'direct'
+    },
+    {
+      slug: 'pending_orders',
+      name: 'Đơn hàng chờ xử lý lâu',
+      description: 'Phát hiện các đơn hàng tồn đọng hơn 24 giờ, đơn đã hủy và đơn hoàn trả trong kỳ báo cáo.',
+      group: 'Báo cáo nâng cao',
+      httpMethod: 'GET',
+      endpoint: '/orders',
+      status: 'ready',
+      inputSchema: [],
+      outputFields: ['data'],
+      aiInstruction: 'Phân tích nguyên nhân gốc của đơn tồn đọng và gợi ý biện pháp xử lý nhanh.',
+      testStrategy: 'direct'
     }
   ],
   setupGuide: '<p><b>1.</b> Đăng nhập vào <a href="https://pos.pancake.vn" target="_blank" rel="noreferrer">Pancake POS</a>.</p><p><b>2.</b> Chọn Cửa hàng. Sao chép <b>Shop ID</b> từ URL (ví dụ: <code>shops/987654321</code>).</p><p><b>3.</b> Truy cập <b>Cài đặt &gt; Tích hợp API</b> và tạo một <b>API Key</b> (Shop Token) mới.</p>'
