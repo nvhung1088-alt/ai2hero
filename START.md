@@ -71,6 +71,10 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 
+- **2026-06-05 (hero-report - deploy to production)**:
+  - 🚀 **Đẩy code lên Production (Vercel Auto-deploy)**: Chạy `pnpm run build` ở local thành công đạt 0 errors, tiến hành stage và commit toàn bộ các file thay đổi chính thức của Hero Report v2, loại bỏ các file test rác. Đã push thành công lên branch `main` kích hoạt Vercel deploy.
+  - 🚀 **Bảo lưu Kế hoạch**: Bảo lưu [implementation_plan.md](file:///C:/Users/ADMIN/.gemini/antigravity/brain/d91f8381-11c4-4ac7-a928-022e19519830/implementation_plan.md) để triển khai tính năng Năng lực AI Pancake Chat ở session mới tiếp theo.
+
 - **2026-06-04 (hero-report - multi-source wizard & engine loop)**:
   - 🚀 **Khôi phục lỗi Data Loss do git checkout**: Phục hồi thành công file `engine.ts` đã bị mất các cập nhật của previous session (IDOR fix, phân trang, PII masking, routing AI và Telegram qua Connect Hub). Toàn bộ hệ thống Multi-source đã hoạt động trở lại và pass Type Checking.
   - 🚀 **Lên kế hoạch Năng lực AI Pancake Chat**: Đã xây dựng `implementation_plan.md` cho yêu cầu phân tích năng lực CSKH, tỷ lệ chốt đơn, và gom báo cáo của Pancake Chat. Đang chờ User phê duyệt.
