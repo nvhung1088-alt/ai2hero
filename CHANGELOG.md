@@ -1,5 +1,12 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-05 — Hoàn thành Nâng cấp Hero Report v2 & Đẩy Lên Production (Vercel Auto-deploy)
+- **Tối ưu hóa & Refactor Report Engine (`engine.ts`)**: Gộp chung logic `executeReportTask` và `testExecuteReport` vào helper dùng chung `buildReportContent`. Sửa lỗi IDOR bảo mật `outputConnectionId`. Tích hợp phân trang vòng lặp (Pagination Loop) hỗ trợ lấy dữ liệu lên tới 4000 đơn hàng. Tích hợp che ẩn dữ liệu khách hàng (PII masking).
+- **Giao diện Multi-source Wizard (`report-client.tsx`, `page.tsx`)**: Hỗ trợ chọn nhiều nguồn dữ liệu (Multi-select) với danh sách Năng lực API động, bổ sung tính năng xem trước dữ liệu thô (Inline Data Preview), cập nhật hướng dẫn thiết lập Telegram Bot.
+- **Tích hợp API Gateway Connect Hub**: Thay đổi logic gọi AI (ChiaSeGPU, OpenAI) và gửi Telegram đi qua cổng an toàn `runConnectorAction`, xóa bỏ file bypass `telegram-sender.ts`.
+- **Database & Migrations**: Đồng bộ schema database cột `inputSources` dạng `jsonb` và đẩy thành công file SQL migration lên git.
+- **Dry-run Build & Deploy**: Chạy `pnpm run build` thành công đạt 0 lỗi biên dịch trước khi `git push origin main` lên production Vercel.
+
 ## 2026-06-04 — Hoàn thành Tái cấu trúc Connect Hub thành API Gateway Trung tâm (Phase 1-4)
 - **Tái cấu trúc Connect Hub Gateway (Phase 1-4)**:
   - *Phase 1 (SSOT)*: Di chuyển metadata năng lực tĩnh vào definitions [pancake-pos.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/connect-hub/connectors/definitions/pancake-pos.ts), tối giản hóa UI và file mapping.
