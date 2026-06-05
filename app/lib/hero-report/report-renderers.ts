@@ -61,6 +61,31 @@ export function renderTotalRevenue(data: any): string {
   text += `💳 <b>Doanh thu theo thanh toán:</b>\n`;
   text += `- Thu hộ (COD): ${formatVnd(cod)}\n`;
   text += `- Trả trước (Bank/Momo): ${formatVnd(prepaid)}\n`;
+
+  const statusBreakdown = data.statusBreakdown || summary.statusBreakdown;
+  if (statusBreakdown && typeof statusBreakdown === 'object') {
+    const newCount = Number(statusBreakdown[0] || 0);
+    const confirmedCount = Number(statusBreakdown[1] || 0);
+    const packingCount = Number(statusBreakdown[8] || 0);
+    const waitingShipCount = Number(statusBreakdown[9] || 0);
+    const shippingCount = Number(statusBreakdown[2] || 0);
+    const deliveredCount = Number(statusBreakdown[3] || 0);
+    const cancelledCount = Number(statusBreakdown[5] || 0);
+    const returnedCount = Number(statusBreakdown[10] || 0);
+    const paidCount = Number(statusBreakdown[16] || 0);
+
+    const totalAll = Object.values(statusBreakdown).reduce((a, b) => Number(a) + Number(b), 0) as number;
+    const cancelRate = totalAll > 0 ? ((cancelledCount / totalAll) * 100).toFixed(1) : '0';
+
+    text += `\n📦 <b>TÌNH TRẠNG XỬ LÝ ĐƠN HÀNG (Tổng: ${totalAll} đơn)</b>\n`;
+    text += `- Mới / Chưa xử lý: <b>${newCount}</b>\n`;
+    if (packingCount > 0) text += `- Đang đóng gói: <b>${packingCount}</b>\n`;
+    if (waitingShipCount > 0) text += `- Chờ CPN / Chờ giao: <b>${waitingShipCount}</b>\n`;
+    if (shippingCount > 0) text += `- Đang giao hàng: <b>${shippingCount}</b>\n`;
+    if (deliveredCount > 0) text += `- Đã giao hàng: <b>${deliveredCount}</b>\n`;
+    text += `- Đã hủy: <b>${cancelledCount}</b> (Tỷ lệ hủy: <b>${cancelRate}%</b>)\n`;
+    if (returnedCount > 0) text += `- Hoàn trả: <b>${returnedCount}</b>\n`;
+  }
   
   const topProducts = summary.topProducts || data.topProducts || summary.top_products || data.top_products || [];
   if (Array.isArray(topProducts) && topProducts.length > 0) {
@@ -222,6 +247,34 @@ export function renderPendingOrders(data: any): string {
   return text;
 }
 
+// === RENDERER: Phân tích khách hàng (khách cũ vs khách mới) ===
+export function renderCustomerAnalysis(data: any): string {
+  if (!data) return '👥 Không có dữ liệu phân tích khách hàng.\n\n';
+  
+  const total = Number(data.totalOrders ?? 0);
+  const newCount = Number(data.newCustomersCount ?? 0);
+  const returningCount = Number(data.returningCustomersCount ?? 0);
+  const guestCount = Number(data.guestCustomersCount ?? 0);
+  
+  const newRevenue = Number(data.newCustomersRevenue ?? 0);
+  const returningRevenue = Number(data.returningCustomersRevenue ?? 0);
+  const guestRevenue = Number(data.guestCustomersRevenue ?? 0);
+
+  const getPercent = (count: number) => {
+    return total > 0 ? ((count / total) * 100).toFixed(1) : '0';
+  };
+
+  let text = `👥 <b>PHÂN TÍCH KHÁCH HÀNG MỚI & QUEN (Trong ngày)</b>\n`;
+  text += `📊 Phân loại theo đơn hàng chốt:\n`;
+  text += `- Khách mới: <b>${newCount} đơn</b> (${getPercent(newCount)}%) | Doanh thu: ${formatVnd(newRevenue)}\n`;
+  text += `- Khách quen (mua trong 90 ngày): <b>${returningCount} đơn</b> (${getPercent(returningCount)}%) | Doanh thu: ${formatVnd(returningRevenue)}\n`;
+  if (guestCount > 0) {
+    text += `- Khách vãng lai (không SĐT/ID): <b>${guestCount} đơn</b> (${getPercent(guestCount)}%) | Doanh thu: ${formatVnd(guestRevenue)}\n`;
+  }
+  text += '\n';
+  return text;
+}
+
 // === REGISTRY ===
 export const CAPABILITY_RENDERERS: Record<string, (data: any, ...args: any[]) => string> = {
   'get_statistics':         renderTotalRevenue,
@@ -231,6 +284,7 @@ export const CAPABILITY_RENDERERS: Record<string, (data: any, ...args: any[]) =>
   'get_top_orders':         renderTopOrders,
   'low_stock_products':     renderLowStock,          // Virtual slug
   'pending_orders':         renderPendingOrders,     // Virtual slug
+  'customer_analysis':      renderCustomerAnalysis,  // Virtual slug
 };
 
 // Fallback mặc định khi capabilities[] rỗng

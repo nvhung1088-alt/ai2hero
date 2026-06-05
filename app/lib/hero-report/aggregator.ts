@@ -357,3 +357,68 @@ export function aggregateGenericData(data: any, title: string) {
     sampleData: arr.slice(0, 5)
   };
 }
+
+/**
+ * Định nghĩa cấu trúc kết quả phân tích khách hàng
+ */
+export interface CustomerAnalysisMetrics {
+  totalOrders: number;
+  newCustomersCount: number;
+  returningCustomersCount: number;
+  guestCustomersCount: number;
+  newCustomersRevenue: number;
+  returningCustomersRevenue: number;
+  guestCustomersRevenue: number;
+}
+
+/**
+ * Phân tích khách mới vs khách quen dựa trên đơn hàng hôm nay so với 90 ngày trước
+ */
+export function aggregateCustomerAnalysis(todayOrders: any[], prev90Orders: any[]): CustomerAnalysisMetrics {
+  const getCustomerId = (o: any) => {
+    return o.customer_id || o.customer?.id || o.customer?.phone_number || o.customer_phone || o.customer?.phone || null;
+  };
+
+  const prevCustomerIds = new Set<string>();
+  prev90Orders.forEach(o => {
+    const cid = getCustomerId(o);
+    if (cid) {
+      prevCustomerIds.add(String(cid).trim());
+    }
+  });
+
+  let newCustomersCount = 0;
+  let returningCustomersCount = 0;
+  let guestCustomersCount = 0;
+  let newCustomersRevenue = 0;
+  let returningCustomersRevenue = 0;
+  let guestCustomersRevenue = 0;
+
+  todayOrders.forEach(o => {
+    if (!o) return;
+    const cid = getCustomerId(o);
+    const price = Number(o.total_price_after_sub_discount ?? o.total_price ?? o.totalPayment ?? 0);
+
+    if (!cid) {
+      guestCustomersCount++;
+      guestCustomersRevenue += price;
+    } else if (prevCustomerIds.has(String(cid).trim())) {
+      returningCustomersCount++;
+      returningCustomersRevenue += price;
+    } else {
+      newCustomersCount++;
+      newCustomersRevenue += price;
+    }
+  });
+
+  return {
+    totalOrders: todayOrders.length,
+    newCustomersCount,
+    returningCustomersCount,
+    guestCustomersCount,
+    newCustomersRevenue,
+    returningCustomersRevenue,
+    guestCustomersRevenue
+  };
+}
+

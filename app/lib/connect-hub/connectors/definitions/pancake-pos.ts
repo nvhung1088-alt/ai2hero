@@ -290,6 +290,19 @@ export const pancakePosConnector: ConnectorDefinition = {
       outputFields: ['data'],
       aiInstruction: 'Phân tích nguyên nhân gốc của đơn tồn đọng và gợi ý biện pháp xử lý nhanh.',
       testStrategy: 'direct'
+    },
+    {
+      slug: 'customer_analysis',
+      name: 'Phân tích khách quen / khách mới',
+      description: 'Phân tích tỷ lệ đơn hàng và doanh số giữa khách hàng mới và khách hàng cũ (đã mua trong 90 ngày qua).',
+      group: 'Báo cáo nâng cao',
+      httpMethod: 'GET',
+      endpoint: '/orders',
+      status: 'ready',
+      inputSchema: [],
+      outputFields: ['data'],
+      aiInstruction: 'Phân tích tỷ lệ khách mới vs khách quen, đưa ra nhận xét về mức độ trung thành của khách và gợi ý chương trình CSKH phù hợp.',
+      testStrategy: 'direct'
     }
   ],
   setupGuide: '<p><b>1.</b> Đăng nhập vào <a href="https://pos.pancake.vn" target="_blank" rel="noreferrer">Pancake POS</a>.</p><p><b>2.</b> Chọn Cửa hàng. Sao chép <b>Shop ID</b> từ URL (ví dụ: <code>shops/987654321</code>).</p><p><b>3.</b> Truy cập <b>Cài đặt &gt; Tích hợp API</b> và tạo một <b>API Key</b> (Shop Token) mới.</p>'

@@ -6,7 +6,8 @@ import {
   aggregateInventoryMetrics, 
   aggregateOrderIssues,
   aggregateChatPageMetrics,
-  aggregateChatStaffMetrics
+  aggregateChatStaffMetrics,
+  aggregateCustomerAnalysis
 } from './aggregator';
 import { getNextCronOccurrence } from '../db/hero-report-actions';
 import { getCapabilities } from '../connect-hub/capabilities';
@@ -301,6 +302,57 @@ export async function buildReportContent(
           } else if (capSlug === 'pending_orders') {
             const allOrders = await fetchPaginatedOrders(teamId, source.connectionId, dateInfo, dateRange, isTest);
             resultData = aggregateOrderIssues(allOrders);
+          } else if (capSlug === 'customer_analysis') {
+            // Lấy đơn hàng trong ngày báo cáo
+            const todayOrders = await fetchPaginatedOrders(teamId, source.connectionId, dateInfo, dateRange, isTest);
+            
+            // Tính toán khoảng thời gian 90 ngày trước đó
+            const startDt = new Date(`${dateInfo.startDate}T00:00:00+07:00`);
+            const prevEndDate = new Date(startDt.getTime() - 24 * 60 * 60 * 1000); // startDate - 1 ngày
+            const prevStartDate = new Date(startDt.getTime() - 90 * 24 * 60 * 60 * 1000); // startDate - 90 ngày
+
+            const getVNString = (d: Date) => {
+              return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(d);
+            };
+            
+            const prevDateInfo = {
+              startDate: getVNString(prevStartDate),
+              endDate: getVNString(prevEndDate)
+            };
+
+            // Fetch đơn hàng 90 ngày trước (giới hạn tối đa 15 trang để tránh quá tải/timeout)
+            let prev90Orders: any[] = [];
+            let page = 1;
+            const maxPrevPages = 15;
+            while (page <= maxPrevPages) {
+              const actionResult = await runConnectorAction({
+                teamId,
+                connectionId: source.connectionId,
+                actionSlug: 'list_orders',
+                input: { 
+                  pageSize: 250, 
+                  page_size: 250, 
+                  page: page, 
+                  page_number: page, 
+                  startDate: prevDateInfo.startDate, 
+                  endDate: prevDateInfo.endDate 
+                },
+                callerModule: 'hero-report',
+                isTest
+              });
+              
+              if (actionResult.success) {
+                const dataArr = Array.isArray(actionResult.data) ? actionResult.data : (actionResult.data?.data || []);
+                if (dataArr.length === 0) break;
+                prev90Orders = prev90Orders.concat(dataArr);
+                if (dataArr.length < 250) break;
+              } else {
+                break;
+              }
+              page++;
+            }
+
+            resultData = aggregateCustomerAnalysis(todayOrders, prev90Orders);
           } else {
             // === ĐƯỜNG CHÍNH: Gọi đúng slug qua cổng ===
             const actionResult = await runConnectorAction({

@@ -25,12 +25,21 @@ export async function handleReportAction(
       
       // Nếu response thành công và có dữ liệu hợp lệ
       if (response && response.success !== false && response.summary) {
+        const statusBreakdown: Record<number, number> = {};
+        if (Array.isArray(response.by_status)) {
+          response.by_status.forEach((item: any) => {
+            const s = Number(item.status ?? 0);
+            statusBreakdown[s] = (statusBreakdown[s] || 0) + (item.count || 0);
+          });
+        }
+
         return {
           status: 'success',
           data: {
             summary: response.summary,
             by_status: response.by_status || [],
             by_date: response.by_date || [],
+            statusBreakdown,
             fallback_used: false
           }
         };
@@ -40,19 +49,29 @@ export async function handleReportAction(
       console.warn(`[PancakePosReport] Thử gọi /orders/statistics lỗi (${error.message}). Đang kích hoạt Fallback qua /orders...`);
     }
 
-    // Cách 2 (Fallback): Lấy toàn bộ đơn confirmed trong ngày để tự tính toán
+    // Cách 2 (Fallback): Lấy toàn bộ đơn hàng trong ngày (không filter status) để tự tính toán
     try {
-      // Lấy danh sách tối đa 200 đơn (trong MVP, số đơn/ngày thường nhỏ hơn 200. Nếu lớn hơn thì AI/user có thể xem qua pagination)
+      // Lấy danh sách tối đa 250 đơn không filter status để đếm trạng thái
       const ordersRes = await client.getList<any>('/orders', {
-        page_size: 200,
+        page_size: 250,
         page_number: 1,
         updateStatus: 'inserted_at',
         startDateTime,
-        endDateTime,
-        filter_status: STATUS_GROUPS.confirmed
+        endDateTime
       });
 
-      const orders = ordersRes.data || [];
+      const allOrders = ordersRes.data || [];
+      
+      // Đếm status breakdown
+      const statusBreakdown: Record<number, number> = {};
+      allOrders.forEach(o => {
+        const s = o.status !== undefined ? Number(o.status) : 0;
+        statusBreakdown[s] = (statusBreakdown[s] || 0) + 1;
+      });
+
+      // Lọc các đơn hàng CONFIRMED (đơn chốt) để tính doanh thu
+      const confirmedStatuses = [1, 2, 3, 8, 9, 16];
+      const orders = allOrders.filter(o => o.status !== undefined && confirmedStatuses.includes(Number(o.status)));
       
       let confirmed_orders = orders.length;
       let gross_sales = 0;
@@ -117,6 +136,7 @@ export async function handleReportAction(
             partner_fee: partner_fee,
             total_cost: total_cost
           },
+          statusBreakdown,
           fallback_used: true,
           warning: 'Báo cáo sử dụng số liệu tính toán từ danh sách đơn hàng (Fallback) do API statistics của POS không được cấp quyền truy cập.'
         }
