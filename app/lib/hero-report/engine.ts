@@ -202,9 +202,17 @@ export async function buildReportContent(
         const capabilitiesList = getCapabilities(provider);
         
         // 1. Xác định danh sách capabilities cần chạy
-        const effectiveCaps = capabilities.length > 0
-          ? capabilities
-          : DEFAULT_CAPABILITIES[reportType] || ['get_statistics'];
+        // QUAN TRỌNG: Phân biệt 2 trường hợp:
+        // - capabilities == null/undefined → lịch cũ chưa có tính năng này → fallback DEFAULT
+        // - capabilities = [] → user CỐ Ý bỏ chọn hết → tôn trọng, KHÔNG fallback
+        const effectiveCaps = (capabilities == null)
+          ? (DEFAULT_CAPABILITIES[reportType] || ['get_statistics'])
+          : capabilities;
+
+        if (effectiveCaps.length === 0) {
+          console.warn(`[HeroReport] Source ${source.connectionId}: Không có capability nào được chọn — bỏ qua nguồn này.`);
+          continue;
+        }
 
         // 2. Duyệt qua từng capability -> Gọi đúng slug -> Render
         for (const capSlug of effectiveCaps) {

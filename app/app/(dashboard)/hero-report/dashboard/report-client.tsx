@@ -35,6 +35,7 @@ import {
   CreateScheduleInput
 } from '@/lib/db/hero-report-actions';
 import Link from 'next/link';
+import { CAPABILITY_RENDERERS } from '@/lib/hero-report/report-renderers';
 
 
 
@@ -885,7 +886,8 @@ export default function ReportClient({
                                 <p className="text-[10px] text-gray-500">Chưa có năng lực nào được hỗ trợ.</p>
                               ) : (
                                 <div className="grid grid-cols-1 gap-2">
-                                  {actions.map((action: any) => {
+                                  {/* Bug #3 Fix: Chỉ hiển thị capabilities có renderer trong hệ thống báo cáo */}
+                                  {actions.filter((action: any) => CAPABILITY_RENDERERS[action.slug]).map((action: any) => {
                                     const isSelected = source.capabilities.includes(action.slug);
                                     return (
                                       <label key={action.slug} className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${
@@ -985,6 +987,12 @@ export default function ReportClient({
                       onClick={async () => {
                         if (selectedSources.length === 0) {
                           showToast('Vui lòng chọn nguồn dữ liệu', 'error');
+                          return;
+                        }
+                        // Validation: Mỗi nguồn phải chọn ít nhất 1 năng lực
+                        const hasEmptyCapabilities = selectedSources.some(s => s.capabilities.length === 0);
+                        if (hasEmptyCapabilities) {
+                          showToast('Mỗi nguồn dữ liệu phải chọn ít nhất 1 năng lực báo cáo', 'error');
                           return;
                         }
                         setPreviewingData(true);
@@ -1403,6 +1411,14 @@ export default function ReportClient({
                     if (currentStep === 1 && selectedSources.length === 0) {
                       showToast('Vui lòng chọn ít nhất một kết nối nguồn dữ liệu', 'error');
                       return;
+                    }
+                    // Validation khi rời Step 2: mỗi nguồn phải chọn ít nhất 1 năng lực
+                    if (currentStep === 2) {
+                      const hasEmptyCapabilities = selectedSources.some(s => s.capabilities.length === 0);
+                      if (hasEmptyCapabilities) {
+                        showToast('Mỗi nguồn dữ liệu phải chọn ít nhất 1 năng lực báo cáo', 'error');
+                        return;
+                      }
                     }
                     setCurrentStep(prev => prev + 1);
                   }}

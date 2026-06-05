@@ -4,7 +4,6 @@ import { teams } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import TopHeader from '@/components/top-header';
 import { CreateWorkspaceModal } from '../dashboard/create-workspace-modal';
 import { redirect } from 'next/navigation';
 
@@ -53,8 +52,7 @@ export default async function HeroReportLayout({
     <div className="flex flex-col min-h-screen bg-gray-950 text-white w-full">
       <CreateWorkspaceModal hideTrigger={true} />
       
-      {/* Top Header */}
-      <TopHeader />
+
 
       <div className="flex flex-col flex-1 min-h-0 w-full">
         {/* Sub Header / Navigation Breadcrumb */}
