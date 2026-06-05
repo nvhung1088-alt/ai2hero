@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ConnectorDefinition, AuthField } from '@/lib/connect-hub/connectors/types';
-import { createConnectionAction, getConnectorHealthStats } from '@/lib/db/connect-hub-actions';
+import { createConnectionAction, getConnectorHealthStats, fetchPancakePagesDirectlyAction } from '@/lib/db/connect-hub-actions';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 import {
   Search,
@@ -160,6 +160,10 @@ export default function ConnectHubAppsClient({
   const [healthStats, setHealthStats] = useState<{ totalRequests: number; successRate: number; avgDuration: number } | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(false);
 
+  // Pancake States
+  const [pancakePages, setPancakePages] = useState<{id: string, name: string, category: string}[]>([]);
+  const [fetchingPages, setFetchingPages] = useState(false);
+
   // SSR Hydration Fix
   const [isMounted, setIsMounted] = useState(false);
 
@@ -268,6 +272,8 @@ export default function ConnectHubAppsClient({
     setFormData({});
     setSaving(false);
     setTesting(false);
+    setPancakePages([]);
+    setFetchingPages(false);
   };
 
   const handleFieldChange = (fieldName: string, value: string) => {
@@ -703,6 +709,73 @@ export default function ConnectHubAppsClient({
                           </option>
                         ))}
                       </select>
+                    ) : selectedApp.slug === 'pancake-chat' && field.name === 'selectedPageIds' ? (
+                      <div className="space-y-3 bg-white/[0.02] border border-white/5 p-3 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!formData['userAccessToken']) {
+                                showToast('Vui lòng nhập User Access Token ở trường phía trên trước.', 'error');
+                                return;
+                              }
+                              setFetchingPages(true);
+                              const res = await fetchPancakePagesDirectlyAction(formData['userAccessToken']);
+                              setFetchingPages(false);
+                              if (res.success && res.data) {
+                                setPancakePages(res.data as any);
+                                showToast(`Đã tìm thấy ${res.data.length} Fanpage.`, 'success');
+                              } else {
+                                showToast(res.error || 'Lỗi lấy danh sách', 'error');
+                              }
+                            }}
+                            disabled={fetchingPages}
+                            className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            {fetchingPages ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                            Tải danh sách Page từ Pancake
+                          </button>
+                          <span className="text-[10px] text-gray-500 font-medium">Tick chọn các Page bên dưới</span>
+                        </div>
+                        
+                        {pancakePages.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[150px] overflow-y-auto custom-scrollbar p-1">
+                            {pancakePages.map((page) => {
+                              const currentIds = formData['selectedPageIds'] ? formData['selectedPageIds'].split(',').map(s => s.trim()).filter(Boolean) : [];
+                              const isChecked = currentIds.includes(page.id);
+                              return (
+                                <label key={page.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${isChecked ? 'bg-purple-500/20 border-purple-500/50' : 'bg-black/20 border-white/5 hover:bg-white/5'}`}>
+                                  <input 
+                                    type="checkbox" 
+                                    className="rounded border-white/20 bg-black/50 text-purple-500 focus:ring-purple-500 focus:ring-offset-gray-900"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        currentIds.push(page.id);
+                                      } else {
+                                        const idx = currentIds.indexOf(page.id);
+                                        if (idx > -1) currentIds.splice(idx, 1);
+                                      }
+                                      handleFieldChange('selectedPageIds', currentIds.join(', '));
+                                    }}
+                                  />
+                                  <div className="flex flex-col overflow-hidden">
+                                    <span className="text-[11px] font-bold text-gray-200 truncate">{page.name}</span>
+                                    <span className="text-[9px] text-gray-500 truncate">{page.id}</span>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <Input
+                          type="text"
+                          placeholder={field.placeholder || ''}
+                          value={formData[field.name] || ''}
+                          readOnly
+                          className="rounded-xl border-white/10 bg-black/40 text-gray-400 font-semibold text-[10px] opacity-70"
+                        />
+                      </div>
                     ) : (
                       <Input
                         type={field.type === 'password' ? 'password' : 'text'}

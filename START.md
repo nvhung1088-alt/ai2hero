@@ -29,8 +29,8 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Thiết kế giao diện Quản lý (UI) Dashboard phẳng, tab lịch sử và Form wizard 5 bước có chức năng Gửi thử ngay.
   - `[x]` Viết Metric Aggregator thô chi tiết, engine điều phối chạy AI nhận xét và Telegram bot sender có fallback plain-text.
   - `[x]` Tạo API Cron Endpoint `/api/cron/reports` có cơ chế Lock chống race condition.
-  - `[x]` Sửa lỗi lọc ngày Pancake POS lệch múi giờ trên server (ép timezone UTC 'Z' cho chuỗi ngày thô) và bổ sung ghi chú chi tiết.
   - `[x]` Tích hợp dropdown chọn nhà cung cấp AI và chọn model động (Wizard Step 3) và engine xử lý động.
+  - `[x]` Sửa lỗi trượt dateRange `last_7_days`, bổ sung các bộ lọc thời gian kế toán (quý trước, tháng trước, tháng này, tuần này, 30 ngày) và nâng maxPages động lên 40 cho khoảng thời gian dài.
 Tagline:      "AI biến bạn thành Hero"
 Domain:       ai2hero.com
 Phase:        1 — Xây dựng các MVP Apps & Extensions
@@ -71,9 +71,63 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 
+- **2026-06-05 (hero-report - fix revenue_summary renderer + runner pagination)**:
+  - 🛠️ **Sửa lỗi "Doanh thu 0₫" lặp lại trong báo cáo**:
+    - **Nguyên nhân**: `revenue_summary` và `get_statistics` dùng chung cùng 1 renderer, nhưng `revenue_summary` trả về `{ cod, prepaid, collected_revenue }` (không có `total_revenue`) → renderer hiển thị Tổng doanh số = 0₫.
+    - **Sửa (`report-renderers.ts`)**: Tách `renderRevenueSummary` riêng biệt — sử dụng `collected_revenue` làm "Tiền thực thu", title "THU HỘ NHANH (COD + CHUYỂN KHOẢN)" để phân biệt rõ với "BÁO CÁO DOANH THU KINH DOANH" của `get_statistics`.
+  - 🛠️ **Sửa lỗi lệch số liệu Nhân viên / Nguồn bán**:
+    - **Nguyên nhân**: Runners `get_sales_by_channel` và `get_sales_by_employee` chỉ fetch 1 trang 200 đơn → cửa hàng có hơn 200 đơn/ngày bị thiếu số liệu.
+    - **Sửa (`report-actions.ts`)**: Thêm vòng lặp phân trang (tối đa 10 trang × 200 đơn = 2000 đơn) cho cả 2 runner.
+  - 🚀 **Kiểm thử**: `npx tsc --noEmit` đạt 0 lỗi. Chạy script `run-hero-report.ts` thực tế: Nguồn bán → Shopee ✅, Nhân viên → Hệ thống ✅, COD breakdown hiển thị đúng ✅.
+  - 🛠️ **Bổ sung: Hiển thị nguồn bán 2 cấp (Platform → Gian hàng)**:
+    - **Yêu cầu**: Mỗi sàn TMĐT (Shopee/Zalo) cần hiển thị thêm các gian hàng con bên trong.
+    - **Sửa (`report-actions.ts`)**: Đổi struct `channels` thành 2 cấp `platforms[platform].sub_channels[account_name]`.
+    - **Sửa (`report-renderers.ts`)**: Render platform header → `↳ sub-channel` với thụt lề (chỉ hiển thị nếu có > 1 gian hàng).
+    - **Kết quả**: Shopee → Bách Hóa Thỏ Hồng / Thỏ Hồng VPP / Phụ Kiện Thỏ Hồng ✅
+
+- **2026-06-05 (hero-report - fix 3 capability logic bugs)**:
+  - 🛠️ **Sửa lỗi COD = 0 trong Fallback của `get_statistics`**:
+    - **Nguyên nhân**: Fallback tích lũy COD+Prepaid vào `collected_revenue` nhưng không lưu riêng `cod` và `prepaid` → Renderer đọc `summary.cod` ra 0.
+    - **Sửa (`report-actions.ts`)**: Track `cod_total` và `prepaid_total` riêng lẻ, trả về đầy đủ trong `summary`.
+  - 🛠️ **Sửa lỗi Nguồn bán nhóm theo tên gian hàng FB thay vì nền tảng**:
+    - **Nguyên nhân**: `get_sales_by_channel` ưu tiên `account_name` (tên Page Facebook) thay vì `order_sources_name` (Shopee/Zalo) → hiển thị sai tên kênh.
+    - **Sửa (`report-actions.ts`)**: Đổi ưu tiên sang `order_sources_name` để khớp Dashboard Pancake POS.
+  - 🛠️ **Sửa lỗi Nhân viên: Shopee orders gán sai cho chủ tài khoản thay vì "Hệ thống"**:
+    - **Nguyên nhân**: Đơn Shopee lưu `seller.name` = tên chủ tài khoản (Phương Linh), trong khi Dashboard quy ước sàn TMĐT tự động = "Hệ thống".
+    - **Sửa (`report-actions.ts`)**: Kiểm tra `MARKETPLACE_SOURCES` (`shopee`, `lazada`, `tiki`, `sendo`) — nếu khớp → "Hệ thống", ngược lại dùng `assigning_seller?.name || creator?.name`.
+  - 🚀 **Kiểm thử**: `npx tsc --noEmit` đạt 0 lỗi. Chạy script `run-hero-report.ts` thực tế: Nguồn bán → Shopee (185 đơn) ✅, Nhân viên → Hệ thống (185 đơn, toàn bộ Shopee) ✅, COD breakdown hiển thị đúng ✅.
+
+- **2026-06-05 (hero-report - v2 engine restructuring)**:
+  - 🚀 **Tái cấu trúc Hero Report Engine v2 (Caller, Not Calculator)**:
+    - **Tạo Render Registry (`report-renderers.ts`) [NEW]**: Định nghĩa các render template độc lập cho từng action slug (`get_statistics`, `get_sales_by_channel`, `get_sales_by_employee`, `get_top_orders`, `low_stock_products`, `pending_orders`).
+    - **Tái cấu trúc Engine (`engine.ts`) [MODIFY]**: Loại bỏ logic tự tính toán doanh thu (Calculator). Thay thế bằng vòng lặp gọi trực tiếp các action slug (Caller) qua cổng `runConnectorAction`.
+    - **Tương thích ngược**: Chuyển các metric tồn kho thấp và đơn chờ xử lý thành các slug ảo và sử dụng helper `fetchPaginatedOrders` để duy trì chính xác chức năng cũ.
+    - **TypeScript & Type Check**: Sửa toàn bộ lỗi import `maskPII` trong `hero-report-actions.ts` và kiểu dữ liệu tham số `connectionId` trong helper, hoàn thành biên dịch toàn cục đạt 0 lỗi (`npx tsc --noEmit`).
+
+- **2026-06-05 (hero-report - date range filter and pagination improvements)**:
+  - 🚀 **Nâng cấp Hệ thống Bộ lọc Khoảng thời gian**:
+    - **UI (report-client.tsx)**: Thiết kế lại wizard Bước 2 chọn khoảng thời gian dữ liệu thành 2 hàng nút (📊 Báo cáo ngày & 📑 Báo cáo kế toán) phân nhóm trực quan. Bổ sung nút "Tuần này" (`this_week`), "30 ngày" (`last_30_days`), "Quý trước" (`last_quarter`).
+    - **Cảnh báo UX**: Tự động hiển thị cảnh báo hiệu năng khi chọn các khoảng thời gian dài.
+    - **Engine (engine.ts)**: Sửa bug fall-through của `last_7_days` làm mất dữ liệu. Bổ sung hỗ trợ đầy đủ 5 khoảng thời gian mới/cập nhật với nhãn chứa thông tin ngày rõ ràng.
+    - **Phân trang & Bảo vệ**: Nâng `maxPages` từ 20 lên 40 trang (tải tới 10.000 đơn hàng) đối với các khoảng thời gian dài để tránh thiếu dữ liệu, đồng thời thêm guard chặn các yêu cầu vượt quá 93 ngày (tránh quá tải connector).
+  - 🚀 **Kiểm thử**: Đã test compile toàn cục thành công đạt 0 errors (`npx tsc --noEmit`).
+
+- **2026-06-05 (hero-report - pancake-chat capabilities integration)**:
+  - 🚀 **Hoàn thành Tích hợp Năng lực API Pancake Chat**:
+    - **Cấu hình & Token Routing (Option B)**: Thêm helper `getPageToken` tự động tạo `page_access_token` từ `userAccessToken` when sending requests to page-level endpoints (safe, secure and accurate according to docs).
+    - **Runner Pancake Chat**: Thêm SSRF Guard, timeout 15 giây, che API token trong logs/lỗi. Bổ sung các cases runner mới (`generate_page_token`, `list_messages`, `list_customers`, `list_tags`, `get_tag_statistics`).
+    - **Definitions**: Khai báo 13 actions hoàn chỉnh chuẩn hóa (`list_pages`, `list_conversations`, `send_message`, `generate_page_token`, `list_messages`, `list_customers`, `list_tags`, `get_staff_statistics`, `get_page_statistics`, `get_tag_statistics`, `analyze_chat_quality`, `analyze_conversion_rate`, `generate_daily_cs_report`).
+    - **Engine**: Thay thế cuộc gọi `list_conversations` bằng thống kê thực tế qua `get_page_statistics` và `get_staff_statistics` với Unix timestamp. Tự động thu thập `aiInstruction` động từ các action để tiêm vào system prompt AI.
+  - 🚀 **Kiểm thử & Sửa lỗi (UI & Silent Error Fix)**: 
+    - Sửa lỗi crash giao diện tại `/connect-hub/mapping` khi click vào Tab Năng lực API của Pancake Chat do các action mới không khai báo thuộc tính `outputFields` (`undefined` value). Đã thêm kiểm tra an toàn và render placeholder fallback trong [mapping-manager-client.tsx](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/app/%28dashboard%29/connect-hub/mapping/mapping-manager-client.tsx).
+    - **Sửa lỗi Lấy danh sách Page báo rỗng**: Khắc phục lỗi nuốt thông báo lỗi của Pancake API (Pancake trả về HTTP 200 OK kèm `{ success: false, message: 'Invalid access_token' }` khi token bị sai/hết hạn, khiến runner mặc định coi là thành công và trả về mảng rỗng `[]`). Đã thêm kiểm tra `data.success === false` trong runner để ném lỗi chuẩn xác và hiển thị trực tiếp lên UI.
+    - Chạy compile typescript thành công 100% không phát sinh bất kỳ lỗi nào (`npx tsc --noEmit` đạt 0 errors). Thực thi test engine với connection thật thành công.
+
+
 - **2026-06-05 (hero-report - deploy to production)**:
   - 🚀 **Đẩy code lên Production (Vercel Auto-deploy)**: Chạy `pnpm run build` ở local thành công đạt 0 errors, tiến hành stage và commit toàn bộ các file thay đổi chính thức của Hero Report v2, loại bỏ các file test rác. Đã push thành công lên branch `main` kích hoạt Vercel deploy.
   - 🚀 **Bảo lưu Kế hoạch**: Bảo lưu [implementation_plan.md](file:///C:/Users/ADMIN/.gemini/antigravity/brain/d91f8381-11c4-4ac7-a928-022e19519830/implementation_plan.md) để triển khai tính năng Năng lực AI Pancake Chat ở session mới tiếp theo.
+
 
 - **2026-06-04 (hero-report - multi-source wizard & engine loop)**:
   - 🚀 **Khôi phục lỗi Data Loss do git checkout**: Phục hồi thành công file `engine.ts` đã bị mất các cập nhật của previous session (IDOR fix, phân trang, PII masking, routing AI và Telegram qua Connect Hub). Toàn bộ hệ thống Multi-source đã hoạt động trở lại và pass Type Checking.

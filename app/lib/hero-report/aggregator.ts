@@ -311,7 +311,9 @@ export function aggregateChatPageMetrics(data: any) {
   let totalMessages = 0;
   let totalConversations = 0;
   let totalComments = 0;
+  let totalNewCustomers = 0;
   const pageStats: any[] = [];
+  const platformStats: Record<string, number> = {};
 
   for (const p of pageList) {
     if (!p) continue;
@@ -319,12 +321,18 @@ export function aggregateChatPageMetrics(data: any) {
     const msgs = Number(p.messages || 0);
     const convs = Number(p.conversations || p.inbox || 0);
     const comments = Number(p.comments || 0);
+    const newCust = Number(p.new_customers || 0);
+    const platform = String(p.platform || 'khác').toLowerCase();
 
     totalMessages += msgs;
     totalConversations += convs;
     totalComments += comments;
+    totalNewCustomers += newCust;
+    
+    if (!platformStats[platform]) platformStats[platform] = 0;
+    platformStats[platform] += newCust;
 
-    pageStats.push({ name, messages: msgs, conversations: convs, comments });
+    pageStats.push({ name, platform, messages: msgs, conversations: convs, comments, new_customers: newCust });
   }
 
   return {
@@ -332,6 +340,8 @@ export function aggregateChatPageMetrics(data: any) {
     totalMessages,
     totalConversations,
     totalComments,
+    totalNewCustomers,
+    platformStats,
     pageStats: pageStats.sort((a, b) => b.messages - a.messages)
   };
 }

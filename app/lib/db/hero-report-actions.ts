@@ -42,64 +42,59 @@ export type CreateScheduleInput = z.infer<typeof CreateScheduleSchema>;
  * Tính toán thời điểm chạy tiếp theo dựa trên cron expression (GMT+7 cố định cho Việt Nam)
  */
 export async function getNextCronOccurrence(cronExpr: string, timezone: string = 'Asia/Ho_Chi_Minh'): Promise<Date> {
-  const now = new Date();
-  // Asia/Ho_Chi_Minh luôn là UTC+7 cố định (không có giờ mùa hè DST)
-  const offset = 7;
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  const local = new Date(utc + (offset * 3600000));
+  // Asia/Ho_Chi_Minh là UTC+7
+  const offsetHours = 7;
   
   const parts = cronExpr.trim().split(/\s+/);
-  if (parts.length !== 5) {
-    return new Date(now.getTime() + 3600000); // Mặc định chạy sau 1 giờ nếu cấu hình cron sai
-  }
+  if (parts.length !== 5) return new Date(Date.now() + 3600000);
   
   const [minPart, hourPart, domPart, monthPart, dowPart] = parts;
   
-  let nextLocal = new Date(local);
-  nextLocal.setSeconds(0, 0);
+  // Thời gian hiện tại theo UTC
+  const now = new Date();
   
-  // 1. Chạy hàng giờ: "0 * * * *"
+  // Tạo một timestamp "đã dịch chuyển" sang UTC+7
+  // vnDate.getUTCHours() sẽ chính là GIỜ VIỆT NAM HIỆN TẠI!
+  const vnTimeMillis = now.getTime() + (offsetHours * 3600000);
+  const vnDate = new Date(vnTimeMillis);
+  
   if (hourPart === '*' && minPart !== '*') {
-    const targetMin = parseInt(minPart, 10) || 0;
-    nextLocal.setMinutes(targetMin);
-    if (nextLocal <= local) {
-      nextLocal.setHours(nextLocal.getHours() + 1);
-    }
+     const targetMin = parseInt(minPart, 10) || 0;
+     vnDate.setUTCMinutes(targetMin, 0, 0);
+     if (vnDate.getTime() <= vnTimeMillis) {
+       vnDate.setUTCHours(vnDate.getUTCHours() + 1);
+     }
   } 
-  // 2. Chạy hàng ngày: "0 8 * * *"
   else if (hourPart !== '*' && minPart !== '*' && domPart === '*' && monthPart === '*' && dowPart === '*') {
-    const targetHour = parseInt(hourPart, 10);
-    const targetMin = parseInt(minPart, 10);
-    nextLocal.setHours(targetHour, targetMin, 0, 0);
-    if (nextLocal <= local) {
-      nextLocal.setDate(nextLocal.getDate() + 1);
-    }
+     const targetHour = parseInt(hourPart, 10);
+     const targetMin = parseInt(minPart, 10);
+     vnDate.setUTCHours(targetHour, targetMin, 0, 0);
+     if (vnDate.getTime() <= vnTimeMillis) {
+       vnDate.setUTCDate(vnDate.getUTCDate() + 1);
+     }
   }
-  // 3. Chạy hàng tuần: "0 8 * * 1" (dow: 0-6 hoặc 7 là Chủ Nhật)
   else if (dowPart !== '*' && hourPart !== '*' && minPart !== '*') {
-    const targetHour = parseInt(hourPart, 10);
-    const targetMin = parseInt(minPart, 10);
-    let targetDow = parseInt(dowPart, 10);
-    if (targetDow === 7) targetDow = 0;
-    
-    nextLocal.setHours(targetHour, targetMin, 0, 0);
-    
-    const currentDow = nextLocal.getDay();
-    let daysToAdd = (targetDow - currentDow + 7) % 7;
-    
-    if (daysToAdd === 0 && nextLocal <= local) {
-      daysToAdd = 7;
-    }
-    nextLocal.setDate(nextLocal.getDate() + daysToAdd);
-  } 
-  // Mặc định cộng 1 ngày
+     const targetHour = parseInt(hourPart, 10);
+     const targetMin = parseInt(minPart, 10);
+     let targetDow = parseInt(dowPart, 10); // 0-6
+     if (targetDow === 7) targetDow = 0;
+     
+     vnDate.setUTCHours(targetHour, targetMin, 0, 0);
+     const currentDow = vnDate.getUTCDay();
+     let daysToAdd = (targetDow - currentDow + 7) % 7;
+     if (daysToAdd === 0 && vnDate.getTime() <= vnTimeMillis) {
+       daysToAdd = 7;
+     }
+     vnDate.setUTCDate(vnDate.getUTCDate() + daysToAdd);
+  }
   else {
-    nextLocal.setDate(nextLocal.getDate() + 1);
+     vnDate.setUTCDate(vnDate.getUTCDate() + 1);
   }
   
-  // Chuyển ngược thời gian GMT+7 địa phương về UTC Epoch thực tế
-  const nextUtcTime = nextLocal.getTime() - (offset * 3600000);
-  return new Date(nextUtcTime);
+  // Trừ lại offset 7 tiếng để về Epoch toàn cầu chuẩn
+  const nextRealEpoch = vnDate.getTime() - (offsetHours * 3600000);
+  
+  return new Date(nextRealEpoch);
 }
 
 /**

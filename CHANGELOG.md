@@ -1,5 +1,11 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-05 — Sửa lỗi Doanh thu 0₫, Phân trang và Nguồn bán 2 cấp cho Hero Report v2
+- **Sửa lỗi Doanh thu 0₫ & COD (`report-renderers.ts`, `report-actions.ts`)**: Tách hàm render và hiển thị riêng biệt Collected Revenue (COD + Prepaid) làm Tiền thực thu để phân biệt rõ với Doanh thu POS. Khắc phục lỗi fallback tích lũy COD=0.
+- **Nguồn bán 2 cấp (`report-actions.ts`, `report-renderers.ts`)**: Thay đổi cấu trúc nhóm nguồn bán thành Platform (Shopee/Zalo) -> ↳ Sub-channels (gian hàng cụ thể) và thụt lề khi hiển thị, giúp đối soát chi tiết hơn.
+- **Sửa lỗi lệch số liệu Nhân viên (`report-actions.ts`)**: Tự động gán các đơn từ sàn TMĐT (Shopee, Lazada, Tiki, Sendo) cho nhân viên "Hệ thống" thay vì gán nhầm cho chủ tài khoản, sửa logic phân trang fetch tối đa 2000 đơn hàng.
+- **Biên dịch & Triển khai**: Chạy thử script engine thành công, biên dịch `pnpm run build` đạt 0 lỗi ở local và chuẩn bị đẩy code lên Vercel Production.
+
 ## 2026-06-05 — Hoàn thành Nâng cấp Hero Report v2 & Đẩy Lên Production (Vercel Auto-deploy)
 - **Tối ưu hóa & Refactor Report Engine (`engine.ts`)**: Gộp chung logic `executeReportTask` và `testExecuteReport` vào helper dùng chung `buildReportContent`. Sửa lỗi IDOR bảo mật `outputConnectionId`. Tích hợp phân trang vòng lặp (Pagination Loop) hỗ trợ lấy dữ liệu lên tới 4000 đơn hàng. Tích hợp che ẩn dữ liệu khách hàng (PII masking).
 - **Giao diện Multi-source Wizard (`report-client.tsx`, `page.tsx`)**: Hỗ trợ chọn nhiều nguồn dữ liệu (Multi-select) với danh sách Năng lực API động, bổ sung tính năng xem trước dữ liệu thô (Inline Data Preview), cập nhật hướng dẫn thiết lập Telegram Bot.

@@ -922,29 +922,60 @@ export default function ReportClient({
                     )}
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-gray-300 font-bold block">
-                      Chọn Khoảng thời gian dữ liệu
-                    </label>
-                    <div className="flex gap-2">
-                      {[
-                        { id: 'today', label: 'Hôm nay' },
-                        { id: 'yesterday', label: 'Hôm qua' },
-                        { id: 'last_7_days', label: '7 ngày gần đây' }
-                      ].map((d) => (
-                        <button
-                          key={d.id}
-                          type="button"
-                          onClick={() => setDateRange(d.id)}
-                          className={`flex-1 py-2 px-3 border rounded-lg text-xs font-black cursor-pointer transition-all text-center ${
-                            dateRange === d.id
-                              ? 'bg-white/10 border-white/20 text-white'
-                              : 'bg-white/[0.01] border-white/5 text-gray-400 hover:text-white'
-                          }`}
-                        >
-                          {d.label}
-                        </button>
-                      ))}
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="text-xs text-gray-300 font-bold block mb-1">
+                        Chọn Khoảng thời gian dữ liệu
+                      </label>
+                      <span className="text-[10px] text-gray-500 block mb-1.5">📊 Báo cáo ngày:</span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { id: 'today', label: 'Hôm nay' },
+                          { id: 'yesterday', label: 'Hôm qua' },
+                          { id: 'this_week', label: 'Tuần này' },
+                          { id: 'last_7_days', label: '7 ngày' }
+                        ].map((d) => (
+                          <button
+                            key={d.id}
+                            type="button"
+                            onClick={() => setDateRange(d.id)}
+                            className={`py-2 px-1 border rounded-lg text-[11px] font-black cursor-pointer transition-all text-center ${
+                              dateRange === d.id
+                                ? 'bg-white/10 border-white/20 text-white'
+                                : 'bg-white/[0.01] border-white/5 text-gray-400 hover:text-white'
+                            }`}
+                          >
+                            {d.label}
+                          </button>
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-gray-500 block mt-2.5 mb-1.5">📑 Báo cáo kế toán:</span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { id: 'last_30_days', label: '30 ngày' },
+                          { id: 'this_month', label: 'Tháng này' },
+                          { id: 'last_month', label: 'Tháng trước' },
+                          { id: 'last_quarter', label: 'Quý trước' }
+                        ].map((d) => (
+                          <button
+                            key={d.id}
+                            type="button"
+                            onClick={() => setDateRange(d.id)}
+                            className={`py-2 px-1 border rounded-lg text-[11px] font-black cursor-pointer transition-all text-center ${
+                              dateRange === d.id
+                                ? 'bg-white/10 border-white/20 text-white'
+                                : 'bg-white/[0.01] border-white/5 text-gray-400 hover:text-white'
+                            }`}
+                          >
+                            {d.label}
+                          </button>
+                        ))}
+                      </div>
+                      {['last_30_days', 'this_month', 'last_month', 'last_quarter'].includes(dateRange) && (
+                        <p className="text-[10px] text-amber-500/80 mt-2 flex items-center gap-1">
+                          <span>⏱️</span> Khoảng thời gian dài — Dữ liệu có thể mất 15-30 giây để tải xong.
+                        </p>
+                      )}
                     </div>
                   </div>
 

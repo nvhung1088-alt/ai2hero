@@ -4,13 +4,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ConnectHubConnection } from '@/lib/db/schema';
 import {
-  Plug, Search, Plus, Trash2, Edit, AlertCircle, CheckCircle2, X, RefreshCw, Activity, Calendar
+  Plug, Search, Plus, Trash2, Edit, AlertCircle, CheckCircle2, X, RefreshCw, Activity, Calendar, Loader2
 } from 'lucide-react';
 import {
   getConnectionForEditAction,
   updateConnectionAction,
   testConnectionAction,
-  deleteConnectionAction
+  deleteConnectionAction,
+  fetchPancakePagesDirectlyAction
 } from '@/lib/db/connect-hub-actions';
 import { toggleReportSourceAction } from '@/lib/db/hero-report-actions';
 import { useRouter } from 'next/navigation';
@@ -63,6 +64,10 @@ export default function ConnectionsClient({ initialConnections, teamId }: Connec
   const [showAddKeyForm, setShowAddKeyForm] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
 
+  // Pancake States
+  const [pancakePages, setPancakePages] = useState<{id: string, name: string, category: string}[]>([]);
+  const [fetchingPages, setFetchingPages] = useState(false);
+
   const filteredConnections = connections.filter((c) =>
     c.appName.toLowerCase().includes(search.toLowerCase()) ||
     c.connectionName.toLowerCase().includes(search.toLowerCase())
@@ -90,7 +95,12 @@ export default function ConnectionsClient({ initialConnections, teamId }: Connec
     setIsFetchingEdit(false);
 
     if (res.success && res.data) {
-      setEditCredentialsObj(res.data.credentials || {});
+      const creds = res.data.credentials || {};
+      // Bơm tự động field selectedPageIds cho Pancake Chat nếu trước đó chưa lưu
+      if (conn.appSlug === 'pancake-chat' && creds.selectedPageIds === undefined) {
+        creds.selectedPageIds = '';
+      }
+      setEditCredentialsObj(creds);
     } else {
       setMessage({ type: 'error', text: res.error || 'Không thể tải chi tiết kết nối.' });
     }
@@ -102,6 +112,8 @@ export default function ConnectionsClient({ initialConnections, teamId }: Connec
     setMessage(null);
     setShowAddKeyForm(false);
     setNewKeyName('');
+    setPancakePages([]);
+    setFetchingPages(false);
   };
 
   const handleSaveEdit = async () => {
@@ -395,12 +407,81 @@ export default function ConnectionsClient({ initialConnections, teamId }: Connec
                                 <X className="h-3 w-3" />
                               </button>
                             </div>
-                            <input
-                              type={key.toLowerCase().includes('key') || key.toLowerCase().includes('secret') || key.toLowerCase().includes('token') || key.toLowerCase().includes('password') ? 'password' : 'text'}
-                              value={value}
-                              onChange={(e) => setEditCredentialsObj({...editCredentialsObj, [key]: e.target.value})}
-                              className="w-full bg-black/40 border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 transition-all"
-                            />
+                            
+                            {selectedConnection.appSlug === 'pancake-chat' && key === 'selectedPageIds' ? (
+                              <div className="space-y-3 bg-white/[0.02] border border-white/5 p-3 rounded-xl mt-2">
+                                <div className="flex items-center gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      const token = editCredentialsObj['userAccessToken'];
+                                      if (!token) {
+                                        setMessage({ type: 'error', text: 'Vui lòng nhập User Access Token trước.' });
+                                        return;
+                                      }
+                                      setFetchingPages(true);
+                                      const res = await fetchPancakePagesDirectlyAction(token);
+                                      setFetchingPages(false);
+                                      if (res.success && res.data) {
+                                        setPancakePages(res.data as any);
+                                        setMessage({ type: 'success', text: `Đã tải thành công ${res.data.length} Fanpage.` });
+                                      } else {
+                                        setMessage({ type: 'error', text: res.error || 'Lỗi lấy danh sách Fanpage' });
+                                      }
+                                    }}
+                                    disabled={fetchingPages}
+                                    className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5"
+                                  >
+                                    {fetchingPages ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                                    Tải danh sách Page từ Pancake
+                                  </button>
+                                </div>
+                                
+                                {pancakePages.length > 0 && (
+                                  <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto custom-scrollbar p-1">
+                                    {pancakePages.map((page) => {
+                                      const currentIds = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                      const isChecked = currentIds.includes(page.id);
+                                      return (
+                                        <label key={page.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${isChecked ? 'bg-purple-500/20 border-purple-500/50' : 'bg-black/20 border-white/5 hover:bg-white/5'}`}>
+                                          <input 
+                                            type="checkbox" 
+                                            className="rounded border-white/20 bg-black/50 text-purple-500 focus:ring-purple-500"
+                                            checked={isChecked}
+                                            onChange={(e) => {
+                                              if (e.target.checked) {
+                                                currentIds.push(page.id);
+                                              } else {
+                                                const idx = currentIds.indexOf(page.id);
+                                                if (idx > -1) currentIds.splice(idx, 1);
+                                              }
+                                              setEditCredentialsObj({...editCredentialsObj, [key]: currentIds.join(', ')});
+                                            }}
+                                          />
+                                          <div className="flex flex-col overflow-hidden">
+                                            <span className="text-[11px] font-bold text-gray-200 truncate">{page.name}</span>
+                                            <span className="text-[9px] text-gray-500 truncate">{page.id}</span>
+                                          </div>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                <input
+                                  type="text"
+                                  value={value}
+                                  readOnly
+                                  className="w-full bg-black/40 border border-white/10 rounded-lg py-2 px-3 text-xs text-gray-400 placeholder-gray-500 focus:outline-none focus:border-purple-500/50 opacity-70"
+                                />
+                              </div>
+                            ) : (
+                              <input
+                                type={key.toLowerCase().includes('key') || key.toLowerCase().includes('secret') || key.toLowerCase().includes('token') || key.toLowerCase().includes('password') ? 'password' : 'text'}
+                                value={value}
+                                onChange={(e) => setEditCredentialsObj({...editCredentialsObj, [key]: e.target.value})}
+                                className="w-full bg-black/40 border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 transition-all"
+                              />
+                            )}
                           </div>
                         ))
                       )}

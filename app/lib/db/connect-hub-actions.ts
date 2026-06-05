@@ -439,3 +439,57 @@ export async function getConnectorHealthStats(teamId: number, appSlug: string) {
     return { success: false, error: sanitizeError(error) };
   }
 }
+
+/**
+ * Gọi trực tiếp API lấy danh sách Pages của Pancake bằng Token truyền vào (chưa cần lưu DB)
+ */
+export async function fetchPancakePagesDirectlyAction(token: string) {
+  try {
+    if (!token) throw new Error('Token không được để trống.');
+    
+    // Gọi API V1 của Pancake
+    const res = await fetch(`https://pages.fm/api/v1/pages?access_token=${token.trim()}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        throw new Error('Token không hợp lệ hoặc đã hết hạn.');
+      }
+      throw new Error(`Lỗi kết nối Pancake (${res.status})`);
+    }
+
+    const json = await res.json();
+    if (!json.success) {
+      throw new Error('Không thể đọc dữ liệu Pages từ Pancake API.');
+    }
+
+    // Pancake V1 API có thể trả về pages trong json.categorized.activated
+    let rawPages = [];
+    if (json.categorized && Array.isArray(json.categorized.activated)) {
+      rawPages = json.categorized.activated;
+      // Cộng thêm các page chưa kích hoạt nếu cần: if (Array.isArray(json.categorized.unactivated)) rawPages = rawPages.concat(json.categorized.unactivated);
+    } else if (Array.isArray(json.pages)) {
+      rawPages = json.pages;
+    } else if (Array.isArray(json.data)) {
+      rawPages = json.data;
+    } else {
+      throw new Error('Định dạng API trả về không hợp lệ (thiếu categorized.activated).');
+    }
+
+    // Mapping sang format đơn giản để UI dễ đọc
+    const pages = rawPages.map((p: any) => ({
+      id: p.id,
+      name: p.name || 'Fanpage không tên',
+      category: p.category || ''
+    }));
+
+    return { success: true, data: pages };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Lỗi lấy danh sách Pages.' };
+  }
+}

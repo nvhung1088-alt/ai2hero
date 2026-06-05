@@ -3,70 +3,90 @@ import { heroReportSchedules, heroReportRuns, connectHubConnections } from '../d
 import { eq, and, inArray } from 'drizzle-orm';
 import { runConnectorAction } from '../connect-hub/connector-service';
 import { 
-  aggregateSalesMetrics, 
   aggregateInventoryMetrics, 
   aggregateOrderIssues,
   aggregateChatPageMetrics,
   aggregateChatStaffMetrics
 } from './aggregator';
 import { getNextCronOccurrence } from '../db/hero-report-actions';
+import { getCapabilities } from '../connect-hub/capabilities';
+import { 
+  CAPABILITY_RENDERERS, 
+  DEFAULT_CAPABILITIES, 
+  maskPII 
+} from './report-renderers';
+export { maskPII };
 
 /**
  * Lấy nhãn thời gian và filter cho khoảng thời gian báo cáo
  */
 function getReportDateStrings(dateRange: string) {
-  const now = new Date();
-  const offset = 7;
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  const vnTime = new Date(utc + offset * 3600000);
+  // Helper lấy string YYYY-MM-DD theo giờ VN
+  const getVNString = (d: Date) => {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(d);
+  };
   
+  const now = new Date();
   let label = '';
-  let start = new Date(vnTime);
-  let end = new Date(vnTime);
+  let start = new Date(now);
+  let end = new Date(now);
 
   if (dateRange === 'today') {
-    label = `Hôm nay (${vnTime.toISOString().split('T')[0]})`;
-    start.setHours(0,0,0,0);
-    end.setHours(23,59,59,999);
+    label = `Hôm nay (${getVNString(now)})`;
   } else if (dateRange === 'yesterday') {
-    vnTime.setDate(vnTime.getDate() - 1);
-    label = `Hôm qua (${vnTime.toISOString().split('T')[0]})`;
     start.setDate(start.getDate() - 1);
-    start.setHours(0,0,0,0);
     end.setDate(end.getDate() - 1);
-    end.setHours(23,59,59,999);
+    label = `Hôm qua (${getVNString(start)})`;
   } else if (dateRange === 'this_week') {
-    label = 'Tuần này';
     const day = start.getDay();
     const diff = start.getDate() - day + (day === 0 ? -6 : 1);
     start.setDate(diff);
-    start.setHours(0,0,0,0);
-    end.setHours(23,59,59,999);
+    label = `Tuần này (${getVNString(start)} — ${getVNString(end)})`;
+  } else if (dateRange === 'last_7_days') {
+    start.setDate(start.getDate() - 6);
+    label = `7 ngày gần đây (${getVNString(start)} — ${getVNString(end)})`;
+  } else if (dateRange === 'last_30_days') {
+    start.setDate(start.getDate() - 29);
+    label = `30 ngày gần đây (${getVNString(start)} — ${getVNString(end)})`;
   } else if (dateRange === 'this_month') {
-    label = `Tháng ${vnTime.getMonth() + 1}/${vnTime.getFullYear()}`;
     start.setDate(1);
-    start.setHours(0,0,0,0);
-    end.setHours(23,59,59,999);
+    label = `Tháng này (${getVNString(start)} — ${getVNString(end)})`;
   } else if (dateRange === 'last_month') {
-    vnTime.setMonth(vnTime.getMonth() - 1);
-    label = `Tháng ${vnTime.getMonth() + 1}/${vnTime.getFullYear()}`;
     start.setMonth(start.getMonth() - 1);
     start.setDate(1);
-    start.setHours(0,0,0,0);
     end.setDate(0);
-    end.setHours(23,59,59,999);
+    label = `Tháng trước (${getVNString(start)} — ${getVNString(end)})`;
+  } else if (dateRange === 'last_quarter') {
+    const currentMonth = now.getMonth(); // 0-11
+    const currentQuarter = Math.floor(currentMonth / 3);
+    let targetQuarter = currentQuarter - 1;
+    let targetYear = now.getFullYear();
+    if (targetQuarter < 0) {
+      targetQuarter = 3; // Quý 4 năm trước
+      targetYear -= 1;
+    }
+    const quarterStartMonth = targetQuarter * 3;
+    start = new Date(targetYear, quarterStartMonth, 1, 0, 0, 0, 0);
+    end = new Date(targetYear, quarterStartMonth + 3, 0, 23, 59, 59, 999);
+    label = `Quý ${targetQuarter + 1}/${targetYear} (${getVNString(start)} — ${getVNString(end)})`;
   } else {
-    label = `Hôm qua (${vnTime.toISOString().split('T')[0]})`;
+    // Default: yesterday
     start.setDate(start.getDate() - 1);
-    start.setHours(0,0,0,0);
     end.setDate(end.getDate() - 1);
-    end.setHours(23,59,59,999);
+    label = `Hôm qua (${getVNString(start)})`;
+  }
+
+  // Guard kiểm tra khoảng cách tối đa (93 ngày)
+  const diffMs = end.getTime() - start.getTime();
+  const maxMs = 93 * 24 * 60 * 60 * 1000;
+  if (diffMs > maxMs) {
+    throw new Error(`Khoảng thời gian báo cáo vượt quá 93 ngày. Vui lòng chọn khoảng ngắn hơn.`);
   }
 
   return {
     label,
-    startDate: start.toISOString(),
-    endDate: end.toISOString()
+    startDate: getVNString(start),
+    endDate: getVNString(end)
   };
 }
 
@@ -75,8 +95,9 @@ function getReportDateStrings(dateRange: string) {
  */
 function filterOrdersByDateRange(orders: any[], dateRange: string) {
   const { startDate, endDate } = getReportDateStrings(dateRange);
-  const startTs = new Date(startDate).getTime();
-  const endTs = new Date(endDate).getTime();
+  // startDate và endDate dạng YYYY-MM-DD
+  const startTs = new Date(`${startDate}T00:00:00+07:00`).getTime();
+  const endTs = new Date(`${endDate}T23:59:59+07:00`).getTime();
 
   return orders.filter(o => {
     const dStr = o.inserted_at || o.created_at || o.createdDate;
@@ -89,26 +110,6 @@ function filterOrdersByDateRange(orders: any[], dateRange: string) {
     if (isNaN(orderTime)) return true;
     return orderTime >= startTs && orderTime <= endTs;
   });
-}
-
-export function maskPII(data: any): any {
-  if (!data) return data;
-  if (Array.isArray(data)) return data.map(maskPII);
-  if (typeof data === 'object') {
-    const masked: any = {};
-    for (const [k, v] of Object.entries(data)) {
-      if (k.toLowerCase().includes('phone') && typeof v === 'string') {
-        masked[k] = v.length >= 7 ? v.substring(0, 3) + '***' + v.substring(v.length - 3) : '***';
-      } else if (k.toLowerCase().includes('name') && typeof v === 'string') {
-        const parts = v.split(' ');
-        masked[k] = parts.length > 0 ? parts[0] + ' ***' : '***';
-      } else {
-        masked[k] = maskPII(v);
-      }
-    }
-    return masked;
-  }
-  return data;
 }
 
 export const REPORT_SYSTEM_PROMPT = `Bạn là trợ lý phân tích dữ liệu kinh doanh chuyên nghiệp của nền tảng AI2Hero. 
@@ -125,8 +126,50 @@ Nguyên tắc bắt buộc:
 - Viết ngắn gọn (dưới 150 từ).
 - Formatting bằng HTML cơ bản (<b>, <i>) thay vì Markdown (*, _). KHÔNG dùng ký tự đặc biệt gây lỗi Telegram parse_mode HTML.`;
 
-function formatVnd(amount: number): string {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+/**
+ * Fetch paginated orders helper for special capabilities (like pending_orders)
+ */
+async function fetchPaginatedOrders(
+  teamId: number,
+  connectionId: number,
+  dateInfo: { startDate: string; endDate: string },
+  dateRange: string,
+  isTest: boolean
+): Promise<any[]> {
+  let currentPage = 1;
+  const longRanges = ['last_30_days', 'this_month', 'last_month', 'last_quarter'];
+  const maxPages = longRanges.includes(dateRange) ? 40 : 20;
+  let allOrders: any[] = [];
+  
+  while (currentPage <= maxPages) {
+    const actionResult = await runConnectorAction({
+      teamId,
+      connectionId,
+      actionSlug: 'list_orders',
+      input: { 
+        pageSize: 250, 
+        page_size: 250, 
+        page: currentPage, 
+        page_number: currentPage, 
+        startDate: dateInfo.startDate, 
+        endDate: dateInfo.endDate 
+      },
+      callerModule: 'hero-report',
+      isTest
+    });
+    
+    if (actionResult.success) {
+      const dataArr = Array.isArray(actionResult.data) ? actionResult.data : (actionResult.data?.data || []);
+      if (dataArr.length === 0) break;
+      allOrders = allOrders.concat(dataArr);
+      if (dataArr.length < 250) break;
+    } else {
+      break;
+    }
+    currentPage++;
+  }
+  
+  return filterOrdersByDateRange(allOrders, dateRange);
 }
 
 export async function buildReportContent(
@@ -146,6 +189,8 @@ export async function buildReportContent(
       ? schedule.inputSources 
       : [{ connectionId: schedule.inputConnectionId, provider: schedule.inputProvider, capabilities: [] }];
 
+    const collectedInstructions: string[] = [];
+
     for (const source of sources) {
       if (!source.connectionId) continue;
       
@@ -154,118 +199,141 @@ export async function buildReportContent(
       const reportType = reportSpec.reportType || 'daily_sales';
 
       if (provider === 'pancake-pos' || provider === 'kiotviet') {
-        if (reportType === 'low_stock' || capabilities.includes('low_stock_products')) {
-          const actionResult = await runConnectorAction({
-            teamId,
-            connectionId: source.connectionId,
-            actionSlug: 'list_products',
-            input: {},
-            callerModule: 'hero-report',
-            isTest
-          });
-          if (actionResult.success) {
-            const rawData = Array.isArray(actionResult.data) ? actionResult.data : (actionResult.data?.data || []);
-            const threshold = reportSpec.filters?.lowStockLessThan || 10;
-            const invMetrics = aggregateInventoryMetrics(rawData, threshold);
-            metricsJson.inventory = invMetrics;
-
-            codeReportText += `📦 <b>BÁO CÁO TỒN KHO THẤP</b>\n`;
-            codeReportText += `📊 Tổng số mẫu mã (SKU): ${invMetrics.totalSkuCount}\n`;
-            codeReportText += `❌ Số sản phẩm đã hết hàng: ${invMetrics.outOfStockCount}\n\n`;
-            if (invMetrics.lowStockProducts.length > 0) {
-              codeReportText += `⚠️ <b>Danh sách sản phẩm sắp hết (dưới ${threshold} chiếc):</b>\n`;
-              invMetrics.lowStockProducts.forEach((p: any, idx: number) => {
-                codeReportText += `${idx + 1}. ${p.name}: còn <b>${p.onHand}</b> chiếc\n`;
-              });
-            } else {
-              codeReportText += `✅ Không có sản phẩm nào ở mức báo động tồn kho.\n`;
-            }
-            codeReportText += '\n';
-          }
-        }
+        const capabilitiesList = getCapabilities(provider);
         
-        if (reportType !== 'low_stock' || capabilities.includes('total_revenue')) {
-          let currentPage = 1;
-          const maxPages = 20;
-          let allOrders: any[] = [];
+        // 1. Xác định danh sách capabilities cần chạy
+        const effectiveCaps = capabilities.length > 0
+          ? capabilities
+          : DEFAULT_CAPABILITIES[reportType] || ['get_statistics'];
+
+        // 2. Duyệt qua từng capability -> Gọi đúng slug -> Render
+        for (const capSlug of effectiveCaps) {
+          const capDef = capabilitiesList.find(c => c.slug === capSlug);
           
-          while (currentPage <= maxPages) {
+          // Trích xuất hướng dẫn AI từ định nghĩa capability thực tế (hoặc fallback mapping)
+          let instructionSlug = capSlug;
+          if (capSlug === 'low_stock_products') instructionSlug = 'list_products';
+          else if (capSlug === 'pending_orders') instructionSlug = 'list_orders';
+          
+          const matchingDef = capabilitiesList.find(c => c.slug === instructionSlug) || capDef;
+          if (matchingDef?.aiInstruction) {
+            collectedInstructions.push(matchingDef.aiInstruction);
+          }
+
+          const renderer = CAPABILITY_RENDERERS[capSlug];
+          if (!renderer) {
+            console.warn(`[HeroReport] Không tìm thấy renderer cho capability: ${capSlug}`);
+            continue;
+          }
+
+          let resultData: any = null;
+
+          if (capSlug === 'low_stock_products') {
             const actionResult = await runConnectorAction({
               teamId,
               connectionId: source.connectionId,
-              actionSlug: 'list_orders',
-              input: { pageSize: 250, page_size: 250, page: currentPage, page_number: currentPage, startDate: dateInfo.startDate, endDate: dateInfo.endDate },
+              actionSlug: 'list_products',
+              input: {},
               callerModule: 'hero-report',
               isTest
             });
-            
             if (actionResult.success) {
-              const dataArr = Array.isArray(actionResult.data) ? actionResult.data : (actionResult.data?.data || []);
-              if (dataArr.length === 0) break;
-              allOrders = allOrders.concat(dataArr);
-              if (dataArr.length < 250) break;
-            } else {
-              break;
+              const rawData = Array.isArray(actionResult.data) ? actionResult.data : (actionResult.data?.data || []);
+              const threshold = reportSpec.filters?.lowStockLessThan || 10;
+              resultData = aggregateInventoryMetrics(rawData, threshold);
             }
-            currentPage++;
-          }
-          
-          const filteredOrders = filterOrdersByDateRange(allOrders, dateRange);
-          
-          if (reportType === 'pending_orders') {
-            const issueMetrics = aggregateOrderIssues(filteredOrders);
-            metricsJson.orders = issueMetrics;
-            codeReportText += `⚠️ <b>BÁO CÁO ĐƠN HÀNG CHỜ XỬ LÝ LÂU (>24H)</b>\n`;
-            codeReportText += `⏳ Số đơn chưa xử lý: <b>${issueMetrics.pendingOrdersCount}</b> đơn\n`;
-            codeReportText += `❌ Đơn đã hủy: ${issueMetrics.cancelledOrdersCount} đơn\n`;
-            codeReportText += `🔄 Đơn hoàn trả: ${issueMetrics.returnedOrdersCount} đơn\n\n`;
-            if (issueMetrics.details.length > 0) {
-              codeReportText += `📋 <b>Danh sách đơn hàng tồn đọng tiêu biểu:</b>\n`;
-              issueMetrics.details.forEach((d: any) => {
-                codeReportText += `- Đơn #${d.id} (${maskPII(d.customerName)}): ${formatVnd(d.totalPrice)} | Tạo lúc: ${d.timeString}\n`;
-              });
-            }
-            codeReportText += '\n';
+          } else if (capSlug === 'pending_orders') {
+            const allOrders = await fetchPaginatedOrders(teamId, source.connectionId, dateInfo, dateRange, isTest);
+            resultData = aggregateOrderIssues(allOrders);
           } else {
-            const salesMetrics = aggregateSalesMetrics(filteredOrders);
-            metricsJson.sales = salesMetrics;
-            codeReportText += `💰 <b>BÁO CÁO DOANH THU KINH DOANH</b>\n`;
-            codeReportText += `💵 Tổng doanh số: <b>${formatVnd(salesMetrics.totalRevenue)}</b>\n`;
-            codeReportText += `📦 Tổng đơn phát sinh: <b>${salesMetrics.totalOrders}</b> đơn\n`;
-            codeReportText += `🧾 Giá trị đơn TB: ${formatVnd(salesMetrics.averageOrderValue)}\n\n`;
-            codeReportText += `💳 <b>Doanh thu theo thanh toán:</b>\n`;
-            codeReportText += `- Thu hộ (COD): ${formatVnd(salesMetrics.revenueByPaymentMethod.cod)}\n`;
-            codeReportText += `- Trả trước (Bank/Momo): ${formatVnd(salesMetrics.revenueByPaymentMethod.prepaid)}\n`;
-            if (salesMetrics.topProducts.length > 0) {
-              codeReportText += `\n🔥 <b>Top sản phẩm chạy nhất:</b>\n`;
-              salesMetrics.topProducts.slice(0, 3).forEach((p: any, idx: number) => {
-                codeReportText += `${idx + 1}. ${p.name} (SL: ${p.quantity})\n`;
-              });
+            // === ĐƯỜNG CHÍNH: Gọi đúng slug qua cổng ===
+            const actionResult = await runConnectorAction({
+              teamId,
+              connectionId: source.connectionId,
+              actionSlug: capSlug,
+              input: { startDate: dateInfo.startDate, endDate: dateInfo.endDate },
+              callerModule: 'hero-report',
+              isTest
+            });
+            if (actionResult.success) {
+              resultData = actionResult.data?.data || actionResult.data;
             }
-            codeReportText += '\n';
+          }
+
+          if (resultData) {
+            metricsJson[capSlug] = resultData;
+            
+            // Render text
+            if (capSlug === 'low_stock_products') {
+              const threshold = reportSpec.filters?.lowStockLessThan || 10;
+              codeReportText += renderer(resultData, threshold);
+            } else {
+              codeReportText += renderer(resultData);
+            }
           }
         }
       } else if (provider === 'pancake-chat') {
-        const actionResult = await runConnectorAction({
+        const capabilitiesList = getCapabilities(provider);
+        const pageStatDef = capabilitiesList.find(c => c.slug === 'get_page_statistics');
+        if (pageStatDef?.aiInstruction) collectedInstructions.push(pageStatDef.aiInstruction);
+        const staffStatDef = capabilitiesList.find(c => c.slug === 'get_staff_statistics');
+        if (staffStatDef?.aiInstruction) collectedInstructions.push(staffStatDef.aiInstruction);
+
+        const since = Math.floor(new Date(`${dateInfo.startDate}T00:00:00+07:00`).getTime() / 1000);
+        const until = Math.floor(new Date(`${dateInfo.endDate}T23:59:59+07:00`).getTime() / 1000);
+
+        // 1. Thống kê Page
+        const pageResult = await runConnectorAction({
           teamId,
           connectionId: source.connectionId,
-          actionSlug: 'list_conversations',
-          input: {},
+          actionSlug: 'get_page_statistics',
+          input: { since, until },
           callerModule: 'hero-report',
           isTest
         });
-        
-        if (actionResult.success && actionResult.data && actionResult.data.data) {
-          const chatMetrics = aggregateChatPageMetrics(actionResult.data.data);
+
+        if (pageResult.success && pageResult.data && pageResult.data.data) {
+          const chatMetrics = aggregateChatPageMetrics(pageResult.data.data);
           metricsJson.chat = chatMetrics;
           codeReportText += `💬 <b>BÁO CÁO PANCAKE CHAT</b>\n`;
-          codeReportText += `📊 Tổng số Hội thoại mới: <b>${chatMetrics.totalConversations}</b>\n`;
+          codeReportText += `👥 Tổng Khách hàng mới: <b>${chatMetrics.totalNewCustomers || 0}</b>\n`;
+          if (chatMetrics.platformStats && Object.keys(chatMetrics.platformStats).length > 0) {
+            codeReportText += `📱 <i>KH mới theo Kênh: `;
+            const pStats = Object.entries(chatMetrics.platformStats).map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${v}`).join(', ');
+            codeReportText += `${pStats}</i>\n`;
+          }
+          codeReportText += `📊 Tổng số Hội thoại tiếp nhận: <b>${chatMetrics.totalConversations}</b>\n`;
           codeReportText += `💬 Tổng số Tin nhắn: <b>${chatMetrics.totalMessages}</b>\n`;
           codeReportText += `📝 Tổng số Bình luận: <b>${chatMetrics.totalComments}</b>\n\n`;
           if (chatMetrics.pageStats && chatMetrics.pageStats.length > 0) {
             codeReportText += `<b>Thống kê theo Page:</b>\n`;
             chatMetrics.pageStats.forEach((p: any, idx: number) => {
-              codeReportText += `${idx + 1}. ${p.name}: ${p.conversations} hội thoại mới, ${p.messages} tin nhắn\n`;
+              codeReportText += `${idx + 1}. [${p.platform}] ${p.name}: ${p.new_customers || 0} KH mới, ${p.conversations} hội thoại, ${p.messages} tin nhắn\n`;
+            });
+          }
+          codeReportText += '\n';
+        }
+
+        // 2. Thống kê Nhân viên
+        const staffResult = await runConnectorAction({
+          teamId,
+          connectionId: source.connectionId,
+          actionSlug: 'get_staff_statistics',
+          input: { since, until },
+          callerModule: 'hero-report',
+          isTest
+        });
+
+        if (staffResult.success && staffResult.data && staffResult.data.data) {
+          const staffMetrics = aggregateChatStaffMetrics(staffResult.data.data);
+          metricsJson.chatStaff = staffMetrics;
+          codeReportText += `👥 <b>HIỆU SUẤT CSKH</b>\n`;
+          codeReportText += `📊 Tổng số hội thoại tiếp nhận: <b>${staffMetrics.totalConversations}</b>\n`;
+          codeReportText += `💬 Tổng số tin nhắn CSKH: <b>${staffMetrics.totalMessages}</b>\n\n`;
+          if (staffMetrics.topStaff && staffMetrics.topStaff.length > 0) {
+            codeReportText += `<b>Bảng xếp hạng nhân viên (theo tin nhắn):</b>\n`;
+            staffMetrics.topStaff.forEach((s: any, idx: number) => {
+              codeReportText += `${idx + 1}. ${maskPII(s.name)}: ${s.conversations} hội thoại, ${s.messages} tin nhắn\n`;
             });
           }
           codeReportText += '\n';
@@ -302,10 +370,16 @@ export async function buildReportContent(
           aiCommentary = '⚠️ (Chưa cấu hình kết nối AI trong Connect Hub)';
         } else {
           const safeMetricsJson = maskPII(metricsJson);
+          
+          let systemPrompt = REPORT_SYSTEM_PROMPT;
+          if (collectedInstructions.length > 0) {
+            systemPrompt += `\n\nHướng dẫn bổ sung cho các nguồn dữ liệu:\n` + collectedInstructions.join('\n\n');
+          }
+
           const aiInput = {
             model: selectedAiModel,
             messages: [
-              { role: 'system', content: REPORT_SYSTEM_PROMPT },
+              { role: 'system', content: systemPrompt },
               { 
                 role: 'user', 
                 content: `Metrics JSON:\n${JSON.stringify(safeMetricsJson, null, 2)}\nYêu cầu thêm của chủ shop: ${reportSpec.customPrompt || 'Không có'}` 

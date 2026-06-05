@@ -453,11 +453,11 @@ export default function MappingManagerClient({ connectedApps, teamId }: MappingM
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                                   <div>
                                     <span className="text-gray-500 block mb-1 uppercase font-semibold tracking-wider">Tham số đầu vào (inputSchema):</span>
-                                    {cap.inputSchema.length === 0 ? (
+                                    {!cap.inputSchema || cap.inputSchema.length === 0 ? (
                                       <span className="text-gray-400 italic">Không có tham số bắt buộc</span>
                                     ) : (
                                       <div className="bg-gray-950 border border-gray-800 rounded-lg p-3 space-y-2 max-h-[160px] overflow-y-auto">
-                                        {cap.inputSchema.map((param: any) => (
+                                        {(cap.inputSchema || []).map((param: any) => (
                                           <div key={param.name || param.key} className="flex flex-col gap-0.5 border-b border-gray-900 pb-1.5 last:border-0 last:pb-0">
                                             <div className="flex items-center justify-between">
                                               <span className="font-mono text-orange-400 font-medium">
@@ -474,12 +474,16 @@ export default function MappingManagerClient({ connectedApps, teamId }: MappingM
                                   </div>
                                   <div>
                                     <span className="text-gray-500 block mb-1 uppercase font-semibold tracking-wider">Trường đầu ra chính (outputFields):</span>
-                                    <div className="bg-gray-950 border border-gray-800 rounded-lg p-3 flex flex-wrap gap-1.5 max-h-[160px] overflow-y-auto align-content-start">
-                                      {cap.outputFields.map((field: any) => (
-                                        <span key={field} className="font-mono bg-gray-900 border border-gray-800 px-2 py-1 rounded text-gray-300">
-                                          {field}
-                                        </span>
-                                      ))}
+                                    <div className="bg-gray-950 border border-gray-800 rounded-lg p-3 flex flex-wrap gap-1.5 max-h-[160px] overflow-y-auto align-content-start text-xs">
+                                      {cap.outputFields && cap.outputFields.length > 0 ? (
+                                        (cap.outputFields || []).map((field: any) => (
+                                          <span key={field} className="font-mono bg-gray-900 border border-gray-800 px-2 py-1 rounded text-gray-300">
+                                            {field}
+                                          </span>
+                                        ))
+                                      ) : (
+                                        <span className="text-gray-500 italic">Không có thông tin đầu ra</span>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -547,7 +551,7 @@ export default function MappingManagerClient({ connectedApps, teamId }: MappingM
                 <div className="space-y-3">
                   <h4 className="text-sm font-medium text-gray-400 uppercase tracking-wider">Tham số đầu vào:</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(testCapability.inputSchema as any[]).map((param: any, idx: number) => (
+                    {((testCapability.inputSchema as any[]) || []).map((param: any, idx: number) => (
                       <div key={param.name || idx} className="space-y-1.5">
                         <label className="text-sm text-gray-300 font-medium">
                           {param.label || param.name} {param.required && <span className="text-red-500">*</span>}
@@ -559,7 +563,7 @@ export default function MappingManagerClient({ connectedApps, teamId }: MappingM
                             onChange={(e) => setTestInput({...testInput, [param.name]: e.target.value})}
                           >
                             <option value="">Chọn {param.label || param.name}...</option>
-                            {param.options?.map((opt: string) => (
+                            {(param.options || []).map((opt: string) => (
                               <option key={opt} value={opt}>{opt}</option>
                             ))}
                           </select>
