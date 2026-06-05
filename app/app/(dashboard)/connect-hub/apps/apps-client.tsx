@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ConnectorDefinition, AuthField } from '@/lib/connect-hub/connectors/types';
-import { createConnectionAction, getConnectorHealthStats, fetchPancakePagesDirectlyAction } from '@/lib/db/connect-hub-actions';
+import { createConnectionAction, getConnectorHealthStats, fetchPancakePagesDirectlyAction, pingConnectionPreviewAction } from '@/lib/db/connect-hub-actions';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 import {
   Search,
@@ -311,69 +311,17 @@ export default function ConnectHubAppsClient({
     setTesting(true);
     
     try {
-      // Giả lập test kết nối trực tiếp từ form (trước khi lưu chính thức)
-      let testSuccess = true;
-      let errMsg = '';
+      const res = await pingConnectionPreviewAction(teamId, selectedApp.slug, formData);
+      
+      if (controller.signal.aborted) return;
 
-      if (selectedApp.slug === 'custom-http') {
-        const baseUrl = (formData.baseUrl || '').trim();
-        if (!baseUrl) throw new Error('Vui lòng nhập Base URL.');
-        
-        const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-        const headers: Record<string, string> = { 'Accept': 'application/json' };
-        
-        if (formData.authMethod === 'bearer_token' && formData.token) {
-          headers['Authorization'] = `Bearer ${formData.token}`;
-        }
-
-        const res = await fetch(`${cleanBaseUrl}/`, { 
-          method: 'GET', 
-          headers,
-          mode: 'no-cors', // Bật mode no-cors để tránh bị chặn CORS cục bộ khi test trên trình duyệt
-          signal: controller.signal
-        }).catch((err) => {
-          if (err.name === 'AbortError') return { aborted: true };
-          return null;
-        });
-
-        if (res && 'aborted' in res) {
-          return; // Hủy kết nối ngang do đóng modal hoặc click nút test lại
-        }
-
-        if (!res) {
-          throw new Error('Không thể ping kết nối tới Base URL. Vui lòng kiểm tra lại URL hoặc mạng.');
-        }
-      } else if (selectedApp.slug === 'kiotviet') {
-        const retailer = (formData.retailer || '').trim();
-        const clientId = (formData.clientId || '').trim();
-        const clientSecret = (formData.clientSecret || '').trim();
-
-        if (!retailer || !clientId || !clientSecret) {
-          throw new Error('Vui lòng điền đầy đủ Tên gian hàng, Client ID và Client Secret.');
-        }
-
-        // Tạo delay ảo hỗ trợ AbortController
-        await new Promise<void>((resolve, reject) => {
-          const timeoutId = setTimeout(resolve, 800);
-          controller.signal.addEventListener('abort', () => {
-            clearTimeout(timeoutId);
-            reject(new DOMException('Aborted', 'AbortError'));
-          });
-        });
-      } else {
-        // Giả lập delay test cho Sheets, Gmail, Telegram
-        await new Promise<void>((resolve, reject) => {
-          const timeoutId = setTimeout(resolve, 800);
-          controller.signal.addEventListener('abort', () => {
-            clearTimeout(timeoutId);
-            reject(new DOMException('Aborted', 'AbortError'));
-          });
-        });
+      if (!res.success) {
+        throw new Error(res.error || 'Kiểm tra kết nối thất bại.');
       }
 
       showToast(`Kết nối thử nghiệm tới ${selectedApp.name} thành công.`, 'success');
     } catch (error: any) {
-      if (error.name === 'AbortError') return;
+      if (controller.signal.aborted) return;
       showToast(error.message || 'Kiểm tra kết nối thất bại.', 'error');
     } finally {
       if (abortControllerRef.current === controller) {

@@ -580,8 +580,7 @@ export async function getOutputConnectionsAction(teamId: number) {
   }
 }
 
-// Rate limit memory đơn giản: Map<teamId, timestamp>
-const testRunRateLimits = new Map<number, number>();
+// Rate limit kiểm tra từ database thông qua activity logs thay vì in-memory Map nhằm tương thích môi trường Serverless
 
 /**
  * Chạy thử báo cáo trực tiếp với cấu hình chưa lưu (Gửi thử ngay)
@@ -591,19 +590,44 @@ export async function testRunReportAction(
   data: CreateScheduleInput
 ) {
   try {
-    await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+    const { user } = await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager', 'member']);
     
-    // Rate limit 30 giây cho mỗi team
-    const now = Date.now();
-    const lastRun = testRunRateLimits.get(teamId) || 0;
-    if (now - lastRun < 30000) {
-      return { success: false, error: 'Vui lòng đợi 30 giây giữa các lần chạy thử để tránh spam' };
+    // Rate limit 30 giây cho mỗi team dựa trên DB activity log
+    const lastLogs = await db
+      .select()
+      .from(activityLogs)
+      .where(
+        and(
+          eq(activityLogs.teamId, teamId),
+          eq(activityLogs.action, 'test_run_report')
+        )
+      )
+      .orderBy(desc(activityLogs.timestamp))
+      .limit(1);
+
+    if (lastLogs.length > 0) {
+      const lastTime = new Date(lastLogs[0].timestamp).getTime();
+      const now = Date.now();
+      if (now - lastTime < 30000) {
+        return { success: false, error: 'Vui lòng đợi 30 giây giữa các lần chạy thử để tránh spam' };
+      }
     }
-    testRunRateLimits.set(teamId, now);
     
     const res = await testExecuteReport(teamId, data);
     if (!res.success) {
       return { success: false, error: res.error || 'Lỗi khi gửi báo cáo thử nghiệm' };
+    }
+
+    // Ghi nhận hoạt động gửi test báo cáo thành công
+    try {
+      await db.insert(activityLogs).values({
+        teamId,
+        userId: user.id,
+        action: 'test_run_report',
+        timestamp: new Date()
+      });
+    } catch (logErr) {
+      console.error('Lỗi khi ghi nhận hoạt động test run report:', logErr);
     }
     
     return { 

@@ -39,11 +39,13 @@ export default async function HeroReportPage() {
   for (const conn of inputConnections) {
     const def = getConnectorBySlug(conn.appSlug);
     if (def) {
-      capabilitiesMap[conn.appSlug] = def.actions.map(a => ({
-        slug: a.slug,
-        name: a.name,
-        description: a.description
-      }));
+      capabilitiesMap[conn.appSlug] = def.actions
+        .filter(a => a.group === 'Báo cáo & Thống kê')
+        .map(a => ({
+          slug: a.slug,
+          name: a.name,
+          description: a.description
+        }));
     }
   }
 

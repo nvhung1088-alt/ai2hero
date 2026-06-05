@@ -14,6 +14,7 @@ import { encryptField, decryptField } from '../sim-crypto';
 import { getMappingConfigAction } from './connect-hub-mapping-actions';
 import { revalidatePath } from 'next/cache';
 import { runConnectorAction } from '../connect-hub/connector-service';
+import { isInternalUrl } from '../connect-hub/connectors/runners/custom-http';
 
 // Helper kiểm tra quyền truy cập không gian làm việc và kích hoạt app Connect Hub
 async function verifyConnectHubAccess(targetTeamId: number, requireRole?: string[]) {
@@ -348,6 +349,83 @@ export async function testConnectionAction(teamId: number, connectionId: number)
     return { success: true };
   } catch (error: any) {
     console.error('Error testing API connection:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Ping kiểm thử kết nối API từ giao diện form (trước khi lưu chính thức)
+ */
+export async function pingConnectionPreviewAction(
+  teamId: number,
+  appSlug: string,
+  credentials: Record<string, any>
+) {
+  try {
+    await verifyConnectHubAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+
+    if (appSlug === 'custom-http') {
+      const baseUrl = (credentials.baseUrl || '').trim();
+      if (!baseUrl) throw new Error('Vui lòng nhập Base URL.');
+
+      const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+      const fullUrl = `${cleanBaseUrl}/`;
+
+      if (isInternalUrl(fullUrl)) {
+        throw new Error('Bảo mật: Từ chối truy cập vào địa chỉ IP nội bộ.');
+      }
+
+      const headers: Record<string, string> = { 'Accept': 'application/json' };
+      if (credentials.authMethod === 'bearer_token' && credentials.token) {
+        headers['Authorization'] = `Bearer ${credentials.token}`;
+      }
+
+      const res = await fetch(fullUrl, {
+        method: 'GET',
+        headers,
+        signal: AbortSignal.timeout(6000)
+      }).catch((err) => {
+        console.error('Fetch error in pingConnectionPreview:', err);
+        return null;
+      });
+
+      if (!res) {
+        throw new Error('Không thể ping kết nối tới Base URL. Vui lòng kiểm tra lại URL hoặc trạng thái mạng.');
+      }
+    } else if (appSlug === 'kiotviet') {
+      const retailer = (credentials.retailer || '').trim();
+      const clientId = (credentials.clientId || '').trim();
+      const clientSecret = (credentials.clientSecret || '').trim();
+
+      if (!retailer || !clientId || !clientSecret) {
+        throw new Error('Vui lòng điền đầy đủ Tên gian hàng, Client ID và Client Secret.');
+      }
+
+      const params = new URLSearchParams();
+      params.append('grant_type', 'client_credentials');
+      params.append('client_id', clientId);
+      params.append('client_secret', clientSecret);
+      params.append('scopes', 'PublicApi.Access');
+
+      const response = await fetch('https://id.kiotviet.vn/connect/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+        signal: AbortSignal.timeout(6000)
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(`KiotViet OAuth thất bại: ${errData.error_description || response.statusText}`);
+      }
+    } else {
+      // Giả lập delay test cho các app khác (Sheets, Gmail, Telegram)
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error in pingConnectionPreviewAction:', error);
     return { success: false, error: sanitizeError(error) };
   }
 }

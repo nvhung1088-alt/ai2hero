@@ -1,5 +1,20 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-05 — Tối ưu hóa Năng lực Báo cáo Pancake Chat API (Report Refactor)
+- **Tối ưu hóa số lượng cuộc gọi API (`pancake-chat.ts` runner)**: Khắc phục việc gọi lặp lại API phân trang cho mỗi metric. Thiết lập `get_page_statistics` chỉ gọi API 1 lần duy nhất cho mỗi metric bằng cách sử dụng danh sách `selectedPageIds` đã cấu hình.
+- **Thêm helper `inferPlatform`**: Tự động nhận dạng nền tảng mạng xã hội (Facebook, Zalo, Instagram, v.v.) dựa trên prefix của Page ID để hiển thị báo cáo chính xác.
+- **Đăng ký Renderers mới (`report-renderers.ts`)**: Thêm và đăng ký 3 renderers mới (`renderChatPageStats`, `renderChatStaffStats`, `renderChatTagStats`) để định dạng dữ liệu thống kê Pancake Chat thành bảng HTML đẹp mắt gửi qua Telegram.
+- **Tái cấu trúc điều phối Engine (`engine.ts`)**: Thay thế logic hardcode cũ bằng vòng lặp `effectiveCaps` động, tự động nhận diện các capabilities được cấu hình của Pancake Chat tương tự như Pancake POS.
+- **Biên dịch**: Đảm bảo 0 lỗi TypeScript compile (`npx tsc --noEmit`).
+
+## 2026-06-05 — Khắc phục Lỗ hổng Bảo mật & Logic Vận hành (Audit Remediation)
+- **Chặn Stored XSS & Telegram Bot Crash (`report-renderers.ts`)**: Áp dụng helper `escapeHtml` cho các dữ liệu động để ngăn chặn XSS trên web client và lỗi không phân tích được cú pháp HTML của Telegram Bot (Bad Request).
+- **Lọc PII & Token Nhạy cảm trong Logs (`connector-service.ts`)**: Tích hợp PII Redactor (`redactResponsePreview`) cho trường `errorMessage` của nhật ký usage logs.
+- **Tối ưu Cron Job chống Timeout (`route.ts`)**: Giảm số lượng schedules chạy đồng thời trong mỗi lần cron job từ 10 xuống 3 để tránh timeout trên môi trường serverless (Vercel).
+- **Kiểm thử Kết nối An toàn từ Server Side (`connect-hub-actions.ts`, `apps-client.tsx`)**: Di chuyển toàn bộ tính năng kiểm thử kết nối từ Client-side fetch lên Server Action (`pingConnectionPreviewAction`), ngăn chặn bypass SSRF, CORS và rò rỉ token dưới client.
+- **Rate Limit Tương thích Serverless (`hero-report-actions.ts`)**: Chuyển đổi in-memory Map rate limit của test run sang DB-based thông qua bảng `activityLogs`.
+- **Biên dịch**: Đảm bảo 0 lỗi TypeScript compile bằng TypeScript compiler (`npx tsc --noEmit`).
+
 ## 2026-06-05 — Hotfix: Tích hợp Fallback API Key Local cho ChiaSeGPU Runner
 - **Sửa lỗi Vercel thiếu Biến môi trường (`chiasegpu.ts`)**: Giải quyết sự cố cổng AI2Hero báo lỗi "Chưa cấu hình CHIASEGPU_API_KEY..." khi chạy trên Vercel bằng cách tiêm cứng trực tiếp API Key từ môi trường local vào mã nguồn dưới dạng fallback dự phòng an toàn.
 - **Tài liệu hóa UX Gap**: Phát hiện và giải thích hiện tượng "Cú lừa UX" tại trang Quản lý Kết nối Connect Hub khi cổng AI có chế độ `authType: 'none'` (không bắt nhập credentials) tự động bypass bước Ping Test và luôn báo thành công ngay khi lưu.

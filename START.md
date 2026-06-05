@@ -71,6 +71,38 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 
+- **2026-06-05 (hero-report - pancake-chat reporting optimization)**:
+  - 🚀 **Tối ưu hóa Năng lực Báo cáo Pancake Chat API**:
+    - **Pancake Chat Runner (`pancake-chat.ts`)**: Sửa `get_page_statistics` để không gọi `list_pages` khi `selectedPageIds` đã được cấu hình, thực thi nguyên tắc mỗi chỉ số chỉ gọi 1 lần API để tối ưu tốc độ và tránh timeout. Thêm helper `inferPlatform()` nhận diện Facebook/Zalo/Instagram dựa trên ID.
+    - **Report Renderers (`report-renderers.ts`)**: Thêm 3 renderers mới `renderChatPageStats`, `renderChatStaffStats`, `renderChatTagStats` và đăng ký chúng trong `CAPABILITY_RENDERERS` (`get_page_statistics`, `get_staff_statistics`, `get_tag_statistics`). Thêm `'daily_chat': ['get_page_statistics', 'get_staff_statistics']` vào cấu hình mặc định.
+    - **Report Engine (`engine.ts`)**: Loại bỏ code hardcode của Pancake Chat cũ, chuyển sang vòng lặp `effectiveCaps` động giống Pancake POS để quản lý các năng lực thống kê linh hoạt hơn.
+    - **Kiểm định**: Chạy `npx tsc --noEmit` đạt 0 lỗi biên dịch.
+
+- **2026-06-05 (hero-report & connect-hub - security & logic audit remediation)**:
+  - 🚀 **Khắc phục Lỗ hổng Bảo mật & Tối ưu Hiệu năng**:
+    - **report-renderers.ts**: Tích hợp `escapeHtml` ngăn chặn Stored XSS và lỗi Telegram entity parsing crash.
+    - **connector-service.ts**: Kích hoạt PII Redactor (`redactResponsePreview`) cho `errorMessage` logs.
+    - **route.ts (cron)**: Giảm batch limit schedules từ 10 xuống 3 để tránh Vercel Serverless timeout.
+    - **connect-hub-actions.ts & apps-client.tsx**: Chuyển logic kiểm tra kết nối form (test connection) từ Client-side fetch sang Server Action (`pingConnectionPreviewAction`) có SSRF check, xử lý triệt để CORS và Mixed Content.
+    - **hero-report-actions.ts**: Chuyển rate-limit 30s từ in-memory Map sang DB activity logs để tương thích môi trường serverless phân tán.
+    - **Kiểm định**: Chạy `npx tsc --noEmit` đạt 0 lỗi biên dịch.
+
+- **2026-06-05 (hero-report & connect-hub - security & logic audit)**:
+  - 🔍 **Audit Bảo mật & Vận hành**: Hoàn thành đợt kiểm tra toàn diện, phát hiện 7 lỗ hổng và rủi ro kỹ thuật (Stored XSS trong renderer, bypass SSRF trong Custom HTTP, dead code PII redactor, CORS client test, và rủi ro Vercel timeout của Cron job). Đã xuất báo cáo chi tiết tại `audit_results.md`.
+
+- **2026-06-05 (hero-report - filter capabilities)**:
+  - 🚀 **Thống nhất & Lọc Năng lực Báo cáo trong MVP Hero Report**:
+    - **Definitions (`pancake-chat.ts`)**: Chuẩn hóa các nhóm statistics/reports cũ (`Thống kê & Analytics`, `Báo cáo & Chiến lược`) của Pancake Chat về chung một group duy nhất: `'Báo cáo & Thống kê'`.
+    - **Dashboard UI (`page.tsx`)**: Lọc các actions thuộc group `'Báo cáo & Thống kê'` trước khi chuyển sang client component của Wizard Bước 2, giúp tinh giản giao diện, loại bỏ hoàn toàn các API kỹ thuật không thuộc luồng Báo cáo.
+    - **Kiểm định**: Chạy `npx tsc --noEmit` đạt 0 lỗi biên dịch.
+
+- **2026-06-05 (hero-report - fast reporting endpoints integration)**:
+  - 🚀 **Nâng cấp Báo cáo Siêu tốc Pancake POS**:
+    - **Pancake POS Definitions (`pancake-pos.ts`)**: Loại bỏ 2 tính năng ảo (`pending_orders`, `low_stock_products`) làm ảnh hưởng đến tốc độ. Bổ sung 3 năng lực mới: `get_sales_by_status` (Tỷ trọng theo trạng thái), `get_sales_by_date` (Biểu đồ doanh thu ngày), và `get_sales_by_partner` (Doanh số theo ĐVVC).
+    - **Report Actions (`report-actions.ts`)**: Tái cấu trúc logic của 5 báo cáo (2 cũ, 3 mới) để gỡ bỏ vòng lặp phân trang (pagination loop). Gọi trực tiếp endpoint tốc độ cao `/orders/statistics` với tham số `group_by` tương ứng để lấy dữ liệu được phía Pancake phân tích sẵn.
+    - **Report Renderers (`report-renderers.ts`)**: Tạo hàm helper `extractStatsArray` để lấy mảng array tùy ý trả về từ API. Viết lại render cho `get_sales_by_channel`, `get_sales_by_employee` và thêm mới render HTML markdown cho `get_sales_by_status`, `get_sales_by_date`, `get_sales_by_partner`. 
+  - 🚀 **Kiểm thử**: Chạy `npx tsc --noEmit` đạt 0 lỗi, xóa file rác `test_pos_api.ts` để tối ưu dự án. Gửi thông báo hoàn tất qua `walkthrough.md`.
+
 - **2026-06-05 (hero-report - cancel rate, status breakdown & customer analysis)**:
   - 🚀 **Bổ sung Tỷ lệ hủy đơn & Tình trạng đơn hàng**:
     - **Runner Pancake POS (`report-actions.ts`)**: Cải tiến action `get_statistics` để lấy status breakdown cho toàn bộ đơn hàng trong ngày (chuyển sang call API `/orders` không filter status, sau đó tự đếm số lượng của từng status code và lọc đơn chốt CONFIRMED để chạy thuật toán tính doanh thu như cũ). Tích hợp status breakdown cho cả API thống kê chính thức và fallback.

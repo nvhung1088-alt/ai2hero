@@ -4,9 +4,6 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { runConnectorAction } from '../connect-hub/connector-service';
 import { 
   aggregateInventoryMetrics, 
-  aggregateOrderIssues,
-  aggregateChatPageMetrics,
-  aggregateChatStaffMetrics,
   aggregateCustomerAnalysis
 } from './aggregator';
 import { getNextCronOccurrence } from '../db/hero-report-actions';
@@ -127,51 +124,7 @@ Nguyên tắc bắt buộc:
 - Viết ngắn gọn (dưới 150 từ).
 - Formatting bằng HTML cơ bản (<b>, <i>) thay vì Markdown (*, _). KHÔNG dùng ký tự đặc biệt gây lỗi Telegram parse_mode HTML.`;
 
-/**
- * Fetch paginated orders helper for special capabilities (like pending_orders)
- */
-async function fetchPaginatedOrders(
-  teamId: number,
-  connectionId: number,
-  dateInfo: { startDate: string; endDate: string },
-  dateRange: string,
-  isTest: boolean
-): Promise<any[]> {
-  let currentPage = 1;
-  const longRanges = ['last_30_days', 'this_month', 'last_month', 'last_quarter'];
-  const maxPages = longRanges.includes(dateRange) ? 40 : 20;
-  let allOrders: any[] = [];
-  
-  while (currentPage <= maxPages) {
-    const actionResult = await runConnectorAction({
-      teamId,
-      connectionId,
-      actionSlug: 'list_orders',
-      input: { 
-        pageSize: 250, 
-        page_size: 250, 
-        page: currentPage, 
-        page_number: currentPage, 
-        startDate: dateInfo.startDate, 
-        endDate: dateInfo.endDate 
-      },
-      callerModule: 'hero-report',
-      isTest
-    });
-    
-    if (actionResult.success) {
-      const dataArr = Array.isArray(actionResult.data) ? actionResult.data : (actionResult.data?.data || []);
-      if (dataArr.length === 0) break;
-      allOrders = allOrders.concat(dataArr);
-      if (dataArr.length < 250) break;
-    } else {
-      break;
-    }
-    currentPage++;
-  }
-  
-  return filterOrdersByDateRange(allOrders, dateRange);
-}
+
 
 export async function buildReportContent(
   teamId: number,
@@ -221,8 +174,6 @@ export async function buildReportContent(
           
           // Trích xuất hướng dẫn AI từ định nghĩa capability thực tế (hoặc fallback mapping)
           let instructionSlug = capSlug;
-          if (capSlug === 'low_stock_products') instructionSlug = 'list_products';
-          else if (capSlug === 'pending_orders') instructionSlug = 'list_orders';
           
           const matchingDef = capabilitiesList.find(c => c.slug === instructionSlug) || capDef;
           if (matchingDef?.aiInstruction) {
@@ -237,214 +188,71 @@ export async function buildReportContent(
 
           let resultData: any = null;
 
-          if (capSlug === 'low_stock_products') {
-            const threshold = reportSpec.filters?.lowStockLessThan || 10;
-
-            // Bước 1: Thử get_inventory trước (có field on_hand chính xác nhất)
-            let inventoryItems: any[] = [];
-            const inventoryResult = await runConnectorAction({
-              teamId,
-              connectionId: source.connectionId,
-              actionSlug: 'get_inventory',
-              input: {},
-              callerModule: 'hero-report',
-              isTest
-            });
-
-            if (inventoryResult.success) {
-              const invData = Array.isArray(inventoryResult.data)
-                ? inventoryResult.data
-                : (inventoryResult.data?.data || []);
-              inventoryItems = invData;
-            }
-
-            // Bước 2: Nếu get_inventory rỗng/không có quyền → fallback list_products với pagination
-            // Pancake POS: tồn kho nằm trong variations[].on_hand của từng sản phẩm
-            if (inventoryItems.length === 0) {
-              let page = 1;
-              const maxProdPages = 20;
-              while (page <= maxProdPages) {
-                const prodResult = await runConnectorAction({
-                  teamId,
-                  connectionId: source.connectionId,
-                  actionSlug: 'list_products',
-                  input: { page_number: page, page_size: 200 },
-                  callerModule: 'hero-report',
-                  isTest
-                });
-                if (!prodResult.success) break;
-                const pageData = Array.isArray(prodResult.data)
-                  ? prodResult.data
-                  : (prodResult.data?.data || []);
-                if (pageData.length === 0) break;
-
-                // Mỗi sản phẩm Pancake có variations[] → unpack để aggregator đọc on_hand
-                for (const product of pageData) {
-                  const variations = Array.isArray(product.variations)
-                    ? product.variations
-                    : [product];
-                  for (const v of variations) {
-                    inventoryItems.push({
-                      name: v.name || v.full_name || product.name || 'Sản phẩm không tên',
-                      on_hand: Number(v.on_hand ?? v.quantity ?? 0),
-                      onHand: Number(v.on_hand ?? v.quantity ?? 0),
-                      quantity: Number(v.on_hand ?? v.quantity ?? 0)
-                    });
-                  }
-                }
-
-                if (pageData.length < 200) break;
-                page++;
-              }
-            }
-
-            resultData = aggregateInventoryMetrics(inventoryItems, threshold);
-          } else if (capSlug === 'pending_orders') {
-            const allOrders = await fetchPaginatedOrders(teamId, source.connectionId, dateInfo, dateRange, isTest);
-            resultData = aggregateOrderIssues(allOrders);
-          } else if (capSlug === 'customer_analysis') {
-            // Lấy đơn hàng trong ngày báo cáo
-            const todayOrders = await fetchPaginatedOrders(teamId, source.connectionId, dateInfo, dateRange, isTest);
-            
-            // Tính toán khoảng thời gian 90 ngày trước đó
-            const startDt = new Date(`${dateInfo.startDate}T00:00:00+07:00`);
-            const prevEndDate = new Date(startDt.getTime() - 24 * 60 * 60 * 1000); // startDate - 1 ngày
-            const prevStartDate = new Date(startDt.getTime() - 90 * 24 * 60 * 60 * 1000); // startDate - 90 ngày
-
-            const getVNString = (d: Date) => {
-              return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(d);
-            };
-            
-            const prevDateInfo = {
-              startDate: getVNString(prevStartDate),
-              endDate: getVNString(prevEndDate)
-            };
-
-            // Fetch đơn hàng 90 ngày trước (giới hạn tối đa 15 trang để tránh quá tải/timeout)
-            let prev90Orders: any[] = [];
-            let page = 1;
-            const maxPrevPages = 15;
-            while (page <= maxPrevPages) {
-              const actionResult = await runConnectorAction({
-                teamId,
-                connectionId: source.connectionId,
-                actionSlug: 'list_orders',
-                input: { 
-                  pageSize: 250, 
-                  page_size: 250, 
-                  page: page, 
-                  page_number: page, 
-                  startDate: prevDateInfo.startDate, 
-                  endDate: prevDateInfo.endDate 
-                },
-                callerModule: 'hero-report',
-                isTest
-              });
-              
-              if (actionResult.success) {
-                const dataArr = Array.isArray(actionResult.data) ? actionResult.data : (actionResult.data?.data || []);
-                if (dataArr.length === 0) break;
-                prev90Orders = prev90Orders.concat(dataArr);
-                if (dataArr.length < 250) break;
-              } else {
-                break;
-              }
-              page++;
-            }
-
-            resultData = aggregateCustomerAnalysis(todayOrders, prev90Orders);
-          } else {
-            // === ĐƯỜNG CHÍNH: Gọi đúng slug qua cổng ===
-            const actionResult = await runConnectorAction({
-              teamId,
-              connectionId: source.connectionId,
-              actionSlug: capSlug,
-              input: { startDate: dateInfo.startDate, endDate: dateInfo.endDate },
-              callerModule: 'hero-report',
-              isTest
-            });
-            if (actionResult.success) {
-              resultData = actionResult.data?.data || actionResult.data;
-            }
+          // === ĐƯỜNG CHÍNH: Gọi đúng slug qua cổng ===
+          const actionResult = await runConnectorAction({
+            teamId,
+            connectionId: source.connectionId,
+            actionSlug: capSlug,
+            input: { startDate: dateInfo.startDate, endDate: dateInfo.endDate, isTest },
+            callerModule: 'hero-report',
+            isTest
+          });
+          if (actionResult.success) {
+            resultData = actionResult.data?.data || actionResult.data;
           }
 
           if (resultData) {
             metricsJson[capSlug] = resultData;
             
             // Render text
-            if (capSlug === 'low_stock_products') {
-              const threshold = reportSpec.filters?.lowStockLessThan || 10;
-              codeReportText += renderer(resultData, threshold);
-            } else {
-              codeReportText += renderer(resultData);
-            }
+            codeReportText += renderer(resultData);
           }
         }
       } else if (provider === 'pancake-chat') {
         const capabilitiesList = getCapabilities(provider);
-        const pageStatDef = capabilitiesList.find(c => c.slug === 'get_page_statistics');
-        if (pageStatDef?.aiInstruction) collectedInstructions.push(pageStatDef.aiInstruction);
-        const staffStatDef = capabilitiesList.find(c => c.slug === 'get_staff_statistics');
-        if (staffStatDef?.aiInstruction) collectedInstructions.push(staffStatDef.aiInstruction);
 
+        // Phân biệt: null = lịch cũ chưa có capabilities → dùng default; [] = user bỏ chọn hết → bỏ qua
+        const effectiveCaps = (capabilities == null)
+          ? ['get_page_statistics', 'get_staff_statistics']
+          : capabilities;
+
+        if (effectiveCaps.length === 0) {
+          console.warn(`[HeroReport] Source ${source.connectionId}: Không có capability nào được chọn — bỏ qua.`);
+          continue;
+        }
+
+        // Pancake Chat API dùng Unix Timestamp (seconds) cho since/until
         const since = Math.floor(new Date(`${dateInfo.startDate}T00:00:00+07:00`).getTime() / 1000);
         const until = Math.floor(new Date(`${dateInfo.endDate}T23:59:59+07:00`).getTime() / 1000);
 
-        // 1. Thống kê Page
-        const pageResult = await runConnectorAction({
-          teamId,
-          connectionId: source.connectionId,
-          actionSlug: 'get_page_statistics',
-          input: { since, until },
-          callerModule: 'hero-report',
-          isTest
-        });
+        for (const capSlug of effectiveCaps) {
+          const capDef = capabilitiesList.find(c => c.slug === capSlug);
+          if (capDef?.aiInstruction) collectedInstructions.push(capDef.aiInstruction);
 
-        if (pageResult.success && pageResult.data && pageResult.data.data) {
-          const chatMetrics = aggregateChatPageMetrics(pageResult.data.data);
-          metricsJson.chat = chatMetrics;
-          codeReportText += `💬 <b>BÁO CÁO PANCAKE CHAT</b>\n`;
-          codeReportText += `👥 Tổng Khách hàng mới: <b>${chatMetrics.totalNewCustomers || 0}</b>\n`;
-          if (chatMetrics.platformStats && Object.keys(chatMetrics.platformStats).length > 0) {
-            codeReportText += `📱 <i>KH mới theo Kênh: `;
-            const pStats = Object.entries(chatMetrics.platformStats).map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${v}`).join(', ');
-            codeReportText += `${pStats}</i>\n`;
+          const renderer = CAPABILITY_RENDERERS[capSlug];
+          if (!renderer) {
+            console.warn(`[HeroReport] Không tìm thấy renderer cho capability: ${capSlug}`);
+            continue;
           }
-          codeReportText += `📊 Tổng số Hội thoại tiếp nhận: <b>${chatMetrics.totalConversations}</b>\n`;
-          codeReportText += `💬 Tổng số Tin nhắn: <b>${chatMetrics.totalMessages}</b>\n`;
-          codeReportText += `📝 Tổng số Bình luận: <b>${chatMetrics.totalComments}</b>\n\n`;
-          if (chatMetrics.pageStats && chatMetrics.pageStats.length > 0) {
-            codeReportText += `<b>Thống kê theo Page:</b>\n`;
-            chatMetrics.pageStats.forEach((p: any, idx: number) => {
-              codeReportText += `${idx + 1}. [${p.platform}] ${p.name}: ${p.new_customers || 0} KH mới, ${p.conversations} hội thoại, ${p.messages} tin nhắn\n`;
-            });
-          }
-          codeReportText += '\n';
-        }
 
-        // 2. Thống kê Nhân viên
-        const staffResult = await runConnectorAction({
-          teamId,
-          connectionId: source.connectionId,
-          actionSlug: 'get_staff_statistics',
-          input: { since, until },
-          callerModule: 'hero-report',
-          isTest
-        });
+          let resultData: any = null;
 
-        if (staffResult.success && staffResult.data && staffResult.data.data) {
-          const staffMetrics = aggregateChatStaffMetrics(staffResult.data.data);
-          metricsJson.chatStaff = staffMetrics;
-          codeReportText += `👥 <b>HIỆU SUẤT CSKH</b>\n`;
-          codeReportText += `📊 Tổng số hội thoại tiếp nhận: <b>${staffMetrics.totalConversations}</b>\n`;
-          codeReportText += `💬 Tổng số tin nhắn CSKH: <b>${staffMetrics.totalMessages}</b>\n\n`;
-          if (staffMetrics.topStaff && staffMetrics.topStaff.length > 0) {
-            codeReportText += `<b>Bảng xếp hạng nhân viên (theo tin nhắn):</b>\n`;
-            staffMetrics.topStaff.forEach((s: any, idx: number) => {
-              codeReportText += `${idx + 1}. ${maskPII(s.name)}: ${s.conversations} hội thoại, ${s.messages} tin nhắn\n`;
-            });
+          const actionResult = await runConnectorAction({
+            teamId,
+            connectionId: source.connectionId,
+            actionSlug: capSlug,
+            input: { since, until },
+            callerModule: 'hero-report',
+            isTest
+          });
+          if (actionResult.success) {
+            resultData = actionResult.data?.data || actionResult.data;
           }
-          codeReportText += '\n';
+
+          if (resultData) {
+            metricsJson[capSlug] = resultData;
+            codeReportText += renderer(resultData);
+          }
         }
       }
     }

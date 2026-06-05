@@ -48,7 +48,7 @@ export async function GET(request: Request) {
           )
         )
       )
-      .limit(10);
+      .limit(3);
 
     if (schedulesToRun.length === 0) {
       return NextResponse.json({ success: true, message: 'Không có báo cáo nào đến hạn chạy.' });

@@ -203,134 +203,31 @@ export async function handleReportAction(
     }
   }
 
-  // === ACTION: get_sales_by_channel (Doanh số theo Sàn TMĐT) ===
-  if (actionSlug === 'get_sales_by_channel') {
+  // === CÁC ACTION BÁO CÁO SIÊU TỐC (Dùng Endpoint /orders/statistics) ===
+  const FAST_STATS_ACTIONS: Record<string, string> = {
+    get_sales_by_channel: 'source',
+    get_sales_by_employee: 'assigning_seller',
+    get_sales_by_status: 'status',
+    get_sales_by_date: 'date',
+    get_sales_by_partner: 'partner'
+  };
+
+  if (FAST_STATS_ACTIONS[actionSlug]) {
     try {
-      // Phân trang: lấy tất cả đơn (tối đa 10 trang x 200 đơn = 2000 đơn)
-      let currentPage = 1;
-      const maxPages = 10;
-      let allOrders: any[] = [];
-
-      while (currentPage <= maxPages) {
-        const response = await client.getList<any>('/orders', {
-          page_size: 200,
-          page_number: currentPage,
-          updateStatus: 'inserted_at',
-          startDateTime,
-          endDateTime,
-          filter_status: STATUS_GROUPS.confirmed
-        });
-
-        const pageData = response.data || [];
-        if (pageData.length === 0) break;
-        allOrders = allOrders.concat(pageData);
-        if (pageData.length < 200) break;
-        currentPage++;
-      }
-
-      // Group 2 cấp: Platform (Shopee/Zalo) → Sub-channel (tên gian hàng cụ thể)
-      const platforms: Record<string, {
-        orders: number;
-        revenue: number;
-        sub_channels: Record<string, { orders: number; revenue: number }>;
-      }> = {};
-
-      allOrders.forEach((o: any) => {
-        // Cấp 1: Nền tảng (Shopee, Zalo, Facebook...)
-        const platform = o.order_sources_name || 'Khác';
-        // Cấp 2: Gian hàng/trang cụ thể (Bách Hóa Thỏ Hồng, Thỏ Hồng VPP...)
-        const subChannel = o.account_name || platform;
-        const price = Number(o.total_price_after_sub_discount ?? o.total_price ?? 0);
-
-        if (!platforms[platform]) platforms[platform] = { orders: 0, revenue: 0, sub_channels: {} };
-        platforms[platform].orders += 1;
-        platforms[platform].revenue += price;
-
-        if (!platforms[platform].sub_channels[subChannel]) {
-          platforms[platform].sub_channels[subChannel] = { orders: 0, revenue: 0 };
-        }
-        platforms[platform].sub_channels[subChannel].orders += 1;
-        platforms[platform].sub_channels[subChannel].revenue += price;
+      const groupBy = FAST_STATS_ACTIONS[actionSlug];
+      const statsUrl = `/orders/statistics`;
+      const response = await client.get<any>(statsUrl, {
+        start_date: startDateTime,
+        end_date: endDateTime,
+        group_by: groupBy
       });
-
+      
       return {
         status: 'success',
-        data: {
-          channels: Object.entries(platforms)
-            .map(([name, stats]) => ({
-              name,
-              orders: stats.orders,
-              revenue: stats.revenue,
-              // Sub-channels sắp xếp theo doanh thu giảm dần
-              sub_channels: Object.entries(stats.sub_channels)
-                .map(([subName, subStats]) => ({ name: subName, ...subStats }))
-                .sort((a, b) => b.revenue - a.revenue)
-            }))
-            .sort((a, b) => b.revenue - a.revenue)
-        }
-      };
-
-    } catch (error: any) {
-      throw new Error(`Không thể lấy thống kê doanh số theo sàn TMĐT: ${error.message}`);
-    }
-  }
-
-  // === ACTION: get_sales_by_employee (Doanh số theo Nhân viên) ===
-  if (actionSlug === 'get_sales_by_employee') {
-    try {
-      // Phân trang: lấy tất cả đơn (tối đa 10 trang x 200 đơn = 2000 đơn)
-      let currentPage = 1;
-      const maxPages = 10;
-      let allOrders: any[] = [];
-
-      while (currentPage <= maxPages) {
-        const response = await client.getList<any>('/orders', {
-          page_size: 200,
-          page_number: currentPage,
-          updateStatus: 'inserted_at',
-          startDateTime,
-          endDateTime,
-          filter_status: STATUS_GROUPS.confirmed
-        });
-
-        const pageData = response.data || [];
-        if (pageData.length === 0) break;
-        allOrders = allOrders.concat(pageData);
-        if (pageData.length < 200) break;
-        currentPage++;
-      }
-
-      const employees: Record<string, { orders: number; revenue: number }> = {};
-
-      // Danh sách nền tảng sàn TMĐT — đơn tự động, không gán nhân viên cụ thể
-      const MARKETPLACE_SOURCES = ['shopee', 'lazada', 'tiki', 'sendo'];
-
-      allOrders.forEach((o: any) => {
-        // [FIX] Khớp logic Dashboard Pancake POS:
-        // - Đơn từ sàn TMĐT (Shopee/Lazada...) tự động sync → "Hệ thống"
-        // - Đơn thủ công (Zalo/Facebook/trực tiếp) → dùng assigning_seller hoặc creator
-        const sourceName = (o.order_sources_name || '').toLowerCase();
-        const isMarketplace = MARKETPLACE_SOURCES.some(p => sourceName.includes(p));
-        const empName = isMarketplace
-          ? 'Hệ thống'
-          : (o.assigning_seller?.name || o.creator?.name || 'Hệ thống');
-        const price = Number(o.total_price_after_sub_discount ?? o.total_price ?? 0);
-
-        if (!employees[empName]) employees[empName] = { orders: 0, revenue: 0 };
-        employees[empName].orders += 1;
-        employees[empName].revenue += price;
-      });
-
-      return {
-        status: 'success',
-        data: {
-          employees: Object.entries(employees)
-            .map(([name, stats]) => ({ name, ...stats }))
-            .sort((a, b) => b.revenue - a.revenue)
-        }
+        data: response || {}
       };
     } catch (error: any) {
-      throw new Error(`Không thể lấy thống kê doanh số theo nhân viên: ${error.message}`);
+      throw new Error(`Không thể lấy dữ liệu thống kê siêu tốc cho ${actionSlug}: ${error.message}`);
     }
   }
 

@@ -1,4 +1,4 @@
-function isInternalUrl(urlStr: string): boolean {
+export function isInternalUrl(urlStr: string): boolean {
   try {
     const url = new URL(urlStr);
     const hostname = url.hostname.toLowerCase();

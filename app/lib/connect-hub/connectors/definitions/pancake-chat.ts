@@ -102,7 +102,7 @@ export const pancakeChatConnector: ConnectorDefinition = {
     { 
       slug: 'get_staff_statistics', 
       name: 'Thống kê Nhân viên (Users)', 
-      group: 'Thống kê & Analytics',
+      group: 'Báo cáo & Thống kê',
       description: 'Lấy báo cáo hiệu suất làm việc của nhân sự trực Chat.', 
       httpMethod: 'GET',
       endpoint: '/api/public_api/v1/pages/{pageId}/statistics/users',
@@ -119,7 +119,7 @@ export const pancakeChatConnector: ConnectorDefinition = {
     { 
       slug: 'get_page_statistics', 
       name: 'Thống kê Tổng quan (Pages)', 
-      group: 'Thống kê & Analytics',
+      group: 'Báo cáo & Thống kê',
       description: 'Lấy báo cáo số lượng tin nhắn, bình luận của Fanpage.', 
       httpMethod: 'GET',
       endpoint: '/api/public_api/v1/pages/{pageId}/statistics/pages',
@@ -136,7 +136,7 @@ export const pancakeChatConnector: ConnectorDefinition = {
     {
       slug: 'get_tag_statistics',
       name: 'Thống kê theo Tag',
-      group: 'Thống kê & Analytics',
+      group: 'Báo cáo & Thống kê',
       description: 'Đo lường tỷ lệ hội thoại theo nhãn phân loại (VIP, Khiếu nại...).',
       httpMethod: 'GET',
       endpoint: '/api/public_api/v1/pages/{pageId}/tags/statistics',
@@ -162,7 +162,7 @@ export const pancakeChatConnector: ConnectorDefinition = {
     {
       slug: 'analyze_conversion_rate',
       name: 'Phân tích tỷ lệ chốt đơn',
-      group: 'Báo cáo & Chiến lược',
+      group: 'CSKH - Phân Tích',
       description: 'Tính tỷ lệ chốt đơn bằng AI dựa trên dữ liệu đính kèm Đơn Hàng trong hội thoại.',
       status: 'ready',
       inputSchema: [
@@ -174,7 +174,7 @@ export const pancakeChatConnector: ConnectorDefinition = {
     {
       slug: 'generate_daily_cs_report',
       name: 'Báo cáo Chiến lược CSKH',
-      group: 'Báo cáo & Chiến lược',
+      group: 'CSKH - Phân Tích',
       description: 'Tổng hợp nhu cầu khách hàng, xu hướng sản phẩm bằng AI để xây dựng chiến lược kinh doanh.',
       status: 'ready',
       inputSchema: [

@@ -355,43 +355,42 @@ export async function runPancakeChat(
     const { since, until, pageId } = input;
     if (!since || !until) throw new Error('Thiếu tham số since hoặc until');
 
+    // Helper suy ra platform từ prefix ID (không cần gọi thêm list_pages)
+    const inferPlatform = (id: string): string => {
+      if (id.startsWith('pzl_')) return 'zalo';
+      if (id.startsWith('spo_')) return 'shopee';
+      if (id.startsWith('ig_')) return 'instagram';
+      if (id.startsWith('tiktok_')) return 'tiktok';
+      return 'facebook';
+    };
+
     try {
-      // 1. Lấy thông tin TẤT CẢ các page trước để map Tên và Platform
-      let allPancakePages: any[] = [];
-      try {
-        const pagesRes = await fetchPancake(`${BASE_URL}/pages`);
-        allPancakePages = extractPages(pagesRes) || [];
-      } catch (err) {
-        console.warn("Lỗi fetch danh sách page (map name):", err);
-      }
-
       let targetPages: any[] = [];
+
       if (pageId) {
-        targetPages = [{ id: pageId }];
+        // User chỉ định 1 page cụ thể → không cần gọi list_pages
+        targetPages = [{ id: pageId, name: `Page ${pageId}`, platform: inferPlatform(String(pageId)) }];
       } else if (selectedPageIds) {
+        // User đã cấu hình danh sách page → dùng trực tiếp, KHÔNG gọi list_pages
         const ids = selectedPageIds.split(',').map((id: string) => id.trim()).filter((id: string) => id);
-        targetPages = ids.map((id: string) => ({ id }));
+        targetPages = ids.map((id: string) => ({ id, name: `Page ${id}`, platform: inferPlatform(id) }));
       } else {
-        targetPages = allPancakePages.slice(0, 20);
+        // Không có cấu hình → gọi list_pages 1 lần duy nhất để lấy danh sách + tên
+        const pagesRes = await fetchPancake(`${BASE_URL}/pages`);
+        const allPages = extractPages(pagesRes) || [];
+        targetPages = allPages.slice(0, 20).map((p: any) => {
+          const pId = String(p.id || p.page_id || '');
+          return {
+            id: pId,
+            name: p.name || `Page ${pId}`,
+            platform: p.platform || inferPlatform(pId)
+          };
+        });
       }
 
-      // Map Name và Platform
-      targetPages = targetPages.map((p: any) => {
-        const found = allPancakePages.find(ap => ap.id === p.id || ap.page_id === p.id);
-        let platform = found?.platform || 'khác';
-        if (platform === 'khác') {
-          if (String(p.id).startsWith('pzl_')) platform = 'zalo';
-          else if (String(p.id).startsWith('spo_')) platform = 'shopee';
-          else if (String(p.id).startsWith('ig_')) platform = 'instagram';
-          else if (String(p.id).startsWith('tiktok_')) platform = 'tiktok';
-          else platform = 'facebook';
-        }
-        return {
-           id: p.id,
-           name: found?.name || `Page ${p.id}`,
-           platform: platform
-        };
-      });
+      if (targetPages.length === 0) {
+        return { status: 'success', total_pages: 0, data: [] };
+      }
 
       let allStats: any[] = [];
 
@@ -400,27 +399,27 @@ export async function runPancakeChat(
           const pId = page.id || page.page_id;
           if (!pId) return null;
           const statData = await fetchPancake(`${PUBLIC_API}/pages/${pId}/statistics/pages?since=${since}&until=${until}`);
-          
+
           const hourlyMetrics = Array.isArray(statData) ? statData : (statData?.data || []);
-          
+
           let totalMessages = 0;
           let totalConversations = 0;
           let totalComments = 0;
           let totalNewCustomers = 0;
-          
+
           for (const metric of hourlyMetrics) {
             const custInbox = Number(metric.customer_inbox_count || 0);
             const pageInbox = Number(metric.page_inbox_count || 0);
             const custComment = Number(metric.customer_comment_count || 0);
             const pageComment = Number(metric.page_comment_count || 0);
             const newCust = Number(metric.new_customer_count || metric.new_inbox_count || 0);
-            
+
             totalMessages += (custInbox + pageInbox);
             totalConversations += custInbox;
             totalComments += (custComment + pageComment);
             totalNewCustomers += newCust;
           }
-          
+
           return {
             _page_id: pId,
             _page_name: page.name,

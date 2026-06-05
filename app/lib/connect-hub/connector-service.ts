@@ -9,6 +9,7 @@ import {
 import { decryptField } from '../sim-crypto';
 import { executeAction } from './connectors/engine';
 import { normalizeData, migrateLegacyConfig } from './utils/mapper';
+import { redactResponsePreview } from './utils/log-redactor';
 
 /**
  * CONNECTOR SERVICE — Lõi trung tâm cho mọi cuộc gọi API qua Connect Hub.
@@ -150,7 +151,7 @@ export async function runConnectorAction(params: {
         actionName: actionSlug,
         status: executionResult.success ? 'success' : 'error',
         durationMs,
-        errorMessage: executionResult.error || null,
+        errorMessage: executionResult.error ? redactResponsePreview(executionResult.error) : null,
         createdAt: new Date(),
         isTest: isTest ? 1 : 0
       });
@@ -199,7 +200,7 @@ export async function runConnectorAction(params: {
         actionName: actionSlug,
         status: 'error',
         durationMs,
-        errorMessage: errMessage,
+        errorMessage: redactResponsePreview(errMessage),
         createdAt: new Date(),
         isTest: isTest ? 1 : 0
       });
