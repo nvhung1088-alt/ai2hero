@@ -1,6 +1,8 @@
 /**
  * Định nghĩa cấu trúc kết quả tổng hợp dữ liệu doanh số
  */
+import { REPORT_EXCLUDED_STATUSES } from './metric-contract';
+
 export interface SalesMetrics {
   totalRevenue: number;
   totalOrders: number;
@@ -58,12 +60,15 @@ export function aggregateSalesMetrics(orders: any): SalesMetrics {
     if (!order) continue;
     
     // 1. Gom nhóm trạng thái đơn hàng trước
-    const status = String(order.status || order.statusText || 'Không rõ');
-    statusMap[status] = (statusMap[status] || 0) + 1;
+    const statusVal = order.status;
+    const statusText = order.statusText || 'Không rõ';
+    const statusStr = String(statusVal ?? statusText);
+    statusMap[statusStr] = (statusMap[statusStr] || 0) + 1;
 
     // Bỏ qua các đơn hàng đã bị hủy, hoàn trả không tính vào doanh thu/chỉ số
-    const statusLower = status.toLowerCase();
+    const statusLower = statusStr.toLowerCase();
     const isCancelledOrReturned = 
+      (typeof statusVal === 'number' && REPORT_EXCLUDED_STATUSES.includes(statusVal as any)) ||
       statusLower.includes('cancel') || 
       statusLower.includes('hủy') || 
       statusLower.includes('return') || 
@@ -235,7 +240,11 @@ export function aggregateOrderIssues(orders: any): OrderIssueMetrics {
       // Kiểm tra nếu tạo quá 24h mà chưa xử lý
       const dateStr = order.inserted_at || order.createdDate || order.createdAt;
       if (dateStr) {
-        const createdTime = new Date(dateStr).getTime();
+        // Fix timezone: Pancake trả UTC nhưng thiếu Z, hệ thống phải ép Z vào cuối nếu cần
+        const normalizedDateStr = (typeof dateStr === 'string' && !dateStr.endsWith('Z') && dateStr.length === 19) 
+          ? `${dateStr}Z` 
+          : dateStr;
+        const createdTime = new Date(normalizedDateStr).getTime();
         if (!isNaN(createdTime) && (nowTime - createdTime > 24 * 60 * 60 * 1000)) {
           details.push({
             id: String(order.id || order.code || 'N/A'),
@@ -254,5 +263,87 @@ export function aggregateOrderIssues(orders: any): OrderIssueMetrics {
     cancelledOrdersCount,
     returnedOrdersCount,
     details: details.slice(0, 10)
+  };
+}
+
+/**
+ * Tổng hợp dữ liệu thống kê nhân viên chat
+ */
+export function aggregateChatStaffMetrics(data: any) {
+  const staffList = Array.isArray(data) ? data : (data?.data || []);
+  let totalMessages = 0;
+  let totalConversations = 0;
+  const staffMap = new Map<string, any>();
+
+  for (const s of staffList) {
+    if (!s) continue;
+    const name = s.name || s.full_name || 'Nhân viên Ẩn';
+    const msgs = Number(s.messages || 0);
+    const convs = Number(s.conversations || 0);
+
+    totalMessages += msgs;
+    totalConversations += convs;
+
+    if (!staffMap.has(name)) {
+      staffMap.set(name, { name, messages: 0, conversations: 0 });
+    }
+    const current = staffMap.get(name);
+    current.messages += msgs;
+    current.conversations += convs;
+  }
+
+  const sortedStaff = Array.from(staffMap.values())
+    .sort((a, b) => b.messages - a.messages);
+
+  return {
+    totalMessages,
+    totalConversations,
+    topStaff: sortedStaff.slice(0, 5),
+    allStaff: sortedStaff
+  };
+}
+
+/**
+ * Tổng hợp dữ liệu thống kê Fanpage
+ */
+export function aggregateChatPageMetrics(data: any) {
+  const pageList = Array.isArray(data) ? data : (data?.data || []);
+  let totalMessages = 0;
+  let totalConversations = 0;
+  let totalComments = 0;
+  const pageStats: any[] = [];
+
+  for (const p of pageList) {
+    if (!p) continue;
+    const name = p._page_name || 'Page Không Rõ';
+    const msgs = Number(p.messages || 0);
+    const convs = Number(p.conversations || p.inbox || 0);
+    const comments = Number(p.comments || 0);
+
+    totalMessages += msgs;
+    totalConversations += convs;
+    totalComments += comments;
+
+    pageStats.push({ name, messages: msgs, conversations: convs, comments });
+  }
+
+  return {
+    totalPages: pageList.length,
+    totalMessages,
+    totalConversations,
+    totalComments,
+    pageStats: pageStats.sort((a, b) => b.messages - a.messages)
+  };
+}
+
+/**
+ * Formatter chung cho mọi dữ liệu không xác định
+ */
+export function aggregateGenericData(data: any, title: string) {
+  const arr = Array.isArray(data) ? data : (data?.data || []);
+  return {
+    title,
+    totalItems: arr.length,
+    sampleData: arr.slice(0, 5)
   };
 }

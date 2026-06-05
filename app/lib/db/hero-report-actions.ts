@@ -1,6 +1,6 @@
 'use server';
 
-import { and, eq, desc, inArray } from 'drizzle-orm';
+import { and, eq, desc, inArray, not, sql } from 'drizzle-orm';
 import { db } from './drizzle';
 import {
   heroReportSchedules,
@@ -13,22 +13,30 @@ import {
 import { getUser } from './queries';
 import { revalidatePath } from 'next/cache';
 import { testExecuteReport, executeReportTask } from '../hero-report/engine';
+import { z } from 'zod';
 
 /**
  * Kiểu dữ liệu đầu vào khi tạo hoặc cập nhật lịch báo cáo
  */
-export interface CreateScheduleInput {
-  name: string;
-  inputConnectionId: number;
-  inputProvider: string;
-  reportSpec: Record<string, any>;
-  outputType: string;
-  outputConnectionId: number;
-  outputConfig: Record<string, any>;
-  scheduleType: 'manual' | 'daily' | 'hourly' | 'weekly';
-  cronExpression?: string;
-  timezone?: string;
-}
+const CreateScheduleSchema = z.object({
+  name: z.string().min(1, 'Tên không được để trống').max(200),
+  inputConnectionId: z.number().int().positive('Kết nối nguồn không hợp lệ').optional(),
+  inputProvider: z.string().optional(),
+  inputSources: z.array(z.object({
+    connectionId: z.number().int(),
+    provider: z.string(),
+    capabilities: z.array(z.string()).default([])
+  })).default([]),
+  reportSpec: z.record(z.any()),
+  outputType: z.string().default('telegram'),
+  outputConnectionId: z.number().int().positive('Kết nối đích không hợp lệ'),
+  outputConfig: z.record(z.any()),
+  scheduleType: z.enum(['manual', 'daily', 'hourly', 'weekly']),
+  cronExpression: z.string().optional(),
+  timezone: z.string().optional()
+});
+
+export type CreateScheduleInput = z.infer<typeof CreateScheduleSchema>;
 
 /**
  * Tính toán thời điểm chạy tiếp theo dựa trên cron expression (GMT+7 cố định cho Việt Nam)
@@ -150,7 +158,12 @@ export async function getReportSchedulesAction(teamId: number) {
     const schedules = await db
       .select()
       .from(heroReportSchedules)
-      .where(eq(heroReportSchedules.teamId, teamId))
+      .where(
+        and(
+          eq(heroReportSchedules.teamId, teamId),
+          not(eq(heroReportSchedules.status, 'deleted'))
+        )
+      )
       .orderBy(desc(heroReportSchedules.createdAt));
       
     return { success: true, data: schedules };
@@ -170,9 +183,15 @@ export async function createReportScheduleAction(
   try {
     const { user } = await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager']);
     
+    const parsed = CreateScheduleSchema.safeParse(data);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.errors[0].message };
+    }
+    const validData = parsed.data;
+
     let nextRunAt: Date | null = null;
-    if (data.scheduleType !== 'manual' && data.cronExpression) {
-      nextRunAt = await getNextCronOccurrence(data.cronExpression, data.timezone);
+    if (validData.scheduleType !== 'manual' && validData.cronExpression) {
+      nextRunAt = await getNextCronOccurrence(validData.cronExpression, validData.timezone);
     }
     
     const [inserted] = await db
@@ -180,17 +199,18 @@ export async function createReportScheduleAction(
       .values({
         teamId,
         userId: user.id,
-        name: data.name,
+        name: validData.name,
         status: 'active',
-        inputConnectionId: data.inputConnectionId,
-        inputProvider: data.inputProvider,
-        reportSpec: data.reportSpec,
-        outputType: data.outputType || 'telegram',
-        outputConnectionId: data.outputConnectionId,
-        outputConfig: data.outputConfig || {},
-        scheduleType: data.scheduleType,
-        cronExpression: data.cronExpression || null,
-        timezone: data.timezone || 'Asia/Ho_Chi_Minh',
+        inputConnectionId: validData.inputConnectionId ?? (validData.inputSources.length > 0 ? validData.inputSources[0].connectionId : 1),
+        inputProvider: validData.inputProvider ?? (validData.inputSources.length > 0 ? validData.inputSources[0].provider : 'unknown'),
+        inputSources: validData.inputSources,
+        reportSpec: validData.reportSpec,
+        outputType: validData.outputType || 'telegram',
+        outputConnectionId: validData.outputConnectionId,
+        outputConfig: validData.outputConfig || {},
+        scheduleType: validData.scheduleType,
+        cronExpression: validData.cronExpression || null,
+        timezone: validData.timezone || 'Asia/Ho_Chi_Minh',
         nextRunAt,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -222,6 +242,12 @@ export async function updateReportScheduleAction(
   try {
     const { user } = await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager']);
     
+    const parsed = CreateScheduleSchema.partial().safeParse(data);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.errors[0].message };
+    }
+    const validData = parsed.data;
+
     const [existing] = await db
       .select()
       .from(heroReportSchedules)
@@ -238,9 +264,9 @@ export async function updateReportScheduleAction(
     }
     
     let nextRunAt = existing.nextRunAt;
-    const scheduleType = data.scheduleType ?? existing.scheduleType;
-    const cronExpression = data.cronExpression ?? existing.cronExpression;
-    const timezone = data.timezone ?? existing.timezone ?? 'Asia/Ho_Chi_Minh';
+    const scheduleType = validData.scheduleType ?? existing.scheduleType;
+    const cronExpression = validData.cronExpression ?? existing.cronExpression;
+    const timezone = validData.timezone ?? existing.timezone ?? 'Asia/Ho_Chi_Minh';
     
     if (scheduleType === 'manual') {
       nextRunAt = null;
@@ -251,13 +277,14 @@ export async function updateReportScheduleAction(
     const [updated] = await db
       .update(heroReportSchedules)
       .set({
-        name: data.name ?? existing.name,
-        inputConnectionId: data.inputConnectionId ?? existing.inputConnectionId,
-        inputProvider: data.inputProvider ?? existing.inputProvider,
-        reportSpec: data.reportSpec ?? existing.reportSpec,
-        outputType: data.outputType ?? existing.outputType,
-        outputConnectionId: data.outputConnectionId ?? existing.outputConnectionId,
-        outputConfig: data.outputConfig ?? existing.outputConfig,
+        name: validData.name ?? existing.name,
+        inputConnectionId: validData.inputConnectionId ?? existing.inputConnectionId,
+        inputProvider: validData.inputProvider ?? existing.inputProvider,
+        inputSources: validData.inputSources ?? existing.inputSources,
+        reportSpec: validData.reportSpec ?? existing.reportSpec,
+        outputType: validData.outputType ?? existing.outputType,
+        outputConnectionId: validData.outputConnectionId ?? existing.outputConnectionId,
+        outputConfig: validData.outputConfig ?? existing.outputConfig,
         scheduleType,
         cronExpression: cronExpression ?? null,
         timezone,
@@ -351,18 +378,24 @@ export async function toggleReportScheduleAction(
 }
 
 /**
- * Xóa một cấu hình lịch báo cáo tự động (cascade tự xóa Runs tương ứng)
+ * Xóa một cấu hình lịch báo cáo tự động (Chuyển thành Soft Delete)
  */
 export async function deleteReportScheduleAction(teamId: number, scheduleId: number) {
   try {
     const { user } = await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager']);
     
     const [deleted] = await db
-      .delete(heroReportSchedules)
+      .update(heroReportSchedules)
+      .set({
+        status: 'deleted',
+        nextRunAt: null,
+        updatedAt: new Date()
+      })
       .where(
         and(
           eq(heroReportSchedules.id, scheduleId),
-          eq(heroReportSchedules.teamId, teamId)
+          eq(heroReportSchedules.teamId, teamId),
+          not(eq(heroReportSchedules.status, 'deleted'))
         )
       )
       .returning();
@@ -412,7 +445,7 @@ export async function getReportRunsAction(teamId: number, scheduleId?: number, l
 }
 
 /**
- * Lấy danh sách kết nối POS (Pancake, KiotViet) hợp lệ
+ * Lấy danh sách kết nối nguồn báo cáo hợp lệ (đã được bật trong Connect Hub)
  */
 export async function getInputConnectionsAction(teamId: number) {
   try {
@@ -425,7 +458,7 @@ export async function getInputConnectionsAction(teamId: number) {
         and(
           eq(connectHubConnections.teamId, teamId),
           eq(connectHubConnections.status, 'connected'),
-          inArray(connectHubConnections.appSlug, ['pancake-pos', 'kiotviet'])
+          sql`${connectHubConnections.usedByModules} @> '["hero-report"]'::jsonb`
         )
       )
       .orderBy(desc(connectHubConnections.updatedAt));
@@ -433,6 +466,95 @@ export async function getInputConnectionsAction(teamId: number) {
     return { success: true, data: connections };
   } catch (error: any) {
     console.error('Error fetching input connections:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Lấy danh sách kết nối AI (chiasegpu, openai) hợp lệ
+ */
+export async function getAiConnectionsAction(teamId: number) {
+  try {
+    await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+    
+    const connections = await db
+      .select()
+      .from(connectHubConnections)
+      .where(
+        and(
+          eq(connectHubConnections.teamId, teamId),
+          eq(connectHubConnections.status, 'connected'),
+          inArray(connectHubConnections.appSlug, ['chiasegpu', 'openai'])
+        )
+      )
+      .orderBy(desc(connectHubConnections.updatedAt));
+      
+    return { success: true, data: connections };
+  } catch (error: any) {
+    console.error('Error fetching AI connections:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Bật/tắt vai trò nguồn báo cáo cho một kết nối trong Connect Hub
+ */
+export async function toggleReportSourceAction(teamId: number, connectionId: number) {
+  try {
+    const { user } = await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager']);
+    
+    const [connection] = await db
+      .select()
+      .from(connectHubConnections)
+      .where(
+        and(
+          eq(connectHubConnections.id, connectionId),
+          eq(connectHubConnections.teamId, teamId)
+        )
+      )
+      .limit(1);
+
+    if (!connection) {
+      return { success: false, error: 'Không tìm thấy kết nối' };
+    }
+
+    let modules = (connection.usedByModules as string[]) || [];
+    if (!Array.isArray(modules)) {
+      modules = [];
+    }
+
+    const hasHeroReport = modules.includes('hero-report');
+    if (hasHeroReport) {
+      modules = modules.filter((m) => m !== 'hero-report');
+    } else {
+      modules = [...modules, 'hero-report'];
+    }
+
+    const [updated] = await db
+      .update(connectHubConnections)
+      .set({
+        usedByModules: modules,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(connectHubConnections.id, connectionId),
+          eq(connectHubConnections.teamId, teamId)
+        )
+      )
+      .returning();
+
+    await db.insert(activityLogs).values({
+      teamId,
+      userId: user.id,
+      action: `đã ${hasHeroReport ? 'tắt' : 'bật'} tính năng nguồn báo cáo cho kết nối: ${connection.connectionName}`
+    });
+
+    revalidatePath('/connect-hub/connections');
+    revalidatePath('/hero-report/dashboard');
+    return { success: true, data: updated };
+  } catch (error: any) {
+    console.error('Error toggling report source:', error);
     return { success: false, error: sanitizeError(error) };
   }
 }
@@ -463,6 +585,9 @@ export async function getOutputConnectionsAction(teamId: number) {
   }
 }
 
+// Rate limit memory đơn giản: Map<teamId, timestamp>
+const testRunRateLimits = new Map<number, number>();
+
 /**
  * Chạy thử báo cáo trực tiếp với cấu hình chưa lưu (Gửi thử ngay)
  */
@@ -472,6 +597,14 @@ export async function testRunReportAction(
 ) {
   try {
     await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+    
+    // Rate limit 30 giây cho mỗi team
+    const now = Date.now();
+    const lastRun = testRunRateLimits.get(teamId) || 0;
+    if (now - lastRun < 30000) {
+      return { success: false, error: 'Vui lòng đợi 30 giây giữa các lần chạy thử để tránh spam' };
+    }
+    testRunRateLimits.set(teamId, now);
     
     const res = await testExecuteReport(teamId, data);
     if (!res.success) {
@@ -509,6 +642,115 @@ export async function triggerReportRunAction(
     return { success: true, message: 'Đã kích hoạt gửi báo cáo thành công!' };
   } catch (error: any) {
     console.error('Error triggering report run:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Xem trước dữ liệu gốc (Chỉ kéo data, không chạy AI, không gửi Telegram)
+ */
+export async function previewReportDataAction(
+  teamId: number,
+  data: any // using any for quick preview args (inputSources, reportSpec, name)
+) {
+  try {
+    await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+    
+    // Import dynamically to avoid circular dependency if any, or just call buildReportContent
+    const { buildReportContent } = await import('../hero-report/engine');
+
+    const reportSpec = data.reportSpec || {};
+    
+    // Ensure skipAi is true for preview
+    const scheduleData = {
+      ...data,
+      reportSpec: {
+        ...reportSpec,
+        skipAi: true
+      }
+    };
+
+    // Gọi hàm buildReportContent để kéo dữ liệu và tổng hợp
+    const reportData = await buildReportContent(
+      teamId,
+      scheduleData,
+      true
+    );
+
+    return { 
+      success: true, 
+      data: {
+        metricsJson: reportData.metricsJson,
+        reportText: reportData.reportText 
+      }
+    };
+  } catch (error: any) {
+    console.error('Error previewing report data:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Test AI Commentary using the metrics fetched from preview.
+ */
+export async function testAiCommentaryAction(
+  teamId: number,
+  aiModel: string,
+  customPrompt: string,
+  metricsJson: any
+) {
+  try {
+    await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+    
+    // Find AI connection
+    const [aiConnection] = await db
+      .select()
+      .from(connectHubConnections)
+      .where(and(
+        eq(connectHubConnections.teamId, teamId),
+        eq(connectHubConnections.status, 'connected'),
+        inArray(connectHubConnections.appSlug, ['chiasegpu', 'openai'])
+      ))
+      .limit(1);
+
+    if (!aiConnection) {
+      return { success: false, error: 'Chưa cấu hình kết nối AI (ChiaSeGPU hoặc OpenAI) trong Connect Hub.' };
+    }
+
+    const { runConnectorAction } = await import('../connect-hub/connector-service');
+    const { REPORT_SYSTEM_PROMPT, maskPII } = await import('../hero-report/engine');
+
+    const safeMetricsJson = maskPII(metricsJson || {});
+    const aiInput = {
+      model: aiModel,
+      messages: [
+        { role: 'system', content: REPORT_SYSTEM_PROMPT },
+        { 
+          role: 'user', 
+          content: `Metrics JSON:\n${JSON.stringify(safeMetricsJson, null, 2)}\nYêu cầu thêm của chủ shop: ${customPrompt || 'Không có'}` 
+        }
+      ],
+      temperature: 0.7
+    };
+
+    const aiRes = await runConnectorAction({
+      teamId,
+      connectionId: aiConnection.id,
+      actionSlug: 'chat_completion',
+      input: aiInput,
+      callerModule: 'hero-report',
+      isTest: true
+    });
+
+    if (aiRes && aiRes.success && aiRes.data) {
+      const chatData = aiRes.data;
+      const aiText = chatData.choices?.[0]?.message?.content?.trim() || '';
+      return { success: true, data: { aiText } };
+    } else {
+      return { success: false, error: aiRes.error || 'Lỗi gọi AI từ Connect Hub' };
+    }
+  } catch (error: any) {
+    console.error('Error testing AI commentary:', error);
     return { success: false, error: sanitizeError(error) };
   }
 }

@@ -19,38 +19,33 @@ import {
   Calendar,
   Sparkles,
   MessageSquare,
-  ArrowUpRight
+  ArrowUpRight,
+  Pencil
 } from 'lucide-react';
 import { 
   createReportScheduleAction, 
+  updateReportScheduleAction,
   deleteReportScheduleAction, 
   toggleReportScheduleAction, 
   getReportRunsAction,
   testRunReportAction,
   triggerReportRunAction,
+  previewReportDataAction,
+  testAiCommentaryAction,
   CreateScheduleInput
 } from '@/lib/db/hero-report-actions';
 import Link from 'next/link';
 
-const AI_PROVIDERS = [
-  { id: 'chiasegpu', name: 'AI2Hero (cổng 1) - ChiaSeGPU' }
-];
 
-const AI_MODELS: Record<string, { label: string; value: string }[]> = {
-  chiasegpu: [
-    { label: 'Claude 3.5 Sonnet (Khuyên dùng)', value: 'krr/claude-sonnet-4-6' },
-    { label: 'Claude 3 Opus (Siêu tư duy)', value: 'ant/claude-opus-4-7' },
-    { label: 'Claude 3 Haiku (Tốc độ cực nhanh)', value: 'krr/claude-haiku-4-7' },
-    { label: 'GPT-4o / GPT-4 Turbo (Thông minh)', value: 'gx/gpt-5.4' },
-    { label: 'GPT-3.5 / GLM (Siêu tiết kiệm)', value: 'glm-5.1' }
-  ]
-};
 
 interface ReportClientProps {
   teamId: number;
   initialSchedules: any[];
   inputConnections: any[];
   outputConnections: any[];
+  aiConnections: any[];
+  capabilitiesMap: Record<string, any>;
+  aiModelsMap: Record<string, { label: string; value: string }[]>;
   initialRuns: any[];
 }
 
@@ -59,12 +54,19 @@ export default function ReportClient({
   initialSchedules,
   inputConnections,
   outputConnections,
+  aiConnections,
+  capabilitiesMap,
+  aiModelsMap,
   initialRuns
 }: ReportClientProps) {
   // Navigation & States
   const [activeTab, setActiveTab] = useState<'schedules' | 'runs'>('schedules');
   const [schedules, setSchedules] = useState<any[]>(initialSchedules);
   const [runs, setRuns] = useState<any[]>(initialRuns);
+  
+  // Data Preview State
+  const [previewingData, setPreviewingData] = useState(false);
+  const [previewDataResult, setPreviewDataResult] = useState<{ success: boolean; text?: string; error?: string; metricsJson?: any } | null>(null);
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,13 +75,15 @@ export default function ReportClient({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Form states
+  const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
   const [scheduleName, setScheduleName] = useState('');
-  const [selectedInputId, setSelectedInputId] = useState('');
+  const [selectedSources, setSelectedSources] = useState<{ connectionId: number; provider: string; capabilities: string[] }[]>([]);
   const [reportType, setReportType] = useState('daily_sales');
   const [dateRange, setDateRange] = useState('yesterday');
+  const [skipAiConfig, setSkipAiConfig] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
-  const [aiProvider, setAiProvider] = useState('chiasegpu');
-  const [aiModel, setAiModel] = useState('krr/claude-sonnet-4-6');
+  const [aiProvider, setAiProvider] = useState(aiConnections.length > 0 ? aiConnections[0].appSlug : '');
+  const [aiModel, setAiModel] = useState(aiConnections.length > 0 ? (aiModelsMap[aiConnections[0].appSlug]?.[0]?.value || '') : '');
   const [scheduleType, setScheduleType] = useState<'manual' | 'daily' | 'hourly' | 'weekly'>('daily');
   
   // Time states for cron conversion
@@ -95,6 +99,10 @@ export default function ReportClient({
   const [testingReport, setTestingReport] = useState(false);
   const [testResponse, setTestResponse] = useState<{ success: boolean; text?: string; error?: string } | null>(null);
   
+  // Test AI states
+  const [testingAi, setTestingAi] = useState(false);
+  const [testAiResult, setTestAiResult] = useState<{ success: boolean; text?: string; error?: string } | null>(null);
+
   // Notification states
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -134,18 +142,19 @@ export default function ReportClient({
   };
 
   // Get matching connection info
-  const selectedInputConn = inputConnections.find(c => c.id === parseInt(selectedInputId, 10));
   const selectedOutputConn = outputConnections.find(c => c.id === parseInt(selectedOutputId, 10));
 
   // Reset form
   const resetForm = () => {
+    setEditingScheduleId(null);
     setScheduleName('');
-    setSelectedInputId(inputConnections[0]?.id?.toString() || '');
+    setSelectedSources(inputConnections.length > 0 ? [{ connectionId: inputConnections[0].id, provider: inputConnections[0].appSlug, capabilities: [] }] : []);
     setReportType('daily_sales');
     setDateRange('yesterday');
+    setSkipAiConfig(false);
     setCustomPrompt('');
-    setAiProvider('chiasegpu');
-    setAiModel('krr/claude-sonnet-4-6');
+    setAiProvider(aiConnections.length > 0 ? aiConnections[0].appSlug : '');
+    setAiModel(aiConnections.length > 0 ? (aiModelsMap[aiConnections[0].appSlug]?.[0]?.value || '') : '');
     setScheduleType('daily');
     setCronHour('08');
     setCronMinute('00');
@@ -154,6 +163,39 @@ export default function ReportClient({
     setTelegramChatId('');
     setCurrentStep(1);
     setTestResponse(null);
+    setPreviewDataResult(null);
+    setTestAiResult(null);
+  };
+
+  // Pre-fill form for editing
+  const handleEditSchedule = (sch: any) => {
+    setEditingScheduleId(sch.id);
+    setScheduleName(sch.name);
+    setSelectedSources(sch.inputSources || []);
+    setReportType(sch.reportSpec?.reportType || 'daily_sales');
+    setDateRange(sch.reportSpec?.dateRange || 'yesterday');
+    setSkipAiConfig(sch.reportSpec?.skipAi || false);
+    setCustomPrompt(sch.reportSpec?.customPrompt || '');
+    setAiProvider(sch.reportSpec?.aiProvider || (aiConnections.length > 0 ? aiConnections[0].appSlug : ''));
+    setAiModel(sch.reportSpec?.aiModel || '');
+    setSelectedOutputId(sch.outputConnectionId ? sch.outputConnectionId.toString() : '');
+    setTelegramChatId(sch.outputConfig?.chatId || '');
+    setScheduleType(sch.scheduleType || 'manual');
+    if (sch.cronExpression) {
+      const parts = sch.cronExpression.split(' ');
+      if (parts.length === 5) {
+        setCronMinute(parts[0].padStart(2, '0'));
+        setCronHour(parts[1].padStart(2, '0'));
+        if (sch.scheduleType === 'weekly') {
+          setCronDow(parts[4]);
+        }
+      }
+    }
+    setCurrentStep(1);
+    setTestResponse(null);
+    setPreviewDataResult(null);
+    setTestAiResult(null);
+    setIsModalOpen(true);
   };
 
   // Handle Save
@@ -162,8 +204,8 @@ export default function ReportClient({
       showToast('Vui lòng nhập tên lịch báo cáo', 'error');
       return;
     }
-    if (!selectedInputId) {
-      showToast('Vui lòng chọn kết nối nguồn dữ liệu', 'error');
+    if (selectedSources.length === 0) {
+      showToast('Vui lòng chọn ít nhất một kết nối nguồn dữ liệu', 'error');
       return;
     }
     if (!selectedOutputId) {
@@ -181,11 +223,13 @@ export default function ReportClient({
       
       const payload: CreateScheduleInput = {
         name: scheduleName,
-        inputConnectionId: parseInt(selectedInputId, 10),
-        inputProvider: selectedInputConn?.appSlug || 'pancake-pos',
+        inputSources: selectedSources,
+        inputConnectionId: selectedSources.length > 0 ? selectedSources[0].connectionId : undefined,
+        inputProvider: selectedSources.length > 0 ? selectedSources[0].provider : undefined,
         reportSpec: {
           reportType,
           dateRange,
+          skipAi: skipAiConfig,
           customPrompt: customPrompt.trim(),
           aiProvider,
           aiModel,
@@ -207,10 +251,21 @@ export default function ReportClient({
         timezone: 'Asia/Ho_Chi_Minh'
       };
 
-      const res = await createReportScheduleAction(teamId, payload);
+      let res;
+      if (editingScheduleId) {
+        res = await updateReportScheduleAction(teamId, editingScheduleId, payload);
+      } else {
+        res = await createReportScheduleAction(teamId, payload);
+      }
+      
       if (res.success && res.data) {
-        setSchedules(prev => [res.data, ...prev]);
-        showToast('Tạo lịch báo cáo tự động thành công');
+        if (editingScheduleId) {
+          setSchedules(prev => prev.map(s => s.id === editingScheduleId ? res.data : s));
+          showToast('Cập nhật lịch báo cáo thành công');
+        } else {
+          setSchedules(prev => [res.data, ...prev]);
+          showToast('Tạo lịch báo cáo tự động thành công');
+        }
         setIsModalOpen(false);
         resetForm();
         refreshData();
@@ -226,9 +281,29 @@ export default function ReportClient({
 
   // Handle "Gửi thử ngay" (Test Run on current unsaved configuration)
   const handleTestRun = async () => {
-    if (!selectedInputId || !selectedOutputId || !telegramChatId.trim()) {
+    if (selectedSources.length === 0 || !selectedOutputId || !telegramChatId.trim()) {
       showToast('Vui lòng cấu hình đầy đủ Nguồn dữ liệu & Telegram Chat ID trước khi test', 'error');
       return;
+    }
+
+    let finalReportText = previewDataResult?.text;
+    
+    if (!finalReportText) {
+      alert('Chưa có bản xem trước báo cáo!\n\nVui lòng quay lại Bước 2 và nhấn "Test kéo dữ liệu" để tạo báo cáo.');
+      return;
+    }
+
+    // Nếu không tick "Bỏ qua AI", bắt buộc phải có testAiResult
+    if (!skipAiConfig) {
+      if (!testAiResult?.success || !testAiResult?.text) {
+        alert('Chưa có lời bình AI!\n\nVui lòng quay lại Bước 3 và nhấn "Test gọi AI nhận xét" (hoặc đánh dấu Bỏ qua AI).');
+        return;
+      }
+      // Gắn lời bình AI vào báo cáo
+      finalReportText = finalReportText.replace(
+        '<i>(Chế độ Xem trước: Bỏ qua bước gọi AI để tiết kiệm token.)</i>', 
+        testAiResult.text
+      );
     }
 
     try {
@@ -236,13 +311,15 @@ export default function ReportClient({
       setTestResponse(null);
       
       const cronExpr = generateCronExpression();
-      const payload: CreateScheduleInput = {
+      const payload: CreateScheduleInput & { prebuiltText?: string } = {
         name: scheduleName || 'Báo cáo Test',
-        inputConnectionId: parseInt(selectedInputId, 10),
-        inputProvider: selectedInputConn?.appSlug || 'pancake-pos',
+        inputSources: selectedSources,
+        inputConnectionId: selectedSources.length > 0 ? selectedSources[0].connectionId : undefined,
+        inputProvider: selectedSources.length > 0 ? selectedSources[0].provider : undefined,
         reportSpec: {
           reportType,
           dateRange,
+          skipAi: skipAiConfig,
           customPrompt: customPrompt.trim(),
           aiProvider,
           aiModel
@@ -253,7 +330,8 @@ export default function ReportClient({
           chatId: telegramChatId.trim()
         },
         scheduleType,
-        cronExpression: scheduleType !== 'manual' ? cronExpr : undefined
+        cronExpression: scheduleType !== 'manual' ? cronExpr : undefined,
+        prebuiltText: finalReportText
       };
 
       const res = await testRunReportAction(teamId, payload);
@@ -556,6 +634,15 @@ export default function ReportClient({
                       </button>
 
                       <button
+                        onClick={() => handleEditSchedule(schedule)}
+                        disabled={isRunning || isDeleting}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/25 rounded-lg text-[11px] font-extrabold text-blue-400 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <Pencil className="h-3.5 w-3.5 shrink-0" />
+                        Sửa
+                      </button>
+
+                      <button
                         onClick={() => handleDeleteSchedule(schedule.id)}
                         disabled={isRunning || isDeleting}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 rounded-lg text-[11px] font-extrabold text-rose-400 transition-all cursor-pointer disabled:opacity-50"
@@ -673,7 +760,7 @@ export default function ReportClient({
                   <Plus className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm text-white">Tạo lịch báo cáo tự động</h3>
+                  <h3 className="font-extrabold text-sm text-white">{editingScheduleId ? 'Chỉnh sửa lịch báo cáo' : 'Tạo lịch báo cáo tự động'}</h3>
                   <span className="text-[10px] text-gray-400">Theo dõi định kỳ kết quả kinh doanh</span>
                 </div>
               </div>
@@ -728,18 +815,33 @@ export default function ReportClient({
                         </Link>
                       </div>
                     ) : (
-                      <select
-                        value={selectedInputId}
-                        onChange={(e) => setSelectedInputId(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-900 border border-white/10 hover:border-white/15 focus:border-orange-500/50 rounded-xl text-xs text-white focus:outline-none transition-all"
-                      >
-                        <option value="">-- Chọn kết nối API --</option>
-                        {inputConnections.map(c => (
-                          <option key={c.id} value={c.id.toString()}>
-                            {c.connectionName} ({c.appSlug === 'pancake-pos' ? 'Pancake POS' : 'KiotViet'})
-                          </option>
-                        ))}
-                      </select>
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {inputConnections.map(c => {
+                          const isSelected = selectedSources.some(s => s.connectionId === c.id);
+                          return (
+                            <label key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                              isSelected ? 'bg-orange-500/10 border-orange-500/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]'
+                            }`}>
+                              <input 
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedSources([...selectedSources, { connectionId: c.id, provider: c.appSlug, capabilities: [] }]);
+                                  } else {
+                                    setSelectedSources(selectedSources.filter(s => s.connectionId !== c.id));
+                                  }
+                                }}
+                                className="w-4 h-4 rounded border-gray-600 bg-gray-900 text-orange-500 focus:ring-orange-500/50 cursor-pointer"
+                              />
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-white">{c.connectionName}</span>
+                                <span className="text-[10px] text-gray-400 uppercase">{c.appSlug}</span>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
 
@@ -758,36 +860,66 @@ export default function ReportClient({
                 </div>
               )}
 
-              {/* Step 2: Chọn Loại Báo Cáo */}
+              {/* Step 2: Chọn Năng Lực Báo Cáo */}
               {currentStep === 2 && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="space-y-2">
                     <label className="text-xs text-gray-300 font-bold flex items-center gap-1.5">
                       <BarChart3 className="h-4 w-4 text-orange-400" />
-                      2. Chọn loại báo cáo & Số liệu cần tính
+                      2. Chọn năng lực cần báo cáo
                     </label>
-                    <div className="grid grid-cols-2 gap-3.5">
-                      {[
-                        { id: 'daily_sales', label: 'Doanh thu bán hàng', desc: 'Doanh thu, đơn hàng, top SP bán chạy' },
-                        { id: 'low_stock', label: 'Cảnh báo tồn kho', desc: 'Cảnh báo sản phẩm sắp hết hàng' },
-                        { id: 'pending_orders', label: 'Đơn chờ xử lý lâu', desc: 'Đơn hàng pending quá 24 giờ' },
-                        { id: 'top_products', label: 'Top sản phẩm', desc: 'Danh sách sản phẩm bán chạy nhất' }
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setReportType(item.id)}
-                          className={`p-4 rounded-xl border text-left cursor-pointer transition-all space-y-1.5 ${
-                            reportType === item.id 
-                              ? 'bg-orange-500/5 border-orange-500/40 shadow-md shadow-orange-500/5' 
-                              : 'bg-white/[0.01] border-white/5 hover:border-white/10'
-                          }`}
-                        >
-                          <span className="font-extrabold text-xs text-white block">{item.label}</span>
-                          <span className="text-[10px] text-gray-400 font-medium block leading-snug">{item.desc}</span>
-                        </button>
-                      ))}
-                    </div>
+                    {selectedSources.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic">Vui lòng chọn nguồn dữ liệu ở Bước 1.</p>
+                    ) : (
+                      <div className="space-y-4 max-h-60 overflow-y-auto pr-1">
+                        {selectedSources.map((source, idx) => {
+                          const conn = inputConnections.find(c => c.id === source.connectionId);
+                          const actions = capabilitiesMap[source.provider] || [];
+                          
+                          return (
+                            <div key={source.connectionId} className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
+                              <h4 className="text-[11px] font-bold text-white border-b border-white/5 pb-2 mb-2 flex items-center justify-between">
+                                <span>{conn?.connectionName} <span className="text-gray-500 font-normal uppercase">({source.provider})</span></span>
+                              </h4>
+                              {actions.length === 0 ? (
+                                <p className="text-[10px] text-gray-500">Chưa có năng lực nào được hỗ trợ.</p>
+                              ) : (
+                                <div className="grid grid-cols-1 gap-2">
+                                  {actions.map((action: any) => {
+                                    const isSelected = source.capabilities.includes(action.slug);
+                                    return (
+                                      <label key={action.slug} className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                                        isSelected ? 'bg-orange-500/10 border-orange-500/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]'
+                                      }`}>
+                                        <input 
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          onChange={(e) => {
+                                            const newSources = selectedSources.map((src, i) => {
+                                              if (i !== idx) return src;
+                                              const newCaps = e.target.checked
+                                                ? [...src.capabilities, action.slug]
+                                                : src.capabilities.filter(c => c !== action.slug);
+                                              return { ...src, capabilities: newCaps };
+                                            });
+                                            setSelectedSources(newSources);
+                                          }}
+                                          className="w-3.5 h-3.5 mt-0.5 rounded border-gray-600 bg-gray-900 text-orange-500 focus:ring-orange-500/50 cursor-pointer"
+                                        />
+                                        <div className="flex flex-col">
+                                          <span className="text-[11px] font-bold text-white">{action.name}</span>
+                                          <span className="text-[10px] text-gray-400 leading-snug">{action.description}</span>
+                                        </div>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -815,6 +947,61 @@ export default function ReportClient({
                       ))}
                     </div>
                   </div>
+
+                  <div className="pt-4 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (selectedSources.length === 0) {
+                          showToast('Vui lòng chọn nguồn dữ liệu', 'error');
+                          return;
+                        }
+                        setPreviewingData(true);
+                        setPreviewDataResult(null);
+                        try {
+                          const res = await previewReportDataAction(teamId, {
+                            inputSources: selectedSources,
+                            reportSpec: { reportType, dateRange },
+                            name: scheduleName || 'Test Báo Cáo'
+                          });
+                          if (res.success) {
+                            setPreviewDataResult({ success: true, text: res.data?.reportText, metricsJson: res.data?.metricsJson });
+                          } else {
+                            setPreviewDataResult({ success: false, error: res.error });
+                          }
+                        } catch (error: any) {
+                          setPreviewDataResult({ success: false, error: error.message });
+                        } finally {
+                          setPreviewingData(false);
+                        }
+                      }}
+                      disabled={previewingData || selectedSources.length === 0}
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-black text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {previewingData ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                      Test kéo dữ liệu (Chưa có AI)
+                    </button>
+
+                    {previewDataResult && (
+                      <div className={`mt-3 p-4 rounded-xl border text-xs max-h-60 overflow-y-auto font-mono whitespace-pre-wrap ${
+                        previewDataResult.success 
+                          ? 'bg-emerald-950/20 border-emerald-500/20 text-emerald-400' 
+                          : 'bg-rose-950/20 border-rose-500/20 text-rose-400'
+                      }`}>
+                        {previewDataResult.success ? (
+                          <>
+                            <div className="font-extrabold text-[10px] text-emerald-500 mb-2">DỮ LIỆU ĐÃ LẤY THÀNH CÔNG:</div>
+                            <div dangerouslySetInnerHTML={{ __html: previewDataResult.text?.replace(/\n/g, '<br/>') || '' }} />
+                          </>
+                        ) : (
+                          <>
+                            <div className="font-extrabold text-[10px] text-rose-500 mb-1">LỖI LẤY DỮ LIỆU:</div>
+                            {previewDataResult.error}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -827,51 +1014,133 @@ export default function ReportClient({
                       3. Cấu hình AI nhận xét & gợi ý
                     </label>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] text-gray-400 font-bold">1. Chọn nhà cung cấp AI</label>
-                        <select
-                          value={aiProvider}
-                          onChange={(e) => {
-                            setAiProvider(e.target.value);
-                            // Cập nhật model mặc định tương ứng
-                            const models = AI_MODELS[e.target.value] || [];
-                            if (models.length > 0) {
-                              setAiModel(models[0].value);
-                            }
-                          }}
-                          className="w-full px-3 py-2 bg-gray-900 border border-white/10 hover:border-white/15 focus:border-orange-500/50 rounded-lg text-xs text-white focus:outline-none transition-all"
-                        >
-                          {AI_PROVIDERS.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] text-gray-400 font-bold">2. Chọn mô hình AI (Model)</label>
-                        <select
-                          value={aiModel}
-                          onChange={(e) => setAiModel(e.target.value)}
-                          className="w-full px-3 py-2 bg-gray-900 border border-white/10 hover:border-white/15 focus:border-orange-500/50 rounded-lg text-xs text-white focus:outline-none transition-all"
-                        >
-                          {(AI_MODELS[aiProvider] || []).map(m => (
-                            <option key={m.value} value={m.value}>{m.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] text-gray-400 font-bold">3. Chỉ dẫn AI viết lời bình (Tùy chọn)</label>
-                      <textarea
-                        placeholder="Ví dụ: Hãy phân tích kỹ lý do đơn hàng giảm, viết giọng điệu ngắn gọn súc tích, nhấn mạnh hàng tồn dưới 5 chiếc."
-                        rows={4}
-                        value={customPrompt}
-                        onChange={(e) => setCustomPrompt(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-900 border border-white/10 hover:border-white/15 focus:border-orange-500/50 rounded-xl text-xs text-white focus:outline-none transition-all resize-none"
+                    <label className="flex items-center gap-2 p-3 bg-white/[0.02] border border-white/5 rounded-xl cursor-pointer hover:bg-white/[0.05] transition-all">
+                      <input 
+                        type="checkbox"
+                        checked={skipAiConfig}
+                        onChange={(e) => setSkipAiConfig(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-600 bg-gray-900 text-orange-500 focus:ring-orange-500/50 cursor-pointer"
                       />
-                    </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-white">Không sử dụng AI (Chỉ gửi số liệu thô)</span>
+                        <span className="text-[10px] text-gray-400">Hệ thống sẽ không gọi AI để tổng hợp, giúp tiết kiệm chi phí token và thời gian thực thi.</span>
+                      </div>
+                    </label>
+
+                    {!skipAiConfig && (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] text-gray-400 font-bold">1. Chọn nhà cung cấp AI</label>
+                            {aiConnections.length === 0 ? (
+                              <div className="p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl space-y-2">
+                                <p className="text-[11px] text-gray-300">Chưa có kết nối AI nào.</p>
+                                <Link href="/connect-hub/connections" className="inline-flex items-center gap-1 text-[11px] font-black text-orange-400 hover:text-orange-300">
+                                  Tạo kết nối AI <ArrowUpRight className="h-3 w-3" />
+                                </Link>
+                              </div>
+                            ) : (
+                              <select
+                                value={aiProvider}
+                                onChange={(e) => {
+                                  setAiProvider(e.target.value);
+                                  const models = aiModelsMap[e.target.value] || [];
+                                  if (models.length > 0) {
+                                    setAiModel(models[0].value);
+                                  }
+                                }}
+                                className="w-full px-3 py-2 bg-gray-900 border border-white/10 hover:border-white/15 focus:border-orange-500/50 rounded-lg text-xs text-white focus:outline-none transition-all"
+                              >
+                                {aiConnections.map(c => (
+                                  <option key={c.id} value={c.appSlug}>{c.connectionName} ({c.appSlug})</option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] text-gray-400 font-bold">2. Chọn mô hình AI (Model)</label>
+                            <select
+                              value={aiModel}
+                              onChange={(e) => setAiModel(e.target.value)}
+                              className="w-full px-3 py-2 bg-gray-900 border border-white/10 hover:border-white/15 focus:border-orange-500/50 rounded-lg text-xs text-white focus:outline-none transition-all"
+                              disabled={!aiProvider || !aiModelsMap[aiProvider] || aiModelsMap[aiProvider].length === 0}
+                            >
+                              {(aiModelsMap[aiProvider] || []).map(m => (
+                                <option key={m.value} value={m.value}>{m.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] text-gray-400 font-bold">3. Chỉ dẫn AI viết lời bình (Tùy chọn)</label>
+                          <textarea
+                            placeholder="Ví dụ: Hãy phân tích kỹ lý do đơn hàng giảm, viết giọng điệu ngắn gọn súc tích, nhấn mạnh hàng tồn dưới 5 chiếc."
+                            rows={4}
+                            value={customPrompt}
+                            onChange={(e) => setCustomPrompt(e.target.value)}
+                            className="w-full px-4 py-3 bg-gray-900 border border-white/10 hover:border-white/15 focus:border-orange-500/50 rounded-xl text-xs text-white focus:outline-none transition-all resize-none"
+                          />
+                        </div>
+
+                        <div className="pt-2 border-t border-white/10">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!previewDataResult || !previewDataResult.success || !previewDataResult.metricsJson) {
+                                console.warn("Cannot test AI because previewDataResult is missing metricsJson:", previewDataResult);
+                                alert('Hệ thống chưa có số liệu thô!\n\nVui lòng quay lại Bước 2 và nhấn "Test kéo dữ liệu" một lần nữa để lấy dữ liệu mới nhất cho AI phân tích.');
+                                return;
+                              }
+                              if (!aiModel) {
+                                alert('Vui lòng chọn Model AI.');
+                                return;
+                              }
+                              setTestingAi(true);
+                              setTestAiResult(null);
+                              try {
+                                const res = await testAiCommentaryAction(teamId, aiModel, customPrompt, previewDataResult.metricsJson);
+                                if (res.success && res.data) {
+                                  setTestAiResult({ success: true, text: res.data.aiText });
+                                } else {
+                                  setTestAiResult({ success: false, error: res.error });
+                                }
+                              } catch (err: any) {
+                                setTestAiResult({ success: false, error: err.message });
+                              } finally {
+                                setTestingAi(false);
+                              }
+                            }}
+                            disabled={testingAi || !aiModel}
+                            className="w-full flex items-center justify-center gap-2 py-3 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/25 rounded-xl text-xs font-black text-orange-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {testingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                            Test gọi AI nhận xét từ Dữ liệu đã kéo
+                          </button>
+
+                          {testAiResult && (
+                            <div className={`mt-3 p-4 rounded-xl border text-xs max-h-60 overflow-y-auto font-mono whitespace-pre-wrap ${
+                              testAiResult.success 
+                                ? 'bg-emerald-950/20 border-emerald-500/20 text-emerald-400' 
+                                : 'bg-rose-950/20 border-rose-500/20 text-rose-400'
+                            }`}>
+                              {testAiResult.success ? (
+                                <>
+                                  <div className="font-extrabold text-[10px] text-emerald-500 mb-2">🤖 AI NHẬN XÉT (PREVIEW):</div>
+                                  <div dangerouslySetInnerHTML={{ __html: testAiResult.text?.replace(/\n/g, '<br/>') || '' }} />
+                                </>
+                              ) : (
+                                <>
+                                  <div className="font-extrabold text-[10px] text-rose-500 mb-1">LỖI GỌI AI:</div>
+                                  {testAiResult.error}
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -1029,7 +1298,7 @@ export default function ReportClient({
                       <ol className="list-decimal pl-4 space-y-1">
                         <li>Tạo một nhóm (Group) mới trên Telegram.</li>
                         <li>Thêm bot <span className="text-orange-400 font-mono font-bold">@myidbot</span> vào nhóm của bạn.</li>
-                        <li>Thêm cả <strong>Bot Telegram của hệ thống</strong> vào nhóm và cấp quyền gửi tin nhắn.</li>
+                        <li>Thêm cả <strong>Bot Telegram hệ thống</strong> chính là bot (ai2hero_bot) đã tạo ở bước kết nối Telegram với Connect Hub vào nhóm để gửi tin nhắn lên nhóm.</li>
                         <li>Gõ lệnh <code className="text-orange-400 font-mono bg-white/5 px-1 py-0.5 rounded">/getgroupid</code> trong nhóm. Bot sẽ phản hồi Chat ID (là một chuỗi số âm, ví dụ: -5199688904 hoặc bắt đầu bằng -100).</li>
                         <li>Copy toàn bộ chuỗi số đó (cả dấu trừ) và dán vào ô phía trên.</li>
                       </ol>
@@ -1043,7 +1312,7 @@ export default function ReportClient({
                       <button
                         type="button"
                         onClick={handleTestRun}
-                        disabled={testingReport || !selectedInputId || !selectedOutputId || !telegramChatId.trim()}
+                        disabled={testingReport || selectedSources.length === 0 || !selectedOutputId || !telegramChatId.trim()}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/25 rounded-lg text-[11px] font-extrabold text-orange-400 transition-all cursor-pointer disabled:opacity-50"
                       >
                         {testingReport ? (
@@ -1100,8 +1369,8 @@ export default function ReportClient({
                       showToast('Vui lòng nhập tên lịch báo cáo', 'error');
                       return;
                     }
-                    if (currentStep === 1 && !selectedInputId) {
-                      showToast('Vui lòng chọn kết nối nguồn dữ liệu', 'error');
+                    if (currentStep === 1 && selectedSources.length === 0) {
+                      showToast('Vui lòng chọn ít nhất một kết nối nguồn dữ liệu', 'error');
                       return;
                     }
                     setCurrentStep(prev => prev + 1);
@@ -1123,7 +1392,7 @@ export default function ReportClient({
                   ) : (
                     <CheckCircle2 className="h-4 w-4" />
                   )}
-                  Lưu lịch tự động
+                  {editingScheduleId ? 'Cập nhật lịch báo cáo' : 'Lưu lịch tự động'}
                 </button>
               )}
             </div>

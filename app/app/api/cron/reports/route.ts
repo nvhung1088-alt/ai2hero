@@ -3,6 +3,7 @@ import { db } from '@/lib/db/drizzle';
 import { heroReportSchedules } from '@/lib/db/schema';
 import { and, eq, lte, isNull, or, lt } from 'drizzle-orm';
 import { executeReportTask } from '@/lib/hero-report/engine';
+import crypto from 'crypto';
 
 export const revalidate = 0;
 
@@ -14,8 +15,17 @@ export async function GET(request: Request) {
     return new NextResponse('Internal Server Error: Cron secret configuration missing', { status: 500 });
   }
 
-  const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  const authHeader = request.headers.get('authorization') || '';
+  const expectedAuth = `Bearer ${cronSecret}`;
+
+  try {
+    const authBuffer = Buffer.from(authHeader);
+    const expectedBuffer = Buffer.from(expectedAuth);
+    
+    if (authBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(authBuffer, expectedBuffer)) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+  } catch (e) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 

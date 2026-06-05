@@ -12,6 +12,7 @@ import {
   testConnectionAction,
   deleteConnectionAction
 } from '@/lib/db/connect-hub-actions';
+import { toggleReportSourceAction } from '@/lib/db/hero-report-actions';
 import { useRouter } from 'next/navigation';
 
 interface ConnectionsClientProps {
@@ -23,6 +24,26 @@ export default function ConnectionsClient({ initialConnections, teamId }: Connec
   const router = useRouter();
   const [connections, setConnections] = useState<ConnectHubConnection[]>(initialConnections);
   const [search, setSearch] = useState('');
+  const [togglingSourceId, setTogglingSourceId] = useState<number | null>(null);
+
+  const handleToggleReportSource = async (id: number) => {
+    setTogglingSourceId(id);
+    setMessage(null);
+    try {
+      const res = await toggleReportSourceAction(teamId, id);
+      if (res.success && res.data) {
+        setConnections(connections.map(c => c.id === id ? res.data as any : c));
+        setMessage({ type: 'success', text: `Đã cập nhật vai trò nguồn báo cáo thành công.` });
+        router.refresh();
+      } else {
+        setMessage({ type: 'error', text: res.error || 'Không thể thay đổi vai trò nguồn báo cáo.' });
+      }
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Lỗi hệ thống.' });
+    } finally {
+      setTogglingSourceId(null);
+    }
+  };
 
   // States for Drawer
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -203,6 +224,7 @@ export default function ConnectionsClient({ initialConnections, teamId }: Connec
                   <th className="pb-3 px-3">Ứng dụng</th>
                   <th className="pb-3 px-3">Tên kết nối</th>
                   <th className="pb-3 px-3">Trạng thái</th>
+                  <th className="pb-3 px-3">Nguồn báo cáo</th>
                   <th className="pb-3 px-3">Thực thi cuối</th>
                   <th className="pb-3 px-3 text-right">Hành động</th>
                 </tr>
@@ -228,6 +250,19 @@ export default function ConnectionsClient({ initialConnections, teamId }: Connec
                         <span className={`w-1.5 h-1.5 rounded-full ${conn.status === 'connected' ? 'bg-green-400 animate-pulse' : 'bg-rose-400'}`} />
                         {conn.status === 'connected' ? 'Hoạt động' : 'Lỗi'}
                       </span>
+                    </td>
+                    <td className="py-3 px-3">
+                      <button
+                        onClick={() => handleToggleReportSource(conn.id)}
+                        disabled={togglingSourceId === conn.id}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-extrabold border transition-all ${
+                          Array.isArray(conn.usedByModules) && conn.usedByModules.includes('hero-report')
+                            ? 'bg-purple-500/20 text-purple-400 border-purple-500/30 hover:bg-purple-500/30'
+                            : 'bg-white/5 text-gray-500 border-white/5 hover:bg-white/10 hover:text-gray-400'
+                        }`}
+                      >
+                        📊 {Array.isArray(conn.usedByModules) && conn.usedByModules.includes('hero-report') ? 'Đã bật' : 'Bật nguồn'}
+                      </button>
                     </td>
                     <td className="py-3 px-3 text-gray-500 font-medium">
                       {conn.lastUsedAt

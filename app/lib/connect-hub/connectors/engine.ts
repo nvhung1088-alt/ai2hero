@@ -4,6 +4,7 @@ import { runPancakeChat } from './runners/pancake-chat';
 import { runPancakePos } from './runners/pancake-pos/index';
 import { runOpenAI } from './runners/openai';
 import { runChiaSeGPU } from './runners/chiasegpu';
+import { runTelegram } from './runners/telegram';
 
 
 const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promise<any>> = {
@@ -13,6 +14,7 @@ const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promis
   'pancake-pos': runPancakePos,
   'openai': runOpenAI,
   'chiasegpu': runChiaSeGPU,
+  'telegram': runTelegram,
 };
 
 export async function executeAction(
@@ -26,7 +28,7 @@ export async function executeAction(
   if (!runner) {
     // Trình giả lập Mock cho các connector chưa được viết runtime chi tiết
     // giúp người dùng có trải nghiệm UI mượt mà và test flows
-    if (['google-sheets', 'gmail', 'telegram', 'anthropic', 'gemini', 'grok', 'deepseek', 'qwen', 'runway', 'luma', 'sapo', 'payos', 'momo', 'google-drive', 'facebook', 'zalo', 'tiktok'].includes(appSlug)) {
+    if (['google-sheets', 'gmail', 'anthropic', 'gemini', 'grok', 'deepseek', 'qwen', 'runway', 'luma', 'sapo', 'payos', 'momo', 'google-drive', 'facebook', 'zalo', 'tiktok'].includes(appSlug)) {
       return simulateMockConnector(appSlug, actionSlug, input);
     }
 
@@ -91,21 +93,6 @@ async function simulateMockConnector(
         subject: input.subject,
         status: 'SENT',
         sentAt: new Date().toISOString()
-      }
-    };
-  }
-
-  if (appSlug === 'telegram') {
-    return {
-      success: true,
-      data: {
-        ok: true,
-        result: {
-          message_id: Math.floor(Math.random() * 100000),
-          chat: { id: input.chatId, type: 'group', title: 'AI2Hero Alerts Group' },
-          date: Math.floor(Date.now() / 1000),
-          text: input.text
-        }
       }
     };
   }

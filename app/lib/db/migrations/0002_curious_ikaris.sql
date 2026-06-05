@@ -1,0 +1,1 @@
+ALTER TABLE "hero_report_schedules" ADD COLUMN "input_sources" jsonb DEFAULT '[]';

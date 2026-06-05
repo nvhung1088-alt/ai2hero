@@ -638,6 +638,7 @@ export const heroReportSchedules = pgTable('hero_report_schedules', {
     .references(() => connectHubConnections.id, { onDelete: 'cascade' }),
   inputProvider: varchar('input_provider', { length: 50 }).notNull(),
   // inputProvider: 'pancake-pos' | 'kiotviet'
+  inputSources: jsonb('input_sources').default('[]'),
 
   // --- Report Spec (JSON chuẩn, KHÔNG prompt tự do) ---
   reportSpec: jsonb('report_spec').notNull().default('{}'),

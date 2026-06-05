@@ -233,10 +233,10 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Liên kết**: → /connect-hub/dashboard
 
 ### Hero Report Dashboard (`/hero-report/dashboard`)
-- **Chức năng**: Giao diện chính của Hero Report. Hiển thị danh sách lịch báo cáo tự động đã thiết lập, trạng thái hoạt động (Active/Paused), lịch chạy tiếp theo, lịch sử gửi gần nhất cùng lượng token AI tiêu thụ. Tích hợp Form tạo mới 5 bước (chọn nguồn, loại báo cáo, prompt AI tùy chọn, đặt lịch gửi, cấu hình chat Telegram nhận tin) và nút Gửi thử trực tiếp để kiểm tra định dạng báo cáo.
+- **Chức năng**: Giao diện chính của Hero Report (MVP Báo cáo tự động đa nguồn). Hiển thị danh sách lịch báo cáo tự động đã thiết lập, trạng thái hoạt động, lịch chạy tiếp theo, lịch sử gửi gần nhất cùng lượng token AI tiêu thụ. Tích hợp Form tạo mới 5 bước thông minh: Bước 1: Chọn một hoặc nhiều nguồn dữ liệu tích hợp (Pancake POS, Pancake Chat...). Bước 2: Đánh dấu chọn động các Năng lực API theo từng nguồn để kéo dữ liệu và có nút "Xem trước dữ liệu gốc" để test thử nội dung HTML trả về ngay trên giao diện. Bước 3: Chọn cổng AI và Model linh hoạt được load từ Connect Hub kèm custom prompt. Bước 4: Đặt lịch gửi tự động. Bước 5: Cấu hình bot Telegram nhận báo cáo. 
 - **Vai trò**: MVP App UI
-- **Đọc/Ghi data**: Đọc/Ghi dữ liệu từ 2 bảng `hero_report_schedules` và `hero_report_runs` thông qua Server Actions trong `hero-report-actions.ts`.
-- **Liên kết**: → /dashboard, → /connect-hub/connections (nếu chưa có API kết nối)
+- **Đọc/Ghi data**: Đọc/Ghi dữ liệu từ 2 bảng `hero_report_schedules` và `hero_report_runs` thông qua Server Actions trong `hero-report-actions.ts`. Đọc `connectHubConnections` để kết xuất AI động.
+- **Liên kết**: → /dashboard, → /connect-hub/connections (để thêm kết nối nếu trống)
 
 
 

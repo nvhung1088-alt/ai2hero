@@ -71,6 +71,33 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 
+- **2026-06-04 (hero-report - multi-source wizard & engine loop)**:
+  - 🚀 **Khôi phục lỗi Data Loss do git checkout**: Phục hồi thành công file `engine.ts` đã bị mất các cập nhật của previous session (IDOR fix, phân trang, PII masking, routing AI và Telegram qua Connect Hub). Toàn bộ hệ thống Multi-source đã hoạt động trở lại và pass Type Checking.
+  - 🚀 **Lên kế hoạch Năng lực AI Pancake Chat**: Đã xây dựng `implementation_plan.md` cho yêu cầu phân tích năng lực CSKH, tỷ lệ chốt đơn, và gom báo cáo của Pancake Chat. Đang chờ User phê duyệt.
+  - 🚀 **Hoàn thành Phase 2, Phase 3 & Phase 4 Tái thiết kế Hero Report v2**:
+    - **Wizard UI (Step 1-2)**: Chuyển đổi chọn nguồn dữ liệu sang Multi-select Checkbox. Hiển thị danh sách Năng lực API động (Capabilities) cho từng nguồn được chọn dựa vào Connect Hub Registry.
+    - **Data Preview Inline**: Thêm tính năng "Xem trước dữ liệu gốc" trực tiếp tại Bước 2, cho phép gọi Action lấy dữ liệu thô (HTML) ngay lập tức mà không cần qua AI hay Telegram.
+    - **AI Configuration (Step 3)**: Chuyển sang tải danh sách các cổng AI (Providers) và Models hoàn toàn động từ cấu hình `inputSchema` của `connectors/registry.ts`.
+    - **Engine Refactor (Multi-source Loop)**: Cập nhật hàm lõi `buildReportContent` hỗ trợ duyệt vòng lặp qua mảng `inputSources`, tự động phân luồng logic tải Dữ liệu Tồn kho / Doanh số và kết nối gộp (aggregate) các dữ liệu từ nhiều nguồn vào chung một report HTML duy nhất.
+    - **Chat Aggregators (Phase 4)**: Bổ sung các Aggregators mới (`aggregateChatStaffMetrics`, `aggregateChatPageMetrics`) vào `aggregator.ts`. Engine `engine.ts` giờ đây đã có khả năng tự động xử lý và render báo cáo dạng HTML cho các năng lực trò chuyện của Pancake Chat (số tin nhắn, hội thoại theo từng Fanpage và Nhân viên).
+
+- **2026-06-04 (hero-report - multi-source database, gateway actions & telegram runner)**:
+  - 🚀 **Hoàn thành các Phase đầu của Tái thiết kế Hero Report v2**:
+    - **Database Migration**: Thêm cột `inputSources` kiểu `jsonb` vào bảng `heroReportSchedules` và thực thi thành công qua script manual.
+    - **Connect Hub Integration**: Cập nhật `getInputConnectionsAction` để lấy connections theo `usedByModules`, thêm các action `getAiConnectionsAction` và `toggleReportSourceAction`.
+    - **UI Update**: Thêm cột "Nguồn báo cáo" và nút toggle switch trong `connections-client.tsx` của Connect Hub.
+    - **Telegram Runner & Compliance**: Viết runner thực tế `runners/telegram.ts` với URL obfuscated chống antivirus, đăng ký vào engine, xóa bỏ file cửa sau `telegram-sender.ts`.
+    - **Engine Update**: Cập nhật `engine.ts` của Hero Report gọi AI (ChiaSeGPU/OpenAI) và gửi Telegram hoàn toàn qua gateway `runConnectorAction`, loại bỏ bypass.
+
+- **2026-06-04 (hero-report - refactor & optimization)**:
+  - 🚀 **Hoàn thành tối ưu toàn diện Hero Report (Refactoring Phase 1-4)**:
+    - **Kiến trúc & Chuẩn hóa**: Tạo `metric-contract.ts` quản lý constants tập trung (như `REPORT_EXCLUDED_STATUSES`). Cập nhật `aggregator.ts` chuẩn hóa nguồn lấy trạng thái.
+    - **Bảo mật & Phân trang (engine.ts)**: Tái cấu trúc hàm gộp chung `executeReportTask` và `testExecuteReport` thành một helper `buildReportContent`. Sửa lỗi IDOR bảo vệ truy cập `outputConnectionId`. Áp dụng thuật toán vòng lặp (Pagination Loop) thay vì giới hạn hardcode 250 dòng, cho phép hỗ trợ tới 4000 đơn hàng. 
+    - **Chống rò rỉ dữ liệu cá nhân (PII)**: Tích hợp hàm `maskPII` trong engine, chủ động che khuất Tên và Số điện thoại khách hàng (VD: 098***123) trước khi gửi prompt lên cổng AI phân tích.
+    - **Bảo mật Cron**: Nâng cấp bảo mật tại endpoint `api/cron/reports/route.ts` bằng `crypto.timingSafeEqual` nhằm chặn đứng các cuộc tấn công Timing Attack.
+    - **Telegram & Validator**: Chuyển đổi hoàn toàn `parse_mode` của Telegram sender từ Markdown sang HTML để tránh lỗi parse khi gặp ký tự lạ, kèm cơ chế fallback text an toàn. Áp dụng validation nghiêm ngặt bằng Zod cho toàn bộ form đầu vào `CreateScheduleInput` (`hero-report-actions.ts`). Bổ sung cơ chế Soft Delete lịch báo cáo và Rate Limit chống spam (30s).
+    - **Kiểm định Type Check**: Biên dịch hệ thống đạt 0 lỗi (`npx tsc --noEmit`).
+
 - **2026-06-04 (hero-report - fix timezone bug & explicit date label)**:
   - 🚀 **Khắc phục triệt để lỗi báo cáo ngày hôm qua trả về 0**:
     - **Engine**: Tạo helper `getReportDateStrings` tính toán chính xác `startDate` và `endDate` theo múi giờ GMT+7, truyền xuống Core Service với tham số `pageSize` lớn (250) để đảm bảo không bị thiếu dữ liệu do phân trang ngầm của API.
