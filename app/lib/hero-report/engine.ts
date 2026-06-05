@@ -237,19 +237,67 @@ export async function buildReportContent(
           let resultData: any = null;
 
           if (capSlug === 'low_stock_products') {
-            const actionResult = await runConnectorAction({
+            const threshold = reportSpec.filters?.lowStockLessThan || 10;
+
+            // Bước 1: Thử get_inventory trước (có field on_hand chính xác nhất)
+            let inventoryItems: any[] = [];
+            const inventoryResult = await runConnectorAction({
               teamId,
               connectionId: source.connectionId,
-              actionSlug: 'list_products',
+              actionSlug: 'get_inventory',
               input: {},
               callerModule: 'hero-report',
               isTest
             });
-            if (actionResult.success) {
-              const rawData = Array.isArray(actionResult.data) ? actionResult.data : (actionResult.data?.data || []);
-              const threshold = reportSpec.filters?.lowStockLessThan || 10;
-              resultData = aggregateInventoryMetrics(rawData, threshold);
+
+            if (inventoryResult.success) {
+              const invData = Array.isArray(inventoryResult.data)
+                ? inventoryResult.data
+                : (inventoryResult.data?.data || []);
+              inventoryItems = invData;
             }
+
+            // Bước 2: Nếu get_inventory rỗng/không có quyền → fallback list_products với pagination
+            // Pancake POS: tồn kho nằm trong variations[].on_hand của từng sản phẩm
+            if (inventoryItems.length === 0) {
+              let page = 1;
+              const maxProdPages = 20;
+              while (page <= maxProdPages) {
+                const prodResult = await runConnectorAction({
+                  teamId,
+                  connectionId: source.connectionId,
+                  actionSlug: 'list_products',
+                  input: { page_number: page, page_size: 200 },
+                  callerModule: 'hero-report',
+                  isTest
+                });
+                if (!prodResult.success) break;
+                const pageData = Array.isArray(prodResult.data)
+                  ? prodResult.data
+                  : (prodResult.data?.data || []);
+                if (pageData.length === 0) break;
+
+                // Mỗi sản phẩm Pancake có variations[] → unpack để aggregator đọc on_hand
+                for (const product of pageData) {
+                  const variations = Array.isArray(product.variations)
+                    ? product.variations
+                    : [product];
+                  for (const v of variations) {
+                    inventoryItems.push({
+                      name: v.name || v.full_name || product.name || 'Sản phẩm không tên',
+                      on_hand: Number(v.on_hand ?? v.quantity ?? 0),
+                      onHand: Number(v.on_hand ?? v.quantity ?? 0),
+                      quantity: Number(v.on_hand ?? v.quantity ?? 0)
+                    });
+                  }
+                }
+
+                if (pageData.length < 200) break;
+                page++;
+              }
+            }
+
+            resultData = aggregateInventoryMetrics(inventoryItems, threshold);
           } else if (capSlug === 'pending_orders') {
             const allOrders = await fetchPaginatedOrders(teamId, source.connectionId, dateInfo, dateRange, isTest);
             resultData = aggregateOrderIssues(allOrders);

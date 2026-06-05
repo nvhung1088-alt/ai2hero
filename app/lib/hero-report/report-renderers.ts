@@ -180,21 +180,29 @@ export function renderTopOrders(data: any): string {
 // === RENDERER: Tồn kho thấp ===
 export function renderLowStock(data: any, threshold: number = 10): string {
   const invMetrics = data || {};
+  const totalSku = invMetrics.totalSkuCount ?? 0;
+  const outOfStock = invMetrics.outOfStockCount ?? 0;
+  const inStock = totalSku - outOfStock;
+  
   let text = `📦 <b>BÁO CÁO TỒN KHO THẤP</b>\n`;
-  text += `📊 Tổng số mẫu mã (SKU): ${invMetrics.totalSkuCount ?? 0}\n`;
-  text += `❌ Số sản phẩm đã hết hàng: ${invMetrics.outOfStockCount ?? 0}\n\n`;
+  text += `<i>(Trạng thái hiện tại — không phụ thuộc vào ngày báo cáo)</i>\n`;
+  text += `📊 Tổng số mẫu mã (SKU): ${totalSku}\n`;
+  text += `✅ Còn hàng: ${inStock} SKU | ❌ Hết hàng: ${outOfStock} SKU\n\n`;
   const lowStockProducts = invMetrics.lowStockProducts || [];
   if (lowStockProducts.length > 0) {
-    text += `⚠️ <b>Danh sách sản phẩm sắp hết (dưới ${threshold} chiếc):</b>\n`;
+    text += `⚠️ <b>Sắp hết hàng (dưới ${threshold} chiếc) — Cần nhập thêm:</b>\n`;
     lowStockProducts.forEach((p: any, idx: number) => {
       text += `${idx + 1}. ${p.name}: còn <b>${p.onHand}</b> chiếc\n`;
     });
+  } else if (totalSku > 0) {
+    text += `✅ Không có sản phẩm nào ở mức báo động tồn kho (< ${threshold} chiếc).\n`;
   } else {
-    text += `✅ Không có sản phẩm nào ở mức báo động tồn kho.\n`;
+    text += `⚠️ Không tải được dữ liệu tồn kho — API có thể cần quyền truy cập cao hơn.\n`;
   }
   text += '\n';
   return text;
 }
+
 
 // === RENDERER: Đơn hàng chờ xử lý ===
 export function renderPendingOrders(data: any): string {
