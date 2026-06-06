@@ -182,6 +182,21 @@ export const pancakePosConnector: ConnectorDefinition = {
       testStrategy: 'requires_sample',
       sampleFrom: { actionSlug: 'list_orders', path: 'data[0].id', inputKey: 'orderId' }
     },
+    {
+      slug: 'create_order',
+      name: 'Tạo đơn hàng mới',
+      description: 'Tạo một đơn hàng mới trên Pancake POS với danh sách sản phẩm, thông tin khách hàng và kho hàng.',
+      group: 'Đơn hàng',
+      httpMethod: 'POST',
+      endpoint: '/orders',
+      status: 'ready',
+      inputSchema: [
+        { name: 'payload', label: 'Dữ liệu JSON đơn hàng', type: 'text', required: true, placeholder: 'JSON chứa buyer_name, phone, products[]...' }
+      ],
+      outputFields: ['data'],
+      aiInstruction: 'Bước 1: Chuẩn bị payload chứa buyer_name, phone, address, warehouse_id, products (mỗi product cần variation_id, quantity, price).\nBước 2: Gọi Action create_order.\nBước 3: Trả về ID đơn hàng vừa tạo.',
+      testStrategy: 'direct'
+    },
 
     // Nhóm Sản phẩm (2)
     {

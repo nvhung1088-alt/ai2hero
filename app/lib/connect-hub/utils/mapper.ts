@@ -317,6 +317,130 @@ export function mapPancakeOrder(raw: any, config?: MappingConfig): StandardOrder
   };
 }
 
+// ═══════════════════════════════════════════
+// KIOTVIET MAPPER — Raw → Standard Interfaces
+// ═══════════════════════════════════════════
+
+export function mapKiotVietCustomer(raw: any, config?: MappingConfig): StandardCustomer {
+  if (!raw) {
+    return {
+      id: '', name: 'Khách lẻ', phone: '', address: '', email: '',
+      createdAt: new Date().toISOString(), group: '', gender: '', birthday: '',
+      customerId: '', notes: '', points: 0, level: '', totalSpend: 0
+    };
+  }
+  const conf = config || {};
+  return {
+    id: String(getMappedValue(raw, conf['customer.id'], ['id', 'customerId'])),
+    name: String(getMappedValue(raw, conf['customer.name'], ['name', 'customerName'], 'Khách lẻ')),
+    phone: String(getMappedValue(raw, conf['customer.phone'], ['contactNumber', 'phone'])),
+    address: String(getMappedValue(raw, conf['customer.address'], ['address'])),
+    email: String(getMappedValue(raw, conf['customer.email'], ['email'])),
+    createdAt: String(getMappedValue(raw, conf['customer.createdAt'], ['createdDate', 'created_at'], new Date().toISOString())),
+    group: String(getMappedValue(raw, conf['customer.group'], ['groupName', 'customerType'])),
+    gender: String(getMappedValue(raw, conf['customer.gender'], ['gender'])),
+    birthday: '',
+    customerId: String(getMappedValue(raw, conf['customer.customerId'], ['code'])),
+    notes: String(getMappedValue(raw, conf['customer.notes'], ['comments', 'description'])),
+    points: 0,
+    level: String(getMappedValue(raw, conf['customer.level'], ['groupName'])),
+    totalSpend: Number(getMappedValue(raw, conf['customer.totalSpend'], ['totalInvoiced'], 0))
+  };
+}
+
+export function mapKiotVietProduct(raw: any, config?: MappingConfig): StandardProduct {
+  if (!raw) {
+    return {
+      id: '', name: '', sku: '', price: 0, quantity: 0, imageUrl: '',
+      barcode: '', costPrice: 0, weight: 0, category: ''
+    };
+  }
+  const conf = config || {};
+  
+  // KiotViet inventories: Lấy tổng onHand từ tất cả chi nhánh
+  let totalOnHand = 0;
+  if (Array.isArray(raw.inventories)) {
+    totalOnHand = raw.inventories.reduce((sum: number, inv: any) => sum + (inv.onHand || 0), 0);
+  }
+  
+  // Images: KiotViet trả mảng
+  const imageArr = Array.isArray(raw.images) ? raw.images : [];
+  const firstImage = imageArr.length > 0 ? String(imageArr[0]) : '';
+
+  return {
+    id: String(getMappedValue(raw, conf['product.id'], ['id', 'productId'])),
+    name: String(getMappedValue(raw, conf['product.name'], ['fullName', 'name'])),
+    sku: String(getMappedValue(raw, conf['product.sku'], ['code', 'productCode'])),
+    price: Number(getMappedValue(raw, conf['product.price'], ['basePrice', 'price'], 0)),
+    quantity: totalOnHand,
+    imageUrl: firstImage,
+    barcode: String(getMappedValue(raw, conf['product.barcode'], ['barcode'])),
+    costPrice: Number(getMappedValue(raw, conf['product.costPrice'], ['cost'], 0)),
+    weight: Number(getMappedValue(raw, conf['product.weight'], ['weight'], 0)),
+    category: String(getMappedValue(raw, conf['product.category'], ['categoryName'])),
+    unit: String(getMappedValue(raw, conf['product.unit'], ['unit'])),
+    brand: '',
+    images: imageArr.map(String)
+  };
+}
+
+export function mapKiotVietOrder(raw: any, config?: MappingConfig): StandardOrder {
+  if (!raw) {
+    return {
+      id: '', orderCode: '', customer: mapKiotVietCustomer(null, config),
+      products: [], totalAmount: 0, discount: 0, status: 'pending',
+      createdAt: new Date().toISOString(), notes: '', paymentMethod: '',
+      shippingFee: 0, codAmount: 0, partnerFee: 0, tags: [],
+      salesChannel: '', warehouseId: ''
+    };
+  }
+  const conf = config || {};
+
+  // Customer: KiotViet có thể embed hoặc chỉ có customerName/contactNumber
+  const rawCustomer = raw.customer ?? {
+    name: raw.customerName,
+    contactNumber: raw.contactNumber,
+    address: raw.address,
+    email: raw.email
+  };
+
+  // Products: KiotViet dùng orderDetails
+  const rawDetails = Array.isArray(raw.orderDetails) ? raw.orderDetails : [];
+  const products = rawDetails.map((d: any) => mapKiotVietProduct(d, config));
+
+  // Status mapping: KiotViet Order → Standard
+  let status: 'pending' | 'completed' | 'cancelled' = 'pending';
+  const kvStatus = Number(raw.status);
+  if (kvStatus === 2) status = 'cancelled';
+  // KiotViet Order status 1=Mới, 3=Đang xử lý → both are 'pending'
+  // Completed chỉ khi đã thành Invoice (status=1 ở Invoice)
+
+  // Surcharges → shippingFee
+  let shippingFee = 0;
+  if (Array.isArray(raw.surcharges)) {
+    shippingFee = raw.surcharges.reduce((sum: number, s: any) => sum + (s.surchargeValue || 0), 0);
+  }
+
+  return {
+    id: String(getMappedValue(raw, conf['order.id'], ['id'])),
+    orderCode: String(getMappedValue(raw, conf['order.orderCode'], ['code'])),
+    customer: mapKiotVietCustomer(rawCustomer, config),
+    products,
+    totalAmount: Number(getMappedValue(raw, conf['order.totalAmount'], ['total', 'totalPayment'], 0)),
+    discount: Number(getMappedValue(raw, conf['order.discount'], ['discount'], 0)),
+    status,
+    createdAt: String(getMappedValue(raw, conf['order.createdAt'], ['purchaseDate', 'createdDate'], new Date().toISOString())),
+    notes: String(getMappedValue(raw, conf['order.notes'], ['description', 'comments'])),
+    paymentMethod: '',
+    shippingFee,
+    codAmount: 0,
+    partnerFee: 0,
+    tags: [],
+    salesChannel: '',
+    warehouseId: String(getMappedValue(raw, conf['order.warehouseId'], ['branchId']))
+  };
+}
+
 export function normalizeData(appSlug: string, actionSlug: string, rawData: any, mappingConfig?: MappingConfig): any {
   if (!rawData) return rawData;
 
@@ -333,6 +457,25 @@ export function normalizeData(appSlug: string, actionSlug: string, rawData: any,
       case 'list_customers': {
         const list = Array.isArray(rawData) ? rawData : [rawData];
         return list.map(item => mapPancakeCustomer(item, mappingConfig));
+      }
+      default:
+        return rawData;
+    }
+  }
+
+  if (appSlug === 'kiotviet') {
+    switch (actionSlug) {
+      case 'list_orders': {
+        const list = Array.isArray(rawData) ? rawData : [rawData];
+        return list.map(item => mapKiotVietOrder(item, mappingConfig));
+      }
+      case 'list_products': {
+        const list = Array.isArray(rawData) ? rawData : [rawData];
+        return list.map(item => mapKiotVietProduct(item, mappingConfig));
+      }
+      case 'list_customers': {
+        const list = Array.isArray(rawData) ? rawData : [rawData];
+        return list.map(item => mapKiotVietCustomer(item, mappingConfig));
       }
       default:
         return rawData;

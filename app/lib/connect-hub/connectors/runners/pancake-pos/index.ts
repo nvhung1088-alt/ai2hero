@@ -6,6 +6,7 @@ const REPORT_ACTIONS = ['get_statistics', 'revenue_summary', 'get_top_orders', '
 const DATA_ACTIONS = [
   'list_orders',
   'get_order',
+  'create_order',
   'list_products',
   'get_product',
   'list_customers',

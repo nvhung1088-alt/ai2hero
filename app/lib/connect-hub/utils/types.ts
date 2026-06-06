@@ -51,6 +51,8 @@ export interface StandardProduct {
 export interface StandardOrder {
   id: string;
   orderCode: string;
+  sourceOrderCode?: string;  // Mã đơn gốc từ platform nguồn (dùng cho chống trùng sync)
+  sourcePlatform?: string;   // Platform nguồn: 'pancake-pos' | 'kiotviet'
   customer: StandardCustomer;
   products: StandardProduct[];
   totalAmount: number;

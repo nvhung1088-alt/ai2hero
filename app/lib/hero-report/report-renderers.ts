@@ -66,7 +66,7 @@ export function renderTotalRevenue(data: any): string {
     prepaid = Number(summary.prepaid || summary.prepaid_amount || 0);
   }
 
-  let text = `💰 <b>BÁO CÁO DOANH THU KINH DOANH</b>\n`;
+  let text = `🌐 <b>[PANCAKE POS] DOANH SỐ ONLINE & VẬN ĐƠN</b>\n`;
   text += `💵 Tổng doanh số: <b>${formatVnd(totalRevenue)}</b>\n`;
   text += `📦 Tổng đơn phát sinh: <b>${totalOrders}</b> đơn\n`;
   text += `🧾 Giá trị đơn TB: ${formatVnd(averageOrderValue)}\n\n`;
@@ -128,7 +128,7 @@ export function renderRevenueSummary(data: any): string {
   const shippingFee = Number(data.shipping_fee ?? 0);
   const partnerFee = Number(data.partner_fee ?? 0);
   
-  let text = `💳 <b>THU HỘ NHANH (COD + CHUYỂN KHOẢN)</b>\n`;
+  let text = `💳 <b>[PANCAKE POS] TÌNH TRẠNG DÒNG TIỀN ONLINE</b>\n`;
   text += `💵 Tổng tiền thực thu: <b>${formatVnd(collectedRevenue)}</b>\n`;
   text += `- Thu hộ COD: ${formatVnd(cod)}\n`;
   text += `- Chuyển khoản/Bank: ${formatVnd(prepaid)}\n`;
@@ -159,9 +159,9 @@ function extractStatsArray(data: any): any[] {
 // === RENDERER: Doanh số theo Nguồn bán (Siêu tốc) ===
 export function renderSalesByChannel(data: any): string {
   const items = extractStatsArray(data);
-  if (items.length === 0) return '🏪 <b>DOANH SỐ THEO NGUỒN BÁN</b>\nKhông có dữ liệu.\n\n';
+  if (items.length === 0) return '🌐 <b>[PANCAKE POS] DOANH SỐ THEO NGUỒN BÁN</b>\nKhông có dữ liệu.\n\n';
 
-  let text = `🏪 <b>DOANH SỐ THEO NGUỒN BÁN</b>\n`;
+  let text = `🌐 <b>[PANCAKE POS] DOANH SỐ THEO NGUỒN BÁN</b>\n`;
   items.sort((a, b) => Number(b.revenue || b.total_price || 0) - Number(a.revenue || a.total_price || 0));
   items.forEach((item: any, idx: number) => {
     const name = item.name || item.source_name || item.source || 'Khác';
@@ -176,9 +176,9 @@ export function renderSalesByChannel(data: any): string {
 // === RENDERER: Doanh số theo Nhân viên (Siêu tốc) ===
 export function renderSalesByEmployee(data: any): string {
   const items = extractStatsArray(data);
-  if (items.length === 0) return '👥 <b>DOANH SỐ THEO NHÂN VIÊN</b>\nKhông có dữ liệu.\n\n';
+  if (items.length === 0) return '👥 <b>[PANCAKE POS] DOANH SỐ THEO NHÂN VIÊN</b>\nKhông có dữ liệu.\n\n';
   
-  let text = `👥 <b>DOANH SỐ THEO NHÂN VIÊN</b>\n`;
+  let text = `👥 <b>[PANCAKE POS] DOANH SỐ THEO NHÂN VIÊN</b>\n`;
   items.sort((a, b) => Number(b.revenue || b.total_price || 0) - Number(a.revenue || a.total_price || 0));
   items.forEach((emp: any, idx: number) => {
     const name = emp.name || emp.seller_name || emp.assigning_seller || `ID: ${emp.id || 'Hệ thống'}`;
@@ -248,7 +248,7 @@ export function renderTopOrders(data: any): string {
     return '🏆 <b>TOP ĐƠN HÀNG GIÁ TRỊ CAO</b>\nKhông có dữ liệu đơn hàng trong khoảng thời gian này.\n\n';
   }
   
-  let text = `🏆 <b>TOP ĐƠN HÀNG GIÁ TRỊ CAO</b>\n`;
+  let text = `🏆 <b>[PANCAKE POS] TOP ĐƠN HÀNG GIÁ TRỊ CAO</b>\n`;
   orders.slice(0, 10).forEach((o: any, idx: number) => {
     const id = o.id || o.code || 'N/A';
     const customerName = o.customer_name || o.customerName || o.customer?.name || 'Khách lẻ';
@@ -416,12 +416,97 @@ export function renderChatTagStats(data: any): string {
   return text;
 }
 
+// === RENDERER: KiotViet Báo Cáo Doanh Thu ===
+export function renderKiotVietRevenueSummary(data: any): string {
+  if (!data || Object.keys(data).length === 0) return '🏪 <b>[THỎ HỒNG SHOP - KIOTVIET] DOANH THU TỔNG QUAN</b>\nKhông có dữ liệu doanh thu trong khoảng thời gian này.\n\n';
+  
+  let text = `🏪 <b>[THỎ HỒNG SHOP - KIOTVIET] DOANH THU TỔNG QUAN</b>\n`;
+  
+  text += `💵 Doanh thu tổng: <b>${formatVnd(data.totalRevenue || 0)}</b>\n`;
+  text += `💰 Doanh thu thuần: <b>${formatVnd(data.netRevenue || 0)}</b>\n`;
+  if ((data.totalDiscount || 0) > 0) text += `🎁 Giảm giá hóa đơn: ${formatVnd(data.totalDiscount)}\n`;
+  if ((data.totalSurcharge || 0) > 0) text += `➕ Phụ thu thêm: ${formatVnd(data.totalSurcharge)}\n`;
+  text += `✅ Thực thu (khách đã trả): <b>${formatVnd(data.totalPayment || 0)}</b>\n`;
+  if ((data.debtGenerated || 0) > 0) {
+    text += `💳 Phát sinh khách nợ: <b>${formatVnd(data.debtGenerated)}</b>\n`;
+  }
+  
+  text += `\n📦 Tổng số đơn: <b>${data.totalOrders || 0}</b> đơn\n`;
+  text += `🧾 Giá trị đơn TB: ${formatVnd(data.avgOrderValue || 0)}\n`;
+  
+  if (data.byStatus) {
+    text += `\n📈 <b>Trạng thái hóa đơn:</b>\n`;
+    text += `- Hoàn thành: <b>${data.byStatus['1'] || 0}</b> đơn\n`;
+    if (data.byStatus['3']) text += `- Đang xử lý: ${data.byStatus['3']} đơn\n`;
+    if (data.byStatus['2']) text += `- Đã hủy: ${data.byStatus['2']} đơn\n`;
+  }
+  
+  if (data.note) text += `\n⚠️ <i>${escapeHtml(data.note)}</i>\n`;
+  text += '\n';
+  return text;
+}
+
+// === RENDERER: KiotViet Top Sản Phẩm ===
+export function renderTopProducts(data: any): string {
+  if (!data || !data.topProducts || data.topProducts.length === 0) return '🔥 Không có dữ liệu top sản phẩm trong khoảng thời gian này.\n\n';
+  
+  let text = `🔥 <b>[THỎ HỒNG SHOP - KIOTVIET] TOP SẢN PHẨM BÁN CHẠY</b>\n`;
+  data.topProducts.forEach((p: any, idx: number) => {
+    text += `${idx + 1}. <b>${escapeHtml(p.productName)}</b>: ${formatVnd(p.totalRevenue || 0)} (SL: ${p.totalQty || 0})\n`;
+  });
+  if (data.note) text += `\n⚠️ <i>${escapeHtml(data.note)}</i>\n`;
+  text += '\n';
+  return text;
+}
+
+// === RENDERER: KiotViet Doanh Số Theo Chi Nhánh ===
+export function renderSalesByBranchKiotViet(data: any): string {
+  if (!data || !data.branches || data.branches.length === 0) return '🏪 Không có dữ liệu chi nhánh.\n\n';
+  
+  let text = `🏬 <b>[THỎ HỒNG SHOP - KIOTVIET] DOANH SỐ CHI NHÁNH</b>\n`;
+  data.branches.forEach((b: any, idx: number) => {
+    text += `${idx + 1}. <b>${escapeHtml(b.branchName)}</b>: ${formatVnd(b.totalRevenue || 0)} (${b.totalOrders || 0} đơn)\n`;
+  });
+  if (data.note) text += `\n⚠️ <i>${escapeHtml(data.note)}</i>\n`;
+  text += '\n';
+  return text;
+}
+
+// === RENDERER: KiotViet Báo Cáo Công Nợ ===
+export function renderCustomerDebt(data: any): string {
+  if (!data || !data.customers || data.customers.length === 0) return '💳 Cửa hàng không có dữ liệu công nợ.\n\n';
+  
+  let text = `💳 <b>[THỎ HỒNG SHOP - KIOTVIET] KHÁCH HÀNG NỢ CẦN THU</b>\n`;
+  text += `Tổng dư nợ hệ thống: <b>${formatVnd(data.totalDebt || 0)}</b> (${data.count || 0} khách nợ)\n\n`;
+  
+  data.customers.forEach((c: any, idx: number) => {
+    text += `${idx + 1}. <b>${escapeHtml(maskPII(c.name))}</b>: Nợ <b>${formatVnd(c.debt || 0)}</b> (Đã mua: ${formatVnd(c.totalInvoiced || 0)})\n`;
+  });
+  text += '\n';
+  return text;
+}
+
+// === RENDERER: KiotViet Báo Cáo Tồn Kho ===
+export function renderKiotVietInventory(data: any): string {
+  if (!data || !data.products || data.products.length === 0) return '📦 Không có dữ liệu tồn kho.\n\n';
+  
+  let text = `📦 <b>[THỎ HỒNG SHOP - KIOTVIET] BÁO CÁO TỒN KHO</b>\n`;
+  text += `<i>Đang hiển thị ${data.products.length} sản phẩm mẫu (Hệ thống có tổng cộng ${data.totalProducts || 0} SP)</i>\n\n`;
+  
+  data.products.forEach((p: any, idx: number) => {
+    text += `${idx + 1}. <b>${escapeHtml(p.name)}</b>: Tồn <b>${p.totalStock || 0}</b>\n`;
+  });
+  text += '\n';
+  return text;
+}
+
 // === REGISTRY ===
 export const CAPABILITY_RENDERERS: Record<string, (data: any, ...args: any[]) => string> = {
   // === Pancake POS / KiotViet ===
   'get_statistics':         renderTotalRevenue,
   'revenue_summary':        renderRevenueSummary,   // Renderer riêng — dùng collected_revenue
   'get_sales_by_channel':   renderSalesByChannel,
+  'get_sales_by_source':    renderSalesByChannel,   // <--- Bổ sung dòng này!
   'get_sales_by_employee':  renderSalesByEmployee,
   'get_sales_by_status':    renderSalesByStatus,
   'get_sales_by_date':      renderSalesByDate,
@@ -430,6 +515,14 @@ export const CAPABILITY_RENDERERS: Record<string, (data: any, ...args: any[]) =>
   'low_stock_products':     renderLowStock,          // Virtual slug
   'pending_orders':         renderPendingOrders,     // Virtual slug
   'customer_analysis':      renderCustomerAnalysis,  // Virtual slug
+
+  // === KiotViet Advanced Reports ===
+  'get_revenue_summary':         renderKiotVietRevenueSummary,
+  'get_top_products':            renderTopProducts,
+  'get_sales_by_branch':         renderSalesByBranchKiotViet,
+  'get_customer_debt_report':    renderCustomerDebt,
+  'get_inventory_report':        renderKiotVietInventory,
+
   // === Pancake Chat ===
   'get_page_statistics':    renderChatPageStats,
   'get_staff_statistics':   renderChatStaffStats,

@@ -71,6 +71,23 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 
+- **2026-06-06 (connect-hub - pancake-pos order mapping infra - Tasks 1-4 completed)**:
+  - 🚀 **Hoàn thiện Mapping Infrastructure cho đồng bộ đơn hàng 2 chiều**:
+    - **Pancake POS Client (`client.ts`) [MODIFY]**: Thêm phương thức `post()` có đầy đủ tính năng retry, timeout 15 giây và lọc token như `get()`.
+    - **Definitions (`pancake-pos.ts`) [MODIFY]**: Khai báo action `create_order` chuẩn REST POST vào nhóm "Đơn hàng".
+    - **Runner (`index.ts`, `data-actions.ts`) [MODIFY]**: Đăng ký và hiện thực hóa action `create_order` gọi qua method `post()` của client.
+    - **Mappers (`mapper.ts`) [MODIFY]**: Thêm các hàm `mapKiotVietCustomer()`, `mapKiotVietProduct()`, `mapKiotVietOrder()` và cấu hình `normalizeData()` để ánh xạ dữ liệu KiotViet sang chuẩn Standard.
+    - **Standard interfaces (`types.ts`) [MODIFY]**: Bổ sung `sourceOrderCode` và `sourcePlatform` cho `StandardOrder` để hỗ trợ cơ chế chống trùng đơn (Idempotency).
+    - **Order Translator (`order-translator.ts`) [NEW]**: Viết service chuyển đổi hai chiều `translateToKiotViet()` và `translateToPancake()`. Map phụ thu phí vận chuyển thành "Thu khác" cho KiotViet theo đúng yêu cầu của user.
+    - **Database Config (`drizzle.ts`) [MODIFY]**: Điều chỉnh `max` connections ở môi trường dev từ `5` xuống `1` để chống tràn kết nối và tránh lỗi `canceling statement due to statement timeout` khi Next.js Fast Refresh/rebuild liên tục.
+
+- **2026-06-06 (connect-hub - kiotviet capabilities integration)**:
+  - 🚀 **Nâng cấp toàn diện KiotViet Retail API lên v3.0 (22 Actions) & Tạo Đơn Hàng**:
+    - **Definitions (`kiotviet.ts`) [MODIFY]**: Mở rộng từ 11 actions lên 22 actions đầy đủ năng lực. Thêm các nhóm mới: Trả hàng (`list_returns`, `get_return`), Nhà cung cấp (`list_suppliers`, `get_supplier`), Nhân viên (`list_users`), và 6 actions composite thuộc nhóm Báo cáo & Thống kê (`get_revenue_summary`, `get_top_products`, `get_sales_by_branch`, `get_sales_by_employee`, `get_customer_debt_report`, `get_inventory_report`).
+    - **Runner (`kiotviet.ts`) [MODIFY]**: Hiện thực hóa helper `fetchInvoicePages` phân trang an toàn (max 3 trang để tránh timeout 15s) và các thuật toán tính toán báo cáo (doanh thu, top sản phẩm, chi nhánh, nhân viên, công nợ khách hàng, tồn kho). Xử lý fallback cho `/users` (trả về trống nếu gặp 403/404).
+    - **Tạo Đơn Hàng (`create_order`) [MODIFY]**: Tích hợp luồng gọi API tạo đơn hàng KiotViet, phân tích lỗi xử lý VAT kế toán thực tế và sinh mã JSON Mapping Audit sẵn sàng cho Pancake POS.
+    - **Kiểm định**: Chạy biên dịch TypeScript dự án đạt 0 lỗi.
+
 - **2026-06-05 (hero-report - pancake-chat reporting optimization)**:
   - 🚀 **Tối ưu hóa Năng lực Báo cáo Pancake Chat API**:
     - **Pancake Chat Runner (`pancake-chat.ts`)**: Sửa `get_page_statistics` để không gọi `list_pages` khi `selectedPageIds` đã được cấu hình, thực thi nguyên tắc mỗi chỉ số chỉ gọi 1 lần API để tối ưu tốc độ và tránh timeout. Thêm helper `inferPlatform()` nhận diện Facebook/Zalo/Instagram dựa trên ID.

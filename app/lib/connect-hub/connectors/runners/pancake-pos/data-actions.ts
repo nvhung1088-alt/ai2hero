@@ -340,5 +340,24 @@ export async function handleDataAction(
     };
   }
 
+  // === ACTION: create_order ===
+  if (actionSlug === 'create_order') {
+    if (!input.payload) throw new Error('Thiếu payload tạo đơn hàng.');
+    
+    // payload có thể là object hoặc string JSON
+    const body = typeof input.payload === 'string' ? JSON.parse(input.payload) : input.payload;
+    
+    // Validate tối thiểu
+    if (!body.products || !Array.isArray(body.products) || body.products.length === 0) {
+      throw new Error('Payload thiếu danh sách sản phẩm (products). Mỗi sản phẩm cần có variation_id, quantity và price.');
+    }
+    
+    const response = await client.post<any>('/orders', body);
+    return {
+      status: 'success',
+      data: response.order || response.data || response
+    };
+  }
+
   throw new Error(`Hành động dữ liệu ${actionSlug} chưa được hỗ trợ.`);
 }

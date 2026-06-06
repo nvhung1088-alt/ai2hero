@@ -193,7 +193,13 @@ export async function buildReportContent(
             teamId,
             connectionId: source.connectionId,
             actionSlug: capSlug,
-            input: { startDate: dateInfo.startDate, endDate: dateInfo.endDate, isTest },
+            input: { 
+              startDate: dateInfo.startDate, 
+              endDate: dateInfo.endDate, 
+              fromDate: dateInfo.startDate, 
+              toDate: dateInfo.endDate, 
+              isTest 
+            },
             callerModule: 'hero-report',
             isTest
           });

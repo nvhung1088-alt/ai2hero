@@ -202,4 +202,38 @@ export class PancakePosClient {
       success: json.success !== false
     };
   }
+
+  async post<T>(path: string, body: Record<string, any>, params?: Record<string, any>): Promise<T> {
+    const url = this.buildUrl(path, params);
+    const redactedUrl = this.redactUrl(url);
+
+    try {
+      const res = await this.fetchWithRetry(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const text = await res.text();
+      let json: any;
+
+      try {
+        json = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Định dạng dữ liệu trả về từ Pancake POS không hợp lệ (không phải JSON): ${text.substring(0, 100)}`);
+      }
+
+      if (!res.ok) {
+        throw new Error(`Lỗi từ Pancake POS (${res.status}): ${json.message || text}`);
+      }
+
+      if (json.success === false) {
+        throw new Error(`Lỗi từ API: ${json.message || 'Thao tác không thành công.'}`);
+      }
+
+      return json as T;
+    } catch (error: any) {
+      console.error(`[PancakePosClient Error] POST ${redactedUrl} | Lỗi: ${error.message}`);
+      throw new Error(`Không thể hoàn thành hành động POST trên Pancake POS: ${error.message}`);
+    }
+  }
 }

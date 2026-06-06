@@ -1,5 +1,11 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-06 — Tích hợp Tạo Đơn hàng KiotViet & Phân tích Ánh xạ 2 chiều (Pancake <-> KiotViet)
+- **Hoàn thành Năng lực Tạo đơn KiotViet (`create_order`)**: Tích hợp luồng `POST /orders` cho Connector KiotViet, xử lý truyền thông tin thuế VAT trực tiếp giúp khớp cấu hình kế toán chặt chẽ của shop.
+- **Audit mapping Pancake POS & KiotViet**: Phân tích sơ đồ trường dữ liệu (ID, chi nhánh, sản phẩm, thuế), đề xuất API `create_order` cho Pancake POS để kích hoạt đồng bộ hai chiều.
+- **Dọn dẹp & Tối ưu hóa Build**: Xóa bỏ các file scripts test nháp khỏi thư mục dự án Next.js để tránh TypeScript compiler báo lỗi `Type error` làm sập build production.
+- **Biên dịch**: Đảm bảo Next.js build pass (`npm run build` thành công 100%).
+
 ## 2026-06-05 — Tối ưu hóa Năng lực Báo cáo Pancake Chat API (Report Refactor)
 - **Tối ưu hóa số lượng cuộc gọi API (`pancake-chat.ts` runner)**: Khắc phục việc gọi lặp lại API phân trang cho mỗi metric. Thiết lập `get_page_statistics` chỉ gọi API 1 lần duy nhất cho mỗi metric bằng cách sử dụng danh sách `selectedPageIds` đã cấu hình.
 - **Thêm helper `inferPlatform`**: Tự động nhận dạng nền tảng mạng xã hội (Facebook, Zalo, Instagram, v.v.) dựa trên prefix của Page ID để hiển thị báo cáo chính xác.
