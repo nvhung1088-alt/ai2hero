@@ -1,5 +1,12 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-06 — Hoàn thiện Google OAuth & Redesign trang Đăng ký/Đăng nhập sang Dark Mode
+- **Database Schema**: Thêm cột `googleId` (unique) và `avatarUrl` cho bảng `users`. Cập nhật default `passwordHash` thành chuỗi rỗng `''` để hỗ trợ đăng nhập không mật khẩu của Google OAuth.
+- **Google OAuth API Route**: Xây dựng endpoint `/api/auth/google` và `/api/auth/google/callback` xử lý callback, xác thực thông tin user từ Google API, upsert dữ liệu người dùng/team và thiết lập session cookie.
+- **Dark Mode Login UI**: Thiết kế lại toàn diện trang `/sign-in` và `/sign-up` sang Dark Mode cao cấp với background orbs chuyển động, khung card kính mờ glassmorphism và tích hợp nút "Tiếp tục với Google" chuẩn thương hiệu.
+- **Security Check**: Chặn đăng nhập bằng mật khẩu đối với tài khoản đăng ký qua Google OAuth ở server-side và trả về lỗi thông báo trực quan trên giao diện.
+- **TypeScript & Build**: Đạt 0 lỗi biên dịch khi chạy build Next.js.
+
 ## 2026-06-06 — Hoàn thành Thông báo & Xác nhận lời mời thành viên (In-app Bell Notification & Acceptance Flow)
 - **Database Schema**: Thêm 2 cột `type` và `invitationId` vào bảng `notifications`. Thiết lập Drizzle relations `invitation` liên kết chặt chẽ.
 - **Custom SQL Migration**: Viết và chạy thành công script migration custom `migrate-custom.ts` áp dụng các câu lệnh ALTER TABLE trực tiếp vào DB, tránh được tình trạng nghẽn của drizzle-kit.

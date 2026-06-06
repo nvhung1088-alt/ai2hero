@@ -71,6 +71,15 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 
+- **2026-06-06 (auth - google oauth & dark mode login redesign)**:
+  - 🚀 **Hoàn thiện Google OAuth & Redesign trang Đăng ký/Đăng nhập sang Dark Mode**:
+    - **Database Schema (`schema.ts`) [MODIFY]**: Thêm cột `googleId` (unique) và `avatarUrl` cho user, đổi `passwordHash` sang default là chuỗi rỗng `''`.
+    - **Migration SQL [NEW]**: Chạy script custom migration `migrate-oauth.ts` để cập nhật trực tiếp database (ALTER TABLE) thành công.
+    - **Google OAuth API Route [NEW]**: Tạo `/api/auth/google` (chuyển hướng sang Google Auth Screen với CSRF cookie state) và `/api/auth/google/callback` (exchange code lấy user info, upsert user/team, xử lý lời mời, tạo session).
+    - **Login UI (`login.tsx`) [MODIFY]**: Chuyển giao diện sang Dark Mode nền tối `#08080A`, bổ sung background orbs, card kính mờ glassmorphism và nút "Tiếp tục với Google" tích hợp logo Google chính thức. Hiển thị thông báo lỗi OAuth thông minh từ query string.
+    - **Server Actions (`actions.ts`) [MODIFY]**: Chặn đăng nhập bằng mật khẩu đối với các tài khoản được tạo bằng Google, trả về lỗi chi tiết hướng dẫn đăng nhập bằng nút Google.
+    - **TypeScript Verification**: Biên dịch toàn cục `npx tsc --noEmit` đạt 0 lỗi.
+
 - **2026-06-06 (dashboard - member invitation notification & confirmation flow)**:
   - 🚀 **Hoàn thiện luồng thông báo & xác nhận lời mời thành viên**:
     - **Database Schema (`schema.ts`) [MODIFY]**: Thêm cột `type` và `invitationId` vào bảng `notifications`. Tạo liên kết Drizzle Relations.

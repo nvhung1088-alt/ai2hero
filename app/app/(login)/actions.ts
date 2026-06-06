@@ -71,12 +71,20 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
 
   if (userWithTeam.length === 0) {
     return {
-      error: 'Invalid email or password. Please try again.',
+      error: 'Email hoặc mật khẩu không chính xác. Vui lòng thử lại.',
       email
     };
   }
 
   const { user: foundUser, team: foundTeam } = userWithTeam[0];
+
+  // Chặn đăng nhập mật khẩu nếu tài khoản đăng ký bằng Google
+  if (foundUser.googleId && (!foundUser.passwordHash || foundUser.passwordHash === '')) {
+    return {
+      error: 'Tài khoản này được đăng ký bằng Google. Vui lòng đăng nhập bằng Google.',
+      email
+    };
+  }
 
   const isPasswordValid = await comparePasswords(
     password,
@@ -85,7 +93,7 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
 
   if (!isPasswordValid) {
     return {
-      error: 'Invalid email or password. Please try again.',
+      error: 'Email hoặc mật khẩu không chính xác. Vui lòng thử lại.',
       email
     };
   }
@@ -120,8 +128,11 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
     .limit(1);
 
   if (existingUser.length > 0) {
+    const isGoogleUser = existingUser[0].googleId && (!existingUser[0].passwordHash || existingUser[0].passwordHash === '');
     return {
-      error: 'Failed to create user. Please try again.',
+      error: isGoogleUser
+        ? 'Email này đã được đăng ký bằng Google. Vui lòng quay lại đăng nhập bằng Google.'
+        : 'Email này đã được sử dụng. Vui lòng sử dụng email khác.',
       email
     };
   }

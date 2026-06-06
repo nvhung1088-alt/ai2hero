@@ -81,10 +81,10 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Liên kết**: → /sign-up, → Hỗ trợ Enterprise
 
 ### Sign In / Sign Up (`/sign-in`, `/sign-up`)
-- **Chức năng**: Đăng nhập/đăng ký bằng Email + Password (đã Việt hóa, logo Sparkles gradient)
+- **Chức năng**: Đăng nhập/đăng ký bằng Email + Password hoặc Google OAuth. Giao diện Dark Mode nền tối `#08080A` với card kính mờ glassmorphism và background orbs.
 - **Vai trò**: Auth page
-- **Đọc/Ghi data**: Ghi users table (PostgreSQL)
-- **Liên kết**: → /dashboard
+- **Đọc/Ghi data**: Đọc/Ghi bảng `users`, `teams`, `team_members`, `invitations` (PostgreSQL)
+- **Liên kết**: → /dashboard, → /api/auth/google
 
 ### Bảng điều khiển (`/dashboard`)
 - **Chức năng**: Trello-Style Board Overview hiển thị toàn bộ các Không gian làm việc (Workspaces/Teams) mà người dùng tham gia dưới dạng Board Cards tuyệt đẹp. Cho phép xem nhanh plan badge, các ứng dụng đang chạy, thành viên và link mở không gian làm việc. Có widget lịch sử hoạt động compact ở chân trang.
