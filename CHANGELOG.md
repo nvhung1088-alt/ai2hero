@@ -1,5 +1,13 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-06 — Hoàn thành Thông báo & Xác nhận lời mời thành viên (In-app Bell Notification & Acceptance Flow)
+- **Database Schema**: Thêm 2 cột `type` và `invitationId` vào bảng `notifications`. Thiết lập Drizzle relations `invitation` liên kết chặt chẽ.
+- **Custom SQL Migration**: Viết và chạy thành công script migration custom `migrate-custom.ts` áp dụng các câu lệnh ALTER TABLE trực tiếp vào DB, tránh được tình trạng nghẽn của drizzle-kit.
+- **Server Actions**: Sửa đổi `inviteTeamMemberAction` tự động tạo thông báo in-app cho người nhận nếu email đã đăng ký. Bổ sung `acceptInvitationAction` (thêm member, đổi status, gửi thông báo ngược cho admin) và `declineInvitationAction` (từ chối, đổi status, gửi thông báo ngược cho admin).
+- **API Endpoints**: Cập nhật route `/api/notifications` trả về thêm thông tin `type` và `invitationId` của lời mời.
+- **UI Bell Header**: Cập nhật `NotifDropdownContent` trong `top-header.tsx` hiển thị 2 nút **Chấp nhận / Từ chối** dưới thông báo lời mời, xử lý loading và reload cache SWR tức thời.
+- **Smoke Test & Verification**: Viết và chạy script test `test-invite-flow.ts` mô phỏng đầu-cuối 100% logic DB, actions thành công. Chạy build production `pnpm run build` thành công 100% đạt 0 lỗi biên dịch.
+
 ## 2026-06-06 — Deploy Connect Hub & Chuẩn bị Hero CRM MVP
 - **Triển khai Production (Vercel Auto-deploy)**: Đẩy thành công toàn bộ các tệp tin cấu trúc Mapping, Mappers, và Order Translator hai chiều Pancake POS ⇄ KiotViet lên branch `main` kích hoạt tự động deploy cho `https://www.ai2hero.com/connect-hub/mapping`.
 - **Pre-flight Build Check**: Chạy build local `pnpm run build` thành công 100% không gặp lỗi TypeScript trước khi push.
