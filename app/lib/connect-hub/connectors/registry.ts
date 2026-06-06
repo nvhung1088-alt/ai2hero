@@ -23,6 +23,8 @@ import { zaloConnector } from './definitions/zalo';
 import { tiktokConnector } from './definitions/tiktok';
 import { chiasegpuConnector } from './definitions/chiasegpu';
 
+import { GENERATED_CONNECTORS } from './registry-generated';
+
 const RAW_CONNECTORS: ConnectorDefinition[] = [
   openaiConnector,
   anthropicConnector,
@@ -58,10 +60,35 @@ const READY_SLUGS = [
   'gmail',
   'telegram',
   'openai',
-  'chiasegpu'
+  'chiasegpu',
+  'telegram-bot',
+  'discord',
+  'airtable',
+  'sendgrid',
+  'github',
+  'trello',
+  'twilio',
+  'mailgun',
+  'clickup'
 ];
 
-export const ALL_CONNECTORS: ConnectorDefinition[] = RAW_CONNECTORS.map(connector => {
+// Combine manual and generated connectors. Manual configuration overrides generated ones.
+const manualSlugs = new Set(RAW_CONNECTORS.map(c => c.slug));
+const filteredGenerated = GENERATED_CONNECTORS.filter(c => !manualSlugs.has(c.slug));
+
+const MERGED_CONNECTORS = [
+  ...RAW_CONNECTORS.map(c => ({
+    ...c,
+    runtimeType: c.runtimeType || (READY_SLUGS.includes(c.slug) ? 'custom_runner' : 'generic_http') as ConnectorDefinition['runtimeType'],
+    runtimeConfidence: c.runtimeConfidence || 'high' as ConnectorDefinition['runtimeConfidence'],
+    source: c.source || 'manual' as ConnectorDefinition['source'],
+    connectorStatus: c.connectorStatus || 'active' as ConnectorDefinition['connectorStatus'],
+    riskLevel: c.riskLevel || 'safe' as ConnectorDefinition['riskLevel'],
+  })),
+  ...filteredGenerated
+];
+
+export const ALL_CONNECTORS: ConnectorDefinition[] = MERGED_CONNECTORS.map(connector => {
   let badge = connector.badge;
   
   // Tự động gán nhãn cho các Cổng AI
@@ -73,21 +100,28 @@ export const ALL_CONNECTORS: ConnectorDefinition[] = RAW_CONNECTORS.map(connecto
     }
   }
 
+  const isReady = READY_SLUGS.includes(connector.slug) || connector.status === 'ready';
+
   return {
     ...connector,
     badge,
-    status: (READY_SLUGS.includes(connector.slug) ? 'ready' : 'updating') as 'ready' | 'updating'
+    status: (isReady ? 'ready' : 'updating') as ConnectorDefinition['status']
   };
 }).sort((a, b) => {
-  // 💡 HƯỚNG DẪN STICK ỨNG DỤNG LÊN ĐẦU (PIN-TO-TOP):
-  // Muốn đưa một App khác lên đầu danh sách? 
-  // Rất đơn giản, hãy thay chữ 'chiasegpu' bằng slug của app bạn muốn (ví dụ: 'openai', 'gemini'...)
+  // Pin chiasegpu to top
   if (a.slug === 'chiasegpu') return -1;
   if (b.slug === 'chiasegpu') return 1;
-  return 0; // Giữ nguyên thứ tự của các app còn lại
+  
+  // Sort ready connectors before updating/catalog ones
+  const aReady = READY_SLUGS.includes(a.slug) || a.status === 'ready';
+  const bReady = READY_SLUGS.includes(b.slug) || b.status === 'ready';
+  if (aReady && !bReady) return -1;
+  if (!aReady && bReady) return 1;
+  
+  return 0; // Maintain existing order
 });
-
 
 export function getConnectorBySlug(slug: string): ConnectorDefinition | undefined {
   return ALL_CONNECTORS.find((c) => c.slug === slug);
 }
+

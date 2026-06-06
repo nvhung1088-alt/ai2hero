@@ -8,6 +8,7 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  uuid,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -611,6 +612,59 @@ export const connectHubMappingConfigsRelations = relations(connectHubMappingConf
 
 export type ConnectHubMappingConfig = typeof connectHubMappingConfigs.$inferSelect;
 export type NewConnectHubMappingConfig = typeof connectHubMappingConfigs.$inferInsert;
+
+// ============================================================
+// CONNECT HUB WEBHOOKS MODULE
+// ============================================================
+
+export const connectHubWebhooks = pgTable('connect_hub_webhooks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  teamId: integer('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  appSlug: varchar('app_slug', { length: 100 }).notNull(),
+  label: varchar('label', { length: 255 }).notNull(),
+  secretHash: text('secret_hash').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('active'), // 'active' | 'paused'
+  receivedCount: integer('received_count').notNull().default(0),
+  lastReceivedAt: timestamp('last_received_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const connectHubWebhookLogs = pgTable('connect_hub_webhook_logs', {
+  id: serial('id').primaryKey(),
+  webhookId: uuid('webhook_id')
+    .notNull()
+    .references(() => connectHubWebhooks.id, { onDelete: 'cascade' }),
+  teamId: integer('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  method: varchar('method', { length: 10 }).notNull(),
+  sourceIp: varchar('source_ip', { length: 45 }),
+  headers: jsonb('headers').notNull().default('{}'),
+  rawBody: text('raw_body'),
+  parsedPayload: jsonb('parsed_payload'),
+  signatureValid: integer('signature_valid').notNull().default(0), // 1 = valid, 0 = invalid
+  status: varchar('status', { length: 20 }).notNull().default('success'), // 'success' | 'failed'
+  errorMessage: text('error_message'),
+  processedAt: timestamp('processed_at').defaultNow().notNull(),
+});
+
+export const connectHubWebhooksRelations = relations(connectHubWebhooks, ({ one, many }) => ({
+  team: one(teams, { fields: [connectHubWebhooks.teamId], references: [teams.id] }),
+  logs: many(connectHubWebhookLogs),
+}));
+
+export const connectHubWebhookLogsRelations = relations(connectHubWebhookLogs, ({ one }) => ({
+  webhook: one(connectHubWebhooks, { fields: [connectHubWebhookLogs.webhookId], references: [connectHubWebhooks.id] }),
+  team: one(teams, { fields: [connectHubWebhookLogs.teamId], references: [teams.id] }),
+}));
+
+export type ConnectHubWebhook = typeof connectHubWebhooks.$inferSelect;
+export type NewConnectHubWebhook = typeof connectHubWebhooks.$inferInsert;
+export type ConnectHubWebhookLog = typeof connectHubWebhookLogs.$inferSelect;
+export type NewConnectHubWebhookLog = typeof connectHubWebhookLogs.$inferInsert;
 
 // ============================================================================
 // HERO REPORT — MVP Báo cáo tự động (V1: POS → Code Aggregator → AI nhận xét → Telegram)

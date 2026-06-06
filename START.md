@@ -68,10 +68,56 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 **3. Kiến trúc & Công nghệ đồng nhất:**
 - Sử dụng Next.js 15 App Router (Server Components & Server Actions).
 - Database: Drizzle ORM kết nối Supabase (Pooler mode port 6543 cho Production, Session mode port 5432 cho Migration).
+- [x] **Phase 1**: Quét 708 API + Tách 2 files JSON (Lite / Detail).
+- [x] **Phase 2**: Cơ chế hiển thị giao diện, lưới Grid, phân trang, danh mục.
+- [x] **Phase 3**: Filter "Ready", tích hợp Generic HTTP cho 10 Apps Batch 1A.
+- [x] **Phase 4**: Audit Batch 1B, đưa thêm 25 apps nữa lên "Ready" status (Slack, Notion, Asana...).
+- [x] **Phase 6**: Hoàn thiện Endpoint Router / Webhook Gateway.
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 
+- **2026-06-06 (connect-hub - Phase 6 - Endpoint Router / Webhook Gateway)**:
+  - 🚀 **Hoàn thành Phase 6: Thiết kế và hiện thực hóa Webhook Gateway**:
+    - **Database & Migration (`schema.ts`, `migrate-webhook.ts`) [NEW/MODIFY]**: Thêm bảng `connect_hub_webhooks` (sử dụng UUID để bảo mật link webhook) và bảng `connect_hub_webhook_logs` (lưu vết 20 webhook requests gần nhất). Tạo và chạy thành công script migration trực tiếp vào database.
+    - **API Route (`route.ts`) [NEW]**: Xây dựng route động `app/api/webhook/[webhookId]/route.ts` tiếp nhận các payload POST/GET từ bên thứ 3. Tích hợp giải mã đối xứng qua `sim-crypto.ts` để lấy plainSecret, từ đó xác thực chữ ký HMAC-SHA256 hoặc query token an toàn với Tenant Isolation hoàn hảo.
+    - **Server Actions (`connect-hub-actions.ts`) [MODIFY]**: Bổ sung Server Actions: `createWebhookAction`, `listWebhooksAction`, `toggleWebhookAction`, `deleteWebhookAction`, `getWebhookLogsAction`.
+    - **UI Webhooks (`webhooks/page.tsx`, `webhooks-client.tsx`) [NEW]**: Xây dựng giao diện Dark Mode phẳng cực kỳ hiện đại để quản lý Webhooks. Hỗ trợ hiển thị Secret Key một lần duy nhất khi tạo, bật/tắt nhanh trạng thái, copy URL và Drawer xem lịch sử nhận payload trực quan (Headers & Body JSON viewer). Tích hợp link "Webhooks" vào menu sidebar.
+    - **Verify**: Type check (`npx tsc --noEmit`) đạt 0 lỗi.
+
+- **2026-06-06 (connect-hub - Phase 5 - API Guides and AI Capabilities integration)**:
+  - 🚀 **Hoàn thành Phase 5: Hướng dẫn lấy API cho 35 app Ready và xây dựng Năng lực AI cho Mapping page**:
+    - **Activepieces Converter (`metadata-parser.ts`, `index.ts`) [MODIFY]**: Thêm hàm `generateSetupGuide` cung cấp link lấy token chi tiết cho 15 app phổ biến, sinh template guide tự động cho các app còn lại theo loại bảo mật. Thêm hàm `enrichActionMetadata` gán `group` (Tạo mới, Truy vấn, Cập nhật, Gửi thông báo, Xuất nhập), `aiInstruction` bằng tiếng Việt, `outputFields`, `httpMethod` và endpoint thực tế cho tất cả actions từ generic HTTP. Tải `setupGuide` và `logoUrl` vào `catalog-lite.json`.
+    - **Generated Registry (`registry-generated.ts`, `registry.ts`) [MODIFY]**: Nạp `setupGuide` và `logoUrl` cho GENERATED_CONNECTORS. Cố định lỗi ép kiểu TypeScript cho trường `status`.
+    - **Mapping Manager Client (`mapping-manager-client.tsx`) [MODIFY]**: Thiết lập cơ chế Lazy-load Capabilities từ Detail JSON (on-demand) thông qua Server Action `getConnectorDetailAction()` kết hợp với capabilities tĩnh của registry. Hỗ trợ hiển thị đầy đủ Năng lực AI cho tất cả 35 app Ready mà không làm tăng thời gian cold-start của server.
+    - **Verify & Compile**: Chạy script convert parse thành công 708 connectors với 4.4MB chi tiết actions. Kiểm tra biên dịch TypeScript (`npx tsc --noEmit`) đạt 0 lỗi.
+
+- **2026-06-06 (connect-hub - Phase 3 - 700+ catalog apps massive extraction)**:
+  - 🚀 **Hoàn thành Phase 3: Quét và hiển thị toàn bộ hệ sinh thái Activepieces lên App Catalog**:
+    - **Activepieces Converter (`index.ts`) [MODIFY]**: Loại bỏ bộ lọc `PIECE_WHITELIST`, mở khóa giới hạn parse để crawl toàn bộ mã nguồn của thư mục `community` trong Activepieces repository.
+    - **Catalog Execution [NEW]**: Chạy script `npx tsx index.ts` thành công. Phân tích 708 pieces hợp lệ, gen ra file `catalog-lite.json` (287KB) cực kỳ tối ưu cho giao diện và `catalog-detail.json` (1.7MB) cho schema chi tiết.
+    - **Kết quả**: Giao diện App Catalog tại `/connect-hub` hiện tại đã cực kỳ hoành tráng với hơn 700 ứng dụng, khẳng định sức mạnh kết nối của nền tảng trong khi vẫn đảm bảo hiệu năng tải trang nhờ kiến trúc JSON-based.
+
+- **2026-06-06 (connect-hub - Phase 2 - Generic HTTP Runner (Batch 1A) integration)**:
+  - 🚀 **Hoàn thành Phase 2: Thiết kế & Tích hợp Generic HTTP Runner cho Batch 1A**:
+    - **Activepieces Converter Update (`config.ts`, `metadata-parser.ts`) [MODIFY]**: Cấu hình thêm danh sách 10 connectors của Batch 1A (`telegram-bot`, `discord`, `openai`, `airtable`, `sendgrid`, `github`, `trello`, `twilio`, `mailgun`, `clickup`) để gán `runtimeType: 'generic_http'`, `runtimeConfidence: 'high'`, và `status: 'ready'`. Sửa logic quét đệ quy và hỗ trợ cả thư mục hành động dạng số ít (`action/` vs `actions/`) giúp lấy đầy đủ actions cho các connector. Chạy lại converter regenerate catalog databases thành công.
+    - **Generic HTTP Runner (`generic-http.ts`) [NEW]**: Hiện thực hóa runner tĩnh `runGenericHttp` ánh xạ các method, headers, endpoint template và body templates cho các action chính của 10 connectors Batch 1A. Tích hợp SSRF check (`isInternalUrl`) và 10s timeout. Hỗ trợ phương thức xác thực API Key, Bearer Token và Basic Auth.
+    - **Verify Connection Helper (`generic-http.ts`) [NEW]**: Tích hợp hàm `verifyGenericHttpConnection` để kiểm tra trực tiếp tính hợp lệ của API Key (như hitting `getMe` cho Telegram, `/models` cho OpenAI, `/user` cho GitHub) trước khi kết nối hoặc ping thử nghiệm, đem lại UX cực kỳ chuẩn xác và chuyên nghiệp.
+    - **Database Actions (`connect-hub-actions.ts`) [MODIFY]**: Nhận diện các kết nối thuộc `generic_http` runtime và gọi trình kiểm tra thực tế `verifyGenericHttpConnection` trong cả hai server actions `testConnectionAction` và `pingConnectionPreviewAction`.
+    - **Engine Orchestrator (`engine.ts`) [MODIFY]**: Tích hợp các callback cho 10 connectors Batch 1A vào bảng ánh xạ `RUNNERS` để định tuyến hành động qua `runGenericHttp` an toàn.
+    - **UI Apps Client (`apps-client.tsx`) [MODIFY]**: Cho phép mở rộng tải schema động từ `catalog-detail.json` và mở khóa các nút Lưu/Test kết nối đối với các app thuộc runtime `generic_http`, chỉ giữ lại guard khóa cho các app ở trạng thái `catalog_only`.
+    - **Kiểm định & Build**: Chạy biên dịch TypeScript (`tsc --noEmit`) đạt 0 lỗi. Build production (`npm run build`) thành công 100%.
+
+- **2026-06-06 (connect-hub - Phase 1 - 122 catalog metadata integration)**:
+  - 🚀 **Bắt đầu Phase 1: Mở rộng Connect Hub lên 122 Catalog Connectors**:
+    - **Downloader & Converter Scripts [NEW]**: Tạo script `downloader.ts`, `metadata-parser.ts`, `config.ts`, `index.ts` trong `scratch/activepieces-converter/` để tải và convert metadata từ 122 pieces Activepieces.
+    - **Types Upgrade (`types.ts`) [MODIFY]**: Bổ sung các thuộc tính metadata hỗ trợ catalog: `runtimeType`, `runtimeConfidence`, `source`, `connectorStatus`, `riskLevel` v.v.
+    - **Registry Sync (`registry.ts`, `registry-generated.ts` [NEW]) [MODIFY]**: Tự động gộp danh sách connectors thủ công (chạy thật) với danh sách connectors catalog tự động từ `catalog-lite.json`, đảm bảo đè slug để giữ cấu hình manual.
+    - **Server Actions (`connect-hub-actions.ts`) [MODIFY]**: Bổ sung `getConnectorDetailAction` tải động chi tiết JSON schema của catalog app on-demand để tối ưu bundle.
+    - **UI Apps Client Upgrade (`apps-client.tsx`) [MODIFY]**: Cải tiến apps store để render icon Lucide động theo thuộc tính `icon`, hiển thị Warning alert "Catalog Mode" và khóa các nút lưu/test kết nối đối với catalog connectors.
+    - **Build & Verify**: TypeScript check và build production thành công 100%.
+
 - **2026-06-06 (dashboard - workspace isolation dynamic routing Phase 3 & Security Audit)**:
+
   - 🚀 **Khắc phục lỗi 404 cho HeroSim và đảm bảo tính ổn định**:
     - **HeroSim Dynamic Route (`sim/t/[teamId]/dashboard`)**: Khắc phục triệt để lỗi 404, hoàn thiện Phase 3 của cấu trúc URL động cách ly Workspace.
     - **Connect Hub Stability**: Xác thực 100% tất cả các route của Connect Hub hoạt động trơn tru sau khi chuyển đổi sang Dynamic Routing, đầy đủ IDOR Guard và CookieSync.

@@ -46,6 +46,7 @@ export interface ConnectorDefinition {
   slug: string;
   name: string;
   icon: string; // Tên Lucide Icon tương ứng
+  logoUrl?: string; // MỚI: URL ảnh gốc
   category: 'pos' | 'storage' | 'email' | 'chat' | 'crm' | 'developer' | 'management' | 'ai' | 'payment' | 'social';
   description: string;
   authType: 'oauth2' | 'api_key' | 'client_credentials' | 'bearer_token' | 'basic' | 'custom_http' | 'none';
@@ -67,4 +68,14 @@ export interface ConnectorDefinition {
     healthCheckEndpoint?: string; // Đường dẫn API để hệ thống tự động quét lỗi/kiểm tra trạng thái nhà cung cấp
     documentationUrl?: string; // Link changelog/developer docs để theo dõi phiên bản mới
   };
+
+  // === MỚI: Tích hợp Catalog & Trình chạy động (Activepieces Metadata) ===
+  runtimeType?: 'custom_runner' | 'generic_http' | 'catalog_only';
+  runtimeConfidence?: 'high' | 'medium' | 'low';
+  source?: 'manual' | 'activepieces';
+  integrationPriority?: number;
+  connectorStatus?: 'active' | 'deprecated' | 'planned';
+  permissionScope?: string[];
+  riskLevel?: 'safe' | 'medium' | 'high';
 }
+

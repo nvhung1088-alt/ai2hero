@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ConnectorDefinition, AuthField } from '@/lib/connect-hub/connectors/types';
-import { createConnectionAction, getConnectorHealthStats, fetchPancakePagesDirectlyAction, pingConnectionPreviewAction } from '@/lib/db/connect-hub-actions';
+import { createConnectionAction, getConnectorHealthStats, fetchPancakePagesDirectlyAction, pingConnectionPreviewAction, getConnectorDetailAction } from '@/lib/db/connect-hub-actions';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 import {
   Search,
@@ -46,51 +46,80 @@ interface AppsClientProps {
   connectedSlugs: string[];
 }
 
-function getConnectorIcon(slug: string, className: string = 'h-5 w-5') {
-  switch (slug) {
-    case 'openai':
+function getConnectorIcon(iconName: string, className: string = 'h-5 w-5') {
+  switch (iconName) {
+    case 'bot':
       return <Bot className={className} />;
-    case 'anthropic':
+    case 'brain':
       return <Brain className={className} />;
-    case 'gemini':
+    case 'sparkles':
       return <Sparkles className={className} />;
-    case 'grok':
+    case 'cpu':
       return <Cpu className={className} />;
-    case 'deepseek':
+    case 'network':
       return <Network className={className} />;
-    case 'qwen':
+    case 'layers':
       return <Layers className={className} />;
-    case 'runway':
+    case 'video':
       return <Video className={className} />;
-    case 'luma':
+    case 'film':
       return <Film className={className} />;
-    case 'sapo':
+    case 'store':
       return <Store className={className} />;
-    case 'payos':
+    case 'wallet':
       return <Wallet className={className} />;
-    case 'momo':
+    case 'smartphone-nfc':
       return <SmartphoneNfc className={className} />;
-    case 'google-drive':
+    case 'hard-drive':
       return <HardDrive className={className} />;
-    case 'facebook':
+    case 'share-2':
       return <Share2 className={className} />;
-    case 'zalo':
+    case 'message-square':
       return <MessageSquare className={className} />;
-    case 'tiktok':
-      return <Video className={className} />;
-    case 'custom-http':
+    case 'globe':
       return <Globe className={className} />;
-    case 'kiotviet':
+    case 'shopping-cart':
       return <ShoppingCart className={className} />;
-    case 'google-sheets':
+    case 'shopping-bag':
+      return <Store className={className} />;
+    case 'file-spreadsheet':
       return <FileSpreadsheet className={className} />;
-    case 'gmail':
+    case 'mail':
       return <Mail className={className} />;
-    case 'telegram':
+    case 'send':
       return <Send className={className} />;
     default:
       return <Plug className={className} />;
   }
+}
+
+
+const GRADIENTS = [
+  'from-teal-500 to-emerald-400',
+  'from-orange-400 to-amber-500',
+  'from-blue-500 to-indigo-400',
+  'from-slate-700 to-slate-900',
+  'from-blue-600 to-indigo-600',
+  'from-purple-600 to-fuchsia-500',
+  'from-violet-500 to-purple-500',
+  'from-pink-500 to-rose-500',
+  'from-green-500 to-green-600',
+  'from-indigo-600 to-blue-700',
+  'from-rose-500 to-red-600',
+  'from-cyan-500 to-blue-500',
+  'from-amber-500 to-orange-600',
+  'from-emerald-500 to-teal-600',
+  'from-fuchsia-500 to-pink-600',
+  'from-sky-400 to-blue-600',
+];
+
+function getConnectorColorFallback(slug: string) {
+  let hash = 0;
+  for (let i = 0; i < slug.length; i++) {
+    hash = slug.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  hash = Math.abs(hash);
+  return GRADIENTS[hash % GRADIENTS.length];
 }
 
 function getConnectorColor(slug: string) {
@@ -136,8 +165,18 @@ function getConnectorColor(slug: string) {
     case 'telegram':
       return 'from-sky-400 to-blue-500';
     default:
-      return 'from-purple-500 to-indigo-500';
+      return getConnectorColorFallback(slug);
   }
+}
+
+function ConnectorLogo({ app, className = "h-5 w-5" }: { app: ConnectorDefinition, className?: string }) {
+  const [imgError, setImgError] = useState(false);
+  const logoSrc = app.logoUrl || `https://cdn.activepieces.com/pieces/${app.slug}.png`;
+
+  if (!imgError) {
+    return <img src={logoSrc} alt={app.name} className={`${className} object-contain`} onError={() => setImgError(true)} />;
+  }
+  return getConnectorIcon(app.icon, className);
 }
 
 export default function ConnectHubAppsClient({
@@ -148,6 +187,7 @@ export default function ConnectHubAppsClient({
   const [connectedSlugs, setConnectedSlugs] = useState<string[]>(initialConnectedSlugs);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<'popular' | 'ai' | 'pos' | 'payment' | 'social' | 'chat' | 'storage' | 'email' | 'developer' | 'all'>('popular');
+  const [filterReady, setFilterReady] = useState(false);
   const [selectedApp, setSelectedApp] = useState<ConnectorDefinition | null>(null);
   
   // Form State
@@ -159,6 +199,8 @@ export default function ConnectHubAppsClient({
   // Health Stats State
   const [healthStats, setHealthStats] = useState<{ totalRequests: number; successRate: number; avgDuration: number } | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
 
   // Pancake States
   const [pancakePages, setPancakePages] = useState<{id: string, name: string, category: string}[]>([]);
@@ -224,6 +266,7 @@ export default function ConnectHubAppsClient({
   // Bộ lọc danh mục
   const categories = [
     { id: 'popular', label: '🔥 Phổ biến' },
+
     { id: 'ai', label: '🤖 Trí tuệ Nhân tạo' },
     { id: 'pos', label: '🛒 Bán hàng / POS' },
     { id: 'payment', label: '💳 Thanh toán' },
@@ -244,23 +287,58 @@ export default function ConnectHubAppsClient({
 
     if (!matchesSearch) return false;
 
+    if (filterReady && app.status !== 'ready') return false;
+
     // 2. Lọc theo danh mục active
     if (activeCategory === 'all') return true;
     if (activeCategory === 'popular') return !!app.popular;
     return app.category === activeCategory;
   });
 
-  const handleOpenConnect = (app: ConnectorDefinition) => {
-    setSelectedApp(app);
+  const handleOpenConnect = async (app: ConnectorDefinition) => {
     setConnectionName(`Kết nối ${app.name}`);
     
-    // Khởi tạo form data với các trường mặc định
-    const defaultData: Record<string, string> = {};
-    app.authFields.forEach(field => {
-      defaultData[field.name] = '';
-    });
-    setFormData(defaultData);
+    if (app.runtimeType === 'catalog_only' || app.runtimeType === 'generic_http') {
+      setLoadingDetail(true);
+      setSelectedApp({
+        ...app,
+        authFields: [],
+        actions: []
+      });
+      
+      try {
+        const res = await getConnectorDetailAction(teamId, app.slug);
+        if (res.success && res.data) {
+          const detail = res.data as ConnectorDefinition;
+          setSelectedApp(detail);
+          
+          const defaultData: Record<string, string> = {};
+          detail.authFields.forEach(field => {
+            defaultData[field.name] = '';
+          });
+          setFormData(defaultData);
+        } else {
+          showToast(res.error || 'Không thể tải chi tiết cổng kết nối.', 'error');
+          setSelectedApp(null);
+        }
+      } catch (err) {
+        showToast('Lỗi tải dữ liệu chi tiết.', 'error');
+        setSelectedApp(null);
+      } finally {
+        setLoadingDetail(false);
+      }
+    } else {
+      setSelectedApp(app);
+      
+      // Khởi tạo form data với các trường mặc định
+      const defaultData: Record<string, string> = {};
+      app.authFields.forEach(field => {
+        defaultData[field.name] = '';
+      });
+      setFormData(defaultData);
+    }
   };
+
 
   const handleCloseConnect = () => {
     if (abortControllerRef.current) {
@@ -403,20 +481,32 @@ export default function ConnectHubAppsClient({
       </div>
 
       {/* Pill Filters */}
-      <div className="flex flex-wrap gap-2">
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id as any)}
-            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer ${
-              activeCategory === cat.id
-                ? 'bg-purple-500 text-white shadow-md shadow-purple-500/10'
-                : 'bg-gray-900/40 border border-white/5 text-gray-400 hover:text-gray-200 hover:bg-gray-900/60'
-            }`}
-          >
-            {cat.label}
-          </button>
-        ))}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/5 pb-5">
+        <div className="flex flex-wrap gap-2 flex-1">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id as any)}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer ${
+                activeCategory === cat.id
+                  ? 'bg-purple-500 text-white shadow-md shadow-purple-500/10'
+                  : 'bg-gray-900/40 border border-white/5 text-gray-400 hover:text-gray-200 hover:bg-gray-900/60'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+        
+        <label className="flex items-center gap-2 cursor-pointer bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 rounded-xl hover:bg-emerald-500/20 transition-colors shrink-0">
+          <input 
+            type="checkbox" 
+            checked={filterReady} 
+            onChange={(e) => setFilterReady(e.target.checked)}
+            className="rounded text-emerald-500 focus:ring-emerald-500 bg-black/50 border-white/20 h-4 w-4"
+          />
+          <span className="text-xs font-bold text-emerald-400 select-none">Chỉ hiện App ✅ Sẵn sàng</span>
+        </label>
       </div>
 
       {/* Global Security Alert */}
@@ -450,8 +540,9 @@ export default function ConnectHubAppsClient({
                   {/* Icon & Badge */}
                   <div className="flex items-center justify-between">
                     <div className={`p-2.5 rounded-xl bg-gradient-to-tr ${getConnectorColor(app.slug)} text-white shadow-md shadow-purple-500/5 group-hover:scale-105 transition-transform duration-300`}>
-                      {getConnectorIcon(app.slug)}
+                      <ConnectorLogo app={app} />
                     </div>
+
                     <div className="flex items-center gap-1.5 flex-wrap justify-end pl-2">
                       {app.badge && (
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap shadow-sm border ${
@@ -527,8 +618,9 @@ export default function ConnectHubAppsClient({
             <div className="flex items-center justify-between border-b border-white/5 p-6 pb-4 shrink-0">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-xl bg-gradient-to-tr ${getConnectorColor(selectedApp.slug)} text-white`}>
-                  {getConnectorIcon(selectedApp.slug, 'h-4.5 w-4.5')}
+                  <ConnectorLogo app={selectedApp} className="h-4.5 w-4.5" />
                 </div>
+
                 <div>
                   <h3 className="text-sm font-black text-white">Kết nối {selectedApp.name}</h3>
                   <p className="text-[10px] text-gray-400 font-medium mt-0.5">Nhập cấu hình để thiết lập cổng API an toàn</p>
@@ -544,22 +636,43 @@ export default function ConnectHubAppsClient({
 
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar pr-5">
-              
-              {/* Connection Name field */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                  Tên kết nối gợi nhớ <span className="text-rose-500">*</span>
-                </label>
-                <Input
-                  ref={inputRef}
-                  type="text"
-                  placeholder="vd: KiotViet Shop Mỹ Phẩm"
-                  value={connectionName}
-                  onChange={(e) => setConnectionName(e.target.value)}
-                  className="rounded-xl border-white/10 bg-white/5 text-white font-semibold text-xs"
-                />
-                <p className="text-[9px] text-gray-500 font-medium">Đặt tên giúp bạn dễ dàng phân biệt khi gọi connection này từ các MVP khác.</p>
-              </div>
+              {loadingDetail ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                  <p className="text-xs text-gray-400 font-semibold">Đang tải chi tiết API Schema từ catalog...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Warning for Catalog Mode */}
+                  {selectedApp.runtimeType === 'catalog_only' && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex gap-2.5 animate-fade-in">
+                      <Lock className="h-4.5 w-4.5 text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[10.5px] text-amber-400 font-bold">Catalog Mode (Chế độ xem trước)</p>
+                        <p className="text-[9.5px] text-gray-300 font-medium leading-relaxed mt-0.5">
+                          Cổng kết nối này hiện tại chỉ hỗ trợ xem cấu trúc API để tham khảo. Khả năng chạy thực tế sẽ được hỗ trợ trong đợt nâng cấp Batch tiếp theo.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Connection Name field */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                      Tên kết nối gợi nhớ <span className="text-rose-500">*</span>
+                    </label>
+                    <Input
+                      ref={inputRef}
+                      type="text"
+                      placeholder="vd: KiotViet Shop Mỹ Phẩm"
+                      value={connectionName}
+                      onChange={(e) => setConnectionName(e.target.value)}
+                      disabled={selectedApp.runtimeType === 'catalog_only'}
+                      className="rounded-xl border-white/10 bg-white/5 text-white font-semibold text-xs disabled:opacity-50"
+                    />
+                    <p className="text-[9px] text-gray-500 font-medium">Đặt tên giúp bạn dễ dàng phân biệt khi gọi connection này từ các MVP khác.</p>
+                  </div>
+
 
               {/* API Capabilities */}
               {selectedApp.actions && selectedApp.actions.length > 0 && (
@@ -648,8 +761,10 @@ export default function ConnectHubAppsClient({
                       <select
                         value={formData[field.name] || ''}
                         onChange={(e) => handleFieldChange(field.name, e.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-gray-950/50 text-white font-semibold text-xs px-3.5 py-2.5 focus:border-purple-500 focus:outline-none"
+                        disabled={selectedApp.runtimeType === 'catalog_only'}
+                        className="w-full rounded-xl border border-white/10 bg-gray-950/50 text-white font-semibold text-xs px-3.5 py-2.5 focus:border-purple-500 focus:outline-none disabled:opacity-50"
                       >
+
                         <option value="" disabled>-- {field.placeholder || 'Chọn giá trị'} --</option>
                         {field.options?.map((opt) => (
                           <option key={opt} value={opt} className="bg-gray-900">
@@ -730,8 +845,10 @@ export default function ConnectHubAppsClient({
                         placeholder={field.placeholder || ''}
                         value={formData[field.name] || ''}
                         onChange={(e) => handleFieldChange(field.name, e.target.value)}
-                        className="rounded-xl border-white/10 bg-white/5 text-white font-semibold text-xs"
+                        disabled={selectedApp.runtimeType === 'catalog_only'}
+                        className="rounded-xl border-white/10 bg-white/5 text-white font-semibold text-xs disabled:opacity-50"
                       />
+
                     )}
 
                     {field.helpText && (
@@ -743,14 +860,17 @@ export default function ConnectHubAppsClient({
                   </div>
                 );
               })}
+              </>
+              )}
             </div>
+
 
             {/* Modal Footer Actions */}
             <div className="flex items-center justify-between border-t border-white/5 p-6 pt-4 shrink-0 bg-gray-950/20">
               <button
                 type="button"
                 onClick={handleTestConnection}
-                disabled={testing || saving}
+                disabled={testing || saving || loadingDetail || selectedApp.runtimeType === 'catalog_only'}
                 className="inline-flex items-center gap-1.5 px-4 py-2 border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-gray-300 hover:text-white rounded-xl transition-all cursor-pointer disabled:opacity-50 select-none"
               >
                 {testing ? (
@@ -772,23 +892,26 @@ export default function ConnectHubAppsClient({
                   onClick={handleCloseConnect}
                   className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all cursor-pointer select-none"
                 >
-                  Hủy
+                  {selectedApp.runtimeType === 'catalog_only' ? 'Đóng' : 'Hủy'}
                 </button>
-                <Button
-                  onClick={handleSaveConnection}
-                  disabled={saving || testing}
-                  className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 rounded-xl shadow-lg shadow-purple-500/10 cursor-pointer disabled:opacity-50 transition-all select-none"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                      Đang lưu kết nối...
-                    </>
-                  ) : (
-                    'Lưu kết nối API 🔌'
-                  )}
-                </Button>
+                {selectedApp.runtimeType !== 'catalog_only' && (
+                  <Button
+                    onClick={handleSaveConnection}
+                    disabled={saving || testing || loadingDetail}
+                    className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 rounded-xl shadow-lg shadow-purple-500/10 cursor-pointer disabled:opacity-50 transition-all select-none"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                        Đang lưu kết nối...
+                      </>
+                    ) : (
+                      'Lưu kết nối API 🔌'
+                    )}
+                  </Button>
+                )}
               </div>
+
             </div>
 
           </div>

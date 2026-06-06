@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Plug, Link2, History, ListTree } from 'lucide-react';
+import { LayoutDashboard, Plug, Link2, History, ListTree, Webhook } from 'lucide-react';
 
 interface SidebarMenuProps {
   teamId: number;
@@ -26,6 +26,11 @@ export default function ConnectHubSidebarMenu({ teamId }: SidebarMenuProps) {
       name: 'Kết nối của tôi',
       href: `/connect-hub/t/${teamId}/connections`,
       icon: Link2
+    },
+    {
+      name: 'Webhooks (Incoming)',
+      href: `/connect-hub/t/${teamId}/webhooks`,
+      icon: Webhook
     },
     {
       name: 'Nhật ký sử dụng',

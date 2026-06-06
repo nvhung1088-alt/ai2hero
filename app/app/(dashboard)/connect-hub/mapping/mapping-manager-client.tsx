@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getMappingConfigAction, saveMappingConfigAction } from '@/lib/db/connect-hub-mapping-actions';
-import { runActionAction } from '@/lib/db/connect-hub-actions';
+import { runActionAction, getConnectorDetailAction } from '@/lib/db/connect-hub-actions';
 import { migrateLegacyConfig, MappingConfigField } from '@/lib/connect-hub/utils/mapper';
 import { autoSuggestMapping } from '@/lib/connect-hub/utils/auto-suggest';
 import { Loader2, Save, X, Plus, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, Clock, Copy, Check, Activity, Sparkles } from 'lucide-react';
@@ -30,6 +30,8 @@ export default function MappingManagerClient({ connectedApps, teamId }: MappingM
   const [activeTab, setActiveTab] = useState<'mapping' | 'capabilities'>('mapping');
   const [expandedCaps, setExpandedCaps] = useState<Record<string, boolean>>({});
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+  const [detailCapabilities, setDetailCapabilities] = useState<ApiCapability[]>([]);
+  const [isLoadingDetailCaps, setIsLoadingDetailCaps] = useState(false);
 
   // States cho Test Modal
   const [testCapability, setTestCapability] = useState<ApiCapability | null>(null);
@@ -74,6 +76,52 @@ export default function MappingManagerClient({ connectedApps, teamId }: MappingM
       loadConfig(selectedApp);
     }
   }, [selectedApp]);
+
+  useEffect(() => {
+    const loadDetailCaps = async () => {
+      setIsLoadingDetailCaps(true);
+      try {
+        const registryCaps = getCapabilities(selectedApp) || [];
+        const res = await getConnectorDetailAction(teamId, selectedApp);
+        if (res.success && res.data && res.data.actions) {
+          const catalogActions = (res.data.actions as any[])
+            .filter(a => a.group)
+            .map(a => ({
+              slug: a.slug,
+              name: a.name,
+              description: a.description,
+              group: a.group,
+              httpMethod: a.httpMethod || 'POST',
+              endpoint: a.endpoint || '',
+              status: a.status || 'planned',
+              inputSchema: a.inputSchema || [],
+              outputFields: a.outputFields || [],
+              aiInstruction: a.aiInstruction || '',
+            }));
+
+          const merged = [...registryCaps];
+          catalogActions.forEach(cat => {
+            if (!merged.some(m => m.slug === cat.slug)) {
+              merged.push(cat);
+            }
+          });
+          
+          setDetailCapabilities(merged);
+        } else {
+          setDetailCapabilities(registryCaps);
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải năng lực API chi tiết:', err);
+        setDetailCapabilities(getCapabilities(selectedApp) || []);
+      } finally {
+        setIsLoadingDetailCaps(false);
+      }
+    };
+
+    if (selectedApp) {
+      loadDetailCaps();
+    }
+  }, [selectedApp, teamId]);
 
   const loadConfig = async (appSlug: string) => {
     setIsLoading(true);
@@ -188,9 +236,8 @@ export default function MappingManagerClient({ connectedApps, teamId }: MappingM
   // Groups for field mapping
   const groups = ['Khách hàng', 'Sản phẩm', 'Đơn hàng'];
   
-  const currentCapabilities = getCapabilities(selectedApp); 
-  const capabilityGroups = Array.from(new Set(currentCapabilities.map((c: any) => c.group)));
   const currentConnector = getConnectorBySlug(selectedApp);
+  const capabilityGroups = Array.from(new Set(detailCapabilities.map((c: any) => c.group)));
   const isPosApp = currentConnector?.category === 'pos';
 
   return (
@@ -265,7 +312,7 @@ export default function MappingManagerClient({ connectedApps, teamId }: MappingM
         </button>
       </div>
 
-      {isLoading ? (
+      {isLoading || isLoadingDetailCaps ? (
         <div className="flex justify-center p-12">
           <Loader2 className="h-8 w-8 text-orange-500 animate-spin" />
         </div>
@@ -360,7 +407,7 @@ export default function MappingManagerClient({ connectedApps, teamId }: MappingM
       ) : (
         /* Tab: API Capabilities */
         <div className="space-y-8">
-          {currentCapabilities.length === 0 ? (
+          {detailCapabilities.length === 0 ? (
             /* Empty State for other systems */
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center flex flex-col items-center justify-center">
               <div className="w-16 h-16 rounded-full bg-gray-800/50 flex items-center justify-center mb-4">
@@ -380,13 +427,13 @@ export default function MappingManagerClient({ connectedApps, teamId }: MappingM
                   Hướng dẫn cho AI vận hành
                 </h3>
                 <p className="text-sm text-gray-300 leading-relaxed">
-                  Các năng lực dưới đây mô tả chính xác tập lệnh API cho hệ thống {selectedApp === 'pancake-chat' ? 'Pancake Chat' : 'Pancake POS'}. Mỗi năng lực chứa một cấu trúc hướng dẫn (<code className="text-xs font-mono bg-gray-950 px-1 py-0.5 rounded text-orange-300">aiInstruction</code>) 
+                  Các năng lực dưới đây mô tả chính xác tập lệnh API cho hệ thống <strong>{currentConnector?.name || selectedApp}</strong>. Mỗi năng lực chứa một cấu trúc hướng dẫn (<code className="text-xs font-mono bg-gray-950 px-1 py-0.5 rounded text-orange-300">aiInstruction</code>) 
                   bằng ngôn ngữ tự nhiên được tối ưu hóa để AI đọc hiểu và tự động gọi endpoint, truyền đúng tham số, cũng như chuẩn hóa dữ liệu trả về cho người dùng mà không cần lập trình lại.
                 </p>
               </div>
 
               {capabilityGroups.map(group => {
-                const capsInGroup = currentCapabilities.filter((c: any) => c.group === group);
+                const capsInGroup = detailCapabilities.filter((c: any) => c.group === group);
                 if (capsInGroup.length === 0) return null;
 
                 return (

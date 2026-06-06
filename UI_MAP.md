@@ -144,7 +144,7 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 ### `/connect-hub/t/[teamId]/mapping`
 - **Chức năng**: Giao diện chuẩn hóa trường dữ liệu (POS Field Mapping) giữa các hệ thống nguồn và chuẩn nội bộ Ai2Hero. Sử dụng cơ chế mapping chọn duy nhất với gợi ý `{ selected, suggestions }` được render dạng danh sách Radio Buttons trực quan. Bổ sung nút bấm "Phân tích dữ liệu mẫu" (AI Auto-Suggest) giúp tự động dò cấu trúc dữ liệu thô (đơn hàng, sản phẩm, khách hàng) từ cửa hàng thật (qua API `probe_sample_data`) và tự sinh đề xuất mapping tối ưu bằng thuật toán chấm điểm độ tương đồng ngữ nghĩa. Tích hợp Tab **"Năng lực API" (AI Capabilities)** hiển thị danh sách các năng lực API được phân loại chi tiết đi kèm cấu trúc hướng dẫn thực hiện cho AI (`aiInstruction`) và nút sao chép nhanh 1-click. Ngoài ra còn hỗ trợ **Modal Chạy thử (Test Run Modal)** trực quan cho phép lập trình viên chạy thử tức thời bất kỳ Năng lực API nào bằng cách nhập JSON payload mẫu và hiển thị log output trực tiếp từ API Gateway.
 - **Vai trò**: UI Quản lý cấu hình mapping động và năng lực AI vận hành
-- **Đọc/Ghi data**: Đọc/Ghi cấu hình mapping vào `connectHubMappingConfigs` (tự động chạy `migrateLegacyConfig` để nâng cấp cấu hình cũ), truy vấn danh mục từ `PANCAKE_CAPABILITIES` (tab Năng lực API), gọi Server Action thực thi test qua `runActionAction` với cờ `isTest` được bật.
+- **Đọc/Ghi data**: Đọc/Ghi cấu hình mapping vào `connectHubMappingConfigs` (tự động chạy `migrateLegacyConfig` để nâng cấp cấu hình cũ), truy vấn danh mục năng lực thông qua Server Action `getConnectorDetailAction` (tab Năng lực API) để lazy-load động capabilities từ Detail Catalog kết hợp với capabilities tĩnh của registry, gọi Server Action thực thi test qua `runActionAction`.
 - **Liên kết**: Sidebar -> Quản lý ánh xạ (hoặc Mapping)
 
 ### API Hub (`/dashboard/api`) — MVP #3
@@ -216,9 +216,11 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 ### Connect Hub App Store (`/connect-hub/t/[teamId]/apps`)
 - **Chức năng**: Kho trưng bày các ứng dụng tích hợp, cho phép lọc theo danh mục pill (🔥 Phổ biến, 🤖 AI, 🛒 POS...) và tìm kiếm thời gian thực.
   - **Dynamic Connect Modal (Flex Column Fixed & API Capabilities)**: Popup thiết lập kết nối có bố cục Flex Column với chiều cao tối đa `max-h-[90vh]` và các phần Header, Body (cuộn độc lập), Footer phân chia rõ ràng để chống tràn layout. Hiển thị danh sách khả năng của API (`selectedApp.actions`) dưới dạng các ô grid card Dark Mode tinh xảo.
+  - **Dynamic Detail Loading (Catalog Connectors)**: Khi click vào các app thuộc catalog (`runtimeType: 'catalog_only'`), giao diện sẽ tải động chi tiết API schema qua Server Action `getConnectorDetailAction` (đọc từ `catalog-detail.json`), hiển thị Warning Alert và khóa toàn bộ input/nút bấm để bảo mật.
 - **Vai trò**: MVP Store & Client Integration
-- **Đọc/Ghi data**: Ghi database qua Server Action `createConnectionAction` mã hóa AES-256-GCM.
+- **Đọc/Ghi data**: Ghi database qua Server Action `createConnectionAction` mã hóa AES-256-GCM, đọc chi tiết catalog qua Server Action `getConnectorDetailAction`.
 - **Liên kết**: → /connect-hub/t/[teamId]/dashboard
+
 
 ### Connect Hub Connections Manager (`/connect-hub/t/[teamId]/connections`)
 - **Chức năng**: Quản lý danh sách kết nối tích hợp API đang chạy. Hỗ trợ kiểm thử ping nhanh (`testConnectionAction`), ngắt kết nối (`deleteConnectionAction`) qua Premium Confirm Modal kính mờ, và xem chi tiết Drawer trượt (credentials masked).
@@ -231,6 +233,12 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Vai trò**: MVP Audit Trail
 - **Đọc/Ghi data**: Đọc từ bảng `connect_hub_usage_logs` PostgreSQL thật.
 - **Liên kết**: → /connect-hub/t/[teamId]/dashboard
+
+### Connect Hub Webhooks (`/connect-hub/t/[teamId]/webhooks`)
+- **Chức năng**: Quản lý các Webhook Endpoints để nhận dữ liệu thời gian thực (POST/GET) từ các app bên ngoài. Hỗ trợ tạo webhook mới với giao diện hiển thị duy nhất 1 lần cho Secret Key, bật/tắt nhanh trạng thái, copy URL và Drawer trượt xem nhật ký payload (Headers & JSON body) trực quan.
+- **Vai trò**: Webhook Manager (Incoming gateway)
+- **Đọc/Ghi data**: Đọc/Ghi bảng `connect_hub_webhooks` và `connect_hub_webhook_logs` qua Server Actions trong `connect-hub-actions.ts`.
+- **Liên kết**: → /connect-hub/t/[teamId]/dashboard, → /connect-hub/t/[teamId]/connections
 
 ### Hero Report Dashboard (`/hero-report/dashboard`)
 - **Chức năng**: Giao diện chính của Hero Report (MVP Báo cáo tự động đa nguồn). Hiển thị danh sách lịch báo cáo tự động đã thiết lập, trạng thái hoạt động, lịch chạy tiếp theo, lịch sử gửi gần nhất cùng lượng token AI tiêu thụ. Tích hợp Form tạo mới 5 bước thông minh: Bước 1: Chọn một hoặc nhiều nguồn dữ liệu tích hợp (Pancake POS, Pancake Chat...). Bước 2: Đánh dấu chọn động các Năng lực API theo từng nguồn, hỗ trợ bộ lọc thời gian nâng cao 2 hàng nút (Ngày và Kế toán) có cảnh báo thời gian tải dài, và có nút "Xem trước dữ liệu gốc" để test thử nội dung HTML trả về ngay trên giao diện. Bước 3: Chọn cổng AI và Model linh hoạt được load từ Connect Hub kèm custom prompt. Bước 4: Đặt lịch gửi tự động. Bước 5: Cấu hình bot Telegram nhận báo cáo. 

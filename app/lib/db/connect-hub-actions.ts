@@ -1,20 +1,25 @@
 'use server';
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, desc } from 'drizzle-orm';
 import { db } from './drizzle';
 import {
   connectHubConnections,
   connectHubUsageLogs,
   teamMembers,
   teams,
-  activityLogs
+  activityLogs,
+  connectHubWebhooks,
+  connectHubWebhookLogs
 } from './schema';
+import * as crypto from 'crypto';
 import { getUser } from './queries';
 import { encryptField, decryptField } from '../sim-crypto';
 import { getMappingConfigAction } from './connect-hub-mapping-actions';
 import { revalidatePath } from 'next/cache';
 import { runConnectorAction } from '../connect-hub/connector-service';
 import { isInternalUrl } from '../connect-hub/connectors/runners/custom-http';
+import { getConnectorBySlug } from '../connect-hub/connectors/registry';
+import { verifyGenericHttpConnection } from '../connect-hub/connectors/runners/generic-http';
 
 // Helper kiểm tra quyền truy cập không gian làm việc và kích hoạt app Connect Hub
 async function verifyConnectHubAccess(targetTeamId: number, requireRole?: string[]) {
@@ -328,8 +333,16 @@ export async function testConnectionAction(teamId: number, connectionId: number)
           throw new Error(`KiotViet OAuth thất bại: ${errData.error_description || response.statusText}`);
         }
       } else {
-        // Giả lập test kết nối cho các app khác (Sheets, Gmail, Telegram)
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        const connector = getConnectorBySlug(connection.appSlug);
+        if (connector?.runtimeType === 'generic_http') {
+          const verifyResult = await verifyGenericHttpConnection(connection.appSlug, credentials);
+          if (!verifyResult.success) {
+            throw new Error(verifyResult.error || 'Kiểm thử kết nối thất bại.');
+          }
+        } else {
+          // Giả lập test kết nối cho các app khác (Sheets, Gmail, Telegram)
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
       }
     } catch (err: any) {
       testSuccess = false;
@@ -425,8 +438,16 @@ export async function pingConnectionPreviewAction(
         throw new Error(`KiotViet OAuth thất bại: ${errData.error_description || response.statusText}`);
       }
     } else {
-      // Giả lập delay test cho các app khác (Sheets, Gmail, Telegram)
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const connector = getConnectorBySlug(appSlug);
+      if (connector?.runtimeType === 'generic_http') {
+        const verifyResult = await verifyGenericHttpConnection(appSlug, credentials);
+        if (!verifyResult.success) {
+          throw new Error(verifyResult.error || 'Kiểm thử kết nối thất bại.');
+        }
+      } else {
+        // Giả lập delay test cho các app khác (Sheets, Gmail, Telegram)
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
     }
 
     return { success: true };
@@ -580,3 +601,184 @@ export async function fetchPancakePagesDirectlyAction(token: string) {
     return { success: false, error: error.message || 'Lỗi lấy danh sách Pages.' };
   }
 }
+
+import * as fs from 'fs';
+import * as path from 'path';
+
+/**
+ * Lấy chi tiết thông tin API schema của một Connector từ Catalog (đọc catalog-detail.json)
+ */
+export async function getConnectorDetailAction(teamId: number, slug: string) {
+  try {
+    await verifyConnectHubAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+    
+    const detailPath = path.join(process.cwd(), 'lib', 'connect-hub', 'connectors', 'generated', 'catalog-detail.json');
+    if (!fs.existsSync(detailPath)) {
+      return { success: false, error: 'Dữ liệu catalog chi tiết chưa được khởi tạo.' };
+    }
+    
+    const fileContent = fs.readFileSync(detailPath, 'utf-8');
+    const detailData = JSON.parse(fileContent);
+    const connector = detailData[slug];
+    
+    if (!connector) {
+      return { success: false, error: 'Không tìm thấy thông tin chi tiết cho ứng dụng này.' };
+    }
+    
+    return { success: true, data: connector };
+  } catch (error: any) {
+    console.error('Error fetching connector detail:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Tạo Webhook mới nhận dữ liệu Incoming cho team
+ */
+export async function createWebhookAction(
+  teamId: number,
+  data: {
+    appSlug: string;
+    label: string;
+  }
+) {
+  try {
+    const { user } = await verifyConnectHubAccess(teamId, ['owner', 'admin', 'manager']);
+
+    // Sinh secret token ngẫu nhiên
+    const plainSecret = `whsec_${crypto.randomBytes(24).toString('hex')}`;
+    const secretHash = encryptField(plainSecret) as string;
+
+    const [inserted] = await db
+      .insert(connectHubWebhooks)
+      .values({
+        teamId,
+        appSlug: data.appSlug,
+        label: data.label,
+        secretHash,
+        status: 'active',
+      })
+      .returning();
+
+    // Ghi log hoạt động
+    await db.insert(activityLogs).values({
+      teamId,
+      userId: user.id,
+      action: `đã tạo Webhook mới cho: ${data.appSlug} (${data.label})`,
+    });
+
+    revalidatePath(`/connect-hub/t/${teamId}/webhooks`);
+
+    return { success: true, data: { webhook: inserted, plainSecret } };
+  } catch (error: any) {
+    console.error('Error creating Webhook:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Lấy danh sách Webhooks của một team
+ */
+export async function listWebhooksAction(teamId: number) {
+  try {
+    await verifyConnectHubAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+
+    const webhooks = await db
+      .select()
+      .from(connectHubWebhooks)
+      .where(eq(connectHubWebhooks.teamId, teamId))
+      .orderBy(desc(connectHubWebhooks.createdAt));
+
+    return { success: true, data: webhooks };
+  } catch (error: any) {
+    console.error('Error listing Webhooks:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Bật/Tắt Webhook
+ */
+export async function toggleWebhookAction(teamId: number, webhookId: string, status: 'active' | 'paused') {
+  try {
+    const { user } = await verifyConnectHubAccess(teamId, ['owner', 'admin', 'manager']);
+
+    const [updated] = await db
+      .update(connectHubWebhooks)
+      .set({ status, updatedAt: new Date() })
+      .where(and(eq(connectHubWebhooks.teamId, teamId), eq(connectHubWebhooks.id, webhookId)))
+      .returning();
+
+    if (!updated) {
+      return { success: false, error: 'Không tìm thấy Webhook hoặc không có quyền.' };
+    }
+
+    // Ghi log
+    await db.insert(activityLogs).values({
+      teamId,
+      userId: user.id,
+      action: `đã ${status === 'active' ? 'kích hoạt lại' : 'tạm dừng'} Webhook: ${updated.label}`,
+    });
+
+    revalidatePath(`/connect-hub/t/${teamId}/webhooks`);
+
+    return { success: true, data: updated };
+  } catch (error: any) {
+    console.error('Error toggling Webhook:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Xóa Webhook
+ */
+export async function deleteWebhookAction(teamId: number, webhookId: string) {
+  try {
+    const { user } = await verifyConnectHubAccess(teamId, ['owner', 'admin', 'manager']);
+
+    const [deleted] = await db
+      .delete(connectHubWebhooks)
+      .where(and(eq(connectHubWebhooks.teamId, teamId), eq(connectHubWebhooks.id, webhookId)))
+      .returning();
+
+    if (!deleted) {
+      return { success: false, error: 'Không tìm thấy Webhook hoặc không có quyền.' };
+    }
+
+    // Ghi log
+    await db.insert(activityLogs).values({
+      teamId,
+      userId: user.id,
+      action: `đã xóa Webhook: ${deleted.label} (${deleted.appSlug})`,
+    });
+
+    revalidatePath(`/connect-hub/t/${teamId}/webhooks`);
+
+    return { success: true, data: deleted };
+  } catch (error: any) {
+    console.error('Error deleting Webhook:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Lấy lịch sử Logs của 1 webhook
+ */
+export async function getWebhookLogsAction(teamId: number, webhookId: string, limit: number = 20) {
+  try {
+    await verifyConnectHubAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+
+    const logs = await db
+      .select()
+      .from(connectHubWebhookLogs)
+      .where(and(eq(connectHubWebhookLogs.teamId, teamId), eq(connectHubWebhookLogs.webhookId, webhookId)))
+      .orderBy(desc(connectHubWebhookLogs.processedAt))
+      .limit(limit);
+
+    return { success: true, data: logs };
+  } catch (error: any) {
+    console.error('Error fetching Webhook logs:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+

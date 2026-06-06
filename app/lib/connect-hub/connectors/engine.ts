@@ -5,7 +5,7 @@ import { runPancakePos } from './runners/pancake-pos/index';
 import { runOpenAI } from './runners/openai';
 import { runChiaSeGPU } from './runners/chiasegpu';
 import { runTelegram } from './runners/telegram';
-
+import { runGenericHttp } from './runners/generic-http';
 
 const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promise<any>> = {
   'custom-http': runCustomHttp,
@@ -15,6 +15,44 @@ const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promis
   'openai': runOpenAI,
   'chiasegpu': runChiaSeGPU,
   'telegram': runTelegram,
+  
+  // Batch 1A Generic HTTP Runners
+  'telegram-bot': (creds, action, input) => runGenericHttp('telegram-bot', creds, action, input),
+  'discord': (creds, action, input) => runGenericHttp('discord', creds, action, input),
+  'airtable': (creds, action, input) => runGenericHttp('airtable', creds, action, input),
+  'sendgrid': (creds, action, input) => runGenericHttp('sendgrid', creds, action, input),
+  'github': (creds, action, input) => runGenericHttp('github', creds, action, input),
+  'trello': (creds, action, input) => runGenericHttp('trello', creds, action, input),
+  'twilio': (creds, action, input) => runGenericHttp('twilio', creds, action, input),
+  'mailgun': (creds, action, input) => runGenericHttp('mailgun', creds, action, input),
+  'clickup': (creds, action, input) => runGenericHttp('clickup', creds, action, input),
+
+  // Batch 1B Generic HTTP Runners
+  'asana': (creds, action, input) => runGenericHttp('asana', creds, action, input),
+  'notion': (creds, action, input) => runGenericHttp('notion', creds, action, input),
+  'slack': (creds, action, input) => runGenericHttp('slack', creds, action, input),
+  'hubspot': (creds, action, input) => runGenericHttp('hubspot', creds, action, input),
+  'pipedrive': (creds, action, input) => runGenericHttp('pipedrive', creds, action, input),
+  'mailchimp': (creds, action, input) => runGenericHttp('mailchimp', creds, action, input),
+  'monday': (creds, action, input) => runGenericHttp('monday', creds, action, input),
+  'linear': (creds, action, input) => runGenericHttp('linear', creds, action, input),
+  'gitlab': (creds, action, input) => runGenericHttp('gitlab', creds, action, input),
+  'intercom': (creds, action, input) => runGenericHttp('intercom', creds, action, input),
+  'zendesk': (creds, action, input) => runGenericHttp('zendesk', creds, action, input),
+  'freshdesk': (creds, action, input) => runGenericHttp('freshdesk', creds, action, input),
+  'todoist': (creds, action, input) => runGenericHttp('todoist', creds, action, input),
+  'jira': (creds, action, input) => runGenericHttp('jira', creds, action, input),
+  'zoho-crm': (creds, action, input) => runGenericHttp('zoho-crm', creds, action, input),
+  'activecampaign': (creds, action, input) => runGenericHttp('activecampaign', creds, action, input),
+  'brevo': (creds, action, input) => runGenericHttp('brevo', creds, action, input),
+  'postmark': (creds, action, input) => runGenericHttp('postmark', creds, action, input),
+  'anthropic': (creds, action, input) => runGenericHttp('anthropic', creds, action, input),
+  'shopify': (creds, action, input) => runGenericHttp('shopify', creds, action, input),
+  'stripe': (creds, action, input) => runGenericHttp('stripe', creds, action, input),
+  'cal-com': (creds, action, input) => runGenericHttp('cal-com', creds, action, input),
+  'sentry': (creds, action, input) => runGenericHttp('sentry', creds, action, input),
+  'amazon-ses': (creds, action, input) => runGenericHttp('amazon-ses', creds, action, input),
+  'apollo': (creds, action, input) => runGenericHttp('apollo', creds, action, input),
 };
 
 export async function executeAction(
@@ -28,7 +66,7 @@ export async function executeAction(
   if (!runner) {
     // Trình giả lập Mock cho các connector chưa được viết runtime chi tiết
     // giúp người dùng có trải nghiệm UI mượt mà và test flows
-    if (['google-sheets', 'gmail', 'anthropic', 'gemini', 'grok', 'deepseek', 'qwen', 'runway', 'luma', 'sapo', 'payos', 'momo', 'google-drive', 'facebook', 'zalo', 'tiktok'].includes(appSlug)) {
+    if (['google-sheets', 'gmail', 'gemini', 'grok', 'deepseek', 'qwen', 'runway', 'luma', 'sapo', 'payos', 'momo', 'google-drive', 'facebook', 'zalo', 'tiktok'].includes(appSlug)) {
       return simulateMockConnector(appSlug, actionSlug, input);
     }
 
