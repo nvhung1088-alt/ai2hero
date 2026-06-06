@@ -1,5 +1,10 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-06 — Deploy Connect Hub & Chuẩn bị Hero CRM MVP
+- **Triển khai Production (Vercel Auto-deploy)**: Đẩy thành công toàn bộ các tệp tin cấu trúc Mapping, Mappers, và Order Translator hai chiều Pancake POS ⇄ KiotViet lên branch `main` kích hoạt tự động deploy cho `https://www.ai2hero.com/connect-hub/mapping`.
+- **Pre-flight Build Check**: Chạy build local `pnpm run build` thành công 100% không gặp lỗi TypeScript trước khi push.
+- **Chuẩn bị Hero CRM**: Hoàn thiện kế hoạch triển khai Hero CRM và sẵn sàng khởi chạy Giai đoạn 1 & 2 (Database Schema & Đăng ký MVP) ở chat mới.
+
 ## 2026-06-06 — Tích hợp Tạo Đơn hàng KiotViet & Phân tích Ánh xạ 2 chiều (Pancake <-> KiotViet)
 - **Hoàn thành Năng lực Tạo đơn KiotViet (`create_order`)**: Tích hợp luồng `POST /orders` cho Connector KiotViet, xử lý truyền thông tin thuế VAT trực tiếp giúp khớp cấu hình kế toán chặt chẽ của shop.
 - **Audit mapping Pancake POS & KiotViet**: Phân tích sơ đồ trường dữ liệu (ID, chi nhánh, sản phẩm, thuế), đề xuất API `create_order` cho Pancake POS để kích hoạt đồng bộ hai chiều.

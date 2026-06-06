@@ -1,5 +1,5 @@
 # AI2HERO — START
-> Cap nhat: 2026-06-04
+> Cap nhat: 2026-06-06
 
 ## TRANG THAI
 Mode:         Build
@@ -47,7 +47,7 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - **Multi-tenant**: Cần tự xây Organization → Team → Member hierarchy (SaaS Starter chỉ có Team cơ bản).
 - **RBAC mở rộng**: Owner → Admin → Manager → Member + App Permission Gating.
 - **Quy trình AI**: Kế thừa 100% workflow từ UPCHAT (ai2hero start/plan/code/close).
-- **LESSONS**: Dùng chung file LESSONS.md toàn cục tại C:\Users\ADMIN\.gemini\LESSONS.md
+- **LESSONS**: Dùng chung file LESSONS.md toàn cục tại C:\Users\ADMIN\..gemini\LESSONS.md
 - **Tích hợp MVP mới**: Khi tích hợp một ứng dụng Mini-SaaS (MVP) mới vào hệ thống, BẮT BUỘC phải đọc và tuân thủ quy trình 5 giai đoạn tại [MVP_INTEGRATION_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/MVP_INTEGRATION_GUIDE.md).
 - **Tích hợp & Gọi API**: Khi tích hợp nền tảng API mới hoặc gọi API từ MVP nội bộ, BẮT BUỘC tuân thủ 2 bộ chuẩn tại [CONNECT_HUB_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/CONNECT_HUB_GUIDE.md). Cấm gọi API trực tiếp, mọi lệnh phải qua `connector-service.ts`.
 - **Định hướng herovideo**: Quyết định xây dựng `herovideo` dưới dạng **Extension Chrome thuần túy độc lập 100% (Hướng 2)**. Xử lý toàn bộ logic sniffing, download và ghép HLS bằng ffmpeg.wasm trực tiếp ở phía client (client-side) trong Extension, không đồng bộ dữ liệu lên máy chủ Next.js nhằm đảm bảo tính gọn nhẹ, bảo mật cao và 0đ chi phí vận hành server.
@@ -61,7 +61,7 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Tự động hóa sinh khóa bảo mật mạnh bằng lệnh `pnpm keys:generate` thay vì dùng chuỗi tĩnh yếu. Không in ra log/console dữ liệu riêng tư.
 
 **2. Hiệu suất & Trải nghiệm (Zero-Latency UX):**
-- **Prefetching**: Mọi thẻ `<Link>` điều hướng quan trọng phải bật `prefetch={true}` để tải ngầm dữ liệu, đem lại cảm giác tức thì (0s) giống hệt SPA.
+- **Prefetching**: Mọi thẻ `<Link>` điều hướng quan trạng phải bật `prefetch={true}` để tải ngầm dữ liệu, đem lại cảm giác tức thì (0s) giống hệt SPA.
 - **Loading Boundaries**: Bắt buộc tạo file `loading.tsx` với hiệu ứng kính mờ (Glassmorphism) để bọc các Server Components nặng, chống "đứng" màn hình (Frozen UI).
 - Không tự ý chèn thêm các font chữ hoặc thư viện ảnh hưởng tốc độ tải trang. Tuân thủ Progress bar toàn cục (nextjs-toploader).
 
@@ -70,6 +70,12 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Database: Drizzle ORM kết nối Supabase (Pooler mode port 6543 cho Production, Session mode port 5432 cho Migration).
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
+
+- **2026-06-06 (connect-hub - deploy to production)**:
+  - 🚀 **Deploy Connect Hub lên Server Production**:
+    - **Build Check**: Chạy `pnpm run build` local thành công 100% không lỗi biên dịch.
+    - **Git Deploy**: Đẩy toàn bộ thay đổi cấu trúc Mapping đơn hàng hai chiều và logic KiotViet v3.0 lên remote repository `main` branch, kích hoạt Vercel Auto-deploy lên `https://www.ai2hero.com`.
+    - **CRM Preparation**: Được user phê duyệt kế hoạch xây dựng Hero CRM MVP quản lý công nợ.
 
 - **2026-06-06 (connect-hub - pancake-pos order mapping infra - Tasks 1-4 completed)**:
   - 🚀 **Hoàn thiện Mapping Infrastructure cho đồng bộ đơn hàng 2 chiều**:
