@@ -71,6 +71,53 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 
+- **2026-06-06 (dashboard - workspace isolation dynamic routing Audit Fixes)**:
+  - 🚀 **Khắc phục 3 lỗ hổng và lỗi cache phát hiện trong đợt Audit**:
+    - **HeroVideo IDOR Guard (`herovideodownload/t/[teamId]/layout.tsx`) [MODIFY]**: Bổ sung kiểm tra an toàn `activatedApps` để đảm bảo không gian làm việc đã kích hoạt app `herovideo` trước khi cho phép truy cập, đồng bộ cấu hình bảo mật với các module khác.
+    - **HeroVideo Revalidation (`lib/db/video-actions.ts`, `app/(dashboard)/herovideodownload/dashboard/actions.ts`) [MODIFY]**: Bổ sung `revalidatePath` cho đường dẫn động `/herovideodownload/t/[teamId]/dashboard` sau khi xóa video để cập nhật cache tức thì cho client.
+    - **Hero Report Revalidation (`lib/db/hero-report-actions.ts`) [MODIFY]**: Đảm bảo đầy đủ revalidate cache cho các đường dẫn động `/connect-hub/t/[teamId]/connections` và `/hero-report/t/[teamId]/dashboard` khi bật/tắt nguồn báo cáo.
+    - **Kiểm thử**: Chạy `npx tsc --noEmit` đạt 0 lỗi biên dịch.
+
+- **2026-06-06 (dashboard - workspace isolation dynamic routing Phase 2)**:
+  - 🚀 **Hoàn thành Phase 2 của Dynamic Routing cho Connect Hub, Hero Report, HeroVideo**:
+    - **Apps Registry (`apps-registry.ts`) [MODIFY]**: Thêm helper `getAppDynamicPath` để tự động ánh xạ URL tĩnh sang dynamic URL theo `teamId`.
+    - **Sidebar Client (`sidebar-client.tsx`) [MODIFY]**: Áp dụng helper `getAppDynamicPath` để chuyển hướng các ứng dụng được kích hoạt trong menu sidebar sang dynamic route.
+    - **CookieSync Component (`cookie-sync.tsx`) [NEW]**: Di chuyển component sync cookie từ local settings sang shared components để tái sử dụng ở mọi layout động của các module khác.
+    - **Connect Hub [NEW/MODIFY]**: 
+      - Tạo layout động `connect-hub/t/[teamId]/layout.tsx` với IDOR guard và CookieSync. 
+      - Chuyển `connect-hub/layout.tsx` cũ thành pass-through.
+      - Tạo 5 page động (dashboard, apps, connections, logs, mapping) dưới `/connect-hub/t/[teamId]`.
+      - Đổi 5 page cũ thành redirectors tự động điều hướng từ URL tĩnh sang dynamic URL dựa trên cookie của user.
+      - Cập nhật menu sidebar Connect Hub (`connect-hub-sidebar-menu.tsx`) và connections list client (`connections-client.tsx`) sang URL động.
+    - **Hero Report [NEW/MODIFY]**:
+      - Tạo layout động `hero-report/t/[teamId]/layout.tsx` và page động `hero-report/t/[teamId]/dashboard/page.tsx`.
+      - Chuyển layout cũ thành pass-through và page cũ thành redirector.
+      - Cập nhật 3 hardcoded link trong `report-client.tsx` sang dynamic URL.
+    - **HeroVideo [NEW/MODIFY]**:
+      - Tạo layout động `herovideodownload/t/[teamId]/layout.tsx` và page động `herovideodownload/t/[teamId]/dashboard/page.tsx`.
+      - Chuyển layout cũ thành pass-through và page cũ thành redirector.
+    - **Server Actions (`connect-hub-actions.ts`, `hero-report-actions.ts`) [MODIFY]**: Cập nhật các lệnh gọi `revalidatePath` để xóa cache cho cả URL tĩnh (để redirector hoạt động đúng) và URL động mới.
+
+- **2026-06-06 (dashboard - workspace isolation dynamic routing Phase 3)**:
+  - 🚀 **Hoàn thành Phase 3 của Dynamic Routing cho HeroSim**:
+    - **HeroSim Module [NEW/MODIFY]**: 
+      - Tạo layout động `sim/t/[teamId]/layout.tsx` với IDOR guard và CookieSync. 
+      - Chuyển `sim/layout.tsx` cũ thành pass-through.
+      - Tạo 6 page động (dashboard, accounts, alerts, assets, history, settings) dưới `/sim/t/[teamId]`.
+      - Đổi 6 page cũ thành redirectors tự động điều hướng từ URL tĩnh sang dynamic URL dựa trên cookie của user.
+      - Sửa link trong navigation bar (`sim-tabs.tsx` và `dashboard/page.tsx`).
+    - **Server Actions (`sim-backup-actions.ts`, `settings/actions.ts`) [MODIFY]**: Cập nhật các lệnh gọi `revalidatePath` để xóa cache cho cả URL tĩnh và URL động mới (`/sim/t/[teamId]/settings`).
+    - **Kiểm thử & Build**: Kiểm tra TypeScript (`tsc`) và API endpoints. Sửa dứt điểm lỗi 404.
+
+- **2026-06-06 (dashboard - workspace isolation dynamic routing Phase 1)**:
+  - 🚀 **Hoàn thành Phase 1 của Dynamic Routing cho Workspace (Thành viên & Cài đặt)**:
+    - **Sidebar Client (`sidebar-client.tsx`) [MODIFY]**: Chuyển link Thành viên và Cài đặt nhóm sang route động, tích hợp sync cookie `setActiveTeamCookie` trên sự kiện onClick.
+    - **Dynamic Members Route (`t/[teamId]/members/page.tsx`) [NEW]**: Tạo route động cho danh sách thành viên với cơ chế bảo vệ IDOR (kiểm tra quyền hạn trong DB).
+    - **Redirector Members (`dashboard/members/page.tsx`) [MODIFY]**: Chuyển đổi trang cũ thành redirector tự động định tuyến về URL động dựa trên cookie hiện tại của user.
+    - **Dynamic Settings Route (`t/[teamId]/settings/page.tsx`) [NEW]**: Tạo route cài đặt động, tích hợp sync cookie trước khi render Settings component để đảm bảo tương thích API `/api/team`.
+    - **Team Detail Client (`team-detail-client.tsx`) [MODIFY]**: Sửa 3 link tĩnh Thành viên và Cài đặt thành dynamic routing theo `team.id`.
+    - **Kiểm thử & Build**: TypeScript check (`npx tsc --noEmit`) đạt 0 lỗi. Build production (`pnpm run build`) thành công 100%.
+
 - **2026-06-06 (workspace - workspace isolation & security hardening for members)**:
   - 🚀 **Quy chuẩn cách ly Workspace & Bảo mật Quản lý thành viên (P0)**:
     - **Database Helpers (`workspace-helpers.ts`) [NEW]**: Tạo file mới `app/lib/db/workspace-helpers.ts` chứa `requireTeamRole()` và `assertMemberInTeam()` để chuẩn hóa xác thực vai trò và quyền hạn trong team.

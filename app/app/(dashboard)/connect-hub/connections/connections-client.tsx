@@ -193,7 +193,7 @@ export default function ConnectionsClient({ initialConnections, teamId }: Connec
           </p>
         </div>
         <Link
-          href="/connect-hub/apps"
+          href={`/connect-hub/t/${teamId}/apps`}
           className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-500/25 transition-all"
         >
           <Plus className="h-4 w-4" /> Kết nối mới

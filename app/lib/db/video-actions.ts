@@ -29,6 +29,7 @@ export async function deleteVideoAction(videoId: number) {
       );
 
     revalidatePath('/herovideodownload/dashboard');
+    revalidatePath(`/herovideodownload/t/${teamData.id}/dashboard`);
     return { success: true };
   } catch (err: any) {
     console.error('Lỗi khi xóa video:', err);

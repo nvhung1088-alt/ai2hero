@@ -106,6 +106,8 @@ export async function createConnectionAction(
 
     revalidatePath('/connect-hub/dashboard');
     revalidatePath('/connect-hub/connections');
+    revalidatePath(`/connect-hub/t/${teamId}/dashboard`);
+    revalidatePath(`/connect-hub/t/${teamId}/connections`);
 
     return { success: true, data: inserted };
   } catch (error: any) {
@@ -145,6 +147,8 @@ export async function deleteConnectionAction(teamId: number, connectionId: numbe
 
     revalidatePath('/connect-hub/dashboard');
     revalidatePath('/connect-hub/connections');
+    revalidatePath(`/connect-hub/t/${teamId}/dashboard`);
+    revalidatePath(`/connect-hub/t/${teamId}/connections`);
 
     return { success: true, data: deleted };
   } catch (error: any) {
@@ -240,6 +244,8 @@ export async function updateConnectionAction(
 
     revalidatePath('/connect-hub/dashboard');
     revalidatePath('/connect-hub/connections');
+    revalidatePath(`/connect-hub/t/${teamId}/dashboard`);
+    revalidatePath(`/connect-hub/t/${teamId}/connections`);
 
     return { success: true, data: updated };
   } catch (error: any) {
@@ -459,6 +465,9 @@ export async function runActionAction(
     revalidatePath('/connect-hub/logs');
     revalidatePath('/connect-hub/dashboard');
     revalidatePath('/connect-hub/connections');
+    revalidatePath(`/connect-hub/t/${teamId}/logs`);
+    revalidatePath(`/connect-hub/t/${teamId}/dashboard`);
+    revalidatePath(`/connect-hub/t/${teamId}/connections`);
 
     return {
       success: result.success,

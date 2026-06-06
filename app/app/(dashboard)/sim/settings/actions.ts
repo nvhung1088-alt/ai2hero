@@ -56,6 +56,10 @@ export async function saveSystemSetting(key: string, value: any) {
     }
     
     revalidatePath('/sim/settings');
+    const teamIdMatch = key.match(/sim_settings_team_(\d+)/);
+    if (teamIdMatch) {
+      revalidatePath(`/sim/t/${teamIdMatch[1]}/settings`, 'layout');
+    }
     return { success: true };
   } catch (error) {
     console.error('Error saving system setting:', error);
@@ -215,6 +219,7 @@ export async function createSimPlatformAction(teamId: number, key: string, label
       isDefault: 0
     });
     revalidatePath('/sim/settings');
+    revalidatePath(`/sim/t/${teamId}/settings`, 'layout');
     return { success: true };
   } catch (error) {
     console.error('Error creating platform:', error);
@@ -226,6 +231,7 @@ export async function deleteSimPlatformAction(teamId: number, key: string) {
   try {
     await db.delete(simPlatforms).where(and(eq(simPlatforms.teamId, teamId), eq(simPlatforms.key, key)));
     revalidatePath('/sim/settings');
+    revalidatePath(`/sim/t/${teamId}/settings`, 'layout');
     return { success: true };
   } catch (error) {
     console.error('Error deleting platform:', error);
@@ -250,7 +256,10 @@ export async function getLinkedDevicesAction(teamId: number) {
 
 export async function revokeDeviceAction(teamId: number, tokenId: number) {
   const result = await revokeExtensionToken(teamId, tokenId);
-  if (result.success) revalidatePath('/sim/settings');
+  if (result.success) {
+    revalidatePath('/sim/settings');
+    revalidatePath(`/sim/t/${teamId}/settings`, 'layout');
+  }
   return result;
 }
 

@@ -98,6 +98,7 @@ export async function saveBackupConfigAction(teamId: number, email: string, freq
     });
 
     revalidatePath('/sim/settings');
+    revalidatePath(`/sim/t/${teamId}/settings`, 'layout');
     return { success: true, data: result };
   } catch (error: any) {
     console.error('Error saving backup config:', error);
@@ -141,6 +142,7 @@ export async function triggerManualBackupAction(teamId: number) {
     });
 
     revalidatePath('/sim/settings');
+    revalidatePath(`/sim/t/${teamId}/settings`, 'layout');
     return { success: true, message: 'Đã gửi file sao lưu dữ liệu SIM & Tài khoản về email của bạn thành công!' };
   } catch (error: any) {
     console.error('Error triggering manual backup:', error);

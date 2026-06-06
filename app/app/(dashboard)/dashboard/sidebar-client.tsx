@@ -8,7 +8,7 @@ import {
   Plus, Sparkles
 } from 'lucide-react';
 import { getPlanLabel, getPlanBadgeClass } from '@/lib/shared-constants';
-import { getAppById } from '@/lib/apps-registry';
+import { getAppById, getAppDynamicPath } from '@/lib/apps-registry';
 import { APP_ICON_MAP, PLAN_ICON } from '@/lib/shared-constants';
 import TopHeader from '@/components/top-header';
 import { CreateWorkspaceModal } from './create-workspace-modal';
@@ -160,7 +160,7 @@ export function SidebarClient({ teams: initialTeams, children }: SidebarClientPr
                               return (
                                 <Link
                                   key={appId}
-                                  href={app.path}
+                                  href={getAppDynamicPath(appId, team.id)}
                                   prefetch={true}
                                   onClick={() => {
                                     setIsSidebarOpen(false);
@@ -197,18 +197,24 @@ export function SidebarClient({ teams: initialTeams, children }: SidebarClientPr
                           <div className="h-[1px] bg-white/5 my-1" />
                           
                           <Link
-                            href="/dashboard/members"
+                            href={`/dashboard/t/${team.id}/members`}
                             prefetch={true}
-                            onClick={() => setIsSidebarOpen(false)}
+                            onClick={async () => {
+                              setIsSidebarOpen(false);
+                              await setActiveTeamCookie(team.id);
+                            }}
                             className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] text-gray-400 hover:text-white hover:bg-white/5 transition-all"
                           >
                             <Users className="h-3 w-3 text-gray-400" />
                             <span>Thành viên</span>
                           </Link>
                           <Link
-                            href="/dashboard/settings"
+                            href={`/dashboard/t/${team.id}/settings`}
                             prefetch={true}
-                            onClick={() => setIsSidebarOpen(false)}
+                            onClick={async () => {
+                              setIsSidebarOpen(false);
+                              await setActiveTeamCookie(team.id);
+                            }}
                             className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] text-gray-400 hover:text-white hover:bg-white/5 transition-all"
                           >
                             <Settings className="h-3 w-3 text-gray-400" />

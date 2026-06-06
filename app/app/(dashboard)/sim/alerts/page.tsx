@@ -1,17 +1,8 @@
-import { getCurrentTeamId } from '@/lib/sim-helpers';
-import { getSimRiskEvents } from '@/lib/db/sim-queries';
-import AlertsClient from './alerts-client';
+import { redirect } from 'next/navigation';
+import { getTeamForUser } from '@/lib/db/queries';
 
-export const revalidate = 0;
-
-export default async function SimAlertsPage() {
-  const teamId = await getCurrentTeamId();
-  const allEvents = await getSimRiskEvents(teamId);
-
-  return (
-    <AlertsClient
-      teamId={teamId}
-      initialEvents={allEvents}
-    />
-  );
+export default async function SimAlertsRedirect() {
+  const team = await getTeamForUser();
+  if (!team) redirect('/dashboard');
+  redirect(`/sim/t/${team.id}/alerts`);
 }

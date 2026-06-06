@@ -11,26 +11,29 @@ import {
   Settings
 } from 'lucide-react';
 
-const tabs = [
-  { href: '/sim/dashboard', icon: BarChart3, label: 'Tổng quan' },
-  { href: '/sim/assets', icon: Smartphone, label: 'Quản lý SIM' },
-  { href: '/sim/accounts', icon: Link2, label: 'Tài khoản liên kết' },
-  { href: '/sim/alerts', icon: AlertTriangle, label: 'Cảnh báo rủi ro' },
-  { href: '/sim/history', icon: History, label: 'Lịch sử kiểm tra' },
-  { href: '/sim/settings', icon: Settings, label: 'Cài đặt' },
+const getTabs = (teamId: number) => [
+  { href: `/sim/t/${teamId}/dashboard`, icon: BarChart3, label: 'Tổng quan' },
+  { href: `/sim/t/${teamId}/assets`, icon: Smartphone, label: 'Quản lý SIM' },
+  { href: `/sim/t/${teamId}/accounts`, icon: Link2, label: 'Tài khoản liên kết' },
+  { href: `/sim/t/${teamId}/alerts`, icon: AlertTriangle, label: 'Cảnh báo rủi ro' },
+  { href: `/sim/t/${teamId}/history`, icon: History, label: 'Lịch sử kiểm tra' },
+  { href: `/sim/t/${teamId}/settings`, icon: Settings, label: 'Cài đặt' },
 ];
 
-export default function SimTabs() {
+export default function SimTabs({ teamId }: { teamId: number }) {
   const pathname = usePathname();
+  const tabs = getTabs(teamId);
 
   return (
     <div className="w-full">
       <nav className="flex flex-col gap-1 w-full">
         {tabs.map((tab) => {
-          // Khớp chính xác với tab Tổng quan (chỉ khớp chính xác /sim/dashboard, các tab khác kiểm tra startsWith)
-          const isActive = tab.href === '/sim/dashboard' 
-            ? pathname === '/sim/dashboard'
+          // Khớp chính xác với tab Tổng quan, các tab khác kiểm tra startsWith
+          const isDashboard = tab.href.endsWith('/dashboard');
+          const isActive = isDashboard
+            ? pathname === tab.href
             : pathname.startsWith(tab.href);
+            
           const Icon = tab.icon;
 
           return (

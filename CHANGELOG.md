@@ -1,5 +1,21 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-06 — Hoàn thành Phase 2 của Dynamic Routing: Connect Hub + Hero Report + HeroVideo (Workspace Isolation Phase 2)
+- **Tách biệt Không gian làm việc trên URL (P0)**:
+  - Chuyển đổi toàn bộ URL tĩnh của Connect Hub, Hero Report, HeroVideo sang dạng động `/module/t/[teamId]/...` giúp multi-tab safe.
+  - Xây dựng layout động mới chứa IDOR Protection (kiểm tra quyền truy cập workspace qua database) để chặn đứng cross-team spoofing.
+  - Tích hợp shared `<CookieSync>` client component để tự động đồng bộ cookie workspace cho các API cũ (như `/api/team`).
+- **Nâng cấp Apps Registry & Sidebar**:
+  - Viết helper `getAppDynamicPath` trong `apps-registry.ts` để sinh link động tự động.
+  - Cập nhật menu sidebar toàn cục và menu sidebar Connect Hub sang dạng dynamic URLs.
+- **Tương thích ngược (Backward Compatibility)**:
+  - Biến tất cả các page cũ (tĩnh) của cả 3 module thành các redirector tự động dẫn hướng về dynamic route tương ứng dựa trên cookie hiện tại của user.
+- **Server Actions Cache**:
+  - Bổ sung `revalidatePath` cho các URL động mới trong Server Actions của Connect Hub và Hero Report để Next.js làm sạch cache tức thì khi có thay đổi cấu hình.
+- **TypeScript & Build Check**:
+  - TypeScript compilation check (`npx tsc --noEmit`) đạt **0 lỗi**.
+  - Next.js production build (`pnpm run build`) thành công tuyệt đối trên toàn bộ 56 static/dynamic routes.
+
 ## 2026-06-06 — Gia cố Bảo mật, Cách ly Workspace & Vá lỗi Google OAuth (Security Hardening & OAuth Fix)
 - **Cơ chế Cách ly Workspace (P0)**:
   - Tạo mới database helpers `app/lib/db/workspace-helpers.ts` chứa `requireTeamRole()` và `assertMemberInTeam()` để chuẩn hóa việc kiểm tra quyền RBAC và chống cross-team spoofing.

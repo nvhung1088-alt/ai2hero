@@ -1,16 +1,8 @@
-import { getCurrentTeamId } from '@/lib/sim-helpers';
-import { getSimCheckLogs } from '@/lib/db/sim-queries';
-import HistoryClient from './history-client';
+import { redirect } from 'next/navigation';
+import { getTeamForUser } from '@/lib/db/queries';
 
-export const revalidate = 0;
-
-export default async function SimHistoryPage() {
-  const teamId = await getCurrentTeamId();
-  const logs = await getSimCheckLogs(teamId);
-
-  return (
-    <HistoryClient
-      initialLogs={logs}
-    />
-  );
+export default async function SimHistoryRedirect() {
+  const team = await getTeamForUser();
+  if (!team) redirect('/dashboard');
+  redirect(`/sim/t/${team.id}/history`);
 }

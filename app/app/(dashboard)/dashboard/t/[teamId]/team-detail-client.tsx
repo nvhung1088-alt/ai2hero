@@ -244,7 +244,7 @@ export default function TeamDetailClient({
           {/* Quick Buttons */}
           <div className="flex flex-wrap gap-2.5">
             <Link 
-              href="/dashboard/members"
+              href={`/dashboard/t/${team.id}/members`}
               className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
             >
               <Users className="h-3.5 w-3.5" />
@@ -258,7 +258,7 @@ export default function TeamDetailClient({
               <span>Cài ứng dụng</span>
             </Link>
             <Link 
-              href="/dashboard/settings"
+              href={`/dashboard/t/${team.id}/settings`}
               className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
             >
               <Settings className="h-3.5 w-3.5" />
@@ -736,7 +736,7 @@ export default function TeamDetailClient({
               
               <div className="pt-2">
                 <Link 
-                  href="/dashboard/members"
+                  href={`/dashboard/t/${team.id}/members`}
                   className="w-full py-2 bg-white/5 border border-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Users className="h-3.5 w-3.5" />

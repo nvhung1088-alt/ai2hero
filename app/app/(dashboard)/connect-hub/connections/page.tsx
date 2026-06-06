@@ -1,21 +1,10 @@
-import { getActiveTeamCookie } from '@/lib/team-cookie';
-import { getConnectionsByTeam } from '@/lib/db/connect-hub-queries';
 import { redirect } from 'next/navigation';
-import ConnectionsClient from './connections-client';
-import { ErrorBoundary } from '@/components/error-boundary';
+import { getTeamForUser } from '@/lib/db/queries';
 
-export const revalidate = 0;
+export const dynamic = 'force-dynamic';
 
-export default async function ConnectionsPage() {
-  const teamId = await getActiveTeamCookie();
-  if (!teamId) {
-    redirect('/dashboard');
-  }
-
-  const connections = await getConnectionsByTeam(teamId);
-  return (
-    <ErrorBoundary>
-      <ConnectionsClient initialConnections={connections} teamId={teamId} />
-    </ErrorBoundary>
-  );
+export default async function RedirectPage() {
+  const team = await getTeamForUser();
+  if (!team) redirect('/dashboard');
+  redirect(`/connect-hub/t/${team.id}/connections`);
 }

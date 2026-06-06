@@ -809,7 +809,7 @@ export default function ReportClient({
                           Không gian làm việc này chưa có kết nối API <strong>Pancake POS</strong> hoặc <strong>KiotViet</strong> nào thành công.
                         </p>
                         <Link
-                          href="/connect-hub/connections"
+                          href={`/connect-hub/t/${teamId}/connections`}
                           className="inline-flex items-center gap-1.5 text-xs font-black text-orange-400 hover:text-orange-300"
                         >
                           Tạo kết nối mới tại Connect Hub <ArrowUpRight className="h-3.5 w-3.5" />
@@ -1074,8 +1074,8 @@ export default function ReportClient({
                             {aiConnections.length === 0 ? (
                               <div className="p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl space-y-2">
                                 <p className="text-[11px] text-gray-300">Chưa có kết nối AI nào.</p>
-                                <Link href="/connect-hub/connections" className="inline-flex items-center gap-1 text-[11px] font-black text-orange-400 hover:text-orange-300">
-                                  Tạo kết nối AI <ArrowUpRight className="h-3 w-3" />
+                                <Link href={`/connect-hub/t/${teamId}/connections`} className="inline-flex items-center gap-1 text-[11px] font-black text-orange-400 hover:text-orange-300">
+                                  Tạo kết nối AI <ArrowUpRight className="h-3.5 w-3.5" />
                                 </Link>
                               </div>
                             ) : (
@@ -1299,7 +1299,7 @@ export default function ReportClient({
                           Không gian làm việc này chưa có kết nối API <strong>Telegram Bot</strong> nào thành công.
                         </p>
                         <Link
-                          href="/connect-hub/connections"
+                          href={`/connect-hub/t/${teamId}/connections`}
                           className="inline-flex items-center gap-1.5 text-xs font-black text-orange-400 hover:text-orange-300"
                         >
                           Tạo kết nối Telegram tại Connect Hub <ArrowUpRight className="h-3.5 w-3.5" />

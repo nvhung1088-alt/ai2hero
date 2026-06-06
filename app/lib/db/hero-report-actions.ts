@@ -219,6 +219,7 @@ export async function createReportScheduleAction(
     });
     
     revalidatePath('/hero-report/dashboard');
+    revalidatePath(`/hero-report/t/${teamId}/dashboard`);
     return { success: true, data: inserted };
   } catch (error: any) {
     console.error('Error creating report schedule:', error);
@@ -301,6 +302,7 @@ export async function updateReportScheduleAction(
     });
     
     revalidatePath('/hero-report/dashboard');
+    revalidatePath(`/hero-report/t/${teamId}/dashboard`);
     return { success: true, data: updated };
   } catch (error: any) {
     console.error('Error updating report schedule:', error);
@@ -365,6 +367,7 @@ export async function toggleReportScheduleAction(
     });
     
     revalidatePath('/hero-report/dashboard');
+    revalidatePath(`/hero-report/t/${teamId}/dashboard`);
     return { success: true, data: updated };
   } catch (error: any) {
     console.error('Error toggling report schedule status:', error);
@@ -406,6 +409,7 @@ export async function deleteReportScheduleAction(teamId: number, scheduleId: num
     });
     
     revalidatePath('/hero-report/dashboard');
+    revalidatePath(`/hero-report/t/${teamId}/dashboard`);
     return { success: true, data: deleted };
   } catch (error: any) {
     console.error('Error deleting report schedule:', error);
@@ -547,6 +551,8 @@ export async function toggleReportSourceAction(teamId: number, connectionId: num
 
     revalidatePath('/connect-hub/connections');
     revalidatePath('/hero-report/dashboard');
+    revalidatePath(`/connect-hub/t/${teamId}/connections`);
+    revalidatePath(`/hero-report/t/${teamId}/dashboard`);
     return { success: true, data: updated };
   } catch (error: any) {
     console.error('Error toggling report source:', error);

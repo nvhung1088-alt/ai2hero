@@ -36,6 +36,7 @@ export async function deleteVideoAction(videoId: number, teamId: number) {
       );
 
     revalidatePath('/herovideodownload/dashboard');
+    revalidatePath(`/herovideodownload/t/${teamId}/dashboard`);
     return { success: true };
   } catch (error) {
     console.error('[deleteVideoAction] Error:', error);

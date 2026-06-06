@@ -142,3 +142,12 @@ export function getLiveApps(): AppDefinition[] {
 export function getAllAppsCount(): number {
   return APPS.length;
 }
+
+export function getAppDynamicPath(appId: string, teamId: number): string {
+  const app = getAppById(appId);
+  if (!app) return '/dashboard';
+  const parts = app.path.split('/').filter(Boolean);
+  if (parts.length < 2) return app.path;
+  return `/${parts[0]}/t/${teamId}/${parts.slice(1).join('/')}`;
+}
+

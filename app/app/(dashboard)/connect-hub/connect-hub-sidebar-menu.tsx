@@ -14,27 +14,27 @@ export default function ConnectHubSidebarMenu({ teamId }: SidebarMenuProps) {
   const menuItems = [
     {
       name: 'Tổng quan',
-      href: `/connect-hub/dashboard`,
+      href: `/connect-hub/t/${teamId}/dashboard`,
       icon: LayoutDashboard
     },
     {
       name: 'Kho ứng dụng',
-      href: `/connect-hub/apps`,
+      href: `/connect-hub/t/${teamId}/apps`,
       icon: Plug
     },
     {
       name: 'Kết nối của tôi',
-      href: `/connect-hub/connections`,
+      href: `/connect-hub/t/${teamId}/connections`,
       icon: Link2
     },
     {
       name: 'Nhật ký sử dụng',
-      href: `/connect-hub/logs`,
+      href: `/connect-hub/t/${teamId}/logs`,
       icon: History
     },
     {
       name: 'Chuẩn hóa dữ liệu',
-      href: `/connect-hub/mapping`,
+      href: `/connect-hub/t/${teamId}/mapping`,
       icon: ListTree
     }
   ];
