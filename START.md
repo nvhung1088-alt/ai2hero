@@ -71,6 +71,13 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 
+- **2026-06-06 (dashboard - workspace isolation dynamic routing Phase 3 & Security Audit)**:
+  - 🚀 **Khắc phục lỗi 404 cho HeroSim và đảm bảo tính ổn định**:
+    - **HeroSim Dynamic Route (`sim/t/[teamId]/dashboard`)**: Khắc phục triệt để lỗi 404, hoàn thiện Phase 3 của cấu trúc URL động cách ly Workspace.
+    - **Connect Hub Stability**: Xác thực 100% tất cả các route của Connect Hub hoạt động trơn tru sau khi chuyển đổi sang Dynamic Routing, đầy đủ IDOR Guard và CookieSync.
+    - **Extension Security Audit**: Hoàn thành quét bảo mật cho 2 extension (`herovideo` và `herosim`). Cả 2 đều thiết kế Standalone, xử lý hoàn toàn qua File System cục bộ (Local File Manager) không tốn chi phí máy chủ và đạt mức an toàn tối đa (Zero IDOR risk).
+    - **Production Deploy**: Đã đẩy thành công tất cả mã nguồn (gồm 55 files thay đổi) của các đợt cập nhật lên nhánh `main`, kích hoạt Vercel Auto-deploy lên môi trường Production (`ai2hero.com`).
+
 - **2026-06-06 (dashboard - workspace isolation dynamic routing Audit Fixes)**:
   - 🚀 **Khắc phục 3 lỗ hổng và lỗi cache phát hiện trong đợt Audit**:
     - **HeroVideo IDOR Guard (`herovideodownload/t/[teamId]/layout.tsx`) [MODIFY]**: Bổ sung kiểm tra an toàn `activatedApps` để đảm bảo không gian làm việc đã kích hoạt app `herovideo` trước khi cho phép truy cập, đồng bộ cấu hình bảo mật với các module khác.

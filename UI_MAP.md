@@ -26,7 +26,7 @@ graph TB
             POS[POS<br>/dashboard/pos]
             CONTENT[Content Hub<br>/dashboard/content]
             VIDEO[HeroVideo<br>/herovideodownload/dashboard]
-            CONNECT[Connect Hub<br>/connect-hub/dashboard]
+            CONNECT[Connect Hub<br>/connect-hub/t/[teamId]/dashboard]
             REPORT[Hero Report<br>/hero-report/dashboard]
         end
     end
@@ -141,7 +141,7 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Đọc/Ghi data**: Đọc/Ghi AI models config, usage logs
 - **Liên kết**: → /dashboard
 
-### `/connect-hub/mapping`
+### `/connect-hub/t/[teamId]/mapping`
 - **Chức năng**: Giao diện chuẩn hóa trường dữ liệu (POS Field Mapping) giữa các hệ thống nguồn và chuẩn nội bộ Ai2Hero. Sử dụng cơ chế mapping chọn duy nhất với gợi ý `{ selected, suggestions }` được render dạng danh sách Radio Buttons trực quan. Bổ sung nút bấm "Phân tích dữ liệu mẫu" (AI Auto-Suggest) giúp tự động dò cấu trúc dữ liệu thô (đơn hàng, sản phẩm, khách hàng) từ cửa hàng thật (qua API `probe_sample_data`) và tự sinh đề xuất mapping tối ưu bằng thuật toán chấm điểm độ tương đồng ngữ nghĩa. Tích hợp Tab **"Năng lực API" (AI Capabilities)** hiển thị danh sách các năng lực API được phân loại chi tiết đi kèm cấu trúc hướng dẫn thực hiện cho AI (`aiInstruction`) và nút sao chép nhanh 1-click. Ngoài ra còn hỗ trợ **Modal Chạy thử (Test Run Modal)** trực quan cho phép lập trình viên chạy thử tức thời bất kỳ Năng lực API nào bằng cách nhập JSON payload mẫu và hiển thị log output trực tiếp từ API Gateway.
 - **Vai trò**: UI Quản lý cấu hình mapping động và năng lực AI vận hành
 - **Đọc/Ghi data**: Đọc/Ghi cấu hình mapping vào `connectHubMappingConfigs` (tự động chạy `migrateLegacyConfig` để nâng cấp cấu hình cũ), truy vấn danh mục từ `PANCAKE_CAPABILITIES` (tab Năng lực API), gọi Server Action thực thi test qua `runActionAction` với cờ `isTest` được bật.
@@ -207,36 +207,36 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Đọc/Ghi data**: Đọc/ghi các tệp video trực tiếp từ File System của máy tính cá nhân. Đồng bộ danh sách video lên máy chủ AI2Hero qua API của Extension.
 - **Liên kết**: → /dashboard, nút "📂 Mở thư mục"
 
-### Connect Hub Dashboard (`/connect-hub/dashboard`)
+### Connect Hub Dashboard (`/connect-hub/t/[teamId]/dashboard`)
 - **Chức năng**: Tổng quan trạng thái kết nối API, thống kê số lượng connection, số lượt thực thi trong tháng và lịch sử log mới nhất. Hiển thị 4 thẻ Stats Summary sắc nét.
 - **Vai trò**: MVP App Dashboard
 - **Đọc/Ghi data**: Đọc database PostgreSQL thật qua [connect-hub-queries.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/connect-hub-queries.ts).
-- **Liên kết**: → /connect-hub/apps, → /connect-hub/connections, → /connect-hub/logs, → /dashboard
+- **Liên kết**: → /connect-hub/t/[teamId]/apps, → /connect-hub/t/[teamId]/connections, → /connect-hub/t/[teamId]/logs, → /dashboard
 
-### Connect Hub App Store (`/connect-hub/apps`)
+### Connect Hub App Store (`/connect-hub/t/[teamId]/apps`)
 - **Chức năng**: Kho trưng bày các ứng dụng tích hợp, cho phép lọc theo danh mục pill (🔥 Phổ biến, 🤖 AI, 🛒 POS...) và tìm kiếm thời gian thực.
   - **Dynamic Connect Modal (Flex Column Fixed & API Capabilities)**: Popup thiết lập kết nối có bố cục Flex Column với chiều cao tối đa `max-h-[90vh]` và các phần Header, Body (cuộn độc lập), Footer phân chia rõ ràng để chống tràn layout. Hiển thị danh sách khả năng của API (`selectedApp.actions`) dưới dạng các ô grid card Dark Mode tinh xảo.
 - **Vai trò**: MVP Store & Client Integration
 - **Đọc/Ghi data**: Ghi database qua Server Action `createConnectionAction` mã hóa AES-256-GCM.
-- **Liên kết**: → /connect-hub/dashboard
+- **Liên kết**: → /connect-hub/t/[teamId]/dashboard
 
-### Connect Hub Connections Manager (`/connect-hub/connections`)
+### Connect Hub Connections Manager (`/connect-hub/t/[teamId]/connections`)
 - **Chức năng**: Quản lý danh sách kết nối tích hợp API đang chạy. Hỗ trợ kiểm thử ping nhanh (`testConnectionAction`), ngắt kết nối (`deleteConnectionAction`) qua Premium Confirm Modal kính mờ, và xem chi tiết Drawer trượt (credentials masked).
 - **Vai trò**: Connection Manager
 - **Đọc/Ghi data**: Đọc/Ghi database Postgres thật qua Server Actions.
-- **Liên kết**: → /connect-hub/apps, → /connect-hub/dashboard
+- **Liên kết**: → /connect-hub/t/[teamId]/apps, → /connect-hub/t/[teamId]/dashboard
 
-### Connect Hub Usage Logs (`/connect-hub/logs`)
+### Connect Hub Usage Logs (`/connect-hub/t/[teamId]/logs`)
 - **Chức năng**: Bảng nhật ký ghi nhận đầy đủ lịch sử chạy API tự động hoặc on-demand của Team, hiển thị chi tiết thời gian, action name, module gọi, trạng thái, duration (ms), và hiển thị tooltip báo lỗi chi tiết khi API lỗi. Phân trang 15 dòng/trang.
 - **Vai trò**: MVP Audit Trail
 - **Đọc/Ghi data**: Đọc từ bảng `connect_hub_usage_logs` PostgreSQL thật.
-- **Liên kết**: → /connect-hub/dashboard
+- **Liên kết**: → /connect-hub/t/[teamId]/dashboard
 
 ### Hero Report Dashboard (`/hero-report/dashboard`)
 - **Chức năng**: Giao diện chính của Hero Report (MVP Báo cáo tự động đa nguồn). Hiển thị danh sách lịch báo cáo tự động đã thiết lập, trạng thái hoạt động, lịch chạy tiếp theo, lịch sử gửi gần nhất cùng lượng token AI tiêu thụ. Tích hợp Form tạo mới 5 bước thông minh: Bước 1: Chọn một hoặc nhiều nguồn dữ liệu tích hợp (Pancake POS, Pancake Chat...). Bước 2: Đánh dấu chọn động các Năng lực API theo từng nguồn, hỗ trợ bộ lọc thời gian nâng cao 2 hàng nút (Ngày và Kế toán) có cảnh báo thời gian tải dài, và có nút "Xem trước dữ liệu gốc" để test thử nội dung HTML trả về ngay trên giao diện. Bước 3: Chọn cổng AI và Model linh hoạt được load từ Connect Hub kèm custom prompt. Bước 4: Đặt lịch gửi tự động. Bước 5: Cấu hình bot Telegram nhận báo cáo. 
 - **Vai trò**: MVP App UI
 - **Đọc/Ghi data**: Đọc/Ghi dữ liệu từ 2 bảng `hero_report_schedules` và `hero_report_runs` thông qua Server Actions trong `hero-report-actions.ts`. Đọc `connectHubConnections` để kết xuất AI động.
-- **Liên kết**: → /dashboard, → /connect-hub/connections (để thêm kết nối nếu trống)
+- **Liên kết**: → /dashboard, → /connect-hub/t/[teamId]/connections (để thêm kết nối nếu trống)
 
 
 

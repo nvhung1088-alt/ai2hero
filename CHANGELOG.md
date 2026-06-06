@@ -1,5 +1,14 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-06 — Hoàn thành Phase 3 Dynamic Routing (HeroSim) & Security Audit (Production Ready)
+- **Phase 3 Dynamic Routing**:
+  - Khắc phục lỗi 404 cho ứng dụng HeroSim (`/sim/t/[teamId]/dashboard`). Đảm bảo 100% cấu trúc URL động cách ly không gian làm việc.
+  - Xác nhận 100% các route động của Connect Hub đã hoạt động trơn tru (đáp ứng cho cấu trúc 5 trang phức tạp) kèm IDOR Guard, CookieSync.
+- **Security Audit Extension**:
+  - Hoàn thành Audit kiến trúc độc lập (Standalone) của Chrome Extension `herovideo` và `herosim`. Cả 2 được thiết kế chạy thuần client-side, 0đ chi phí máy chủ, sử dụng Local File Manager để truy cập an toàn, loại trừ tuyệt đối rủi ro IDOR và không rò rỉ dữ liệu cloud.
+- **Triển khai Production**:
+  - Đẩy toàn bộ 55 tệp tin thay đổi của đợt cập nhật (Phase 1, 2, 3) lên kho lưu trữ chính (`main`), kích hoạt Vercel Auto-deploy tự động phát hành bản vá lên Production (`ai2hero.com`).
+
 ## 2026-06-06 — Hoàn thành Phase 2 của Dynamic Routing: Connect Hub + Hero Report + HeroVideo (Workspace Isolation Phase 2)
 - **Tách biệt Không gian làm việc trên URL (P0)**:
   - Chuyển đổi toàn bộ URL tĩnh của Connect Hub, Hero Report, HeroVideo sang dạng động `/module/t/[teamId]/...` giúp multi-tab safe.
