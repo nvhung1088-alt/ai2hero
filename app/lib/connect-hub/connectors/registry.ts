@@ -22,10 +22,14 @@ import { facebookConnector } from './definitions/facebook';
 import { zaloConnector } from './definitions/zalo';
 import { tiktokConnector } from './definitions/tiktok';
 import { chiasegpuConnector } from './definitions/chiasegpu';
+import { coreLogicConnector } from './definitions/core-logic';
+import { zaloZnsConnector } from './definitions/zalo-zns';
 
 import { GENERATED_CONNECTORS } from './registry-generated';
 
 const RAW_CONNECTORS: ConnectorDefinition[] = [
+  coreLogicConnector,
+  zaloZnsConnector,
   openaiConnector,
   anthropicConnector,
   geminiConnector,
@@ -52,6 +56,8 @@ const RAW_CONNECTORS: ConnectorDefinition[] = [
 ];
 
 const READY_SLUGS = [
+  'core-logic',
+  'zalo-zns',
   'custom-http',
   'kiotviet',
   'pancake-pos',

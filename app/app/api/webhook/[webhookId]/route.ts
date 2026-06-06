@@ -3,6 +3,7 @@ import { connectHubWebhooks, connectHubWebhookLogs } from '@/lib/db/schema';
 import { decryptField } from '@/lib/sim-crypto';
 import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
+import { executeWebhookFlows } from '@/lib/connect-hub/flow-engine';
 
 function timingSafeEqual(a: string, b: string): boolean {
   try {
@@ -161,20 +162,28 @@ export async function POST(
   }
 
   // Ghi log webhook và cập nhật counter vào DB
+  let insertedLogId: number | undefined;
   try {
-    await db.insert(connectHubWebhookLogs).values({
-      webhookId: webhook.id,
-      teamId: webhook.teamId,
-      method,
-      sourceIp,
-      headers: headersObj,
-      rawBody: rawBody || null,
-      parsedPayload: parsedPayload || null,
-      signatureValid,
-      status,
-      errorMessage,
-      processedAt,
-    });
+    const [insertedLog] = await db
+      .insert(connectHubWebhookLogs)
+      .values({
+        webhookId: webhook.id,
+        teamId: webhook.teamId,
+        method,
+        sourceIp,
+        headers: headersObj,
+        rawBody: rawBody || null,
+        parsedPayload: parsedPayload || null,
+        signatureValid,
+        status,
+        errorMessage,
+        processedAt,
+      })
+      .returning({ id: connectHubWebhookLogs.id });
+
+    if (insertedLog) {
+      insertedLogId = insertedLog.id;
+    }
 
     // Cập nhật statistics cho webhook
     await db
@@ -190,5 +199,21 @@ export async function POST(
     console.error('Error logging webhook trigger:', dbError);
   }
 
+  // === Phase 7: Trigger Flow Actions (blocking/await cho an toàn trên Serverless) ===
+  if (status === 'success' && insertedLogId) {
+    try {
+      await executeWebhookFlows(
+        webhook.teamId,
+        webhook.id,
+        insertedLogId,
+        parsedPayload,
+        headersObj
+      );
+    } catch (err) {
+      console.error('Flow execution error:', err);
+    }
+  }
+
   return Response.json({ success: status === 'success', received: true });
+
 }

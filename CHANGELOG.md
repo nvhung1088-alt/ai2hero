@@ -1,5 +1,11 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-06 — Hoàn thành Phase 6: Webhook Gateway (Connect Hub)
+- **Database Schema**: Thêm bảng `connect_hub_webhooks` (sử dụng UUID để bảo mật link webhook) và bảng `connect_hub_webhook_logs` (lưu vết 20 payload POST/GET gần nhất).
+- **Endpoint Router**: Xây dựng route động `app/api/webhook/[webhookId]/route.ts` hỗ trợ nhận payload webhook, giải mã đối xứng secret key và xác thực chữ ký HMAC-SHA256 hoặc query token với Tenant Isolation hoàn hảo.
+- **Webhook UI Manager**: Xây dựng giao diện Dark Mode quản lý Webhook cao cấp tại `/connect-hub/t/[teamId]/webhooks`. Tích hợp logic bật/tắt nhanh, copy URL bảo mật và Drawer xem chi tiết log nhận payload trực quan (Headers & Body JSON viewer).
+- **Bảo mật**: Type check `tsc` đạt 0 lỗi. Mã nguồn đã được commit và deploy thành công lên Vercel Production.
+
 ## 2026-06-06 — Hoàn thành Phase 3 Dynamic Routing (HeroSim) & Security Audit (Production Ready)
 - **Phase 3 Dynamic Routing**:
   - Khắc phục lỗi 404 cho ứng dụng HeroSim (`/sim/t/[teamId]/dashboard`). Đảm bảo 100% cấu trúc URL động cách ly không gian làm việc.

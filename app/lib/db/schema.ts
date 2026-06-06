@@ -666,6 +666,83 @@ export type NewConnectHubWebhook = typeof connectHubWebhooks.$inferInsert;
 export type ConnectHubWebhookLog = typeof connectHubWebhookLogs.$inferSelect;
 export type NewConnectHubWebhookLog = typeof connectHubWebhookLogs.$inferInsert;
 
+// ============================================================
+// CONNECT HUB FLOWS MODULE (Phase 7: Webhook Trigger → Actions)
+// ============================================================
+
+export const connectHubFlows = pgTable('connect_hub_flows', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  webhookId: uuid('webhook_id')
+    .notNull()
+    .references(() => connectHubWebhooks.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull().default('Flow tự động'),
+  status: varchar('status', { length: 20 }).notNull().default('active'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const connectHubFlowSteps = pgTable('connect_hub_flow_steps', {
+  id: serial('id').primaryKey(),
+  flowId: integer('flow_id')
+    .notNull()
+    .references(() => connectHubFlows.id, { onDelete: 'cascade' }),
+  step: integer('step').notNull(),        // Thứ tự chạy: 1, 2, 3...
+  connectionId: integer('connection_id')
+    .notNull()
+    .references(() => connectHubConnections.id, { onDelete: 'cascade' }),
+  appSlug: varchar('app_slug', { length: 100 }).notNull(),
+  actionSlug: varchar('action_slug', { length: 255 }).notNull(),
+  inputMapping: jsonb('input_mapping').notNull().default('{}'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const connectHubFlowRuns = pgTable('connect_hub_flow_runs', {
+  id: serial('id').primaryKey(),
+  flowId: integer('flow_id')
+    .notNull()
+    .references(() => connectHubFlows.id, { onDelete: 'cascade' }),
+  webhookLogId: integer('webhook_log_id')
+    .references(() => connectHubWebhookLogs.id, { onDelete: 'set null' }),
+  teamId: integer('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  status: varchar('status', { length: 20 }).notNull().default('running'),
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  finishedAt: timestamp('finished_at'),
+  stepResults: jsonb('step_results').notNull().default('[]'),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const connectHubFlowsRelations = relations(connectHubFlows, ({ one, many }) => ({
+  team: one(teams, { fields: [connectHubFlows.teamId], references: [teams.id] }),
+  webhook: one(connectHubWebhooks, { fields: [connectHubFlows.webhookId], references: [connectHubWebhooks.id] }),
+  steps: many(connectHubFlowSteps),
+  runs: many(connectHubFlowRuns),
+}));
+
+export const connectHubFlowStepsRelations = relations(connectHubFlowSteps, ({ one }) => ({
+  flow: one(connectHubFlows, { fields: [connectHubFlowSteps.flowId], references: [connectHubFlows.id] }),
+  connection: one(connectHubConnections, { fields: [connectHubFlowSteps.connectionId], references: [connectHubConnections.id] }),
+}));
+
+export const connectHubFlowRunsRelations = relations(connectHubFlowRuns, ({ one }) => ({
+  flow: one(connectHubFlows, { fields: [connectHubFlowRuns.flowId], references: [connectHubFlows.id] }),
+  team: one(teams, { fields: [connectHubFlowRuns.teamId], references: [teams.id] }),
+}));
+
+export type ConnectHubFlow = typeof connectHubFlows.$inferSelect;
+export type NewConnectHubFlow = typeof connectHubFlows.$inferInsert;
+export type ConnectHubFlowStep = typeof connectHubFlowSteps.$inferSelect;
+export type NewConnectHubFlowStep = typeof connectHubFlowSteps.$inferInsert;
+export type ConnectHubFlowRun = typeof connectHubFlowRuns.$inferSelect;
+export type NewConnectHubFlowRun = typeof connectHubFlowRuns.$inferInsert;
+
+
 // ============================================================================
 // HERO REPORT — MVP Báo cáo tự động (V1: POS → Code Aggregator → AI nhận xét → Telegram)
 // ============================================================================

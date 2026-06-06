@@ -9,7 +9,10 @@ import {
   teams,
   activityLogs,
   connectHubWebhooks,
-  connectHubWebhookLogs
+  connectHubWebhookLogs,
+  connectHubFlows,
+  connectHubFlowSteps,
+  connectHubFlowRuns
 } from './schema';
 import * as crypto from 'crypto';
 import { getUser } from './queries';
@@ -781,4 +784,131 @@ export async function getWebhookLogsAction(teamId: number, webhookId: string, li
     return { success: false, error: sanitizeError(error) };
   }
 }
+
+/**
+ * Lấy cấu hình Flow của Webhook (Auto-create nếu chưa tồn tại)
+ */
+export async function getWebhookFlowAction(teamId: number, webhookId: string) {
+  try {
+    await verifyConnectHubAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+
+    // 1. Kiểm tra xem flow đã tồn tại chưa
+    let [flow] = await db
+      .select()
+      .from(connectHubFlows)
+      .where(
+        and(
+          eq(connectHubFlows.webhookId, webhookId),
+          eq(connectHubFlows.teamId, teamId)
+        )
+      )
+      .limit(1);
+
+    // 2. Nếu chưa có, tiến hành auto-create flow
+    if (!flow) {
+      const [newFlow] = await db
+        .insert(connectHubFlows)
+        .values({
+          teamId,
+          webhookId,
+          name: 'Flow tự động',
+          status: 'active'
+        })
+        .returning();
+      
+      flow = newFlow;
+    }
+
+    // 3. Lấy tất cả các steps của flow
+    const steps = await db
+      .select()
+      .from(connectHubFlowSteps)
+      .where(eq(connectHubFlowSteps.flowId, flow.id))
+      .orderBy(connectHubFlowSteps.step);
+
+    return { success: true, data: { flow, steps } };
+  } catch (error: any) {
+    console.error('Error fetching Webhook flow:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Lưu các steps của một Flow
+ */
+export async function saveFlowStepsAction(
+  teamId: number,
+  flowId: number,
+  steps: { connectionId: number; appSlug: string; actionSlug: string; inputMapping: any }[]
+) {
+  try {
+    const { user } = await verifyConnectHubAccess(teamId, ['owner', 'admin', 'manager']);
+
+    // 1. Kiểm tra tính sở hữu của flow
+    const [flow] = await db
+      .select()
+      .from(connectHubFlows)
+      .where(and(eq(connectHubFlows.id, flowId), eq(connectHubFlows.teamId, teamId)))
+      .limit(1);
+
+    if (!flow) {
+      return { success: false, error: 'Không tìm thấy Flow cấu hình hoặc bạn không có quyền.' };
+    }
+
+    // 2. Cập nhật steps bằng transaction
+    await db.transaction(async (tx) => {
+      // Xóa tất cả các steps cũ
+      await tx.delete(connectHubFlowSteps).where(eq(connectHubFlowSteps.flowId, flowId));
+
+      // Thêm các steps mới
+      if (steps.length > 0) {
+        const valuesToInsert = steps.map((s, idx) => ({
+          flowId,
+          step: idx + 1,
+          connectionId: s.connectionId || 0, // 0 = built-in, không cần connection
+          appSlug: s.appSlug,
+          actionSlug: s.actionSlug,
+          inputMapping: s.inputMapping || {}
+        }));
+        await tx.insert(connectHubFlowSteps).values(valuesToInsert);
+      }
+    });
+
+    // 3. Ghi activity log
+    await db.insert(activityLogs).values({
+      teamId,
+      userId: user.id,
+      action: `đã cập nhật cấu hình Flow (${steps.length} bước) cho Webhook ID: ${flow.webhookId}`,
+    });
+
+    revalidatePath(`/connect-hub/t/${teamId}/webhooks`);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error saving Flow steps:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Lấy lịch sử thực thi Flow runs
+ */
+export async function getFlowRunsAction(teamId: number, flowId: number, limit: number = 15) {
+  try {
+    await verifyConnectHubAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+
+    const runs = await db
+      .select()
+      .from(connectHubFlowRuns)
+      .where(and(eq(connectHubFlowRuns.flowId, flowId), eq(connectHubFlowRuns.teamId, teamId)))
+      .orderBy(desc(connectHubFlowRuns.createdAt))
+      .limit(limit);
+
+    return { success: true, data: runs };
+  } catch (error: any) {
+    console.error('Error fetching Flow runs:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
 

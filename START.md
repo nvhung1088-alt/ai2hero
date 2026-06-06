@@ -73,8 +73,34 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - [x] **Phase 3**: Filter "Ready", tích hợp Generic HTTP cho 10 Apps Batch 1A.
 - [x] **Phase 4**: Audit Batch 1B, đưa thêm 25 apps nữa lên "Ready" status (Slack, Notion, Asana...).
 - [x] **Phase 6**: Hoàn thiện Endpoint Router / Webhook Gateway.
+- [x] **Phase 7**: Webhook Trigger & Flow Actions (Engine xử lý payload nhận được từ webhook để chạy các action).
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
+
+- [x] **Phase 8**: Tích hợp Action Connectors cụ thể (Core Logic & Zalo ZNS).
+
+- **2026-06-07 (connect-hub - Phase 8 - Action Connectors: Core Logic & Zalo ZNS)**:
+  - 🚀 **Hoàn thành Phase 8: Mở rộng Connectors thực tế**:
+    - **Core Logic Blocks (`core-logic.ts`) [NEW]**: Phát triển 4 thao tác logic nội tại (không cần API): `filter_condition` (chặn luồng nếu điều kiện không khớp), `delay` (tạm dừng an toàn max 25s), `transform_text` (viết hoa/viết thường/trim/replace), `format_number` (định dạng VND/USD/%). Cơ chế hoàn toàn Server-side bảo mật cao (chống RCE). Đăng ký vào registry dưới slug `core-logic`.
+    - **Zalo ZNS (`zalo-zns.ts`) [NEW]**: Tích hợp gửi tin nhắn Zalo ZNS và OA. Viết custom runner xử lý cơ chế Auto-Refresh Token thông minh của Zalo (bắt lỗi `-216` và tự động refresh, retry). Cung cấp 3 actions: `send_zns_template`, `send_oa_broadcast`, `get_oa_info`.
+    - **Flow Engine Bypass (`flow-engine.ts`) [MODIFY]**: Tích hợp rẽ nhánh cho `core-logic` không đi qua middleware DB credentials.
+    - **Flow DB Logic (`connect-hub-actions.ts`) [MODIFY]**: Cập nhật hàm `saveFlowStepsAction` cho phép lưu các steps có `connectionId = 0` dành riêng cho Core Logic.
+    - **Verify**: Type check (`npx tsc --noEmit`) đạt 0 lỗi.
+
+  - 🛠️ **Khắc phục Lỗi Serverless & Tối ưu Hiệu năng Webhook Flows**:
+    - **Stack Overflow Guard (`flow-engine.ts`) [MODIFY]**: Bổ sung tham số `depth` vào hàm đệ quy `interpolateTemplate` (giới hạn max = 50) nhằm ngăn chặn hacker cố tình tạo input_mapping lồng sâu gây crash tiến trình Node.js.
+    - **Parallel Execution (`flow-engine.ts`) [MODIFY]**: Chuyển vòng lặp tuần tự (`for...of`) sang chạy song song (`Promise.all`) để tối ưu thời gian thực thi khi 1 webhook kích hoạt nhiều flows.
+    - **Serverless Task Fix (`route.ts`) [MODIFY]**: Đổi cơ chế trigger flow từ `fire-and-forget` (non-blocking) sang `await` chặn luồng để đảm bảo môi trường Vercel Serverless không kill lambda function giữa chừng, đảm bảo flow luôn chạy thành công.
+    - **Verify**: Chạy `npx tsc --noEmit` đạt 0 lỗi.
+
+- **2026-06-06 (connect-hub - Phase 7 - Webhook Trigger & Flow Actions)**:
+  - 🚀 **Hoàn thành Phase 7: Webhook Trigger & Flow Actions**:
+    - **Database & Migration (`schema.ts`, `migrate-flows.ts`) [NEW/MODIFY]**: Định nghĩa 3 bảng `connectHubFlows` (lưu flow liên kết webhook 1:1), `connectHubFlowSteps` (các bước action của flow), và `connectHubFlowRuns` (lịch sử và kết quả chi tiết). Viết và chạy thành công script migration vào Supabase PostgreSQL DB.
+    - **Flow Engine (`flow-engine.ts`) [NEW]**: Xây dựng bộ máy nội suy đệ quy và giải quyết placeholder `{{payload.field}}`/`{{headers.field}}` từ webhook payload. Triển khai logic chạy chuỗi các step actions tuần tự (fail-fast: dừng ngay nếu bước trước lỗi) qua cổng `runConnectorAction`.
+    - **Server Actions (`connect-hub-actions.ts`) [MODIFY]**: Bổ sung các server actions `getWebhookFlowAction` (auto-create flow), `saveFlowStepsAction` (lưu các step bằng transaction), và `getFlowRunsAction` (truy vấn lịch sử).
+    - **Route Integration (`route.ts`) [MODIFY]**: Tích hợp kích hoạt chạy flow ở chế độ background (non-blocking) sau khi ghi nhận payload webhook thành công. Sửa lỗi `.returning()` để lấy `webhookLogId` liên kết run logs.
+    - **Giao diện cấu hình (`webhooks-client.tsx`) [MODIFY]**: Thêm nút "Cấu hình Flow" trực quan. Thiết kế Slide-over Drawer 2 tab bóng bẩy: Tab "Cấu hình các bước" (thêm/xóa bước, chọn connection/action, viết input mapping JSON có client validation) và Tab "Lịch sử thực thi" (xem danh sách runs, click xem chi tiết log step kết quả và preview dữ liệu).
+    - **Verify**: Type check (`npx tsc --noEmit`) đạt 0 lỗi.
 
 - **2026-06-06 (connect-hub - Phase 6 - Endpoint Router / Webhook Gateway)**:
   - 🚀 **Hoàn thành Phase 6: Thiết kế và hiện thực hóa Webhook Gateway**:
@@ -83,6 +109,7 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
     - **Server Actions (`connect-hub-actions.ts`) [MODIFY]**: Bổ sung Server Actions: `createWebhookAction`, `listWebhooksAction`, `toggleWebhookAction`, `deleteWebhookAction`, `getWebhookLogsAction`.
     - **UI Webhooks (`webhooks/page.tsx`, `webhooks-client.tsx`) [NEW]**: Xây dựng giao diện Dark Mode phẳng cực kỳ hiện đại để quản lý Webhooks. Hỗ trợ hiển thị Secret Key một lần duy nhất khi tạo, bật/tắt nhanh trạng thái, copy URL và Drawer xem lịch sử nhận payload trực quan (Headers & Body JSON viewer). Tích hợp link "Webhooks" vào menu sidebar.
     - **Verify**: Type check (`npx tsc --noEmit`) đạt 0 lỗi.
+    - **Deploy**: Đã đẩy mã nguồn Phase 6 lên nhánh `main`, hệ thống Vercel tự động deploy lên môi trường Production.
 
 - **2026-06-06 (connect-hub - Phase 5 - API Guides and AI Capabilities integration)**:
   - 🚀 **Hoàn thành Phase 5: Hướng dẫn lấy API cho 35 app Ready và xây dựng Năng lực AI cho Mapping page**:

@@ -235,7 +235,7 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Liên kết**: → /connect-hub/t/[teamId]/dashboard
 
 ### Connect Hub Webhooks (`/connect-hub/t/[teamId]/webhooks`)
-- **Chức năng**: Quản lý các Webhook Endpoints để nhận dữ liệu thời gian thực (POST/GET) từ các app bên ngoài. Hỗ trợ tạo webhook mới với giao diện hiển thị duy nhất 1 lần cho Secret Key, bật/tắt nhanh trạng thái, copy URL và Drawer trượt xem nhật ký payload (Headers & JSON body) trực quan.
+- **Chức năng**: Quản lý các Webhook Endpoints để nhận dữ liệu thời gian thực (POST/GET) từ các app bên ngoài. Hỗ trợ tạo webhook mới với giao diện hiển thị duy nhất 1 lần cho Secret Key, bật/tắt nhanh trạng thái, copy URL và Drawer trượt xem nhật ký payload (Headers & JSON body) trực quan. **Đặc biệt tích hợp luồng xử lý tự động (Webhook Flow): Cho phép cấu hình chuỗi các bước thực thi connector actions tuần tự (nội suy biến dynamic từ payload/headers) khi nhận webhook và theo dõi chi tiết lịch sử chạy (Flow Runs) trực quan qua Drawer.**
 - **Vai trò**: Webhook Manager (Incoming gateway)
 - **Đọc/Ghi data**: Đọc/Ghi bảng `connect_hub_webhooks` và `connect_hub_webhook_logs` qua Server Actions trong `connect-hub-actions.ts`.
 - **Liên kết**: → /connect-hub/t/[teamId]/dashboard, → /connect-hub/t/[teamId]/connections

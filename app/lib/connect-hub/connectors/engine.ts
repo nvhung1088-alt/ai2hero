@@ -6,6 +6,8 @@ import { runOpenAI } from './runners/openai';
 import { runChiaSeGPU } from './runners/chiasegpu';
 import { runTelegram } from './runners/telegram';
 import { runGenericHttp } from './runners/generic-http';
+import { runCoreLogic } from './runners/core-logic';
+import { runZaloZns } from './runners/zalo-zns';
 
 const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promise<any>> = {
   'custom-http': runCustomHttp,
@@ -15,6 +17,8 @@ const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promis
   'openai': runOpenAI,
   'chiasegpu': runChiaSeGPU,
   'telegram': runTelegram,
+  'zalo-zns': (creds, action, input) => runZaloZns(creds, action, input),
+  'core-logic': (_creds, action, input) => runCoreLogic(action, input),
   
   // Batch 1A Generic HTTP Runners
   'telegram-bot': (creds, action, input) => runGenericHttp('telegram-bot', creds, action, input),

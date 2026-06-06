@@ -682,6 +682,18 @@ export async function verifyGenericHttpConnection(
       return { success: true };
     }
 
+    if (appSlug === 'zalo-zns') {
+      const { access_token } = credentials;
+      if (!access_token) throw new Error('Thiếu Access Token.');
+      const res = await fetch('https://openapi.zalo.me/v2.0/oa/getoa', {
+        headers: { 'access_token': access_token },
+        signal: AbortSignal.timeout(6000)
+      });
+      const data = await res.json();
+      if (data.error && data.error !== 0) throw new Error(`Token không hợp lệ: ${data.message}`);
+      return { success: true };
+    }
+
     // --- BATCH 1B Verify ---
     const checkSimpleHttp = async (url: string, headers: Record<string, string>, errorMessage: string) => {
       const res = await fetch(url, { headers, signal: AbortSignal.timeout(6000) });
