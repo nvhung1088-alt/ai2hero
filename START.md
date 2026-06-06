@@ -71,6 +71,34 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 
+- **2026-06-06 (workspace - workspace isolation & security hardening for members)**:
+  - 🚀 **Quy chuẩn cách ly Workspace & Bảo mật Quản lý thành viên (P0)**:
+    - **Database Helpers (`workspace-helpers.ts`) [NEW]**: Tạo file mới `app/lib/db/workspace-helpers.ts` chứa `requireTeamRole()` và `assertMemberInTeam()` để chuẩn hóa xác thực vai trò và quyền hạn trong team.
+    - **Server Actions (`actions.ts`) [MODIFY]**: 
+      - Enforce tham số `teamId` bắt buộc cho `inviteTeamMemberAction` và `removeTeamMemberAction`, loại bỏ hoàn toàn fallback `getUserWithTeam` thiếu an toàn.
+      - Tích hợp các helper để ngăn chặn cross-team spoofing.
+      - Áp dụng các quy tắc bảo vệ Owner (không được xóa owner của team, owner duy nhất tự rời thì bị chặn).
+      - Bổ sung quy tắc bảo vệ Owner cho `changeMemberRoleAction` (ngăn Owner duy nhất tự hạ cấp xuống Member để tránh tạo ra nhóm vô chủ).
+      - Xóa bỏ hoàn toàn các hàm legacy `inviteTeamMember` và `removeTeamMember` không dùng (0 call sites).
+      - Chuẩn hóa email bằng `trim().toLowerCase()`.
+    - **Members UI (`members-client.tsx`) [MODIFY]**: Truyền tham số explicit `teamId: team.id` khi gọi `inviteTeamMemberAction` và `removeTeamMemberAction` từ client.
+    - **TypeScript & Build Verification**: Đạt 0 lỗi biên dịch `tsc` và build production thành công 100%.
+  - 🔒 **Nâng cấp Kiến trúc Bảo mật P1 (`actions.ts`) [MODIFY]**:
+    - **deleteAccount (Cascade Delete + Ownerless Guard)**: Nâng cấp từ xóa 1 team (dùng `getUserWithTeam` lỗi) sang quét toàn bộ workspace memberships. Chặn xóa tài khoản nếu user là Owner duy nhất của bất kỳ workspace nào. Sau khi thỏa điều kiện, xóa cascade khỏi toàn bộ teams trước khi soft-delete user.
+    - **acceptInvitationAction (ACID Transaction)**: Bọc 3 thao tác cốt lõi (insert teamMember, update invitation status, mark notifications read) trong `db.transaction()` để đảm bảo Rollback toàn bộ nếu lỗi giữa chừng — chấm dứt lỗi data "nửa mùa".
+    - **TypeScript Verification**: 0 lỗi sau khi sửa cả 2 chức năng.
+- **2026-06-06 (dashboard - fix infinite loading deadlock)**:
+  - 🛠️ **Sửa lỗi kẹt trạng thái "Đang tải dữ liệu không gian làm việc..."**:
+    - **Nguyên nhân**: Quá trình render song song của Next.js React Server Components (trong `layout.tsx` và `page.tsx` gọi `getUser`, `getTeamsForUser`, `getActivityLogs` đồng thời) gây ra deadlock do cấu hình `max: 1` cho Drizzle connection pool ở môi trường dev. Postgres client không thể cấp phát kết nối dẫn đến treo Promise vĩnh viễn không ném lỗi.
+    - **Sửa lỗi (`drizzle.ts`) [MODIFY]**: Tăng `max` connection ở môi trường dev từ `1` lên `5` để chống deadlock khi Next.js Fast Refresh thực thi nhiều queries song song nhưng vẫn hạn chế được rò rỉ kết nối đối với Supabase Pooler.
+
+- **2026-06-06 (auth - google oauth security hardening & ux fix)**:
+  - 🚀 **Bảo mật & Cải thiện UX Google OAuth**:
+    - **Vá lỗ hổng Account Pre-hijacking (Security HIGH)**: Kiểm tra trạng thái `email_verified` trả về từ Google UserInfo API. Đồng thời tự động xóa mật khẩu rỗng (`passwordHash = ''`) khi liên kết tài khoản để chặn bypass mật khẩu bởi kẻ tấn công tạo trước, bảo toàn mật khẩu thật nếu người dùng cũ đã tự thiết lập.
+    - **Fix mất tham số điều hướng sau OAuth (UX Medium)**: Thêm truyền tham số động `redirect`, `priceId`, `inviteId` từ `login.tsx` sang `/api/auth/google`, lưu trữ tạm thời qua cookie `oauth_return_to` và khôi phục ở `/api/auth/google/callback` để chuyển hướng chính xác đến trang đích với cơ chế phòng chống lỗ hổng Open Redirect.
+    - **Cải thiện thông báo lỗi OAuth (UX Low)**: Cập nhật thông báo lỗi hết hạn `invalid_state` chi tiết, dễ hiểu hơn cho người dùng. Thêm trường hợp lỗi `email_not_verified` từ Google.
+    - **Kiểm tra biên dịch**: Chạy `npm run build` local thành công 100% không lỗi TypeScript.
+
 - **2026-06-06 (auth - google oauth & dark mode login redesign)**:
   - 🚀 **Hoàn thiện Google OAuth & Redesign trang Đăng ký/Đăng nhập sang Dark Mode**:
     - **Database Schema (`schema.ts`) [MODIFY]**: Thêm cột `googleId` (unique) và `avatarUrl` cho user, đổi `passwordHash` sang default là chuỗi rỗng `''`.

@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.BASE_URL || 'http://localhost:3000'}/api/auth/google/callback`;
 
@@ -19,6 +19,28 @@ export async function GET() {
     sameSite: 'lax',
     maxAge: 600, // Hết hạn trong 10 phút
   });
+
+  // Đọc query params từ request của UI và lưu vào cookie return_to tạm thời
+  const redirectParam = request.nextUrl.searchParams.get('redirect');
+  const priceId = request.nextUrl.searchParams.get('priceId');
+  const inviteId = request.nextUrl.searchParams.get('inviteId');
+
+  if (redirectParam || priceId || inviteId) {
+    cookieStore.set(
+      'oauth_return_to',
+      JSON.stringify({
+        redirect: redirectParam || undefined,
+        priceId: priceId || undefined,
+        inviteId: inviteId || undefined,
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 600, // Hết hạn trong 10 phút
+      }
+    );
+  }
 
   const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   googleAuthUrl.searchParams.set('client_id', clientId);

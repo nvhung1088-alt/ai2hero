@@ -24,11 +24,12 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
 
   let oauthError = '';
   if (errorParam) {
-    if (errorParam === 'invalid_state') oauthError = 'Yêu cầu không hợp lệ (mã bảo mật hết hạn). Vui lòng thử lại.';
+    if (errorParam === 'invalid_state') oauthError = 'Phiên đăng nhập Google đã hết hạn (quá 10 phút) hoặc bị gián đoạn. Vui lòng bấm "Tiếp tục với Google" để thử lại.';
     else if (errorParam === 'missing_credentials') oauthError = 'Hệ thống chưa cấu hình Google Client Credentials.';
     else if (errorParam === 'token_exchange_failed') oauthError = 'Không thể xác thực mã với Google.';
     else if (errorParam === 'fetch_profile_failed') oauthError = 'Không thể lấy thông tin cá nhân từ Google.';
     else if (errorParam === 'email_not_provided') oauthError = 'Tài khoản Google không cung cấp email.';
+    else if (errorParam === 'email_not_verified') oauthError = 'Tài khoản Google chưa xác minh email. Vui lòng xác minh email trên Google trước khi đăng nhập.';
     else if (errorParam === 'user_creation_failed') oauthError = 'Lỗi tạo tài khoản mới từ Google.';
     else if (errorParam === 'team_creation_failed') oauthError = 'Lỗi tạo không gian làm việc mới.';
     else oauthError = 'Đăng nhập bằng Google thất bại. Vui lòng thử lại.';
@@ -160,7 +161,11 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
 
           <div className="mt-6">
             <a
-              href="/api/auth/google"
+              href={`/api/auth/google?${new URLSearchParams({
+                ...(redirect ? { redirect } : {}),
+                ...(priceId ? { priceId } : {}),
+                ...(inviteId ? { inviteId } : {}),
+              }).toString()}`}
               className="w-full flex justify-center items-center gap-3 py-3 px-4 border border-zinc-800 rounded-full shadow-md text-sm font-semibold text-white bg-zinc-900 hover:bg-zinc-800/80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-950 focus:ring-orange-500 transition-all cursor-pointer mb-6"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">

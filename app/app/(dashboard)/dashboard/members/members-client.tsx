@@ -139,7 +139,7 @@ export function MembersClient({ currentUser, initialMembers, initialInvitations,
     const { id, name } = memberToRemove;
 
     try {
-      const res = await removeTeamMemberAction({ memberId: id });
+      const res = await removeTeamMemberAction({ memberId: id, teamId: team.id });
       if (res.error) {
         showToast(res.error, 'error');
       } else {
@@ -216,7 +216,8 @@ export function MembersClient({ currentUser, initialMembers, initialInvitations,
     try {
       const res = await inviteTeamMemberAction({
         email: inviteEmail.trim(),
-        role: selectedInviteRole
+        role: selectedInviteRole,
+        teamId: team.id
       });
 
       if (res.error) {

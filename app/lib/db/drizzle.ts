@@ -19,7 +19,7 @@ const isProd = process.env.NODE_ENV === 'production';
 export const client =
   globalForDb.client ??
   postgres(process.env.POSTGRES_URL, {
-    max: isProd ? 10 : 1, // Hạn chế 1 connection ở dev mode để chống tràn/timeout khi Next.js Fast Refresh liên tục
+    max: isProd ? 10 : 5, // Tăng lên 5 connection ở dev mode để chống deadlock khi Next.js Fast Refresh gọi song song
     idle_timeout: isProd ? 20 : 1, // Giải phóng ngay sau 1s để không rò rỉ connection
     connect_timeout: 10,
     prepare: false, // Required for serverless environments (Vercel, Neon)

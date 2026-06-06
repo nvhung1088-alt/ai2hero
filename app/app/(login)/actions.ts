@@ -27,6 +27,8 @@ import { cookies } from 'next/headers';
 import { createCheckoutSession } from '@/lib/payments/stripe';
 import { getUser, getUserWithTeam, getSystemSetting, updateSystemSetting, DEFAULT_BILLING_PLANS } from '@/lib/db/queries';
 import { createNotification, createInviteNotification } from '@/lib/db/notification-actions';
+import { requireTeamRole, assertMemberInTeam } from '@/lib/db/workspace-helpers';
+import { type TeamMember } from '@/lib/db/schema';
 import {
   validatedAction,
   validatedActionWithUser
@@ -321,15 +323,43 @@ export const deleteAccount = validatedActionWithUser(
       };
     }
 
-    const userWithTeam = await getUserWithTeam(user.id);
+    // P1: Quét toàn bộ workspace memberships của user
+    const allMemberships = await db
+      .select()
+      .from(teamMembers)
+      .where(eq(teamMembers.userId, user.id));
 
-    await logActivity(
-      userWithTeam?.teamId,
-      user.id,
-      ActivityType.DELETE_ACCOUNT
-    );
+    // P1: Chặn xóa nếu user là Owner duy nhất của bất kỳ workspace nào
+    for (const membership of allMemberships) {
+      if (membership.role === 'owner') {
+        const ownerCountResult = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(teamMembers)
+          .where(and(
+            eq(teamMembers.teamId, membership.teamId),
+            eq(teamMembers.role, 'owner')
+          ));
+        
+        if ((ownerCountResult[0]?.count ?? 0) <= 1) {
+          return {
+            password,
+            error: 'Bạn là Chủ sở hữu duy nhất của một không gian làm việc. Hãy chuyển quyền hoặc xóa không gian đó trước khi xóa tài khoản.'
+          };
+        }
+      }
+    }
 
-    // Soft delete
+    // P1: Log activity cho tất cả các workspace, xóa user khỏi tất cả
+    for (const membership of allMemberships) {
+      await logActivity(membership.teamId, user.id, ActivityType.DELETE_ACCOUNT);
+    }
+
+    // P1: Xóa user khỏi toàn bộ team memberships (cascade delete)
+    await db
+      .delete(teamMembers)
+      .where(eq(teamMembers.userId, user.id));
+
+    // Soft delete user account
     await db
       .update(users)
       .set({
@@ -337,17 +367,6 @@ export const deleteAccount = validatedActionWithUser(
         email: sql`CONCAT(email, '-', id, '-deleted')` // Ensure email uniqueness
       })
       .where(eq(users.id, user.id));
-
-    if (userWithTeam?.teamId) {
-      await db
-        .delete(teamMembers)
-        .where(
-          and(
-            eq(teamMembers.userId, user.id),
-            eq(teamMembers.teamId, userWithTeam.teamId)
-          )
-        );
-    }
 
     (await cookies()).delete('session');
     redirect('/sign-in');
@@ -374,200 +393,7 @@ export const updateAccount = validatedActionWithUser(
   }
 );
 
-const removeTeamMemberSchema = z.object({
-  memberId: z.number()
-});
-
-export const removeTeamMember = validatedActionWithUser(
-  removeTeamMemberSchema,
-  async (data, _, user) => {
-    const { memberId } = data;
-    const userWithTeam = await getUserWithTeam(user.id);
-
-    if (!userWithTeam?.teamId) {
-      return { error: 'User is not part of a team' };
-    }
-
-    // Check current user's role in the team
-    const [currentUserMember] = await db
-      .select()
-      .from(teamMembers)
-      .where(
-        and(
-          eq(teamMembers.userId, user.id),
-          eq(teamMembers.teamId, userWithTeam.teamId)
-        )
-      )
-      .limit(1);
-
-    const [targetMember] = await db
-      .select()
-      .from(teamMembers)
-      .where(eq(teamMembers.id, memberId))
-      .limit(1);
-
-    if (!targetMember) {
-      return { error: 'Member not found' };
-    }
-
-    // Only Owner or Admin can remove members, or a user can remove themselves
-    const isSelf = targetMember.userId === user.id;
-    const isOwnerOrAdmin = currentUserMember?.role === 'owner' || currentUserMember?.role === 'admin';
-
-    if (!isSelf && !isOwnerOrAdmin) {
-      return { error: 'Unauthorized. Only owners and admins can remove team members.' };
-    }
-
-    // Cannot remove the owner of the team
-    if (targetMember.role === 'owner' && !isSelf) {
-      return { error: 'Cannot remove the team owner' };
-    }
-
-    await db
-      .delete(teamMembers)
-      .where(
-        and(
-          eq(teamMembers.id, memberId),
-          eq(teamMembers.teamId, userWithTeam.teamId)
-        )
-      );
-
-    await logActivity(
-      userWithTeam.teamId,
-      user.id,
-      ActivityType.REMOVE_TEAM_MEMBER
-    );
-
-    return { success: 'Team member removed successfully' };
-  }
-);
-
-const inviteTeamMemberSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  role: z.enum(['member', 'owner'])
-});
-
-export const inviteTeamMember = validatedActionWithUser(
-  inviteTeamMemberSchema,
-  async (data, _, user) => {
-    const { email, role } = data;
-    const userWithTeam = await getUserWithTeam(user.id);
-
-    if (!userWithTeam?.teamId) {
-      return { error: 'User is not part of a team' };
-    }
-
-    // Check if current user is owner or admin
-    const [currentUserMember] = await db
-      .select()
-      .from(teamMembers)
-      .where(
-        and(
-          eq(teamMembers.userId, user.id),
-          eq(teamMembers.teamId, userWithTeam.teamId)
-        )
-      )
-      .limit(1);
-
-    const isOwnerOrAdmin = currentUserMember?.role === 'owner' || currentUserMember?.role === 'admin';
-
-    if (!isOwnerOrAdmin) {
-      return { error: 'Unauthorized. Only owners and admins can invite team members.' };
-    }
-
-    // Check member limits based on system settings and active plan
-    const [team] = await db
-      .select()
-      .from(teams)
-      .where(eq(teams.id, userWithTeam.teamId))
-      .limit(1);
-
-    if (!team) {
-      return { error: 'Team not found' };
-    }
-
-    const currentMembers = await db
-      .select()
-      .from(teamMembers)
-      .where(eq(teamMembers.teamId, userWithTeam.teamId));
-
-    const currentInvitations = await db
-      .select()
-      .from(invitations)
-      .where(
-        and(
-          eq(invitations.teamId, userWithTeam.teamId),
-          eq(invitations.status, 'pending')
-        )
-      );
-
-    const totalActiveSlots = currentMembers.length + currentInvitations.length;
-    const billingPlans = (await getSystemSetting('BILLING_PLANS')) as any[];
-    const activePlan =
-      billingPlans?.find(
-        (p: any) =>
-          p.name.toLowerCase() === (team.planName || 'free').toLowerCase()
-      ) || billingPlans?.[0];
-
-    const maxMembers = activePlan?.maxMembers ?? 1;
-
-    if (totalActiveSlots >= maxMembers) {
-      return {
-        error: `Vượt quá giới hạn thành viên cho gói ${activePlan?.name || 'Free'} (Tối đa ${maxMembers} người). Vui lòng nâng cấp gói cước.`
-      };
-    }
-
-    const existingMember = await db
-      .select()
-      .from(users)
-      .leftJoin(teamMembers, eq(users.id, teamMembers.userId))
-      .where(
-        and(eq(users.email, email), eq(teamMembers.teamId, userWithTeam.teamId))
-      )
-      .limit(1);
-
-    if (existingMember.length > 0) {
-      return { error: 'User is already a member of this team' };
-    }
-
-    // Check if there's an existing invitation
-    const existingInvitation = await db
-      .select()
-      .from(invitations)
-      .where(
-        and(
-          eq(invitations.email, email),
-          eq(invitations.teamId, userWithTeam.teamId),
-          eq(invitations.status, 'pending')
-        )
-      )
-      .limit(1);
-
-    if (existingInvitation.length > 0) {
-      return { error: 'An invitation has already been sent to this email' };
-    }
-
-    // Create a new invitation
-    await db.insert(invitations).values({
-      teamId: userWithTeam.teamId,
-      email,
-      role,
-      invitedBy: user.id,
-      status: 'pending'
-    });
-
-    await logActivity(
-      userWithTeam.teamId,
-      user.id,
-      ActivityType.INVITE_TEAM_MEMBER
-    );
-
-    // TODO: Send invitation email and include ?inviteId={id} to sign-up URL
-    // await sendInvitationEmail(email, userWithTeam.team.name, role)
-
-    return { success: 'Invitation sent successfully' };
-  }
-);
+// Legacy removeTeamMember and inviteTeamMember removed as they have 0 call sites.
 
 const updateBillingPlansSchema = z.object({
   plansJson: z.string()
@@ -1152,8 +978,22 @@ export async function changeMemberRoleAction(data: { memberId: number; role: str
   }
 
   // Cannot modify owner's role unless you are the owner
-  if (targetMember.role === 'owner' && currentUserMember.role !== 'owner') {
-    return { error: 'Quyền truy cập bị từ chối. Chỉ Chủ sở hữu mới được thay đổi vai trò của Chủ sở hữu.' };
+  if (targetMember.role === 'owner') {
+    if (currentUserMember.role !== 'owner') {
+      return { error: 'Quyền truy cập bị từ chối. Chỉ Chủ sở hữu mới được thay đổi vai trò của Chủ sở hữu.' };
+    }
+    
+    // Prevent last owner from downgrading their role
+    if (role !== 'owner') {
+      const ownerCountResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(teamMembers)
+        .where(and(eq(teamMembers.teamId, targetMember.teamId), eq(teamMembers.role, 'owner')));
+      
+      if ((ownerCountResult[0]?.count ?? 0) <= 1) {
+        return { error: 'Không thể hạ cấp vai trò Chủ sở hữu duy nhất. Hãy chuyển quyền cho người khác trước.' };
+      }
+    }
   }
 
   await db
@@ -1204,28 +1044,24 @@ export async function cancelInvitationAction(data: { invitationId: number }) {
   return { success: 'Hủy lời mời thành công!' };
 }
 
-export async function inviteTeamMemberAction(data: { email: string; role: string }) {
+export async function inviteTeamMemberAction(data: { email: string; role: string; teamId: number }) {
   const user = await getUser();
   if (!user) {
     return { error: 'Quyền truy cập bị từ chối. Vui lòng đăng nhập.' };
   }
 
-  const { email, role } = data;
-  const userWithTeam = await getUserWithTeam(user.id);
-  if (!userWithTeam?.teamId) {
-    return { error: 'Bạn không thuộc về nhóm nào.' };
+  const email = data.email.trim().toLowerCase();
+  const { role, teamId } = data;
+
+  if (!teamId) {
+    return { error: 'Thiếu teamId. Vui lòng tải lại trang.' };
   }
 
-  const teamId = userWithTeam.teamId;
-
-  // Check role
-  const [currentUserMember] = await db
-    .select()
-    .from(teamMembers)
-    .where(and(eq(teamMembers.userId, user.id), eq(teamMembers.teamId, teamId)))
-    .limit(1);
-
-  if (!currentUserMember || (currentUserMember.role !== 'owner' && currentUserMember.role !== 'admin')) {
+  // Authenticate + Authorize user role
+  let actor: TeamMember;
+  try {
+    actor = await requireTeamRole(user.id, teamId, ['owner', 'admin']);
+  } catch {
     return { error: 'Quyền truy cập bị từ chối. Chỉ Chủ sở hữu hoặc Quản trị viên mới có quyền mời thành viên.' };
   }
 
@@ -1317,50 +1153,61 @@ export async function inviteTeamMemberAction(data: { email: string; role: string
   return { success: 'Đã gửi lời mời thành công!' };
 }
 
-export async function removeTeamMemberAction(data: { memberId: number }) {
+export async function removeTeamMemberAction(data: { memberId: number; teamId: number }) {
   const user = await getUser();
   if (!user) {
     return { error: 'Quyền truy cập bị từ chối. Vui lòng đăng nhập.' };
   }
 
-  const { memberId } = data;
-  const userWithTeam = await getUserWithTeam(user.id);
-  if (!userWithTeam?.teamId) {
-    return { error: 'Không tìm thấy không gian làm việc.' };
+  const { memberId, teamId } = data;
+  if (!teamId) {
+    return { error: 'Thiếu teamId. Vui lòng tải lại trang.' };
   }
 
-  const [currentUserMember] = await db
-    .select()
-    .from(teamMembers)
-    .where(and(eq(teamMembers.userId, user.id), eq(teamMembers.teamId, userWithTeam.teamId)))
-    .limit(1);
+  // Authorize actor: allow any valid member role first, then filter specific permissions
+  let actor: TeamMember;
+  try {
+    actor = await requireTeamRole(user.id, teamId, ['owner', 'admin', 'member', 'staff', 'viewer']);
+  } catch {
+    return { error: 'Quyền truy cập bị từ chối.' };
+  }
 
-  const [targetMember] = await db
-    .select()
-    .from(teamMembers)
-    .where(eq(teamMembers.id, memberId))
-    .limit(1);
-
-  if (!targetMember) {
-    return { error: 'Thành viên không tồn tại.' };
+  // Verify target member belongs to the same teamId to prevent cross-team spoofing
+  let targetMember: TeamMember;
+  try {
+    targetMember = await assertMemberInTeam(memberId, teamId);
+  } catch {
+    return { error: 'Không tìm thấy thành viên.' };
   }
 
   const isSelf = targetMember.userId === user.id;
-  const isOwnerOrAdmin = currentUserMember?.role === 'owner' || currentUserMember?.role === 'admin';
+  const isOwnerOrAdmin = actor.role === 'owner' || actor.role === 'admin';
 
   if (!isSelf && !isOwnerOrAdmin) {
     return { error: 'Quyền truy cập bị từ chối. Chỉ Chủ sở hữu hoặc Quản trị viên mới được phép xóa thành viên.' };
   }
 
-  if (targetMember.role === 'owner' && !isSelf) {
-    return { error: 'Không thể xóa Chủ sở hữu nhóm.' };
+  // Owner protection rules
+  if (targetMember.role === 'owner') {
+    if (!isSelf) {
+      return { error: 'Không thể xóa Chủ sở hữu nhóm.' };
+    }
+    // If self-leaving, ensure there's at least one other owner in the team
+    const ownerCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(teamMembers)
+      .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.role, 'owner')));
+    
+    if ((ownerCountResult[0]?.count ?? 0) <= 1) {
+      return { error: 'Bạn là Chủ sở hữu duy nhất. Hãy chuyển quyền trước khi rời.' };
+    }
   }
 
   await db
     .delete(teamMembers)
-    .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, userWithTeam.teamId)));
+    .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, teamId)));
 
-  await logActivity(userWithTeam.teamId, user.id, ActivityType.REMOVE_TEAM_MEMBER);
+  await logActivity(teamId, user.id, ActivityType.REMOVE_TEAM_MEMBER);
 
   return { success: 'Đã xóa thành viên thành công.' };
 }
@@ -1389,39 +1236,35 @@ export async function acceptInvitationAction(data: { invitationId: number }) {
     return { error: 'Lời mời này không dành cho tài khoản của bạn.' };
   }
 
-  // 3. Thêm user vào team
-  const [existingMember] = await db
-    .select()
-    .from(teamMembers)
-    .where(and(eq(teamMembers.userId, user.id), eq(teamMembers.teamId, invitation.teamId)))
-    .limit(1);
+  // 3-5. Atomic transaction: Thêm member + cập nhật invitation + đánh dấu thông báo
+  await db.transaction(async (tx) => {
+    const [existingMember] = await tx
+      .select()
+      .from(teamMembers)
+      .where(and(eq(teamMembers.userId, user.id), eq(teamMembers.teamId, invitation.teamId)))
+      .limit(1);
 
-  if (existingMember) {
-    await db
+    if (!existingMember) {
+      await tx.insert(teamMembers).values({
+        userId: user.id,
+        teamId: invitation.teamId,
+        role: invitation.role,
+        joinedAt: new Date()
+      });
+    }
+
+    await tx
       .update(invitations)
       .set({ status: 'accepted' })
       .where(eq(invitations.id, invitationId));
-  } else {
-    await db.insert(teamMembers).values({
-      userId: user.id,
-      teamId: invitation.teamId,
-      role: invitation.role,
-      joinedAt: new Date()
-    });
 
-    await db
-      .update(invitations)
-      .set({ status: 'accepted' })
-      .where(eq(invitations.id, invitationId));
-  }
+    await tx
+      .update(notifications)
+      .set({ read: 1 })
+      .where(and(eq(notifications.userId, user.id), eq(notifications.invitationId, invitationId)));
+  });
 
-  // 4. Đánh dấu các thông báo liên quan đến invitation này là đã đọc
-  await db
-    .update(notifications)
-    .set({ read: 1 })
-    .where(and(eq(notifications.userId, user.id), eq(notifications.invitationId, invitationId)));
-
-  // 5. logActivity
+  // 5. logActivity (side effect — ngoài transaction)
   await logActivity(invitation.teamId, user.id, ActivityType.ACCEPT_INVITATION);
 
   // 6. Gửi thông báo ngược lại cho người mời

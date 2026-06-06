@@ -1,5 +1,21 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-06 — Gia cố Bảo mật, Cách ly Workspace & Vá lỗi Google OAuth (Security Hardening & OAuth Fix)
+- **Cơ chế Cách ly Workspace (P0)**:
+  - Tạo mới database helpers `app/lib/db/workspace-helpers.ts` chứa `requireTeamRole()` và `assertMemberInTeam()` để chuẩn hóa việc kiểm tra quyền RBAC và chống cross-team spoofing.
+  - Sửa đổi Server Actions `inviteTeamMemberAction` và `removeTeamMemberAction` trong `actions.ts`: Enforce bắt buộc truyền tham số `teamId`, loại bỏ hoàn toàn fallback `getUserWithTeam` không an toàn.
+  - Sửa đổi Members UI (`members-client.tsx`) để truyền explicit `teamId` từ giao diện người dùng.
+- **Nâng cấp Kiến trúc Bảo mật (P1)**:
+  - Cải tiến Server Action `deleteAccount` trong `actions.ts` thực hiện cascade delete (xóa memberships khỏi mọi teams của người dùng) thay vì chỉ xóa 1 team. Tích hợp Ownerless Guard để chặn xóa tài khoản nếu người dùng là Owner duy nhất của bất kỳ workspace nào.
+  - Sửa đổi `changeMemberRoleAction`: Ngăn chặn Owner duy nhất tự hạ cấp xuống Member để tránh tạo ra nhóm vô chủ (Ownerless Team vulnerability).
+  - Tái cấu trúc Server Action `acceptInvitationAction`: Bọc các logic ghi CSDL (thêm member, đổi status, đọc notification) trong `db.transaction()` để đảm bảo tính toàn vẹn dữ liệu (ACID).
+- **Vá lỗ hổng Google OAuth & Sửa Deadlock**:
+  - Chống lỗ hổng Account Pre-hijacking bằng cách bắt buộc kiểm tra `email_verified` từ Google API.
+  - Khắc phục lỗi bypass mật khẩu bằng cách reset passwordHash về rỗng khi liên kết tài khoản Google nếu trước đó chưa thiết lập mật khẩu thật.
+  - Khắc phục lỗi mất tham số điều hướng sau đăng nhập Google bằng cơ chế cookie `oauth_return_to` an toàn, phòng chống Open Redirect.
+  - Tăng `max` connection pool ở local dev từ `1` lên `5` để giải quyết triệt để lỗi vô hạn treo (infinite loading deadlock) khi Next.js render song song.
+- **TypeScript & Build Check**: Biên dịch TypeScript cục bộ và kiểm tra build thành công 100% không phát sinh lỗi.
+
 ## 2026-06-06 — Hoàn thiện Google OAuth & Redesign trang Đăng ký/Đăng nhập sang Dark Mode
 - **Database Schema**: Thêm cột `googleId` (unique) và `avatarUrl` cho bảng `users`. Cập nhật default `passwordHash` thành chuỗi rỗng `''` để hỗ trợ đăng nhập không mật khẩu của Google OAuth.
 - **Google OAuth API Route**: Xây dựng endpoint `/api/auth/google` và `/api/auth/google/callback` xử lý callback, xác thực thông tin user từ Google API, upsert dữ liệu người dùng/team và thiết lập session cookie.

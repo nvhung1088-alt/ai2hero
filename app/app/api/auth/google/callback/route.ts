@@ -26,6 +26,10 @@ export async function GET(request: NextRequest) {
   // Xoá cookie state ngay lập tức sau khi lấy ra để bảo mật
   cookieStore.delete('google_oauth_state');
 
+  // Đọc và xoá cookie return_to (chỉ dùng một lần)
+  const returnToCookie = cookieStore.get('oauth_return_to')?.value;
+  cookieStore.delete('oauth_return_to');
+
   if (!code || !state || !savedState || state !== savedState) {
     return NextResponse.redirect(
       `${request.nextUrl.origin}/sign-in?error=invalid_state`
@@ -82,11 +86,18 @@ export async function GET(request: NextRequest) {
     }
 
     const googleUser = await userResponse.json();
-    const { sub: googleId, email, name, picture: avatarUrl } = googleUser;
+    const { sub: googleId, email, name, picture: avatarUrl, email_verified } = googleUser;
 
     if (!email) {
       return NextResponse.redirect(
         `${request.nextUrl.origin}/sign-in?error=email_not_provided`
+      );
+    }
+
+    // Chỉ cho phép đăng nhập/liên kết nếu Google đã xác minh email này
+    if (!email_verified) {
+      return NextResponse.redirect(
+        `${request.nextUrl.origin}/sign-in?error=email_not_verified`
       );
     }
 
@@ -111,12 +122,16 @@ export async function GET(request: NextRequest) {
 
       if (emailUser) {
         // Cập nhật googleId và avatarUrl cho user hiện tại
+        // Đồng thời reset passwordHash thành rỗng nếu trước đó nó chưa có password thật (chặn backdoor đăng nhập bằng pass rỗng)
+        const isPasswordEmpty = !emailUser.passwordHash || emailUser.passwordHash === '';
+        
         const [updatedUser] = await db
           .update(users)
           .set({
             googleId,
             avatarUrl: emailUser.avatarUrl || avatarUrl,
             updatedAt: new Date(),
+            ...(isPasswordEmpty ? { passwordHash: '' } : {}),
           })
           .where(eq(users.id, emailUser.id))
           .returning();
@@ -243,7 +258,24 @@ export async function GET(request: NextRequest) {
     // 5. Tạo Session Cookie cho user và redirect tới Dashboard
     await setSession(matchedUser);
 
-    return NextResponse.redirect(`${request.nextUrl.origin}/dashboard`);
+    let redirectUrl = `${request.nextUrl.origin}/dashboard`;
+    if (returnToCookie) {
+      try {
+        const { redirect: redirectParam, priceId, inviteId } = JSON.parse(returnToCookie);
+        if (redirectParam === 'checkout' && priceId) {
+          redirectUrl = `${request.nextUrl.origin}/dashboard/store?priceId=${priceId}`;
+        } else if (redirectParam) {
+          // Phòng chống lỗ hổng Open Redirect: chỉ cho phép đường dẫn relative bắt đầu bằng '/'
+          if (redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
+            redirectUrl = `${request.nextUrl.origin}${redirectParam}`;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to parse oauth_return_to cookie:', error);
+      }
+    }
+
+    return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error('Google OAuth Callback Error:', error);
     return NextResponse.redirect(
