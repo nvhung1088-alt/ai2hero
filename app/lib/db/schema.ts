@@ -268,6 +268,8 @@ export const notifications = pgTable('notifications', {
   fromUserAvatar: varchar('from_user_avatar', { length: 50 }).default('👤'),
   message: text('message').notNull(),
   postId: integer('post_id').references(() => feedPosts.id, { onDelete: 'cascade' }),
+  type: varchar('type', { length: 30 }),
+  invitationId: integer('invitation_id').references(() => invitations.id, { onDelete: 'cascade' }),
   read: integer('read').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => ({
@@ -288,6 +290,7 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, { fields: [notifications.userId], references: [users.id] }),
   sender: one(users, { fields: [notifications.fromUserId], references: [users.id] }),
   post: one(feedPosts, { fields: [notifications.postId], references: [feedPosts.id] }),
+  invitation: one(invitations, { fields: [notifications.invitationId], references: [invitations.id] }),
 }));
 
 export type SystemAnnouncement = typeof systemAnnouncements.$inferSelect;

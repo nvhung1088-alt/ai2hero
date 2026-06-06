@@ -15,16 +15,18 @@ import {
   type NewActivityLog,
   ActivityType,
   invitations,
+  notifications,
   feedPosts,
   feedComments,
   feedLikes
 } from '@/lib/db/schema';
 import { comparePasswords, hashPassword, setSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { createCheckoutSession } from '@/lib/payments/stripe';
 import { getUser, getUserWithTeam, getSystemSetting, updateSystemSetting, DEFAULT_BILLING_PLANS } from '@/lib/db/queries';
-import { createNotification } from '@/lib/db/notification-actions';
+import { createNotification, createInviteNotification } from '@/lib/db/notification-actions';
 import {
   validatedAction,
   validatedActionWithUser
@@ -1272,13 +1274,32 @@ export async function inviteTeamMemberAction(data: { email: string; role: string
     return { error: 'Một lời mời khác đã được gửi tới email này và đang chờ duyệt.' };
   }
 
-  await db.insert(invitations).values({
+  const [newInvitation] = await db.insert(invitations).values({
     teamId,
     email,
     role,
     invitedBy: user.id,
     status: 'pending'
-  });
+  }).returning();
+
+  if (newInvitation) {
+    // Kiểm tra xem email này đã đăng ký tài khoản chưa
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (existingUser) {
+      await createInviteNotification(
+        existingUser.id,
+        user.id,
+        user.name || user.email,
+        team.name,
+        newInvitation.id
+      );
+    }
+  }
 
   await logActivity(teamId, user.id, ActivityType.INVITE_TEAM_MEMBER);
 
@@ -1331,4 +1352,155 @@ export async function removeTeamMemberAction(data: { memberId: number }) {
   await logActivity(userWithTeam.teamId, user.id, ActivityType.REMOVE_TEAM_MEMBER);
 
   return { success: 'Đã xóa thành viên thành công.' };
+}
+
+export async function acceptInvitationAction(data: { invitationId: number }) {
+  const user = await getUser();
+  if (!user) {
+    return { error: 'Quyền truy cập bị từ chối. Vui lòng đăng nhập.' };
+  }
+
+  const { invitationId } = data;
+
+  // 1. Tìm invitation đang pending
+  const [invitation] = await db
+    .select()
+    .from(invitations)
+    .where(and(eq(invitations.id, invitationId), eq(invitations.status, 'pending')))
+    .limit(1);
+
+  if (!invitation) {
+    return { error: 'Không tìm thấy lời mời hoặc lời mời đã hết hạn/được xử lý.' };
+  }
+
+  // 2. Kiểm tra email của user có trùng với email lời mời không
+  if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
+    return { error: 'Lời mời này không dành cho tài khoản của bạn.' };
+  }
+
+  // 3. Thêm user vào team
+  const [existingMember] = await db
+    .select()
+    .from(teamMembers)
+    .where(and(eq(teamMembers.userId, user.id), eq(teamMembers.teamId, invitation.teamId)))
+    .limit(1);
+
+  if (existingMember) {
+    await db
+      .update(invitations)
+      .set({ status: 'accepted' })
+      .where(eq(invitations.id, invitationId));
+  } else {
+    await db.insert(teamMembers).values({
+      userId: user.id,
+      teamId: invitation.teamId,
+      role: invitation.role,
+      joinedAt: new Date()
+    });
+
+    await db
+      .update(invitations)
+      .set({ status: 'accepted' })
+      .where(eq(invitations.id, invitationId));
+  }
+
+  // 4. Đánh dấu các thông báo liên quan đến invitation này là đã đọc
+  await db
+    .update(notifications)
+    .set({ read: 1 })
+    .where(and(eq(notifications.userId, user.id), eq(notifications.invitationId, invitationId)));
+
+  // 5. logActivity
+  await logActivity(invitation.teamId, user.id, ActivityType.ACCEPT_INVITATION);
+
+  // 6. Gửi thông báo ngược lại cho người mời
+  const [inviter] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, invitation.invitedBy))
+    .limit(1);
+
+  if (inviter) {
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, invitation.teamId))
+      .limit(1);
+
+    await createNotification(
+      inviter.id,
+      user.id,
+      user.name || user.email,
+      '👤',
+      `đã chấp nhận lời mời tham gia nhóm "${team?.name || 'Workspace'}"`,
+      null
+    );
+  }
+
+  revalidatePath('/dashboard');
+  return { success: 'Đã chấp nhận lời mời thành công!' };
+}
+
+export async function declineInvitationAction(data: { invitationId: number }) {
+  const user = await getUser();
+  if (!user) {
+    return { error: 'Quyền truy cập bị từ chối. Vui lòng đăng nhập.' };
+  }
+
+  const { invitationId } = data;
+
+  // 1. Tìm invitation đang pending
+  const [invitation] = await db
+    .select()
+    .from(invitations)
+    .where(and(eq(invitations.id, invitationId), eq(invitations.status, 'pending')))
+    .limit(1);
+
+  if (!invitation) {
+    return { error: 'Không tìm thấy lời mời hoặc lời mời đã hết hạn/được xử lý.' };
+  }
+
+  // 2. Kiểm tra email của user có trùng với email lời mời không
+  if (invitation.email.toLowerCase() !== user.email.toLowerCase()) {
+    return { error: 'Lời mời này không dành cho tài khoản của bạn.' };
+  }
+
+  // 3. Từ chối lời mời
+  await db
+    .update(invitations)
+    .set({ status: 'rejected' })
+    .where(eq(invitations.id, invitationId));
+
+  // 4. Đánh dấu các thông báo liên quan đến invitation này là đã đọc
+  await db
+    .update(notifications)
+    .set({ read: 1 })
+    .where(and(eq(notifications.userId, user.id), eq(notifications.invitationId, invitationId)));
+
+  // 5. Gửi thông báo ngược lại cho người mời
+  const [inviter] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, invitation.invitedBy))
+    .limit(1);
+
+  if (inviter) {
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, invitation.teamId))
+      .limit(1);
+
+    await createNotification(
+      inviter.id,
+      user.id,
+      user.name || user.email,
+      '👤',
+      `đã từ chối lời mời tham gia nhóm "${team?.name || 'Workspace'}"`,
+      null
+    );
+  }
+
+  revalidatePath('/dashboard');
+  return { success: 'Đã từ chối lời mời.' };
 }

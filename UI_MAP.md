@@ -124,7 +124,7 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Liên kết**: → /dashboard
 
 ### Thành viên (`/dashboard/members`)
-- **Chức năng**: Quản lý danh sách thành viên trong nhóm, thay đổi vai trò (5 vai trò: Owner, Admin, Manager, Staff, Viewer), tạm khóa tài khoản, xóa khỏi nhóm. Xem ma trận quyền hạn chi tiết và quản lý các lời mời. Modal mời thành viên với Role Picker dạng Card cao cấp. **Hỗ trợ cuộn ngang ma trận trên mobile và Trap Focus phím Escape để đóng nhanh Modal/Dropdown.**
+- **Chức năng**: Quản lý danh sách thành viên trong nhóm, thay đổi vai trò (5 vai trò: Owner, Admin, Manager, Staff, Viewer), tạm khóa tài khoản, xóa khỏi nhóm. Xem ma trận quyền hạn chi tiết và quản lý các lời mời. Modal mời thành viên với Role Picker dạng Card cao cấp. **Tự động gửi thông báo in-app (Bell Notification) cho người được mời nếu đã có tài khoản, hỗ trợ phê duyệt nhanh.** Hỗ trợ cuộn ngang ma trận trên mobile và Trap Focus phím Escape để đóng nhanh Modal/Dropdown.
 - **Vai trò**: Quản trị nhóm & phân quyền
 - **Đọc/Ghi data**: Đọc/Ghi database PostgreSQL thật (các bảng `team_members`, `invitations`)
 - **Liên kết**: → /dashboard/apps, → /dashboard
@@ -280,7 +280,7 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 ### API Routes thông báo & thông cáo (`/api/notifications`, `/api/announcements`)
 - **Chức năng**: Cung cấp API endpoints dynamic cho client fetch bằng SWR để render chuông báo Bell và Loa Megaphone.
 - **Vai trò**: Data API
-- **Đọc/Ghi data**: Đọc bảng `notifications` và `system_announcements` join chéo `user_announcement_reads` từ database PostgreSQL.
+- **Đọc/Ghi data**: Đọc bảng `notifications` (bổ sung trả về `type` và `invitationId` để hỗ trợ tương tác Duyệt/Từ chối lời mời tại chỗ) và `system_announcements` join chéo `user_announcement_reads` từ database PostgreSQL.
 
 ### API Route Tìm kiếm toàn cục (`/api/search`)
 - **Chức năng**: API thực hiện truy vấn chuỗi tìm kiếm không phân biệt hoa thường đối với Ứng dụng, Thành viên và bài viết Social Feed thật.

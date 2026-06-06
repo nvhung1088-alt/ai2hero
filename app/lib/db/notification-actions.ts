@@ -154,3 +154,37 @@ export async function markSingleAnnouncementAsReadAction(announcementId: number)
     return { error: error.message || 'Lỗi khi cập nhật trạng thái đọc tin thông cáo.' };
   }
 }
+
+/**
+ * Tự động tạo thông báo mời tham gia tổ chức
+ */
+export async function createInviteNotification(
+  userId: number,
+  fromUserId: number,
+  fromUserName: string,
+  teamName: string,
+  invitationId: number
+) {
+  try {
+    // Không tự mời chính mình
+    if (fromUserId === userId) return { success: true };
+
+    await db.insert(notifications).values({
+      userId,
+      fromUserId,
+      fromUserName: fromUserName || 'Hệ thống',
+      fromUserAvatar: '🏢', // Avatar dạng công ty cho lời mời nhóm
+      message: `đã mời bạn tham gia nhóm "${teamName}"`,
+      postId: null,
+      type: 'team_invite',
+      invitationId,
+      read: 0,
+      createdAt: new Date(),
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Lỗi khi tạo thông báo mời nhóm:', error);
+    return { error: error.message || 'Lỗi khi tạo thông báo mời nhóm.' };
+  }
+}

@@ -71,6 +71,15 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 - Giao diện: TailwindCSS kết hợp shadcn/ui, ưu tiên chuẩn Dark Mode bóng bẩy, thống nhất phong cách màu sắc cam/hồng Gradient của AI2Hero.
 
 
+- **2026-06-06 (dashboard - member invitation notification & confirmation flow)**:
+  - 🚀 **Hoàn thiện luồng thông báo & xác nhận lời mời thành viên**:
+    - **Database Schema (`schema.ts`) [MODIFY]**: Thêm cột `type` và `invitationId` vào bảng `notifications`. Tạo liên kết Drizzle Relations.
+    - **Migration SQL [NEW]**: Script custom migration `migrate-custom.ts` áp dụng ALTER TABLE vào DB thành công.
+    - **Server Actions (`actions.ts`, `notification-actions.ts`) [MODIFY]**: Sửa `inviteTeamMemberAction` để tự động tạo thông báo khi gửi lời mời cho một email đã có tài khoản. Thêm `acceptInvitationAction` và `declineInvitationAction`.
+    - **API Route (`route.ts`) [MODIFY]**: API `/api/notifications` trả về thêm thông tin `type` và `invitationId`.
+    - **Top Header Bell UI (`top-header.tsx`) [MODIFY]**: Giao diện `NotifDropdownContent` hiển thị nút Chấp nhận / Từ chối, gọi server actions tương ứng và tự động reload danh sách thông báo qua SWR cache mutate.
+    - **Smoke Test (`test-invite-flow.ts`) [NEW]**: Chạy test kiểm thử toàn bộ luồng DB, actions của tính năng đạt 100% thành công.
+
 - **2026-06-06 (connect-hub - deploy to production)**:
   - 🚀 **Deploy Connect Hub lên Server Production**:
     - **Build Check**: Chạy `pnpm run build` local thành công 100% không lỗi biên dịch.

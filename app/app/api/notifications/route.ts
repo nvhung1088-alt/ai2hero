@@ -32,6 +32,8 @@ export async function GET() {
         }) : '',
         read: n.read === 1,
         postId: n.postId,
+        type: n.type || null,
+        invitationId: n.invitationId || null,
       })),
       unreadCount,
     });

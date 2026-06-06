@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import useSWR, { useSWRConfig } from 'swr';
 import {
-  LayoutGrid, Plus, Sparkles, Menu, Search, Bell, HelpCircle, Megaphone, LogOut, Shield, UserCircle, Settings, X
+  LayoutGrid, Plus, Sparkles, Menu, Search, Bell, HelpCircle, Megaphone, LogOut, Shield, UserCircle, Settings, X, Check
 } from 'lucide-react';
 import { User } from '@/lib/db/schema';
-import { signOut } from '@/app/(login)/actions';
+import { signOut, acceptInvitationAction, declineInvitationAction } from '@/app/(login)/actions';
 import { fetcher } from '@/lib/fetcher';
 import {
   markNotificationAsReadAction,
@@ -29,6 +29,45 @@ function NotifDropdownContent({
   markAllAsRead,
   handleNotifClick
 }: NotifDropdownContentProps) {
+  const { mutate } = useSWRConfig();
+  const [loadingId, setLoadingId] = useState<number | null>(null);
+
+  const onAccept = async (e: React.MouseEvent, notifId: number, invitationId: number) => {
+    e.stopPropagation();
+    setLoadingId(notifId);
+    try {
+      const res = await acceptInvitationAction({ invitationId });
+      if (res.error) {
+        alert(res.error);
+      } else {
+        mutate('/api/notifications');
+        window.dispatchEvent(new Event('notifications-updated'));
+      }
+    } catch (err) {
+      console.error('Lỗi khi chấp nhận lời mời:', err);
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const onDecline = async (e: React.MouseEvent, notifId: number, invitationId: number) => {
+    e.stopPropagation();
+    setLoadingId(notifId);
+    try {
+      const res = await declineInvitationAction({ invitationId });
+      if (res.error) {
+        alert(res.error);
+      } else {
+        mutate('/api/notifications');
+        window.dispatchEvent(new Event('notifications-updated'));
+      }
+    } catch (err) {
+      console.error('Lỗi khi từ chối lời mời:', err);
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
   return (
     <>
       <div className="p-4 border-b border-white/5 flex items-center justify-between">
@@ -59,11 +98,33 @@ function NotifDropdownContent({
               <div className="h-7 w-7 rounded-full bg-white/5 flex items-center justify-center shrink-0 shadow-sm text-sm select-none">
                 {n.fromAvatar}
               </div>
-              <div className="space-y-0.5 min-w-0 flex-1">
+              <div className="space-y-1.5 min-w-0 flex-1">
                 <p className="text-gray-300 leading-snug">
                   <span className="font-extrabold text-white">{n.fromUser}</span>{' '}
                   {n.message}
                 </p>
+
+                {n.type === 'team_invite' && !n.read && n.invitationId && (
+                  <div className="flex items-center gap-1.5 mt-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      disabled={loadingId === n.id}
+                      onClick={(e) => onAccept(e, n.id, n.invitationId)}
+                      className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold px-2 py-0.5 rounded flex items-center gap-0.5 transition-all cursor-pointer text-[9px]"
+                    >
+                      <Check className="h-2.5 w-2.5" />
+                      Chấp nhận
+                    </button>
+                    <button
+                      disabled={loadingId === n.id}
+                      onClick={(e) => onDecline(e, n.id, n.invitationId)}
+                      className="bg-white/10 hover:bg-white/20 disabled:opacity-50 text-gray-300 font-bold px-2 py-0.5 rounded flex items-center gap-0.5 transition-all cursor-pointer text-[9px]"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                      Từ chối
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-1.5 text-[9px] text-gray-500">
                   <span>{n.timestamp}</span>
                   {!n.read && (
