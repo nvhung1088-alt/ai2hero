@@ -32,6 +32,8 @@ import {
   triggerReportRunAction,
   previewReportDataAction,
   testAiCommentaryAction,
+  fetchFacebookResourcesAction,
+  fetchFacebookCampaignsAction,
   CreateScheduleInput
 } from '@/lib/db/hero-report-actions';
 import Link from 'next/link';
@@ -78,7 +80,71 @@ export default function ReportClient({
   // Form states
   const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
   const [scheduleName, setScheduleName] = useState('');
-  const [selectedSources, setSelectedSources] = useState<{ connectionId: number; provider: string; capabilities: string[] }[]>([]);
+  const [selectedSources, setSelectedSources] = useState<{ connectionId: number; provider: string; capabilities: string[]; config?: Record<string, any> }[]>([]);
+  const [fbResources, setFbResources] = useState<Record<number, { pages: any[]; adAccounts: any[]; campaigns?: Record<string, any[]> }>>({});
+  const [fetchingFbResources, setFetchingFbResources] = useState<Record<number, boolean>>({});
+  const [fetchingFbCampaigns, setFetchingFbCampaigns] = useState<Record<string, boolean>>({});
+
+  const loadFbResources = async (connId: number) => {
+    if (fbResources[connId] || fetchingFbResources[connId]) return;
+    setFetchingFbResources(prev => ({ ...prev, [connId]: true }));
+    try {
+      const res = await fetchFacebookResourcesAction(teamId, connId);
+      if (res.success && res.data) {
+        setFbResources(prev => ({ ...prev, [connId]: res.data }));
+      } else {
+        console.error('Lỗi khi fetch Facebook resources:', res.error);
+        showToast(res.error || 'Không thể lấy tài khoản Meta', 'error');
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Lỗi kết nối Meta', 'error');
+    } finally {
+      setFetchingFbResources(prev => ({ ...prev, [connId]: false }));
+    }
+  };
+
+  const loadFbCampaigns = async (connId: number, adAccountId: string) => {
+    const key = `${connId}_${adAccountId}`;
+    if (fbResources[connId]?.campaigns?.[adAccountId] || fetchingFbCampaigns[key]) return;
+    
+    setFetchingFbCampaigns(prev => ({ ...prev, [key]: true }));
+    try {
+      const res = await fetchFacebookCampaignsAction(teamId, connId, adAccountId);
+      if (res.success && res.data) {
+        setFbResources(prev => ({
+          ...prev,
+          [connId]: {
+            ...prev[connId],
+            campaigns: {
+              ...(prev[connId]?.campaigns || {}),
+              [adAccountId]: res.data
+            }
+          }
+        }));
+      } else {
+        showToast(res.error || 'Không thể lấy danh sách Campaign', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi kết nối Meta', 'error');
+    } finally {
+      setFetchingFbCampaigns(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  React.useEffect(() => {
+    if (currentStep === 2) {
+      selectedSources.forEach(src => {
+        if (src.provider === 'facebook' || src.provider === 'meta') {
+          loadFbResources(src.connectionId);
+          if (src.config?.adAccountId && src.capabilities.includes('get_campaign_insights')) {
+            loadFbCampaigns(src.connectionId, src.config.adAccountId);
+          }
+        }
+      });
+    }
+  }, [currentStep, selectedSources]);
+
   const [reportType, setReportType] = useState('daily_sales');
   const [dateRange, setDateRange] = useState('yesterday');
   const [skipAiConfig, setSkipAiConfig] = useState(false);
@@ -94,7 +160,7 @@ export default function ReportClient({
   
   // Output states
   const [selectedOutputId, setSelectedOutputId] = useState('');
-  const [telegramChatId, setTelegramChatId] = useState('');
+  const [targetId, setTargetId] = useState('');
 
   // Test Run states (Preview inside Wizard)
   const [testingReport, setTestingReport] = useState(false);
@@ -161,18 +227,33 @@ export default function ReportClient({
     setCronMinute('00');
     setCronDow('1');
     setSelectedOutputId(outputConnections[0]?.id?.toString() || '');
-    setTelegramChatId('');
+    setTargetId('');
     setCurrentStep(1);
     setTestResponse(null);
     setPreviewDataResult(null);
     setTestAiResult(null);
+    setFbResources({});
+    setFetchingFbResources({});
   };
 
   // Pre-fill form for editing
   const handleEditSchedule = (sch: any) => {
     setEditingScheduleId(sch.id);
     setScheduleName(sch.name);
-    setSelectedSources(sch.inputSources || []);
+    
+    const sources = sch.inputSources || [];
+    setSelectedSources(sources);
+    
+    // Tự động tải thông tin Facebook resources ngầm nếu có nguồn Facebook
+    sources.forEach((src: any) => {
+      if (src.provider === 'facebook' || src.provider === 'meta') {
+        loadFbResources(src.connectionId);
+        if (src.config?.adAccountId && src.capabilities?.includes('get_campaign_insights')) {
+          loadFbCampaigns(src.connectionId, src.config.adAccountId);
+        }
+      }
+    });
+
     setReportType(sch.reportSpec?.reportType || 'daily_sales');
     setDateRange(sch.reportSpec?.dateRange || 'yesterday');
     setSkipAiConfig(sch.reportSpec?.skipAi || false);
@@ -180,7 +261,7 @@ export default function ReportClient({
     setAiProvider(sch.reportSpec?.aiProvider || (aiConnections.length > 0 ? aiConnections[0].appSlug : ''));
     setAiModel(sch.reportSpec?.aiModel || '');
     setSelectedOutputId(sch.outputConnectionId ? sch.outputConnectionId.toString() : '');
-    setTelegramChatId(sch.outputConfig?.chatId || '');
+    setTargetId(sch.outputConfig?.chatId || sch.outputConfig?.phone || sch.outputConfig?.userId || '');
     setScheduleType(sch.scheduleType || 'manual');
     if (sch.cronExpression) {
       const parts = sch.cronExpression.split(' ');
@@ -209,12 +290,37 @@ export default function ReportClient({
       showToast('Vui lòng chọn ít nhất một kết nối nguồn dữ liệu', 'error');
       return;
     }
+
+    // Validation cho Facebook config
+    for (const src of selectedSources) {
+      if (src.provider === 'facebook' || src.provider === 'meta') {
+        if (src.capabilities.includes('get_page_insights') && !src.config?.pageId) {
+          showToast('Vui lòng chọn Fanpage Facebook', 'error');
+          return;
+        }
+        if (src.capabilities.includes('get_ad_account_insights') && !src.config?.adAccountId) {
+          showToast('Vui lòng chọn Tài khoản Quảng cáo', 'error');
+          return;
+        }
+        if (src.capabilities.includes('get_campaign_insights')) {
+          if (!src.config?.adAccountId) {
+            showToast('Vui lòng chọn Tài khoản Quảng cáo cho Chiến dịch', 'error');
+            return;
+          }
+          if (!src.config?.campaignId) {
+            showToast('Vui lòng nhập ID Chiến dịch Quảng cáo', 'error');
+            return;
+          }
+        }
+      }
+    }
     if (!selectedOutputId) {
-      showToast('Vui lòng chọn cổng Telegram', 'error');
+      showToast('Vui lòng chọn cổng nhận báo cáo', 'error');
       return;
     }
-    if (!telegramChatId.trim()) {
-      showToast('Vui lòng nhập Chat ID Telegram', 'error');
+    if (!targetId.trim()) {
+      const isZalo = selectedOutputConn?.appSlug === 'zalo-zns';
+      showToast(isZalo ? 'Vui lòng nhập Zalo User ID hoặc Số điện thoại nhận tin' : 'Vui lòng nhập Chat ID Telegram', 'error');
       return;
     }
 
@@ -242,11 +348,11 @@ export default function ReportClient({
             ? ['pending_orders_count']
             : ['top_products_list']
         },
-        outputType: 'telegram',
+        outputType: selectedOutputConn?.appSlug || 'telegram',
         outputConnectionId: parseInt(selectedOutputId, 10),
-        outputConfig: {
-          chatId: telegramChatId.trim()
-        },
+        outputConfig: selectedOutputConn?.appSlug === 'zalo-zns'
+          ? { phone: targetId.trim() }
+          : { chatId: targetId.trim() },
         scheduleType,
         cronExpression: scheduleType !== 'manual' ? cronExpr : undefined,
         timezone: 'Asia/Ho_Chi_Minh'
@@ -282,8 +388,8 @@ export default function ReportClient({
 
   // Handle "Gửi thử ngay" (Test Run on current unsaved configuration)
   const handleTestRun = async () => {
-    if (selectedSources.length === 0 || !selectedOutputId || !telegramChatId.trim()) {
-      showToast('Vui lòng cấu hình đầy đủ Nguồn dữ liệu & Telegram Chat ID trước khi test', 'error');
+    if (selectedSources.length === 0 || !selectedOutputId || !targetId.trim()) {
+      showToast('Vui lòng cấu hình đầy đủ Nguồn dữ liệu & Cổng nhận tin trước khi test', 'error');
       return;
     }
 
@@ -325,11 +431,11 @@ export default function ReportClient({
           aiProvider,
           aiModel
         },
-        outputType: 'telegram',
+        outputType: selectedOutputConn?.appSlug || 'telegram',
         outputConnectionId: parseInt(selectedOutputId, 10),
-        outputConfig: {
-          chatId: telegramChatId.trim()
-        },
+        outputConfig: selectedOutputConn?.appSlug === 'zalo-zns'
+          ? { phone: targetId.trim() }
+          : { chatId: targetId.trim() },
         scheduleType,
         cronExpression: scheduleType !== 'manual' ? cronExpr : undefined,
         prebuiltText: finalReportText
@@ -555,7 +661,11 @@ export default function ReportClient({
                     <div className="flex items-start justify-between gap-4">
                       <div className="space-y-1 min-w-0">
                         <span className="px-2 py-0.5 text-[9px] font-extrabold rounded bg-white/5 border border-white/5 text-gray-400 uppercase">
-                          {schedule.inputProvider === 'pancake-pos' ? 'Pancake POS' : 'KiotViet'}
+                          {schedule.inputProvider === 'pancake-pos' && 'Pancake POS'}
+                          {schedule.inputProvider === 'kiotviet' && 'KiotViet'}
+                          {schedule.inputProvider === 'pancake-chat' && 'Pancake Chat'}
+                          {(schedule.inputProvider === 'facebook' || schedule.inputProvider === 'meta') && 'Meta Platform'}
+                          {!['pancake-pos', 'kiotviet', 'pancake-chat', 'facebook', 'meta'].includes(schedule.inputProvider || '') && (schedule.inputProvider || 'Unknown')}
                         </span>
                         <h4 className="font-extrabold text-sm text-white truncate">{schedule.name}</h4>
                       </div>
@@ -917,6 +1027,141 @@ export default function ReportClient({
                                   })}
                                 </div>
                               )}
+
+                              {/* Dropdowns chọn Fanpage / Ad Account dành riêng cho Facebook */}
+                              {(source.provider === 'facebook' || source.provider === 'meta') && (
+                                <div className="mt-3 p-3 bg-white/[0.01] border border-white/5 rounded-lg space-y-3">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] text-orange-400 font-bold uppercase tracking-wider block">
+                                      Cấu hình tài khoản Meta
+                                    </span>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => {
+                                         // Force refresh
+                                         setFbResources(prev => { const n = {...prev}; delete n[source.connectionId]; return n; });
+                                         setFetchingFbResources(prev => { const n = {...prev}; delete n[source.connectionId]; return n; });
+                                         loadFbResources(source.connectionId);
+                                      }}
+                                      className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition-colors"
+                                    >
+                                      🔄 Tải lại danh sách
+                                    </button>
+                                  </div>
+                                  
+                                  {fetchingFbResources[source.connectionId] ? (
+                                    <div className="flex items-center gap-2 text-[10px] text-gray-400 py-1">
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-500" />
+                                      Đang tải danh sách tài khoản/trang từ Meta...
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {source.capabilities.includes('get_page_insights') && (
+                                        <div className="space-y-1">
+                                          <label className="text-[10px] text-gray-400 block font-bold">
+                                            Chọn Fanpage Facebook:
+                                          </label>
+                                          <select
+                                            value={source.config?.pageId || ''}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              const pages = fbResources[source.connectionId]?.pages || [];
+                                              const selectedPage = pages.find((p: any) => p.id === val);
+                                              
+                                              const newSources = selectedSources.map((src, i) => {
+                                                if (i !== idx) return src;
+                                                return {
+                                                  ...src,
+                                                  config: { 
+                                                    ...src.config, 
+                                                    pageId: val,
+                                                    pageToken: selectedPage?.access_token || ''
+                                                  }
+                                                };
+                                              });
+                                              setSelectedSources(newSources);
+                                            }}
+                                            className="w-full px-3 py-2 bg-gray-900 border border-white/10 hover:border-white/15 focus:border-orange-500/50 rounded-lg text-[11px] text-white focus:outline-none transition-all cursor-pointer"
+                                          >
+                                            <option value="">-- Chọn Fanpage --</option>
+                                            {(fbResources[source.connectionId]?.pages || []).map((p: any) => (
+                                              <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                      )}
+
+                                      {(source.capabilities.includes('get_ad_account_insights') || source.capabilities.includes('get_campaign_insights')) && (
+                                        <div className="space-y-1">
+                                          <label className="text-[10px] text-gray-400 block font-bold">
+                                            Chọn Tài khoản Quảng cáo (Ad Account):
+                                          </label>
+                                          <select
+                                            value={source.config?.adAccountId || ''}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              const newSources = selectedSources.map((src, i) => {
+                                                if (i !== idx) return src;
+                                                return {
+                                                  ...src,
+                                                  config: { ...src.config, adAccountId: val, campaignId: '' }
+                                                };
+                                              });
+                                              setSelectedSources(newSources);
+                                              if (val && source.capabilities.includes('get_campaign_insights')) {
+                                                loadFbCampaigns(source.connectionId, val);
+                                              }
+                                            }}
+                                            className="w-full px-3 py-2 bg-gray-900 border border-white/10 hover:border-white/15 focus:border-orange-500/50 rounded-lg text-[11px] text-white focus:outline-none transition-all cursor-pointer"
+                                          >
+                                            <option value="">-- Chọn Tài khoản --</option>
+                                            {(fbResources[source.connectionId]?.adAccounts || []).map((a: any) => (
+                                              <option key={a.id} value={a.id}>{a.name} ({a.id})</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                      )}
+
+                                      {source.capabilities.includes('get_campaign_insights') && (
+                                        <div className="space-y-1">
+                                          <label className="text-[10px] text-gray-400 block font-bold">
+                                            Chọn Chiến dịch Quảng cáo (Campaign):
+                                          </label>
+                                          {fetchingFbCampaigns[`${source.connectionId}_${source.config?.adAccountId}`] ? (
+                                            <div className="flex items-center gap-2 text-[11px] text-gray-400 py-2">
+                                              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tải danh sách chiến dịch...
+                                            </div>
+                                          ) : !source.config?.adAccountId ? (
+                                            <div className="text-[11px] text-orange-400">Vui lòng chọn Tài khoản Quảng cáo trước.</div>
+                                          ) : (
+                                            <select
+                                              value={source.config?.campaignId || ''}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                const newSources = selectedSources.map((src, i) => {
+                                                  if (i !== idx) return src;
+                                                  return {
+                                                    ...src,
+                                                    config: { ...src.config, campaignId: val }
+                                                  };
+                                                });
+                                                setSelectedSources(newSources);
+                                              }}
+                                              className="w-full px-3 py-2 bg-gray-900 border border-white/10 hover:border-white/15 focus:border-orange-500/50 rounded-lg text-[11px] text-white focus:outline-none transition-all cursor-pointer"
+                                            >
+                                              <option value="">-- Chọn Chiến dịch --</option>
+                                              <option value="ALL">-- Tất cả chiến dịch --</option>
+                                              {(fbResources[source.connectionId]?.campaigns?.[source.config.adAccountId] || []).map((c: any) => (
+                                                <option key={c.id} value={c.id}>{c.name} ({c.status})</option>
+                                              ))}
+                                            </select>
+                                          )}
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -995,6 +1240,31 @@ export default function ReportClient({
                           showToast('Mỗi nguồn dữ liệu phải chọn ít nhất 1 năng lực báo cáo', 'error');
                           return;
                         }
+
+                        // Validation cho Facebook config
+                        for (const src of selectedSources) {
+                          if (src.provider === 'facebook' || src.provider === 'meta') {
+                            if (src.capabilities.includes('get_page_insights') && !src.config?.pageId) {
+                              showToast('Vui lòng chọn Fanpage Facebook', 'error');
+                              return;
+                            }
+                            if (src.capabilities.includes('get_ad_account_insights') && !src.config?.adAccountId) {
+                              showToast('Vui lòng chọn Tài khoản Quảng cáo', 'error');
+                              return;
+                            }
+                            if (src.capabilities.includes('get_campaign_insights')) {
+                              if (!src.config?.adAccountId) {
+                                showToast('Vui lòng chọn Tài khoản Quảng cáo cho Chiến dịch', 'error');
+                                return;
+                              }
+                              if (!src.config?.campaignId) {
+                                showToast('Vui lòng nhập ID Chiến dịch Quảng cáo', 'error');
+                                return;
+                              }
+                            }
+                          }
+                        }
+
                         setPreviewingData(true);
                         setPreviewDataResult(null);
                         try {
@@ -1285,24 +1555,24 @@ export default function ReportClient({
                 </div>
               )}
 
-              {/* Step 5: Cổng Nhận Báo Cáo (Telegram) */}
+              {/* Step 5: Cổng Nhận Báo Cáo */}
               {currentStep === 5 && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-300 font-bold flex items-center gap-1.5">
                       <MessageSquare className="h-4 w-4 text-orange-400" />
-                      5. Chọn Cổng Telegram nhận tin
+                      5. Chọn Cổng Nhận Báo Cáo
                     </label>
                     {outputConnections.length === 0 ? (
                       <div className="p-4 bg-orange-500/5 border border-orange-500/20 rounded-xl space-y-3">
                         <p className="text-xs text-gray-300">
-                          Không gian làm việc này chưa có kết nối API <strong>Telegram Bot</strong> nào thành công.
+                          Không gian làm việc này chưa có kết nối API <strong>Telegram Bot</strong> hoặc <strong>Zalo ZNS & OA</strong> nào thành công.
                         </p>
                         <Link
                           href={`/connect-hub/t/${teamId}/connections`}
                           className="inline-flex items-center gap-1.5 text-xs font-black text-orange-400 hover:text-orange-300"
                         >
-                          Tạo kết nối Telegram tại Connect Hub <ArrowUpRight className="h-3.5 w-3.5" />
+                          Tạo kết nối nhận tin tại Connect Hub <ArrowUpRight className="h-3.5 w-3.5" />
                         </Link>
                       </div>
                     ) : (
@@ -1311,10 +1581,10 @@ export default function ReportClient({
                         onChange={(e) => setSelectedOutputId(e.target.value)}
                         className="w-full px-4 py-3 bg-gray-900 border border-white/10 hover:border-white/15 focus:border-orange-500/50 rounded-xl text-xs text-white focus:outline-none transition-all"
                       >
-                        <option value="">-- Chọn Telegram Bot --</option>
+                        <option value="">-- Chọn Cổng Nhận Báo Cáo --</option>
                         {outputConnections.map(c => (
                           <option key={c.id} value={c.id.toString()}>
-                            {c.connectionName} (Telegram)
+                            {c.connectionName} ({c.appSlug === 'telegram' ? 'Telegram' : c.appSlug === 'zalo-zns' ? 'Zalo ZNS & OA' : c.appSlug})
                           </option>
                         ))}
                       </select>
@@ -1323,25 +1593,41 @@ export default function ReportClient({
 
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-300 font-bold block">
-                      Nhập Chat ID nhận báo cáo (Cá nhân hoặc Nhóm)
+                      {selectedOutputConn?.appSlug === 'zalo-zns' 
+                        ? 'Zalo User ID hoặc Số điện thoại nhận tin' 
+                        : 'Nhập Chat ID nhận báo cáo (Cá nhân hoặc Nhóm)'}
                     </label>
                     <input
                       type="text"
-                      placeholder="Ví dụ: -100123456789 (Nhóm) hoặc 123456789 (Cá nhân)"
-                      value={telegramChatId}
-                      onChange={(e) => setTelegramChatId(e.target.value)}
+                      placeholder={selectedOutputConn?.appSlug === 'zalo-zns'
+                        ? 'Ví dụ: 0912345678 hoặc 38472910384729104'
+                        : 'Ví dụ: -100123456789 (Nhóm) hoặc 123456789 (Cá nhân)'}
+                      value={targetId}
+                      onChange={(e) => setTargetId(e.target.value)}
                       className="w-full px-4 py-3 bg-gray-900 border border-white/10 hover:border-white/15 focus:border-orange-500/50 rounded-xl text-xs text-white focus:outline-none transition-all"
                     />
-                    <div className="p-3.5 bg-white/[0.01] border border-white/5 rounded-xl space-y-2 text-[10px] text-gray-400 leading-relaxed">
-                      <strong className="text-gray-300">Hướng dẫn lấy Chat ID Nhóm:</strong>
-                      <ol className="list-decimal pl-4 space-y-1">
-                        <li>Tạo một nhóm (Group) mới trên Telegram.</li>
-                        <li>Thêm bot <span className="text-orange-400 font-mono font-bold">@myidbot</span> vào nhóm của bạn.</li>
-                        <li>Thêm cả <strong>Bot Telegram hệ thống</strong> chính là bot (ai2hero_bot) đã tạo ở bước kết nối Telegram với Connect Hub vào nhóm để gửi tin nhắn lên nhóm.</li>
-                        <li>Gõ lệnh <code className="text-orange-400 font-mono bg-white/5 px-1 py-0.5 rounded">/getgroupid</code> trong nhóm. Bot sẽ phản hồi Chat ID (là một chuỗi số âm, ví dụ: -5199688904 hoặc bắt đầu bằng -100).</li>
-                        <li>Copy toàn bộ chuỗi số đó (cả dấu trừ) và dán vào ô phía trên.</li>
-                      </ol>
-                    </div>
+                    
+                    {selectedOutputConn?.appSlug === 'zalo-zns' ? (
+                      <div className="p-3.5 bg-white/[0.01] border border-white/5 rounded-xl space-y-2 text-[10px] text-gray-400 leading-relaxed">
+                        <strong className="text-gray-300">Hướng dẫn gửi báo cáo qua Zalo OA:</strong>
+                        <ul className="list-disc pl-4 space-y-1">
+                          <li>Để nhận tin nhắn OA CS miễn phí, người nhận bắt buộc phải <strong>quan tâm Zalo OA</strong> của bạn.</li>
+                          <li>Lấy <strong>Zalo User ID</strong> của người nhận trong trang quản trị Zalo OA và nhập vào ô phía trên.</li>
+                          <li>Hoặc nhập <strong>Số điện thoại</strong> nếu bạn đã cấu hình gói ZNS Template trả phí cho số điện thoại đó.</li>
+                        </ul>
+                      </div>
+                    ) : (
+                      <div className="p-3.5 bg-white/[0.01] border border-white/5 rounded-xl space-y-2 text-[10px] text-gray-400 leading-relaxed">
+                        <strong className="text-gray-300">Hướng dẫn lấy Chat ID Nhóm:</strong>
+                        <ol className="list-decimal pl-4 space-y-1">
+                          <li>Tạo một nhóm (Group) mới trên Telegram.</li>
+                          <li>Thêm bot <span className="text-orange-400 font-mono font-bold">@myidbot</span> vào nhóm của bạn.</li>
+                          <li>Thêm cả <strong>Bot Telegram hệ thống</strong> chính là bot (ai2hero_bot) đã tạo ở bước kết nối Telegram với Connect Hub vào nhóm để gửi tin nhắn lên nhóm.</li>
+                          <li>Gõ lệnh <code className="text-orange-400 font-mono bg-white/5 px-1 py-0.5 rounded">/getgroupid</code> trong nhóm. Bot sẽ phản hồi Chat ID (là một chuỗi số âm, ví dụ: -5199688904 hoặc bắt đầu bằng -100).</li>
+                          <li>Copy toàn bộ chuỗi số đó (cả dấu trừ) và dán vào ô phía trên.</li>
+                        </ol>
+                      </div>
+                    )}
                   </div>
 
                   {/* Test preview section */}
@@ -1351,7 +1637,7 @@ export default function ReportClient({
                       <button
                         type="button"
                         onClick={handleTestRun}
-                        disabled={testingReport || selectedSources.length === 0 || !selectedOutputId || !telegramChatId.trim()}
+                        disabled={testingReport || selectedSources.length === 0 || !selectedOutputId || !targetId.trim()}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/25 rounded-lg text-[11px] font-extrabold text-orange-400 transition-all cursor-pointer disabled:opacity-50"
                       >
                         {testingReport ? (
@@ -1371,7 +1657,7 @@ export default function ReportClient({
                       }`}>
                         {testResponse.success ? (
                           <>
-                            <div className="font-extrabold text-[10px] text-emerald-500 mb-2">PREVIEW BÁO CÁO (ĐÃ GỬI TELEGRAM):</div>
+                            <div className="font-extrabold text-[10px] text-emerald-500 mb-2">PREVIEW BÁO CÁO (ĐÃ GỬI QUA CỔNG CHỌN):</div>
                             {testResponse.text}
                           </>
                         ) : (

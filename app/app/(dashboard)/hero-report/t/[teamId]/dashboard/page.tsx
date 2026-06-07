@@ -48,7 +48,8 @@ export default async function HeroReportDynamicDashboardPage({
         .map(a => ({
           slug: a.slug,
           name: a.name,
-          description: a.description
+          description: a.description,
+          inputSchema: a.inputSchema || []
         }));
     }
   }
@@ -68,8 +69,10 @@ export default async function HeroReportDynamicDashboardPage({
             if (opt.includes('sonnet')) label = 'Claude 3.5 Sonnet (Khuyên dùng)';
             else if (opt.includes('opus')) label = 'Claude 3 Opus (Siêu tư duy)';
             else if (opt.includes('haiku')) label = 'Claude 3 Haiku (Tốc độ cực nhanh)';
-            else if (opt.includes('gpt-5.4')) label = 'GPT-4o / GPT-4 Turbo (Thông minh)';
-            else if (opt.includes('glm')) label = 'GPT-3.5 / GLM (Siêu tiết kiệm)';
+            else if (opt === 'gpt-5.5' || opt.includes('gpt-5.5')) label = 'GPT-5.5 (Mới nhất)';
+            else if (opt === 'gpt-4o' || opt.includes('gpt-5.4')) label = 'GPT-4o (Thông minh)';
+            else if (opt === 'gpt-4o-mini') label = 'GPT-4o Mini (Nhanh & Rẻ)';
+            else if (opt.includes('glm') || opt === 'gpt-3.5-turbo') label = 'GPT-3.5 / GLM (Siêu tiết kiệm)';
             return { label, value: opt };
           });
         }

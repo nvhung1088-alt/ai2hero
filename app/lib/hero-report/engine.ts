@@ -145,120 +145,111 @@ export async function buildReportContent(
 
     const collectedInstructions: string[] = [];
 
+// === HELPER: Tạo tham số đầu vào động cho từng nền tảng ===
+function buildInputParams(provider: string, dateRange: string, dateInfo: any, sourceConfig: any, isTest: boolean) {
+  const config = sourceConfig || {};
+  if (provider === 'facebook' || provider === 'meta') {
+    let datePreset = 'last_7d';
+    if (dateRange === 'today') datePreset = 'today';
+    else if (dateRange === 'yesterday') datePreset = 'yesterday';
+    else if (dateRange === 'this_week') datePreset = 'this_week';
+    else if (dateRange === 'last_7_days') datePreset = 'last_7d';
+    else if (dateRange === 'last_30_days') datePreset = 'last_30d';
+    else if (dateRange === 'this_month') datePreset = 'this_month';
+    else if (dateRange === 'last_month') datePreset = 'last_month';
+    else if (dateRange === 'last_quarter') datePreset = 'last_quarter';
+
+    return {
+      datePreset,
+      ...config
+    };
+  } else if (provider === 'pancake-chat') {
+    const since = Math.floor(new Date(`${dateInfo.startDate}T00:00:00+07:00`).getTime() / 1000);
+    const until = Math.floor(new Date(`${dateInfo.endDate}T23:59:59+07:00`).getTime() / 1000);
+    return {
+      since,
+      until,
+      ...config
+    };
+  } else {
+    // Pancake POS / KiotViet / Mặc định
+    return {
+      startDate: dateInfo.startDate,
+      endDate: dateInfo.endDate,
+      fromDate: dateInfo.startDate,
+      toDate: dateInfo.endDate,
+      isTest,
+      ...config
+    };
+  }
+}
+
     for (const source of sources) {
       if (!source.connectionId) continue;
       
       const provider = source.provider;
       const capabilities = source.capabilities || [];
       const reportType = reportSpec.reportType || 'daily_sales';
+      const capabilitiesList = getCapabilities(provider);
 
-      if (provider === 'pancake-pos' || provider === 'kiotviet') {
-        const capabilitiesList = getCapabilities(provider);
-        
-        // 1. Xác định danh sách capabilities cần chạy
-        // QUAN TRỌNG: Phân biệt 2 trường hợp:
-        // - capabilities == null/undefined → lịch cũ chưa có tính năng này → fallback DEFAULT
-        // - capabilities = [] → user CỐ Ý bỏ chọn hết → tôn trọng, KHÔNG fallback
-        const effectiveCaps = (capabilities == null)
-          ? (DEFAULT_CAPABILITIES[reportType] || ['get_statistics'])
-          : capabilities;
-
-        if (effectiveCaps.length === 0) {
-          console.warn(`[HeroReport] Source ${source.connectionId}: Không có capability nào được chọn — bỏ qua nguồn này.`);
-          continue;
-        }
-
-        // 2. Duyệt qua từng capability -> Gọi đúng slug -> Render
-        for (const capSlug of effectiveCaps) {
-          const capDef = capabilitiesList.find(c => c.slug === capSlug);
-          
-          // Trích xuất hướng dẫn AI từ định nghĩa capability thực tế (hoặc fallback mapping)
-          let instructionSlug = capSlug;
-          
-          const matchingDef = capabilitiesList.find(c => c.slug === instructionSlug) || capDef;
-          if (matchingDef?.aiInstruction) {
-            collectedInstructions.push(matchingDef.aiInstruction);
-          }
-
-          const renderer = CAPABILITY_RENDERERS[capSlug];
-          if (!renderer) {
-            console.warn(`[HeroReport] Không tìm thấy renderer cho capability: ${capSlug}`);
-            continue;
-          }
-
-          let resultData: any = null;
-
-          // === ĐƯỜNG CHÍNH: Gọi đúng slug qua cổng ===
-          const actionResult = await runConnectorAction({
-            teamId,
-            connectionId: source.connectionId,
-            actionSlug: capSlug,
-            input: { 
-              startDate: dateInfo.startDate, 
-              endDate: dateInfo.endDate, 
-              fromDate: dateInfo.startDate, 
-              toDate: dateInfo.endDate, 
-              isTest 
-            },
-            callerModule: 'hero-report',
-            isTest
-          });
-          if (actionResult.success) {
-            resultData = actionResult.data?.data || actionResult.data;
-          }
-
-          if (resultData) {
-            metricsJson[capSlug] = resultData;
-            
-            // Render text
-            codeReportText += renderer(resultData);
-          }
-        }
+      // 1. Xác định danh sách capabilities cần chạy
+      // QUAN TRỌNG: Phân biệt 2 trường hợp:
+      // - capabilities == null/undefined → lịch cũ chưa có tính năng này → fallback DEFAULT
+      // - capabilities = [] → user CỐ Ý bỏ chọn hết → tôn trọng, KHÔNG fallback
+      let defaultCaps: string[] = [];
+      if (DEFAULT_CAPABILITIES[reportType]) {
+        defaultCaps = DEFAULT_CAPABILITIES[reportType];
       } else if (provider === 'pancake-chat') {
-        const capabilitiesList = getCapabilities(provider);
+        defaultCaps = ['get_page_statistics', 'get_staff_statistics'];
+      } else if (provider === 'facebook' || provider === 'meta') {
+        defaultCaps = ['get_page_insights'];
+      } else {
+        defaultCaps = ['get_statistics'];
+      }
 
-        // Phân biệt: null = lịch cũ chưa có capabilities → dùng default; [] = user bỏ chọn hết → bỏ qua
-        const effectiveCaps = (capabilities == null)
-          ? ['get_page_statistics', 'get_staff_statistics']
-          : capabilities;
+      const effectiveCaps = (capabilities == null) ? defaultCaps : capabilities;
 
-        if (effectiveCaps.length === 0) {
-          console.warn(`[HeroReport] Source ${source.connectionId}: Không có capability nào được chọn — bỏ qua.`);
+      if (effectiveCaps.length === 0) {
+        console.warn(`[HeroReport] Source ${source.connectionId}: Không có capability nào được chọn — bỏ qua nguồn này.`);
+        continue;
+      }
+
+      // 2. Duyệt qua từng capability -> Gọi đúng slug -> Render
+      for (const capSlug of effectiveCaps) {
+        const capDef = capabilitiesList.find(c => c.slug === capSlug);
+        if (capDef?.aiInstruction) {
+          collectedInstructions.push(capDef.aiInstruction);
+        }
+
+        const renderer = CAPABILITY_RENDERERS[capSlug];
+        if (!renderer) {
+          console.warn(`[HeroReport] Không tìm thấy renderer cho capability: ${capSlug}`);
           continue;
         }
 
-        // Pancake Chat API dùng Unix Timestamp (seconds) cho since/until
-        const since = Math.floor(new Date(`${dateInfo.startDate}T00:00:00+07:00`).getTime() / 1000);
-        const until = Math.floor(new Date(`${dateInfo.endDate}T23:59:59+07:00`).getTime() / 1000);
+        const inputParams = buildInputParams(provider, dateRange, dateInfo, source.config, isTest);
 
-        for (const capSlug of effectiveCaps) {
-          const capDef = capabilitiesList.find(c => c.slug === capSlug);
-          if (capDef?.aiInstruction) collectedInstructions.push(capDef.aiInstruction);
+        let resultData: any = null;
 
-          const renderer = CAPABILITY_RENDERERS[capSlug];
-          if (!renderer) {
-            console.warn(`[HeroReport] Không tìm thấy renderer cho capability: ${capSlug}`);
-            continue;
-          }
+        // === ĐƯỜNG CHÍNH: Gọi đúng slug qua cổng ===
+        const actionResult = await runConnectorAction({
+          teamId,
+          connectionId: source.connectionId,
+          actionSlug: capSlug,
+          input: inputParams,
+          callerModule: 'hero-report',
+          isTest
+        });
+        
+        if (actionResult.success) {
+          resultData = actionResult.data?.data || actionResult.data;
+        }
 
-          let resultData: any = null;
-
-          const actionResult = await runConnectorAction({
-            teamId,
-            connectionId: source.connectionId,
-            actionSlug: capSlug,
-            input: { since, until },
-            callerModule: 'hero-report',
-            isTest
-          });
-          if (actionResult.success) {
-            resultData = actionResult.data?.data || actionResult.data;
-          }
-
-          if (resultData) {
-            metricsJson[capSlug] = resultData;
-            codeReportText += renderer(resultData);
-          }
+        if (resultData) {
+          metricsJson[capSlug] = resultData;
+          
+          // Render text
+          codeReportText += renderer(resultData);
         }
       }
     }
@@ -403,23 +394,32 @@ export async function executeReportTask(
     }
 
     const outputConfig = (schedule.outputConfig as Record<string, any>) || {};
-    const chatId = outputConfig.chatId;
+    const targetId = outputConfig.chatId || outputConfig.phone || outputConfig.userId;
 
-    if (!chatId) {
-      throw new Error('Thiếu thông tin Chat ID nhận tin');
+    if (!targetId) {
+      throw new Error('Thiếu thông tin nhận tin báo cáo (Chat ID hoặc Số điện thoại)');
     }
 
-    const telegramRes = await runConnectorAction({
+    const appSlug = outputConnection.appSlug;
+    let actionSlug = 'send_message';
+    let input: any = { chatId: targetId, text: reportRes.finalReportText, parse_mode: 'HTML' };
+
+    if (appSlug === 'zalo-zns') {
+      actionSlug = 'send_oa_broadcast';
+      input = { user_id: targetId, message: reportRes.finalReportText };
+    }
+
+    const outputRes = await runConnectorAction({
       teamId: schedule.teamId,
       connectionId: outputConnection.id,
-      actionSlug: 'send_message',
-      input: { chatId, text: reportRes.finalReportText, parse_mode: 'HTML' },
+      actionSlug,
+      input,
       callerModule: 'hero-report',
       isTest: false
     });
 
-    if (!telegramRes.success) {
-      throw new Error(`Gửi tin nhắn Telegram thất bại: ${telegramRes.error}`);
+    if (!outputRes.success) {
+      throw new Error(`Gửi báo cáo thất bại qua cổng ${outputConnection.connectionName}: ${outputRes.error}`);
     }
 
     await db
@@ -503,19 +503,28 @@ export async function testExecuteReport(
         throw new Error(`Không tìm thấy kết nối Telegram ID #${data.outputConnectionId}`);
       }
       
-      const chatId = data.outputConfig?.chatId;
-      if (!chatId) throw new Error('Thiếu Chat ID nhận tin');
+      const targetId = data.outputConfig?.chatId || data.outputConfig?.phone || data.outputConfig?.userId;
+      if (!targetId) throw new Error('Thiếu thông tin nhận tin báo cáo (Chat ID hoặc Số điện thoại)');
 
-      const telegramRes = await runConnectorAction({
+      const appSlug = outputConnection.appSlug;
+      let actionSlug = 'send_message';
+      let input: any = { chatId: targetId, text: data.prebuiltText, parse_mode: 'HTML' };
+
+      if (appSlug === 'zalo-zns') {
+        actionSlug = 'send_oa_broadcast';
+        input = { user_id: targetId, message: data.prebuiltText };
+      }
+
+      const outputRes = await runConnectorAction({
         teamId,
         connectionId: outputConnection.id,
-        actionSlug: 'send_message',
-        input: { chatId, text: data.prebuiltText, parse_mode: 'HTML' },
+        actionSlug,
+        input,
         callerModule: 'hero-report',
         isTest: true
       });
 
-      if (!telegramRes.success) throw new Error(`Gửi Telegram thất bại: ${telegramRes.error}`);
+      if (!outputRes.success) throw new Error(`Gửi báo cáo thất bại: ${outputRes.error}`);
       return { success: true, reportText: data.prebuiltText };
     }
     
@@ -534,22 +543,31 @@ export async function testExecuteReport(
       throw new Error(`Không tìm thấy kết nối Telegram ID #${data.outputConnectionId}`);
     }
 
-    const chatId = data.outputConfig?.chatId;
-    if (!chatId) {
-      throw new Error('Thiếu Chat ID nhận tin');
+    const targetId = data.outputConfig?.chatId || data.outputConfig?.phone || data.outputConfig?.userId;
+    if (!targetId) {
+      throw new Error('Thiếu thông tin nhận tin báo cáo (Chat ID hoặc Số điện thoại)');
     }
 
-    const telegramRes = await runConnectorAction({
+    const appSlug = outputConnection.appSlug;
+    let actionSlug = 'send_message';
+    let input: any = { chatId: targetId, text: reportRes.finalReportText, parse_mode: 'HTML' };
+
+    if (appSlug === 'zalo-zns') {
+      actionSlug = 'send_oa_broadcast';
+      input = { user_id: targetId, message: reportRes.finalReportText };
+    }
+
+    const outputRes = await runConnectorAction({
       teamId,
       connectionId: outputConnection.id,
-      actionSlug: 'send_message',
-      input: { chatId, text: reportRes.finalReportText, parse_mode: 'HTML' },
+      actionSlug,
+      input,
       callerModule: 'hero-report',
       isTest: true
     });
     
-    if (!telegramRes.success) {
-      throw new Error(`Gửi Telegram thất bại: ${telegramRes.error}`);
+    if (!outputRes.success) {
+      throw new Error(`Gửi báo cáo thất bại: ${outputRes.error}`);
     }
 
     return { success: true, reportText: reportRes.finalReportText };

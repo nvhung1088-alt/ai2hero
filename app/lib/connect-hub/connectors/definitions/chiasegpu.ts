@@ -28,6 +28,7 @@ export const chiasegpuConnector: ConnectorDefinition = {
             'krr/claude-sonnet-4-6',
             'ant/claude-opus-4-7',
             'krr/claude-haiku-4-7',
+            'gx/gpt-5.5',
             'gx/gpt-5.4',
             'glm-5.1'
           ],

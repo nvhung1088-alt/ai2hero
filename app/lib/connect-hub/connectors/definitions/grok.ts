@@ -11,7 +11,26 @@ export const grokConnector: ConnectorDefinition = {
     { name: 'apiKey', label: 'xAI API Key', type: 'password', required: true, secret: true },
   ],
   actions: [
-    { slug: 'chat_completion', name: 'Chat Completion', description: 'Giao tiếp với Grok AI', inputSchema: [] },
+    { 
+      slug: 'chat_completion', 
+      name: 'Chat Completion', 
+      description: 'Giao tiếp với Grok AI', 
+      inputSchema: [
+        {
+          name: 'model',
+          label: 'Mô hình AI (Model)',
+          type: 'select',
+          required: true,
+          options: ['grok-2', 'grok-1.5', 'grok-1']
+        }
+      ] 
+    },
+    {
+      slug: 'list_models',
+      name: 'Danh sách model AI',
+      description: 'Cập nhật danh sách các mô hình trí tuệ nhân tạo khả dụng trên xAI Grok.',
+      inputSchema: []
+    }
   ],
   popular: true,
   setupGuide: '<p><b>1.</b> Truy cập <a href="https://console.x.ai/" target="_blank" rel="noreferrer">xAI Console</a>.</p><p><b>2.</b> Tạo tài khoản và vào mục API Keys để tạo mã bảo mật.</p>',

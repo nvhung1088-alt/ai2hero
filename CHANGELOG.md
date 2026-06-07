@@ -1,5 +1,17 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-07 — Tích hợp Đa kênh Telegram & Zalo ZNS và Đổi tên Biến lưu trữ (Hero Report MVP)
+- **Hỗ trợ đa kênh Telegram + Zalo ZNS**: Cập nhật logic Server Action và Engine để lọc connections và định tuyến động (gửi Telegram qua `send_message`, gửi Zalo ZNS qua `send_oa_broadcast`). Ẩn Pancake Chat khỏi danh sách kênh nhận để tối ưu hóa UX.
+- **Đổi tên biến lưu trữ targetId**: Thực hiện rename biến `telegramChatId` thành `targetId` trên toàn bộ hệ thống (Database, API Engine, Server Actions, UI Client).
+- **Tối ưu UX Wizard Step 5**: Cập nhật nhãn, placeholder và tài liệu hướng dẫn cấu hình động dựa trên loại connection được chọn (Telegram: nhập Chat ID; Zalo ZNS: nhập số điện thoại hoặc ID người dùng).
+- **Đảm bảo chất lượng & Biên dịch**: Đạt **0 lỗi** TypeScript (`npx tsc --noEmit`) và hoàn tất build production (`pnpm run build`) thành công 100%.
+
+## 2026-06-07 — Nâng cấp Meta Platform Connector (Phase 2 & Thống kê Hero Report MVP)
+- **Kích hoạt 6 Action Write Phase 2**: Mở khóa hoàn toàn khả năng ghi cho Meta Platform Connector bao gồm Nhắn tin (Inbox), Bình luận (Comments), Đăng bài đa nền tảng (Post Feed), Tạo/Sửa/Xóa chiến dịch Ads.
+- **Tính năng An Toàn Ads**: Tích hợp cơ chế bảo vệ ngân sách khi tạo chiến dịch qua API (status mặc định là `PAUSED` và gán sẵn `special_ad_categories: ['NONE']` để tuân thủ API v25.0).
+- **Hero Report MVP Integration**: Bổ sung 2 Năng lực thống kê chuyên sâu (`get_page_insights`, `get_ad_account_insights`), đổi group của `get_campaign_insights` sang chung danh mục "Báo cáo & Thống kê" để Engine Báo cáo quét và sử dụng được tự động.
+- **QA & Security**: Kiểm thử 0 errors TypeScript. Vá lỗ hổng Crash (Type Safety) bằng cách ép kiểu chuỗi cho `adAccountId` trước các hàm String prototype. Mã nguồn đã được commit và push lên Production Vercel.
+
 ## 2026-06-06 — Hoàn thành Phase 6: Webhook Gateway (Connect Hub)
 - **Database Schema**: Thêm bảng `connect_hub_webhooks` (sử dụng UUID để bảo mật link webhook) và bảng `connect_hub_webhook_logs` (lưu vết 20 payload POST/GET gần nhất).
 - **Endpoint Router**: Xây dựng route động `app/api/webhook/[webhookId]/route.ts` hỗ trợ nhận payload webhook, giải mã đối xứng secret key và xác thực chữ ký HMAC-SHA256 hoặc query token với Tenant Isolation hoàn hảo.

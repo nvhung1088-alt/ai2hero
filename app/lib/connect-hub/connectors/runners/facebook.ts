@@ -57,17 +57,39 @@ export async function runFacebook(
     }
 
     case 'get_page_insights': {
-      const { pageId, datePreset } = input || {};
+      const { pageId, pageToken, datePreset } = input;
       if (!pageId) {
         throw new Error('Thiếu tham số pageId.');
       }
       const preset = datePreset || 'last_7d';
-      const path = `/${pageId}/insights?metric=page_impressions,page_post_engagements&date_preset=${encodeURIComponent(preset)}`;
-      const rawData = await fetchFB(path, accessToken);
+      const tokenToUse = pageToken || accessToken;
+      
+      // 1. Lấy thông tin cơ bản của Page
+      let pageInfo = null;
+      try {
+        const infoPath = `/${pageId}?fields=id,name,fan_count,followers_count`;
+        pageInfo = await fetchFB(infoPath, tokenToUse);
+      } catch (e) {
+        console.warn('Failed to fetch page info', e);
+      }
+
+      // 2. Lấy Insights an toàn (bỏ qua nếu metric bị deprecated cho NPE)
+      let insightsData: any[] = [];
+      try {
+        const path = `/${pageId}/insights?metric=page_views_total,page_fan_adds_unique&date_preset=${encodeURIComponent(preset)}`;
+        const rawData = await fetchFB(path, tokenToUse);
+        if (rawData?.data) insightsData = rawData.data;
+      } catch (e) {
+        console.warn('Failed to fetch page insights metrics', e);
+      }
+      
       return {
         status: 'success',
-        data: rawData?.data || [],
-        _meta: { found: !!rawData?.data?.length }
+        data: {
+          info: pageInfo,
+          insights: insightsData
+        },
+        _meta: { found: true }
       };
     }
 
@@ -184,20 +206,25 @@ export async function runFacebook(
     }
 
     case 'get_campaign_insights': {
-      const { campaignId, datePreset } = input || {};
-      if (!campaignId) {
-        throw new Error('Thiếu tham số campaignId.');
-      }
+      const { campaignId, adAccountId, datePreset } = input;
+      if (!campaignId) throw new Error('Thiếu campaignId');
+
       const preset = datePreset || 'last_7d';
-      const path = `/${campaignId}/insights?fields=impressions,clicks,spend,cpc,cpm,ctr,reach,actions&date_preset=${encodeURIComponent(preset)}`;
+      const fields = 'campaign_id,campaign_name,impressions,clicks,spend,cpc,cpm,ctr,reach,actions,cost_per_action_type';
+      let path = '';
+      if (campaignId === 'ALL' && adAccountId) {
+         path = `/${adAccountId}/insights?level=campaign&fields=${fields}&date_preset=${encodeURIComponent(preset)}`;
+      } else {
+         path = `/${campaignId}/insights?fields=${fields}&date_preset=${encodeURIComponent(preset)}`;
+      }
       const rawData = await fetchFB(path, accessToken);
       
-      // Lấy bản ghi insight đầu tiên nếu có
-      const insight = rawData?.data?.[0] || null;
+      // Nếu ALL, trả về nguyên array. Nếu cụ thể, lấy bản ghi đầu tiên
+      const insight = (campaignId === 'ALL') ? (rawData?.data || []) : (rawData?.data?.[0] || null);
       return {
         status: 'success',
         data: insight,
-        _meta: { found: !!insight }
+        _meta: { found: campaignId === 'ALL' ? (insight.length > 0) : !!insight }
       };
     }
 
@@ -211,7 +238,8 @@ export async function runFacebook(
         adAccountId = `act_${adAccountId}`;
       }
       const preset = datePreset || 'last_7d';
-      const path = `/${adAccountId}/insights?fields=impressions,clicks,spend,cpc,cpm,ctr,reach&date_preset=${encodeURIComponent(preset)}`;
+      const fields = 'impressions,clicks,spend,cpc,cpm,ctr,reach,actions,cost_per_action_type';
+      const path = `/${adAccountId}/insights?fields=${fields}&date_preset=${encodeURIComponent(preset)}`;
       const rawData = await fetchFB(path, accessToken);
       
       const insight = rawData?.data?.[0] || null;

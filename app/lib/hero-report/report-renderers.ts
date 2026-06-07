@@ -500,6 +500,178 @@ export function renderKiotVietInventory(data: any): string {
   return text;
 }
 
+// === HELPER: Định dạng tiền tệ linh hoạt (VND hoặc USD) ===
+export function formatMoney(amount: number): string {
+  return formatVnd(amount);
+}
+
+const FB_ACTION_TYPES: Record<string, string> = {
+  'post_engagement': 'Tương tác bài viết',
+  'link_click': 'Click vào liên kết',
+  'onsite_conversion.messaging_conversation_started_7d': 'Bắt đầu chat (Inbox mới)',
+  'messaging_conversation_started_7d': 'Bắt đầu chat (Inbox)',
+  'lead': 'Khách hàng tiềm năng (Lead)',
+  'purchase': 'Mua hàng',
+  'onsite_conversion.messaging_block': 'Lượt chặn tin nhắn',
+  'onsite_conversion.messaging_welcome_message_view': 'Lượt xem tin chào mừng',
+  'onsite_conversion.total_messaging_connection': 'Kết nối nhắn tin mới',
+  'onsite_conversion.messaging_user_call_placed': 'Lượt gọi qua tin nhắn',
+  'onsite_conversion.messaging_user_depth_2_message_send': 'Tin nhắn sâu (2+ tin)',
+  'onsite_conversion.messaging_user_depth_3_message_send': 'Tin nhắn sâu (3+ tin)',
+  'onsite_conversion.messaging_user_depth_5_message_send': 'Tin nhắn sâu (5+ tin)',
+  'onsite_conversion.messaging_first_reply': 'Lượt trả lời đầu tiên',
+  'onsite_conversion.messaging_conversation_replied_7d': 'Trả lời tin nhắn (7d)',
+  'onsite_conversion.post_net_like': 'Lượt thích bài viết (Net)',
+  'post_reaction': 'Cảm xúc bài viết',
+  'page_engagement': 'Tương tác trang',
+  'post_interaction_gross': 'Tương tác bài viết (Gross)',
+  'post_interaction_net': 'Tương tác bài viết (Net)',
+  'video_view': 'Lượt xem video'
+};
+
+// === RENDERER: Facebook Fanpage Insights ===
+export function renderFacebookPageInsights(data: any): string {
+  if (!data) return '📈 Không có dữ liệu Fanpage Insights.\n\n';
+
+  // Data format mới: { info: {...}, insights: [...] }
+  let info = data.info || null;
+  let insights = data.insights || [];
+  
+  // Backward compatibility cho data cũ (chỉ có insights dạng array)
+  if (Array.isArray(data) || Array.isArray(data.data)) {
+    insights = Array.isArray(data) ? data : (data.data || []);
+    info = null;
+  }
+
+  // Nếu không có thông tin và cũng không có insights, trả về không có dữ liệu
+  if (!info && insights.length === 0) return '📈 Không có dữ liệu Fanpage Insights.\n\n';
+
+  let text = `📈 <b>[META] THỐNG KÊ FANPAGE</b>\n`;
+  if (info && info.name) {
+    text += `🏷️ Tên Trang: <b>${escapeHtml(info.name)}</b>\n`;
+    text += `👥 Người theo dõi: <b>${new Intl.NumberFormat('vi-VN').format(info.followers_count || 0)}</b> | Lượt thích: <b>${new Intl.NumberFormat('vi-VN').format(info.fan_count || 0)}</b>\n`;
+  }
+
+  if (insights.length > 0) {
+    insights.forEach((metric: any) => {
+      const name = metric.title || metric.name || 'Chỉ số';
+      let translatedName = name;
+      if (name === 'page_views_total') translatedName = 'Tổng lượt xem trang';
+      else if (name === 'page_fan_adds_unique') translatedName = 'Lượt thích trang mới';
+      
+      const values = metric.values || [];
+      const sum = values.reduce((acc: number, curr: any) => acc + Number(curr.value || 0), 0);
+      text += `- ${escapeHtml(translatedName)}: <b>${new Intl.NumberFormat('vi-VN').format(sum)}</b>\n`;
+    });
+  }
+  
+  text += '\n';
+  return text;
+}
+
+// === RENDERER: Facebook Ad Account Insights ===
+export function renderFacebookAdAccountInsights(data: any): string {
+  if (!data) return '💳 Không có dữ liệu Ad Account Insights.\n\n';
+  const insight = data.data || data;
+  if (!insight || typeof insight !== 'object') return '💳 Không có dữ liệu Ad Account Insights.\n\n';
+
+  const impressions = Number(insight.impressions || 0);
+  const clicks = Number(insight.clicks || 0);
+  const reach = Number(insight.reach || 0);
+  const spend = Number(insight.spend || 0);
+  const cpc = Number(insight.cpc || 0);
+  const cpm = Number(insight.cpm || 0);
+  const ctr = Number(insight.ctr || 0);
+
+  let text = `💳 <b>[META ADS] BÁO CÁO CHI TIÊU TÀI KHOẢN</b>\n`;
+  text += `💵 Chi tiêu: <b>${formatMoney(spend)}</b>\n`;
+  text += `👁️ Lượt hiển thị: <b>${new Intl.NumberFormat('vi-VN').format(impressions)}</b>\n`;
+  text += `👥 Lượt tiếp cận: <b>${new Intl.NumberFormat('vi-VN').format(reach)}</b>\n`;
+  text += `🖱️ Lượt click: <b>${new Intl.NumberFormat('vi-VN').format(clicks)}</b>\n`;
+  text += `- CTR: <b>${ctr.toFixed(2)}%</b>\n`;
+  text += `- CPC trung bình: <b>${formatMoney(cpc)}</b>\n`;
+  text += `- CPM trung bình: <b>${formatMoney(cpm)}</b>\n`;
+
+  const actions = insight.actions;
+  const costPerAction = insight.cost_per_action_type;
+  if (Array.isArray(actions) && actions.length > 0) {
+    text += `\n📊 <b>Kết quả tương tác & chuyển đổi:</b>\n`;
+    actions.forEach((act: any) => {
+      const type = act.action_type || '';
+      const val = Number(act.value || 0);
+      if (val > 0) {
+        const label = FB_ACTION_TYPES[type] || type;
+        
+        let costStr = '';
+        if (Array.isArray(costPerAction)) {
+           const costItem = costPerAction.find(c => c.action_type === type);
+           if (costItem && costItem.value) {
+              costStr = ` (Chi phí: ${formatMoney(Number(costItem.value))})`;
+           }
+        }
+        text += `- ${escapeHtml(label)}: <b>${new Intl.NumberFormat('vi-VN').format(val)}</b>${costStr}\n`;
+      }
+    });
+  }
+
+  text += '\n';
+  return text;
+}
+
+// === RENDERER: Facebook Campaign Insights ===
+export function renderFacebookCampaignInsights(data: any): string {
+  if (!data) return '🎯 Không có dữ liệu Campaign Insights.\n\n';
+  const insight = data.data || data;
+  if (!insight) return '🎯 Không có dữ liệu Campaign Insights.\n\n';
+
+  const insightsArray = Array.isArray(insight) ? insight : [insight];
+  if (insightsArray.length === 0) return '🎯 Không có dữ liệu Campaign Insights.\n\n';
+
+  let text = `🎯 <b>[META ADS] BÁO CÁO CHIẾN DỊCH QUẢNG CÁO</b>\n`;
+  
+  insightsArray.forEach((item: any, idx: number) => {
+    const campaignName = item.campaign_name || `Chiến dịch ${idx + 1}`;
+    const impressions = Number(item.impressions || 0);
+    const clicks = Number(item.clicks || 0);
+    const reach = Number(item.reach || 0);
+    const spend = Number(item.spend || 0);
+    const cpc = Number(item.cpc || 0);
+    const cpm = Number(item.cpm || 0);
+    const ctr = Number(item.ctr || 0);
+
+    text += `\n🏷️ <b>${escapeHtml(campaignName)}</b>\n`;
+    text += `💵 Chi tiêu: <b>${formatMoney(spend)}</b>\n`;
+    text += `👁️ Hiển thị: <b>${new Intl.NumberFormat('vi-VN').format(impressions)}</b> | 👥 Tiếp cận: <b>${new Intl.NumberFormat('vi-VN').format(reach)}</b>\n`;
+    text += `🖱️ Clicks: <b>${new Intl.NumberFormat('vi-VN').format(clicks)}</b> (CTR: <b>${ctr.toFixed(2)}%</b>)\n`;
+    text += `- CPC: <b>${formatMoney(cpc)}</b> | CPM: <b>${formatMoney(cpm)}</b>\n`;
+
+    const actions = item.actions;
+    const costPerAction = item.cost_per_action_type;
+    if (Array.isArray(actions) && actions.length > 0) {
+      text += `📊 Kết quả tương tác & chuyển đổi:\n`;
+      actions.forEach((act: any) => {
+        const type = act.action_type || '';
+        const val = Number(act.value || 0);
+        if (val > 0) {
+          const label = FB_ACTION_TYPES[type] || type;
+          
+          let costStr = '';
+          if (Array.isArray(costPerAction)) {
+             const costItem = costPerAction.find((c: any) => c.action_type === type);
+             if (costItem && costItem.value) {
+                costStr = ` (Chi phí: ${formatMoney(Number(costItem.value))})`;
+             }
+          }
+          text += `  - ${escapeHtml(label)}: <b>${new Intl.NumberFormat('vi-VN').format(val)}</b>${costStr}\n`;
+        }
+      });
+    }
+  });
+
+  text += '\n';
+  return text;
+}
+
 // === REGISTRY ===
 export const CAPABILITY_RENDERERS: Record<string, (data: any, ...args: any[]) => string> = {
   // === Pancake POS / KiotViet ===
@@ -527,6 +699,11 @@ export const CAPABILITY_RENDERERS: Record<string, (data: any, ...args: any[]) =>
   'get_page_statistics':    renderChatPageStats,
   'get_staff_statistics':   renderChatStaffStats,
   'get_tag_statistics':     renderChatTagStats,
+
+  // === Facebook Insights ===
+  'get_page_insights':       renderFacebookPageInsights,
+  'get_ad_account_insights': renderFacebookAdAccountInsights,
+  'get_campaign_insights':   renderFacebookCampaignInsights,
 };
 
 // Fallback mặc định khi capabilities[] rỗng

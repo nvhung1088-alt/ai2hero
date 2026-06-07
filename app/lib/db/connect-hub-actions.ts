@@ -335,18 +335,27 @@ export async function testConnectionAction(teamId: number, connectionId: number)
           const errData = await response.json().catch(() => ({}));
           throw new Error(`KiotViet OAuth thất bại: ${errData.error_description || response.statusText}`);
         }
-      } else {
-        const connector = getConnectorBySlug(connection.appSlug);
-        if (connector?.runtimeType === 'generic_http') {
-          const verifyResult = await verifyGenericHttpConnection(connection.appSlug, credentials);
-          if (!verifyResult.success) {
-            throw new Error(verifyResult.error || 'Kiểm thử kết nối thất bại.');
+        } else if (connection.appSlug === 'facebook' || connection.appSlug === 'meta') {
+          if (!credentials.accessToken) throw new Error('Vui lòng nhập Access Token');
+          const res = await fetch(`https://graph.facebook.com/v19.0/me?fields=id`, {
+             headers: { 'Authorization': `Bearer ${credentials.accessToken}` }
+          });
+          if (!res.ok) {
+             const errData = await res.json().catch(() => ({}));
+             throw new Error(errData.error?.message || 'Token Meta không hợp lệ hoặc đã hết hạn.');
           }
         } else {
-          // Giả lập test kết nối cho các app khác (Sheets, Gmail, Telegram)
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          const connector = getConnectorBySlug(connection.appSlug);
+          if (connector?.runtimeType === 'generic_http') {
+            const verifyResult = await verifyGenericHttpConnection(connection.appSlug, credentials);
+            if (!verifyResult.success) {
+              throw new Error(verifyResult.error || 'Kiểm thử kết nối thất bại.');
+            }
+          } else {
+            // Giả lập test kết nối cho các app khác (Sheets, Gmail, Telegram)
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
         }
-      }
     } catch (err: any) {
       testSuccess = false;
       errorMessage = err.message || 'Lỗi kiểm thử kết nối API.';
@@ -439,6 +448,16 @@ export async function pingConnectionPreviewAction(
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(`KiotViet OAuth thất bại: ${errData.error_description || response.statusText}`);
+      }
+    } else if (appSlug === 'facebook' || appSlug === 'meta') {
+      const token = credentials.accessToken;
+      if (!token) throw new Error('Vui lòng nhập Access Token');
+      const res = await fetch(`https://graph.facebook.com/v19.0/me?fields=id`, {
+         headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+         const errData = await res.json().catch(() => ({}));
+         throw new Error(errData.error?.message || 'Token Meta không hợp lệ hoặc đã hết hạn.');
       }
     } else {
       const connector = getConnectorBySlug(appSlug);

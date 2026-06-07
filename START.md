@@ -21,7 +21,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp tính năng **Dọn dẹp video lỗi** thủ công trên Dashboard: Tự động quét và loại bỏ các file video rỗng (< 500b), video trùng lặp (size + base name), video hỏng hoặc chỉ có âm thanh (không có khung hình) bằng DOM `<video>` ẩn chạy trên RAM.
 ### 4. Hero Report (MVP Báo cáo tự động)
 - **Status:** `Beta`
-- **Mô tả:** Hệ thống lập lịch tự động kéo dữ liệu POS (Pancake, KiotViet), tính toán số liệu bằng code và gọi AI ChiaSeGPU viết nhận xét gợi ý, gửi trực tiếp báo cáo tới Telegram.
+- **Mô tả:** Hệ thống lập lịch tự động kéo dữ liệu POS (Pancake, KiotViet), tính toán số liệu bằng code và gọi AI ChiaSeGPU viết nhận xét gợi ý, gửi trực tiếp báo cáo tới Telegram hoặc Zalo ZNS.
 - **Tiến độ tích hợp:**
   - `[x]` Thiết kế schema database (`heroReportSchedules`, `heroReportRuns`).
   - `[x]` Đăng ký app vào `apps-registry.ts` và admin settings.
@@ -31,12 +31,29 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tạo API Cron Endpoint `/api/cron/reports` có cơ chế Lock chống race condition.
   - `[x]` Tích hợp dropdown chọn nhà cung cấp AI và chọn model động (Wizard Step 3) và engine xử lý động.
   - `[x]` Sửa lỗi trượt dateRange `last_7_days`, bổ sung các bộ lọc thời gian kế toán (quý trước, tháng trước, tháng này, tuần này, 30 ngày) và nâng maxPages động lên 40 cho khoảng thời gian dài.
+  - `[x]` Tổng quát hóa engine báo cáo, bỏ hardcode provider. Tích hợp 3 báo cáo Facebook (Page, Ad Account, Campaign), thiết kế UI Wizard Step 2 chọn Page/Ad Account động bằng API Discovery.
+  - `[x]` Mở rộng Step 5 của Wizard hỗ trợ dynamic chọn Telegram + Zalo ZNS (ẩn Pancake Chat), đổi tên biến lưu trữ `telegramChatId` thành `targetId` trong toàn bộ engine và giao diện.
 Tagline:      "AI biến bạn thành Hero"
 Domain:       ai2hero.com
 Phase:        1 — Xây dựng các MVP Apps & Extensions
 Tech stack:   Next.js 16 + React 19 + TypeScript + PostgreSQL + Drizzle ORM + Stripe + Tailwind CSS + shadcn/ui
 Extension:    herosim (v4.0.5), herovideo (v1.0.4 - Standalone Extension)
 Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang chrome.storage.local để lưu trữ lịch sử tải vĩnh viễn, khắc phục triệt để lỗi load lại video cũ khi mở lại popup.
+
+- **2026-06-07 (hero-report - Telegram + Zalo ZNS integration & targetId rename)**:
+  - 🚀 **Hỗ trợ đa kênh Telegram + Zalo ZNS và đổi tên biến lưu trữ**:
+    - **Server Actions (`hero-report-actions.ts`) [MODIFY]**: Cập nhật hàm `getOutputConnectionsAction` lọc danh sách kết nối chat để chỉ bao gồm `telegram` và `zalo-zns`.
+    - **Engine (`engine.ts`) [MODIFY]**: Cập nhật `executeReportTask` và `testExecuteReport` tự động bóc tách `targetId` từ database (`chatId`, `phone`, `userId`) và gọi đúng action (`send_message` của Telegram và `send_oa_broadcast` của Zalo ZNS).
+    - **UI Wizard (`report-client.tsx`) [MODIFY]**: Rename state `telegramChatId` -> `targetId`, tùy biến Step 5 để tự động cập nhật nhãn nhập liệu, placeholder và hướng dẫn phù hợp với từng kênh (Telegram / Zalo ZNS) được chọn.
+    - **Verify**: Type check biên dịch toàn cục không lỗi.
+
+- **2026-06-07 (hero-report - meta platform insights integration & engine generalization)**:
+  - 🚀 **Tích hợp Báo cáo Meta Platform (Facebook) & Tổng quát hóa Engine**:
+    - **Generalize Engine (`engine.ts`) [MODIFY]**: Tạo helper `buildInputParams` xử lý tham số thời gian và cấu hình động cho từng provider (`since/until` cho Pancake Chat, `datePreset` cho Facebook, `startDate/endDate` cho POS/KiotViet). Viết lại vòng lặp chính của `buildReportContent` để dynamic hóa toàn bộ connectors mà không cần hardcode conditional checks.
+    - **Facebook Renderers (`report-renderers.ts`) [MODIFY]**: Viết renderers cho `get_page_insights`, `get_ad_account_insights`, `get_campaign_insights` và đăng ký vào registry. Thêm hàm `formatMoney` tự động format VND/USD linh hoạt.
+    - **Server Actions (`hero-report-actions.ts`) [MODIFY]**: Cập nhật Zod schema để chấp nhận cột `config` trong `inputSources`. Viết mới server action `fetchFacebookResourcesAction` lấy danh sách Pages và Ad Accounts qua API Discovery của Meta.
+    - **UI Wizard (`report-client.tsx`) [MODIFY]**: Tích hợp prefetch tài nguyên Meta tự động qua `useEffect` khi Wizard mở Step 2, render dropdown chọn Page/Ad Account và text input cho Campaign ID, thêm client validation và nâng cấp dynamic labels trên card.
+    - **Verify**: Type check (`npx tsc --noEmit`) đạt 0 lỗi.
 
 - **2026-06-07 (meta platform - phase 2 write actions)**:
   - 🚀 **Kích hoạt 6 Action Ghi (Write) cho Meta Platform Connector**:

@@ -25,7 +25,8 @@ const CreateScheduleSchema = z.object({
   inputSources: z.array(z.object({
     connectionId: z.number().int(),
     provider: z.string(),
-    capabilities: z.array(z.string()).default([])
+    capabilities: z.array(z.string()).default([]),
+    config: z.record(z.any()).optional()
   })).default([]),
   reportSpec: z.record(z.any()),
   outputType: z.string().default('telegram'),
@@ -567,6 +568,7 @@ export async function getOutputConnectionsAction(teamId: number) {
   try {
     await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager', 'member']);
     
+    const CHAT_SLUGS = ['telegram', 'zalo-zns'];
     const connections = await db
       .select()
       .from(connectHubConnections)
@@ -574,7 +576,7 @@ export async function getOutputConnectionsAction(teamId: number) {
         and(
           eq(connectHubConnections.teamId, teamId),
           eq(connectHubConnections.status, 'connected'),
-          eq(connectHubConnections.appSlug, 'telegram')
+          inArray(connectHubConnections.appSlug, CHAT_SLUGS)
         )
       )
       .orderBy(desc(connectHubConnections.updatedAt));
@@ -779,3 +781,91 @@ export async function testAiCommentaryAction(
     return { success: false, error: sanitizeError(error) };
   }
 }
+
+/**
+ * Lấy danh sách Fanpages và Ad Accounts từ Meta API để cấu hình báo cáo
+ */
+export async function fetchFacebookResourcesAction(teamId: number, connectionId: number) {
+  try {
+    await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+
+    const { runConnectorAction } = await import('../connect-hub/connector-service');
+
+    // 1. Gọi API lấy danh sách Pages
+    const pagesRes = await runConnectorAction({
+      teamId,
+      connectionId,
+      actionSlug: 'list_user_pages',
+      input: {},
+      callerModule: 'hero-report',
+      isTest: true
+    });
+
+    // 2. Gọi API lấy danh sách Ad Accounts
+    const adsRes = await runConnectorAction({
+      teamId,
+      connectionId,
+      actionSlug: 'list_ad_accounts',
+      input: {},
+      callerModule: 'hero-report',
+      isTest: true
+    });
+
+    const pages = pagesRes.success ? (pagesRes.data?.data || pagesRes.data || []) : [];
+    const adAccounts = adsRes.success ? (adsRes.data?.data || adsRes.data || []) : [];
+
+    if (!pagesRes.success && !adsRes.success) {
+      console.log('fetchFacebookResourcesAction ERROR:', pagesRes.error, adsRes.error);
+      return { success: false, error: pagesRes.error || adsRes.error || 'Lỗi kết nối Meta API' };
+    }
+
+    console.log('fetchFacebookResourcesAction DATA:', { 
+       pagesLength: pages.length, 
+       adAccountsLength: adAccounts.length,
+       pagesResStatus: pagesRes.success,
+       adsResStatus: adsRes.success,
+       connId: connectionId
+    });
+
+    return {
+      success: true,
+      data: {
+        pages,
+        adAccounts
+      }
+    };
+  } catch (error: any) {
+    console.error('Error fetching Facebook resources:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+/**
+ * Lấy danh sách Campaigns của một Ad Account từ Meta API
+ */
+export async function fetchFacebookCampaignsAction(teamId: number, connectionId: number, adAccountId: string) {
+  try {
+    await verifyHeroReportAccess(teamId, ['owner', 'admin', 'manager', 'member']);
+    const { runConnectorAction } = await import('../connect-hub/connector-service');
+
+    const res = await runConnectorAction({
+      teamId,
+      connectionId,
+      actionSlug: 'list_campaigns',
+      input: { adAccountId },
+      callerModule: 'hero-report',
+      isTest: true
+    });
+
+    if (!res.success) {
+      return { success: false, error: res.error || 'Lỗi khi lấy danh sách chiến dịch' };
+    }
+
+    const campaigns = res.data?.data || res.data || [];
+    return { success: true, data: campaigns };
+  } catch (error: any) {
+    console.error('Error fetching Facebook campaigns:', error);
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
