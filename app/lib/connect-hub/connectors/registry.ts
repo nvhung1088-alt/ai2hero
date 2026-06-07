@@ -75,7 +75,8 @@ const READY_SLUGS = [
   'trello',
   'twilio',
   'mailgun',
-  'clickup'
+  'clickup',
+  'facebook'
 ];
 
 // Combine manual and generated connectors. Manual configuration overrides generated ones.

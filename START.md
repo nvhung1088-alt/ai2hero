@@ -1,5 +1,5 @@
 # AI2HERO — START
-> Cap nhat: 2026-06-06
+> Cap nhat: 2026-06-07
 
 ## TRANG THAI
 Mode:         Build
@@ -37,6 +37,16 @@ Phase:        1 — Xây dựng các MVP Apps & Extensions
 Tech stack:   Next.js 16 + React 19 + TypeScript + PostgreSQL + Drizzle ORM + Stripe + Tailwind CSS + shadcn/ui
 Extension:    herosim (v4.0.5), herovideo (v1.0.4 - Standalone Extension)
 Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang chrome.storage.local để lưu trữ lịch sử tải vĩnh viễn, khắc phục triệt để lỗi load lại video cũ khi mở lại popup.
+
+- **2026-06-07 (meta platform - phase 2 write actions)**:
+  - 🚀 **Kích hoạt 6 Action Ghi (Write) cho Meta Platform Connector**:
+    - **Page & Inbox**: Mở khóa `send_message`, `reply_comment`, `post_feed` (hỗ trợ kèm ảnh URL).
+    - **Ads**: Mở khóa `create_campaign` (tự động đính kèm tham số `special_ad_categories: ['NONE']` và mặc định khởi tạo ở trạng thái `PAUSED` an toàn), `update_campaign`, `delete_campaign`.
+    - **Type Safe & Security**: Cập nhật logic `runner` và `definition` đầy đủ, mở khóa router, loại bỏ hardcode chặn Phase 2.
+  - 🚀 **Bổ sung Năng lực Báo cáo (Hero Report MVP)**:
+    - Tạo mới 2 action: Báo cáo tương tác Fanpage (`get_page_insights`) và Báo cáo tổng chi tiêu tài khoản Ads (`get_ad_account_insights`).
+    - Gộp chung `get_campaign_insights` và 2 action mới vào nhóm `Báo cáo & Thống kê` để Engine của Hero Report tự động định vị và gọi API làm báo cáo tự động.
+    - Vá lỗi Type Safety Runtime: Ép kiểu string cho tham số `adAccountId` chống sập hệ thống (Crash).
 
 ## QUYET DINH DA CHOT
 - **Core concept**: Nền tảng Super App miễn phí chứa nhiều MVP (AI Chat, AI Hub, API Hub, HeroSim...). Đăng ký 1 tài khoản → dùng tất cả.
@@ -78,6 +88,26 @@ Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang ch
 
 
 - [x] **Phase 8**: Tích hợp Action Connectors cụ thể (Core Logic & Zalo ZNS).
+- **2026-06-07 (connect-hub - Meta Platform Connector Refactoring)**:
+  - 🚀 **Tái cấu trúc Facebook Business sang Meta Platform Connector**:
+    - **Connector Definitions (`definitions/facebook.ts`) [MODIFY]**: Thay đổi tên connector thành Meta Platform, rút gọn cấu hình `authFields` chỉ còn `accessToken` và `appSecret`. Đưa `pageId` và `adAccountId` vào `inputSchema` của các action liên quan. Bổ sung thêm 6 action mới: 2 Discovery (`list_user_pages`, `list_ad_accounts`), 2 Instagram (`list_ig_accounts`, `list_ig_media`), 2 Threads (`list_threads_posts`, `get_threads_profile`). Viết lại `setupGuide` ngắn gọn chỉ còn 3 bước.
+    - **Facebook Runner (`runners/facebook.ts`) [MODIFY]**: Cập nhật logic lấy `pageId` và `adAccountId` động từ `input`, loại bỏ biến tĩnh từ `creds`. Bổ sung 6 case xử lý cho các action Discovery, Instagram, và Threads.
+    - **UI Map (`UI_MAP.md`) [MODIFY]**: Cập nhật thông tin về Meta Platform Connector với 13 actions.
+    - **Verify**: Type check (`npx tsc --noEmit`) đạt 0 lỗi biên dịch.
+
+- **2026-06-07 (connect-hub - Facebook Business AI Capabilities Mapping)**:
+  - 🚀 **Bổ dung metadata năng lực AI và chiến lược chạy thử**:
+    - **Facebook Definitions (`definitions/facebook.ts`) [MODIFY]**: Cấu hình thêm `outputFields` và `aiInstruction` cho toàn bộ 13 actions.
+    - **Test strategies**: Bổ sung `testStrategy` và `sampleFrom` cho `list_messages` (lấy mẫu từ `list_conversations`) và `get_campaign_insights` (lấy mẫu từ `list_campaigns`), giúp UI tự động dò tìm ID mẫu khi chạy thử.
+    - **Verify**: Kiểm tra TypeScript `npx tsc --noEmit` đạt 0 lỗi.
+
+- **2026-06-07 (connect-hub - Facebook Business Connector Phase 1 - Read-only)**:
+  - 🚀 **Hoàn thành tích hợp Facebook Business Connector (Page + Ads)**:
+    - **Connector Definitions (`definitions/facebook.ts`) [MODIFY]**: Viết lại định nghĩa, nâng cấp lên `authType: 'bearer_token'`, cung cấp 4 cấu hình credentials (pageId, accessToken, adAccountId, appSecret), 7 actions Phase 1 (Page + Ads read-only) và 6 actions Phase 2 (write actions dạng planned/locked), cùng setupGuide HTML chi tiết cảnh báo App Review.
+    - **Facebook Runner (`runners/facebook.ts`) [NEW]**: Viết mới runner gọi trực tiếp Graph API/Marketing API v25.0 (phiên bản cấu hình qua env, default v25.0) dùng `Authorization: Bearer` header, trang bị SSRF guard cho `graph.facebook.com`, timeout 15s, tự động lọc token lỗi và bóc tách dữ liệu phân trang `paging: { nextCursor, hasMore }`.
+    - **Engine & Registry Registry (`engine.ts`, `registry.ts`) [MODIFY]**: Nhập runner vào hệ thống, tắt mock simulator cho facebook và đưa `facebook` vào danh sách `READY_SLUGS`.
+    - **Webhook GET Verification (`route.ts`) [MODIFY]**: Bổ sung cơ chế GET handshake verification (`hub.mode=subscribe` + `hub.verify_token` khớp decrypted `secretHash`) tại webhook endpoint chung giúp Meta verify webhook thành công.
+    - **Verify**: Type check (`npx tsc --noEmit`) đạt 0 lỗi.
 
 - **2026-06-07 (connect-hub - Phase 8 - Action Connectors: Core Logic & Zalo ZNS)**:
   - 🚀 **Hoàn thành Phase 8: Mở rộng Connectors thực tế**:

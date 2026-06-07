@@ -32,6 +32,29 @@ export async function GET(
       return Response.json({ error: 'Webhook not found' }, { status: 404 });
     }
 
+    // === Facebook Webhook Verification (GET handshake) ===
+    // Facebook gửi GET với hub.mode, hub.verify_token, hub.challenge
+    // verify_token do user tự đặt khi tạo webhook, lưu encrypted trong secretHash
+    // Khác với app_secret (dùng cho POST HMAC verification)
+    const { searchParams } = new URL(request.url);
+    const hubMode = searchParams.get('hub.mode');
+    const hubChallenge = searchParams.get('hub.challenge');
+    const hubVerifyToken = searchParams.get('hub.verify_token');
+
+    if (hubMode === 'subscribe' && hubChallenge && hubVerifyToken) {
+      // Giải mã verify_token đã lưu để so sánh
+      const storedVerifyToken = decryptField(webhook.secretHash) || '';
+      if (storedVerifyToken && hubVerifyToken === storedVerifyToken) {
+        // Facebook yêu cầu trả về hub.challenge dạng plain text, status 200
+        return new Response(hubChallenge, {
+          status: 200,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
+      return Response.json({ error: 'Verification token mismatch' }, { status: 403 });
+    }
+    // === End Facebook Webhook Verification ===
+
     return Response.json({
       success: true,
       message: 'Webhook endpoint active',

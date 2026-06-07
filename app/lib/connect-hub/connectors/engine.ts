@@ -8,6 +8,7 @@ import { runTelegram } from './runners/telegram';
 import { runGenericHttp } from './runners/generic-http';
 import { runCoreLogic } from './runners/core-logic';
 import { runZaloZns } from './runners/zalo-zns';
+import { runFacebook } from './runners/facebook';
 
 const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promise<any>> = {
   'custom-http': runCustomHttp,
@@ -19,6 +20,7 @@ const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promis
   'telegram': runTelegram,
   'zalo-zns': (creds, action, input) => runZaloZns(creds, action, input),
   'core-logic': (_creds, action, input) => runCoreLogic(action, input),
+  'facebook': runFacebook,
   
   // Batch 1A Generic HTTP Runners
   'telegram-bot': (creds, action, input) => runGenericHttp('telegram-bot', creds, action, input),
@@ -70,7 +72,7 @@ export async function executeAction(
   if (!runner) {
     // Trình giả lập Mock cho các connector chưa được viết runtime chi tiết
     // giúp người dùng có trải nghiệm UI mượt mà và test flows
-    if (['google-sheets', 'gmail', 'gemini', 'grok', 'deepseek', 'qwen', 'runway', 'luma', 'sapo', 'payos', 'momo', 'google-drive', 'facebook', 'zalo', 'tiktok'].includes(appSlug)) {
+    if (['google-sheets', 'gmail', 'gemini', 'grok', 'deepseek', 'qwen', 'runway', 'luma', 'sapo', 'payos', 'momo', 'google-drive', 'zalo', 'tiktok'].includes(appSlug)) {
       return simulateMockConnector(appSlug, actionSlug, input);
     }
 

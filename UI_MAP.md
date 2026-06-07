@@ -1,5 +1,5 @@
 # AI2HERO — UI MAP
-> Cập nhật: 2026-05-28
+> Cập nhật: 2026-06-07
 > 💡 **Quy tắc vàng**: Khi thiết kế hoặc thêm trang/giao diện mới cho một ứng dụng MVP, hãy xem hướng dẫn tích hợp chi tiết tại [MVP_INTEGRATION_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/MVP_INTEGRATION_GUIDE.md).
 
 ## KIẾN TRÚC TỔNG
@@ -217,6 +217,7 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Chức năng**: Kho trưng bày các ứng dụng tích hợp, cho phép lọc theo danh mục pill (🔥 Phổ biến, 🤖 AI, 🛒 POS...) và tìm kiếm thời gian thực.
   - **Dynamic Connect Modal (Flex Column Fixed & API Capabilities)**: Popup thiết lập kết nối có bố cục Flex Column với chiều cao tối đa `max-h-[90vh]` và các phần Header, Body (cuộn độc lập), Footer phân chia rõ ràng để chống tràn layout. Hiển thị danh sách khả năng của API (`selectedApp.actions`) dưới dạng các ô grid card Dark Mode tinh xảo.
   - **Dynamic Detail Loading (Catalog Connectors)**: Khi click vào các app thuộc catalog (`runtimeType: 'catalog_only'`), giao diện sẽ tải động chi tiết API schema qua Server Action `getConnectorDetailAction` (đọc từ `catalog-detail.json`), hiển thị Warning Alert và khóa toàn bộ input/nút bấm để bảo mật.
+  - **Meta Platform Connector**: Tích hợp gọi trực tiếp Graph API, Marketing API, Instagram Business API, và Threads API v25.0 (đọc từ env, default v25.0) xử lý 13 actions (gồm 2 Discovery, 4 Page/Inbox/Comments, 3 Ads, 2 Instagram, 2 Threads) và hiển thị 6 actions Write dưới dạng Planned (Phase 2).
 - **Vai trò**: MVP Store & Client Integration
 - **Đọc/Ghi data**: Ghi database qua Server Action `createConnectionAction` mã hóa AES-256-GCM, đọc chi tiết catalog qua Server Action `getConnectorDetailAction`.
 - **Liên kết**: → /connect-hub/t/[teamId]/dashboard
