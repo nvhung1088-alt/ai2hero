@@ -610,8 +610,25 @@ export const facebookConnector: ConnectorDefinition = {
           <li><strong>Threads:</strong> <code>threads_basic</code>, <code>threads_content_publish</code></li>
         </ul>
       </li>
-      <li>Nhấn <strong>Generate Access Token</strong> → Đăng nhập và chọn các Trang/Tài khoản quảng cáo mà bạn muốn cấp quyền.</li>
-      <li>Copy mã Token dài được tạo ra và dán vào trường <strong>Access Token</strong> trên AI2Hero.</li>
+      <li>Nhấn <strong>Generate Access Token</strong> → Đăng nhập và chọn các Trang/Tài khoản quảng cáo mà bạn muốn cấp quyền. Đây là mã ngắn hạn (1-2 giờ).</li>
+    </ul>
+  </div>
+
+  <div>
+    <h4 class="font-medium text-blue-400">🔵 Bước 4: Kéo dài Token lên 60 ngày hoặc Vĩnh viễn (Quan Trọng cho Cron Job)</h4>
+    <ul class="list-disc pl-5 mt-1 space-y-1">
+      <li>Truy cập công cụ <a href="https://developers.facebook.com/tools/debug/accesstoken/" target="_blank" class="text-blue-400 underline">Access Token Tool (Trình gỡ lỗi mã truy cập)</a>.</li>
+      <li>Dán mã Token ngắn hạn vừa lấy ở Bước 3 vào ô tìm kiếm và nhấn <strong>Debug</strong>.</li>
+      <li>Cuộn xuống dưới cùng, bấm nút <strong>Extend Access Token (Kéo dài mã truy cập)</strong>. Meta sẽ cấp cho bạn một Token mới có hạn <strong>60 ngày</strong>.</li>
+      <li>💡 <strong>Cách lấy Token VĨNH VIỄN cho Fanpage (Không bao giờ hết hạn):</strong>
+        <ul class="list-circle pl-5 mt-1 text-gray-400">
+          <li>Quay lại trang <a href="https://developers.facebook.com/tools/explorer" target="_blank" class="text-blue-400 underline">Graph API Explorer</a>.</li>
+          <li>Dán mã Token 60 ngày vừa tạo ở trên vào ô <strong>Access Token</strong>.</li>
+          <li>Nhập endpoint <code>me/accounts</code> ở thanh địa chỉ API và nhấn <strong>Submit</strong>.</li>
+          <li>Kết quả JSON trả về sẽ chứa danh sách các Page của bạn. Copy chuỗi <code>access_token</code> của Page tương ứng. Đây là Token vĩnh viễn.</li>
+        </ul>
+      </li>
+      <li>Copy mã Token 60 ngày (nếu chạy Ads) hoặc Token vĩnh viễn (nếu chỉ làm Page/Instagram) dán vào trường <strong>Access Token</strong> trên AI2Hero.</li>
     </ul>
   </div>
 </div>

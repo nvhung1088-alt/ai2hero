@@ -4,6 +4,7 @@
 - **Hỗ trợ đa kênh Telegram + Zalo ZNS**: Cập nhật logic Server Action và Engine để lọc connections và định tuyến động (gửi Telegram qua `send_message`, gửi Zalo ZNS qua `send_oa_broadcast`). Ẩn Pancake Chat khỏi danh sách kênh nhận để tối ưu hóa UX.
 - **Đổi tên biến lưu trữ targetId**: Thực hiện rename biến `telegramChatId` thành `targetId` trên toàn bộ hệ thống (Database, API Engine, Server Actions, UI Client).
 - **Tối ưu UX Wizard Step 5**: Cập nhật nhãn, placeholder và tài liệu hướng dẫn cấu hình động dựa trên loại connection được chọn (Telegram: nhập Chat ID; Zalo ZNS: nhập số điện thoại hoặc ID người dùng).
+- **Cập nhật Hướng dẫn Meta Platform**: Viết lại và nâng cấp chi tiết hướng dẫn kết nối Meta Platform ở phần setup Guide, hướng dẫn cụ thể cách kéo dài mã truy cập (Access Token) lên 60 ngày qua Access Token Tool, và cách lấy mã truy cập Fanpage vĩnh viễn (Permanent Page Access Token).
 - **Đảm bảo chất lượng & Biên dịch**: Đạt **0 lỗi** TypeScript (`npx tsc --noEmit`) và hoàn tất build production (`pnpm run build`) thành công 100%.
 
 ## 2026-06-07 — Nâng cấp Meta Platform Connector (Phase 2 & Thống kê Hero Report MVP)
