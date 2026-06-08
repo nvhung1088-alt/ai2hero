@@ -742,6 +742,53 @@ export async function verifyGenericHttpConnection(
       if (res.status === 401 || res.status === 403) throw new Error('Anthropic API Key không hợp lệ.');
       return { success: true };
     }
+    if (appSlug === 'gemini') {
+      const api_key = credentials.api_key || '';
+      if (!api_key) throw new Error('Thiếu Gemini API Key.');
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${api_key}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Hi' }] }] }),
+          signal: AbortSignal.timeout(6000),
+        }
+      );
+      if (res.status === 400 || res.status === 401 || res.status === 403) {
+        throw new Error('Gemini API Key không hợp lệ hoặc chưa được cấp quyền.');
+      }
+      return { success: true };
+    }
+    if (appSlug === 'deepseek') {
+      const api_key = credentials.api_key || '';
+      if (!api_key) throw new Error('Thiếu DeepSeek API Key.');
+      const res = await fetch('https://api.deepseek.com/models', {
+        headers: { 'Authorization': `Bearer ${api_key}` },
+        signal: AbortSignal.timeout(6000)
+      });
+      if (!res.ok) throw new Error('DeepSeek API Key không hợp lệ.');
+      return { success: true };
+    }
+    if (appSlug === 'grok') {
+      const api_key = credentials.api_key || '';
+      if (!api_key) throw new Error('Thiếu xAI API Key.');
+      const res = await fetch('https://api.x.ai/v1/models', {
+        headers: { 'Authorization': `Bearer ${api_key}` },
+        signal: AbortSignal.timeout(6000)
+      });
+      if (!res.ok) throw new Error('xAI API Key không hợp lệ.');
+      return { success: true };
+    }
+    if (appSlug === 'qwen') {
+      const api_key = credentials.api_key || '';
+      if (!api_key) throw new Error('Thiếu DashScope API Key.');
+      const res = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/models', {
+        headers: { 'Authorization': `Bearer ${api_key}` },
+        signal: AbortSignal.timeout(6000)
+      });
+      if (!res.ok) throw new Error('DashScope API Key không hợp lệ.');
+      return { success: true };
+    }
     if (appSlug === 'stripe') {
       return await checkSimpleHttp('https://api.stripe.com/v1/balance', { 'Authorization': `Bearer ${credentials.api_key}` }, 'Stripe Secret Key không hợp lệ.');
     }

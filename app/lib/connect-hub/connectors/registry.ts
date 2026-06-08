@@ -76,7 +76,12 @@ const READY_SLUGS = [
   'twilio',
   'mailgun',
   'clickup',
-  'facebook'
+  'facebook',
+  'gemini',
+  'anthropic',
+  'deepseek',
+  'grok',
+  'qwen'
 ];
 
 // Combine manual and generated connectors. Manual configuration overrides generated ones.

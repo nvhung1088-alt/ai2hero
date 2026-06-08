@@ -9,6 +9,11 @@ import { runGenericHttp } from './runners/generic-http';
 import { runCoreLogic } from './runners/core-logic';
 import { runZaloZns } from './runners/zalo-zns';
 import { runFacebook } from './runners/facebook';
+import { runGemini } from './runners/gemini';
+import { runAnthropic } from './runners/anthropic';
+import { runDeepSeek } from './runners/deepseek';
+import { runGrok } from './runners/grok';
+import { runQwen } from './runners/qwen';
 
 const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promise<any>> = {
   'custom-http': runCustomHttp,
@@ -52,7 +57,11 @@ const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promis
   'activecampaign': (creds, action, input) => runGenericHttp('activecampaign', creds, action, input),
   'brevo': (creds, action, input) => runGenericHttp('brevo', creds, action, input),
   'postmark': (creds, action, input) => runGenericHttp('postmark', creds, action, input),
-  'anthropic': (creds, action, input) => runGenericHttp('anthropic', creds, action, input),
+  'anthropic': runAnthropic,
+  'gemini': runGemini,
+  'deepseek': runDeepSeek,
+  'grok': runGrok,
+  'qwen': runQwen,
   'shopify': (creds, action, input) => runGenericHttp('shopify', creds, action, input),
   'stripe': (creds, action, input) => runGenericHttp('stripe', creds, action, input),
   'cal-com': (creds, action, input) => runGenericHttp('cal-com', creds, action, input),
@@ -72,7 +81,7 @@ export async function executeAction(
   if (!runner) {
     // Trình giả lập Mock cho các connector chưa được viết runtime chi tiết
     // giúp người dùng có trải nghiệm UI mượt mà và test flows
-    if (['google-sheets', 'gmail', 'gemini', 'grok', 'deepseek', 'qwen', 'runway', 'luma', 'sapo', 'payos', 'momo', 'google-drive', 'zalo', 'tiktok'].includes(appSlug)) {
+    if (['google-sheets', 'gmail', 'runway', 'luma', 'sapo', 'payos', 'momo', 'google-drive', 'zalo', 'tiktok'].includes(appSlug)) {
       return simulateMockConnector(appSlug, actionSlug, input);
     }
 

@@ -1,5 +1,12 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-08 — Tích hợp Runner thực tế cho DeepSeek, Grok (xAI) & Qwen (DashScope)
+- **Definitions**: Nâng cấp schema của `deepseek.ts`, `grok.ts`, `qwen.ts` để tương thích với chuẩn OpenAI (hỗ trợ `prompt`, `messages` và bổ sung action `list_models`). Bổ sung các metadata hiển thị UI đầy đủ.
+- **Runners**: Viết mới 3 file runner (`runners/deepseek.ts`, `runners/grok.ts`, `runners/qwen.ts`) chứa logic `fetch` trực tiếp tới endpoint `/chat/completions` đặc thù của từng nền tảng. Tích hợp chặn timeout 15s (`AbortController`) chống treo kết nối.
+- **Engine & Registry**: Gỡ bỏ giả lập Mock, đăng ký bộ xử lý chuyên biệt thật và kích hoạt trạng thái "Sẵn sàng" (bật cờ `READY_SLUGS`) trên giao diện.
+- **Verify Connection**: Nâng cấp `generic-http.ts` với hàm check `/models` kiểm thử trực tiếp tính hợp lệ của API Key, trả lỗi nếu Token bị sai hoặc từ chối kết nối.
+- **QA & Verify**: Bám sát cấu trúc của Gemeni/Anthropic. Không log Key bí mật ra console.
+
 ## 2026-06-07 — Tích hợp Đa kênh Telegram & Zalo ZNS và Đổi tên Biến lưu trữ (Hero Report MVP)
 - **Hỗ trợ đa kênh Telegram + Zalo ZNS**: Cập nhật logic Server Action và Engine để lọc connections và định tuyến động (gửi Telegram qua `send_message`, gửi Zalo ZNS qua `send_oa_broadcast`). Ẩn Pancake Chat khỏi danh sách kênh nhận để tối ưu hóa UX.
 - **Đổi tên biến lưu trữ targetId**: Thực hiện rename biến `telegramChatId` thành `targetId` trên toàn bộ hệ thống (Database, API Engine, Server Actions, UI Client).

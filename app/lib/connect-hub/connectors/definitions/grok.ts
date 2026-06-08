@@ -11,24 +11,52 @@ export const grokConnector: ConnectorDefinition = {
     { name: 'apiKey', label: 'xAI API Key', type: 'password', required: true, secret: true },
   ],
   actions: [
-    { 
-      slug: 'chat_completion', 
-      name: 'Chat Completion', 
-      description: 'Giao tiếp với Grok AI', 
+    {
+      slug: 'chat_completion',
+      name: 'Chat Completion',
+      description: 'Giao tiếp với Grok AI',
+      group: 'Trí Tuệ Nhân Tạo',
+      httpMethod: 'POST',
+      endpoint: '/v1/chat/completions',
+      status: 'ready',
+      outputFields: ['choices[0].message.content'],
+      aiInstruction: 'Gọi action chat_completion với model và prompt/messages để nhận phản hồi từ Grok (xAI).',
+      testStrategy: 'direct',
       inputSchema: [
         {
           name: 'model',
-          label: 'Mô hình AI (Model)',
+          label: 'Mô hình AI',
           type: 'select',
           required: true,
-          options: ['grok-2', 'grok-1.5', 'grok-1']
+          options: ['grok-2-latest', 'grok-beta']
+        },
+        {
+          name: 'prompt',
+          label: 'Nội dung / Câu hỏi',
+          type: 'textarea',
+          required: false,
+          placeholder: 'Nhập câu hỏi hoặc nội dung cần xử lý...',
+          helpText: 'Dùng khi gửi một tin nhắn đơn giản. Để hội thoại phức tạp, dùng trường "messages".'
+        },
+        {
+          name: 'messages',
+          label: 'Lịch sử hội thoại (JSON)',
+          type: 'textarea',
+          required: false,
+          placeholder: '[{"role":"user","content":"Xin chào"}]',
+          helpText: 'Mảng JSON. Nếu điền, ưu tiên dùng thay cho "prompt".'
         }
-      ] 
+      ]
     },
     {
       slug: 'list_models',
       name: 'Danh sách model AI',
       description: 'Cập nhật danh sách các mô hình trí tuệ nhân tạo khả dụng trên xAI Grok.',
+      group: 'Trí Tuệ Nhân Tạo',
+      httpMethod: 'GET',
+      endpoint: '/v1/models',
+      status: 'ready',
+      testStrategy: 'direct',
       inputSchema: []
     }
   ],

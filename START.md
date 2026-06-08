@@ -40,6 +40,22 @@ Tech stack:   Next.js 16 + React 19 + TypeScript + PostgreSQL + Drizzle ORM + St
 Extension:    herosim (v4.0.5), herovideo (v1.0.4 - Standalone Extension)
 Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang chrome.storage.local để lưu trữ lịch sử tải vĩnh viễn, khắc phục triệt để lỗi load lại video cũ khi mở lại popup.
 
+- **2026-06-08 (ai-upgrade - deepseek, grok, qwen integration)**:
+  - 🚀 **Tích hợp Runner thực tế cho DeepSeek, Grok (xAI) & Qwen (DashScope)**:
+    - **Definitions (`deepseek.ts`, `grok.ts`, `qwen.ts`) [MODIFY]**: Nâng cấp schema để tương thích với chuẩn OpenAI (hỗ trợ `prompt`, `messages`, list model `list_models`), bổ sung các metadata hiển thị UI.
+    - **Runners (`runners/deepseek.ts`, `runners/grok.ts`, `runners/qwen.ts`) [NEW]**: Viết logic `fetch` tới endpoint `/chat/completions` đặc thù của từng hãng theo chuẩn tương thích OpenAI (OpenAI Compatible API). Trang bị timeout 15s bảo vệ Server.
+    - **Engine & Registry (`engine.ts`, `registry.ts`) [MODIFY]**: Gỡ bỏ giả lập (mock), đăng ký gọi tới runner thực tế, và bật cờ `READY_SLUGS`.
+    - **Verify Connection (`generic-http.ts`) [MODIFY]**: Tích hợp các hàm xác thực API Key chuyên biệt trước khi kết nối (gọi tới các endpoint `/models`).
+    - **Verify**: Code logic bám sát template và chạy mượt.
+
+- **2026-06-07 (ai-upgrade - gemini and anthropic runners integration)**:
+  - 🚀 **Tích hợp Runner thực tế cho Google Gemini & Anthropic (Claude)**:
+    - **Definitions (`gemini.ts` & `anthropic.ts`) [MODIFY]**: Bổ sung metadata đầy đủ, cấu trúc `inputSchema` chi tiết (hỗ trợ `prompt`, `messages`, và `system` prompt riêng biệt) và cập nhật model list mới nhất.
+    - **Runners (`gemini.ts` & `anthropic.ts`) [NEW]**: Viết logic gọi REST API thô kết hợp `AbortController` (15s timeout), tự động convert `assistant` -> `model` (Gemini) và trích xuất system prompt ra khỏi messages array (Anthropic).
+    - **Engine & Registry (`engine.ts` & `registry.ts`) [MODIFY]**: Chuyển hướng router từ giả lập Mock sang runner thật, đăng ký vào `READY_SLUGS` mở khóa hiển thị badge sẵn sàng.
+    - **Verify Connection (`generic-http.ts`) [MODIFY]**: Thêm block verify API Key cho Gemini, xử lý an toàn mã lỗi 400/401/403.
+    - **Verify**: Type check (`npx tsc --noEmit`) đạt 0 lỗi biên dịch.
+
 - **2026-06-07 (hero-report - Telegram + Zalo ZNS integration & targetId rename)**:
   - 🚀 **Hỗ trợ đa kênh Telegram + Zalo ZNS và đổi tên biến lưu trữ**:
     - **Server Actions (`hero-report-actions.ts`) [MODIFY]**: Cập nhật hàm `getOutputConnectionsAction` lọc danh sách kết nối chat để chỉ bao gồm `telegram` và `zalo-zns`.
