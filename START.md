@@ -1,5 +1,5 @@
 # AI2HERO — START
-> Cap nhat: 2026-06-07
+> Cap nhat: 2026-06-08
 
 ## TRANG THAI
 Mode:         Build
@@ -40,13 +40,14 @@ Tech stack:   Next.js 16 + React 19 + TypeScript + PostgreSQL + Drizzle ORM + St
 Extension:    herosim (v4.0.5), herovideo (v1.0.4 - Standalone Extension)
 Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang chrome.storage.local để lưu trữ lịch sử tải vĩnh viễn, khắc phục triệt để lỗi load lại video cũ khi mở lại popup.
 
-- **2026-06-08 (ai-upgrade - deepseek, grok, qwen integration)**:
-  - 🚀 **Tích hợp Runner thực tế cho DeepSeek, Grok (xAI) & Qwen (DashScope)**:
+- **2026-06-08 (ai-upgrade - deepseek, grok, qwen integration & credential protection)**:
+  - 🚀 **Tích hợp Runner thực tế cho DeepSeek, Grok (xAI) & Qwen (DashScope) & Bảo mật Credential**:
     - **Definitions (`deepseek.ts`, `grok.ts`, `qwen.ts`) [MODIFY]**: Nâng cấp schema để tương thích với chuẩn OpenAI (hỗ trợ `prompt`, `messages`, list model `list_models`), bổ sung các metadata hiển thị UI.
     - **Runners (`runners/deepseek.ts`, `runners/grok.ts`, `runners/qwen.ts`) [NEW]**: Viết logic `fetch` tới endpoint `/chat/completions` đặc thù của từng hãng theo chuẩn tương thích OpenAI (OpenAI Compatible API). Trang bị timeout 15s bảo vệ Server.
     - **Engine & Registry (`engine.ts`, `registry.ts`) [MODIFY]**: Gỡ bỏ giả lập (mock), đăng ký gọi tới runner thực tế, và bật cờ `READY_SLUGS`.
-    - **Verify Connection (`generic-http.ts`) [MODIFY]**: Tích hợp các hàm xác thực API Key chuyên biệt trước khi kết nối (gọi tới các endpoint `/models`).
-    - **Verify**: Code logic bám sát template và chạy mượt.
+    - **Verify Connection (`generic-http.ts`) [MODIFY]**: Tích hợp các hàm xác thực API Key chuyên biệt trước khi kết nối. Fix lỗi parse `apiKey` vs `api_key` khiến ping connection không chạy verification thật.
+    - **API Key Masking [MODIFY]**: Vá lỗ hổng rò rỉ API Key từ thông báo lỗi của nhà cung cấp bên thứ 3 (đặc biệt là xAI Grok khi hết hạn mức). Áp dụng regex thay thế an toàn tất cả các chuỗi chứa API Key thành `sk-...[REDACTED]` trong catch block của cả 5 AI Runners (Gemini, Anthropic, DeepSeek, Grok, Qwen).
+    - **Verify**: Code logic bám sát template và chạy mượt, verify connection hoạt động chuẩn, bảo mật credentials tuyệt đối.
 
 - **2026-06-07 (ai-upgrade - gemini and anthropic runners integration)**:
   - 🚀 **Tích hợp Runner thực tế cho Google Gemini & Anthropic (Claude)**:

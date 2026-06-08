@@ -1,11 +1,12 @@
 # AI2HERO — CHANGELOG
 
-## 2026-06-08 — Tích hợp Runner thực tế cho DeepSeek, Grok (xAI) & Qwen (DashScope)
+## 2026-06-08 — Tích hợp Runner thực tế cho DeepSeek, Grok (xAI) & Qwen (DashScope) & Bảo mật Credentials
 - **Definitions**: Nâng cấp schema của `deepseek.ts`, `grok.ts`, `qwen.ts` để tương thích với chuẩn OpenAI (hỗ trợ `prompt`, `messages` và bổ sung action `list_models`). Bổ sung các metadata hiển thị UI đầy đủ.
 - **Runners**: Viết mới 3 file runner (`runners/deepseek.ts`, `runners/grok.ts`, `runners/qwen.ts`) chứa logic `fetch` trực tiếp tới endpoint `/chat/completions` đặc thù của từng nền tảng. Tích hợp chặn timeout 15s (`AbortController`) chống treo kết nối.
 - **Engine & Registry**: Gỡ bỏ giả lập Mock, đăng ký bộ xử lý chuyên biệt thật và kích hoạt trạng thái "Sẵn sàng" (bật cờ `READY_SLUGS`) trên giao diện.
-- **Verify Connection**: Nâng cấp `generic-http.ts` với hàm check `/models` kiểm thử trực tiếp tính hợp lệ của API Key, trả lỗi nếu Token bị sai hoặc từ chối kết nối.
-- **QA & Verify**: Bám sát cấu trúc của Gemeni/Anthropic. Không log Key bí mật ra console.
+- **Verify Connection**: Nâng cấp `generic-http.ts` với hàm check `/models` kiểm thử trực tiếp tính hợp lệ của API Key, trả lỗi nếu Token bị sai hoặc từ chối kết nối. Sửa lỗi logic parse `apiKey` vs `api_key` khiến ping connection không chạy verification thật.
+- **API Key Masking & Bảo mật**: Vá lỗ hổng rò rỉ API Key từ thông báo lỗi của nhà cung cấp bên thứ 3 (đặc biệt là xAI Grok khi hết hạn mức). Áp dụng regex thay thế an toàn tất cả các chuỗi chứa API Key thành `sk-...[REDACTED]` trong catch block của cả 5 AI Runners (Gemini, Anthropic, DeepSeek, Grok, Qwen).
+- **QA & Verify**: Bám sát cấu trúc, type-safety đạt 0 lỗi biên dịch, không log Key bí mật ra console hay UI.
 
 ## 2026-06-07 — Tích hợp Đa kênh Telegram & Zalo ZNS và Đổi tên Biến lưu trữ (Hero Report MVP)
 - **Hỗ trợ đa kênh Telegram + Zalo ZNS**: Cập nhật logic Server Action và Engine để lọc connections và định tuyến động (gửi Telegram qua `send_message`, gửi Zalo ZNS qua `send_oa_broadcast`). Ẩn Pancake Chat khỏi danh sách kênh nhận để tối ưu hóa UX.
