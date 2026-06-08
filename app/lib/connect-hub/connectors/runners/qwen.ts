@@ -52,7 +52,11 @@ export async function runQwen(
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.error?.message || `HTTP ${response.status}`);
+        let errMsg = data.error?.message || (typeof data.error === 'string' ? data.error : JSON.stringify(data.error)) || `HTTP ${response.status}`;
+        if (typeof errMsg === 'string' && apiKey) {
+          errMsg = errMsg.replace(new RegExp(apiKey, 'g'), 'sk-...[REDACTED]');
+        }
+        throw new Error(errMsg);
       }
 
       return {
@@ -75,7 +79,11 @@ export async function runQwen(
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.error?.message || `HTTP ${response.status}`);
+        let errMsg = data.error?.message || (typeof data.error === 'string' ? data.error : JSON.stringify(data.error)) || `HTTP ${response.status}`;
+        if (typeof errMsg === 'string' && apiKey) {
+          errMsg = errMsg.replace(new RegExp(apiKey, 'g'), 'sk-...[REDACTED]');
+        }
+        throw new Error(errMsg);
       }
 
       return {

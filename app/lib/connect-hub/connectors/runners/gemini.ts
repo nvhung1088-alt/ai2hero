@@ -55,8 +55,15 @@ export async function runGemini(
         `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
         { signal: controller.signal }
       );
-      if (!res.ok) throw new Error(`Gemini API Error ${res.status}`);
-      return res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        let errMsg = data.error?.message || (typeof data.error === 'string' ? data.error : JSON.stringify(data.error)) || `HTTP ${res.status}`;
+        if (typeof errMsg === 'string' && apiKey) {
+          errMsg = errMsg.replace(new RegExp(apiKey, 'g'), 'sk-...[REDACTED]');
+        }
+        throw new Error(errMsg);
+      }
+      return data;
     } finally {
       clearTimeout(timeoutId);
     }

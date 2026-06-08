@@ -733,9 +733,10 @@ export async function verifyGenericHttpConnection(
       return await checkSimpleHttp('https://api.todoist.com/rest/v2/projects', { 'Authorization': `Bearer ${credentials.api_key}` }, 'Todoist Token không hợp lệ.');
     }
     if (appSlug === 'anthropic') {
+      const api_key = credentials.apiKey || credentials.api_key || '';
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'x-api-key': credentials.api_key || '', 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        headers: { 'x-api-key': api_key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: 1, messages: [{role:'user', content:'Hi'}] }),
         signal: AbortSignal.timeout(6000)
       });
@@ -743,7 +744,7 @@ export async function verifyGenericHttpConnection(
       return { success: true };
     }
     if (appSlug === 'gemini') {
-      const api_key = credentials.api_key || '';
+      const api_key = credentials.apiKey || credentials.api_key || '';
       if (!api_key) throw new Error('Thiếu Gemini API Key.');
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${api_key}`,
@@ -760,7 +761,7 @@ export async function verifyGenericHttpConnection(
       return { success: true };
     }
     if (appSlug === 'deepseek') {
-      const api_key = credentials.api_key || '';
+      const api_key = credentials.apiKey || credentials.api_key || '';
       if (!api_key) throw new Error('Thiếu DeepSeek API Key.');
       const res = await fetch('https://api.deepseek.com/models', {
         headers: { 'Authorization': `Bearer ${api_key}` },
@@ -770,7 +771,7 @@ export async function verifyGenericHttpConnection(
       return { success: true };
     }
     if (appSlug === 'grok') {
-      const api_key = credentials.api_key || '';
+      const api_key = credentials.apiKey || credentials.api_key || '';
       if (!api_key) throw new Error('Thiếu xAI API Key.');
       const res = await fetch('https://api.x.ai/v1/models', {
         headers: { 'Authorization': `Bearer ${api_key}` },
@@ -780,7 +781,7 @@ export async function verifyGenericHttpConnection(
       return { success: true };
     }
     if (appSlug === 'qwen') {
-      const api_key = credentials.api_key || '';
+      const api_key = credentials.apiKey || credentials.api_key || '';
       if (!api_key) throw new Error('Thiếu DashScope API Key.');
       const res = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/models', {
         headers: { 'Authorization': `Bearer ${api_key}` },

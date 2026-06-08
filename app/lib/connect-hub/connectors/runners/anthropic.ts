@@ -71,7 +71,14 @@ export async function runAnthropic(
         headers,
         signal: controller.signal,
       });
-      if (!res.ok) throw new Error(`Anthropic API Error ${res.status}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        let errMsg = data.error?.message || (typeof data.error === 'string' ? data.error : JSON.stringify(data.error)) || `HTTP ${res.status}`;
+        if (typeof errMsg === 'string' && apiKey) {
+          errMsg = errMsg.replace(new RegExp(apiKey, 'g'), 'sk-...[REDACTED]');
+        }
+        throw new Error(errMsg);
+      }
       return res.json();
     } finally {
       clearTimeout(timeoutId);
