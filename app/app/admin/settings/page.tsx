@@ -31,6 +31,7 @@ const AVAILABLE_APPS = [
   { id: 'herovideo', name: 'HeroVideo' },
   { id: 'connect-hub', name: 'Connect Hub' },
   { id: 'hero-report', name: 'Hero Report' },
+  { id: 'hero-care', name: 'Hero Care' },
 ];
 
 export default function AdminSettingsPage() {

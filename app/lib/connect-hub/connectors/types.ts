@@ -79,3 +79,10 @@ export interface ConnectorDefinition {
   riskLevel?: 'safe' | 'medium' | 'high';
 }
 
+export interface ActionResult {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
+
+

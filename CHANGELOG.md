@@ -1,5 +1,12 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-08 — Hoàn thành Giao diện Sidebar Dọc Trái và Ẩn Header Trắng (Hero Care MVP)
+- **Ẩn Header Trắng**: Thêm `/hero-care` vào check `isDashboardOrSim` trong protected layout chính (`app/app/(dashboard)/layout.tsx`) để ẩn thanh header màu trắng của hệ thống.
+- **Sidebar dọc trái**: Tạo component `HeroCareSidebarMenu` và tích hợp vào layout `/hero-care/t/[teamId]/layout.tsx` hiển thị 6 tabs chức năng phong cách Dark Mode cao cấp với hiệu ứng hover gradient xanh dương-cyan và shadow.
+- **Sửa lỗi Compile & Lỗi 500**: Bỏ export 3 Zod schemas trong file `'use server'` `hero-care-actions.ts`, giải quyết triệt để lỗi compile 500 runtime. Xóa cache `.next` stale để khôi phục trình biên dịch sạch sẽ.
+- **AI Learning Cron**: Tạo api cron endpoint tự sinh scripts FAQ pending từ phân tích hội thoại unhandled và viết test script `scratch/test-learning-cron.ts` kiểm thử an toàn.
+- **QA & Verification**: Chạy `npm run build` và check `npx tsc --noEmit` đạt **0 lỗi**, pass 19/19 unit tests backend thành công tuyệt đối.
+
 ## 2026-06-08 — Tích hợp Runner thực tế cho DeepSeek, Grok (xAI) & Qwen (DashScope) & Bảo mật Credentials
 - **Definitions**: Nâng cấp schema của `deepseek.ts`, `grok.ts`, `qwen.ts` để tương thích với chuẩn OpenAI (hỗ trợ `prompt`, `messages` và bổ sung action `list_models`). Bổ sung các metadata hiển thị UI đầy đủ.
 - **Runners**: Viết mới 3 file runner (`runners/deepseek.ts`, `runners/grok.ts`, `runners/qwen.ts`) chứa logic `fetch` trực tiếp tới endpoint `/chat/completions` đặc thù của từng nền tảng. Tích hợp chặn timeout 15s (`AbortController`) chống treo kết nối.

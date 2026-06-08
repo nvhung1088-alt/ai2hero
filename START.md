@@ -17,28 +17,86 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tự động đồng bộ Workspace: Web tự động truyền tên Workspace qua Ping-Pong, Extension tự động config thư mục tải về `Downloads/herovideo/ten-workspace`.
   - `[x]` Tối ưu UX Badge: Rút gọn chỉ còn 2 trạng thái Đã kết nối / Chưa kết nối (Báo lỗi sai tài khoản). Sửa lỗi Type TypeScript và import Icon.
   - `[x]` Loại bỏ hoàn toàn hardcode API địa chỉ `localhost:3000` của Extension khi xác thực và đồng bộ video sang Production URL `https://www.ai2hero.com`.
-  - `[x]` Tích hợp nút 1-click **Mở thư mục** (Open Folder) thông minh trên Web App Dashboard, kết nối trực tiếp với API của Extension thông qua cơ chế Content-Script Bridge.
-  - `[x]` Tích hợp tính năng **Dọn dẹp video lỗi** thủ công trên Dashboard: Tự động quét và loại bỏ các file video rỗng (< 500b), video trùng lặp (size + base name), video hỏng hoặc chỉ có âm thanh (không có khung hình) bằng DOM `<video>` ẩn chạy trên RAM.
-### 4. Hero Report (MVP Báo cáo tự động)
+  - \`[x]\` Tích hợp nút 1-click **Mở thư mục** (Open Folder) thông minh trên Web App Dashboard, kết nối trực tiếp với API của Extension thông qua cơ chế Content-Script Bridge.
+  - \`[x]\` Tích hợp tính năng **Dọn dẹp video lỗi** thủ công trên Dashboard: Tự động quét và loại bỏ các file video rỗng (< 500b), video trùng lặp (size + base name), video hỏng hoặc chỉ có âm thanh (không có khung hình) bằng DOM \`<video>\` ẩn chạy trên RAM.
+### 5. Hero Care (MVP Mới - Trợ lý CSKH AI đa kênh)
 - **Status:** `Beta`
+- **Mô tả:** Hộp thư hỗ trợ đa kênh (Zalo, Pancake, Telegram) tích hợp AI tự động trả lời thông minh dựa trên kịch bản FAQ và dữ liệu snapshot được đồng bộ liên tục.
+- **Tiến độ tích hợp:**
+  - `[x]` Thiết kế schema database (9 bảng `hero_care_*` + relations + types).
+  - `[x]` Đăng ký app vào `apps-registry.ts` và admin settings.
+  - `[x]` Tạo và chạy script SQL migration `migrate-hero-care.ts` vào cơ sở dữ liệu.
+  - `[x]` Viết Server Actions CRUD (`hero-care-actions.ts`) quản lý inboxes, scripts, snapshots, customers.
+  - `[x]` Thiết kế layout URL Isolation và trang Dashboard & Settings thô của Hero Care dưới `app/app/(dashboard)/hero-care/`.
+  - `[x]` Xây dựng lõi AI Reply Engine (`ai-reply-engine.ts`) hỗ trợ đối khớp kịch bản 3 tầng, kiểm duyệt Guardrails và điều phối AI Connector.
+  - `[x]` Tích hợp bộ chuyển tiếp Webhook và Queue Cron Worker xử lý tin nhắn bất đồng bộ.
+  - `[x]` Triển khai Snapshot Refresh Cron (`app/api/cron/hero-care-snapshots/route.ts`) và verify đồng bộ POS thành công.
+  - `[x]` Triển khai Daily Quota Reset Cron (`app/api/cron/hero-care-reset/route.ts`) và verify reset hạn mức tin nhắn / AI call hàng ngày thành công.
+  - `[x]` Tích hợp đồng bộ snapshots thực tế bằng Server Action (GC & logs) kết nối UI.
+  - `[x]` Thiết kế hệ thống kịch bản 3-Tab (Chờ duyệt / Đã duyệt / Từ chối).
+  - `[x]` Xây dựng trang Quản lý Khách hàng (`/customers`) mới kèm Drawer chỉnh sửa tags/notes.
+  - `[x]` Đấu nối dữ liệu thực tế vào Dashboard KPI cards.
+  - `[x]` Thiết lập UI Cài đặt 4-Tab (Inboxes, Guardrails CRUD, Quotas, Event Logs).
+  - `[x]` Phát triển AI Learning Cron tự động phân tích hội thoại sinh kịch bản FAQ pending.
+### 4. Hero Report (MVP Báo cáo tự động)
+- **Status:** \`Beta\`
 - **Mô tả:** Hệ thống lập lịch tự động kéo dữ liệu POS (Pancake, KiotViet), tính toán số liệu bằng code và gọi AI ChiaSeGPU viết nhận xét gợi ý, gửi trực tiếp báo cáo tới Telegram hoặc Zalo ZNS.
 - **Tiến độ tích hợp:**
-  - `[x]` Thiết kế schema database (`heroReportSchedules`, `heroReportRuns`).
-  - `[x]` Đăng ký app vào `apps-registry.ts` và admin settings.
-  - `[x]` Viết Server Actions CRUD và stub actions cho UI.
-  - `[x]` Thiết kế giao diện Quản lý (UI) Dashboard phẳng, tab lịch sử và Form wizard 5 bước có chức năng Gửi thử ngay.
-  - `[x]` Viết Metric Aggregator thô chi tiết, engine điều phối chạy AI nhận xét và Telegram bot sender có fallback plain-text.
-  - `[x]` Tạo API Cron Endpoint `/api/cron/reports` có cơ chế Lock chống race condition.
-  - `[x]` Tích hợp dropdown chọn nhà cung cấp AI và chọn model động (Wizard Step 3) và engine xử lý động.
-  - `[x]` Sửa lỗi trượt dateRange `last_7_days`, bổ sung các bộ lọc thời gian kế toán (quý trước, tháng trước, tháng này, tuần này, 30 ngày) và nâng maxPages động lên 40 cho khoảng thời gian dài.
-  - `[x]` Tổng quát hóa engine báo cáo, bỏ hardcode provider. Tích hợp 3 báo cáo Facebook (Page, Ad Account, Campaign), thiết kế UI Wizard Step 2 chọn Page/Ad Account động bằng API Discovery.
-  - `[x]` Mở rộng Step 5 của Wizard hỗ trợ dynamic chọn Telegram + Zalo ZNS (ẩn Pancake Chat), đổi tên biến lưu trữ `telegramChatId` thành `targetId` trong toàn bộ engine và giao diện.
+  - \`[x]\` Thiết kế schema database (\`heroReportSchedules\`, \`heroReportRuns\`).
+  - \`[x]\` Đăng ký app vào \`apps-registry.ts\` và admin settings.
+  - \`[x]\` Viết Server Actions CRUD và stub actions cho UI.
+  - \`[x]\` Thiết kế giao diện Quản lý (UI) Dashboard phẳng, tab lịch sử và Form wizard 5 bước có chức năng Gửi thử ngay.
+  - \`[x]\` Viết Metric Aggregator thô chi tiết, engine điều phối chạy AI nhận xét và Telegram bot sender có fallback plain-text.
+  - \`[x]\` Tạo API Cron Endpoint \`/api/cron/reports\` có cơ chế Lock chống race condition.
+  - \`[x]\` Tích hợp dropdown chọn nhà cung cấp AI và chọn model động (Wizard Step 3) và engine xử lý động.
+  - \`[x]\` Sửa lỗi trượt dateRange \`last_7_days\`, bổ sung các bộ lọc thời gian kế toán (quý trước, tháng trước, tháng này, tuần này, 30 ngày) và nâng maxPages động lên 40 cho khoảng thời gian dài.
+  - \`[x]\` Tổng quát hóa engine báo cáo, bỏ hardcode provider. Tích hợp 3 báo cáo Facebook (Page, Ad Account, Campaign), thiết kế UI Wizard Step 2 chọn Page/Ad Account động bằng API Discovery.
+  - \`[x]\` Mở rộng Step 5 của Wizard hỗ trợ dynamic chọn Telegram + Zalo ZNS (ẩn Pancake Chat), đổi tên biến lưu trữ \`telegramChatId\` thành \`targetId\` trong toàn bộ engine và giao diện.
 Tagline:      "AI biến bạn thành Hero"
 Domain:       ai2hero.com
 Phase:        1 — Xây dựng các MVP Apps & Extensions
 Tech stack:   Next.js 16 + React 19 + TypeScript + PostgreSQL + Drizzle ORM + Stripe + Tailwind CSS + shadcn/ui
 Extension:    herosim (v4.0.5), herovideo (v1.0.4 - Standalone Extension)
 Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang chrome.storage.local để lưu trữ lịch sử tải vĩnh viễn, khắc phục triệt để lỗi load lại video cũ khi mở lại popup.
+
+- **2026-06-08 (hero-care - phase 4 & 5 UI wiring, sidebar menu integration & compiler cache fix)**:
+  - 🚀 **Hoàn thành Phase 4 & 5 UI & Sửa Compiler Cache**:
+    - **Sidebar Navigation**: Thiết kế Sidebar dọc bên trái, tích hợp 6 Tabs quản lý (Tổng quan, Chat, FAQ scripts, Snapshots, Khách hàng, Cấu hình Inbox) phong cách Dark Mode với hover gradient cyan.
+    - **Header Suppression**: Ẩn header màu trắng toàn cục ở các trang `/hero-care` bằng cách bổ sung route prefix check trong root protected layout, đem lại trải nghiệm Dark Mode liền mạch cho Hero Care.
+    - **Zod Schema Refactor**: Bỏ export Zod schemas trong file Server Actions `'use server'` `hero-care-actions.ts`, sửa triệt để lỗi compile 500 runtime.
+    - **Compiler Clean up**: Giải quyết hoàn toàn lỗi build routes cache của Next.js (tsc pass 100%).
+    - **Unit Tests & Learning Cron**: Tích hợp AI learning cron endpoint phân tích hội thoại sinh kịch bản FAQ pending và verify 19/19 tests pass hoàn hảo.
+
+- **2026-06-08 (hero-care - phase 3 engine, queue & delivery)**:
+  - 🚀 **Hoàn thành Task 3.1 - 3.5: AI Reply Engine, Webhook Queue, Message Delivery, Snapshot Refresh & Daily Quota Reset**:
+    - **Webhook Routing**: Cấu hình `POST` webhook gateway để tự động định tuyến tin nhắn inbound vào `hero_care_events` dưới dạng hàng đợi FIFO (`processedAt: null`).
+    - **Queue Cron Worker (`/api/cron/hero-care`)**: Xây dựng cron worker xử lý batch 10 tin nhắn/phút, trang bị DB lock tự nhiên và log exception trực tiếp vào payload event để debug.
+    - **Script Matcher**: Triển khai thuật toán đối khớp 3 tầng (Keyword Matching -> Intent Heuristic Match -> AI Fallback) giúp tiết kiệm tài nguyên bằng cách trả ngay script thô nếu độ tin cậy của keywords >= 90%.
+    - **Guardrails System**: Thiết kế 4 bộ lọc an toàn (`keyword_block` chặn từ khóa xấu, `intent_handoff` chuyển giao ý định nhạy cảm, `max_turns_handoff` đếm lượt AI liên tiếp tránh lặp kẹt, `stale_data_block` chặn dữ liệu kho cũ).
+    - **LLM Context & Invocation (`buildAIReply`)**: Tổng hợp ngữ cảnh động (tối đa 5 sản phẩm/đơn hàng snapshot tương ứng, 5 tin nhắn chat history gần nhất, few-shot examples kịch bản FAQ, thông tin khách hàng). Tự động điều hướng connector AI và model tương ứng (OpenAI, Gemini, Anthropic, DeepSeek, Grok, Qwen, ChiaSeGPU) với định dạng prompt phù hợp cho từng runner.
+    - **Orchestrator & Delivery (`processInboundMessage`, `deliverMessage`)**: Xây dựng tiến trình điều phối tin inbound (kiểm tra dedupe -> upsert customer -> upsert conversation -> match & reply/draft -> delivery qua API kết nối thật).
+    - **Message Delivery Integration**: Kết nối gửi tin nhắn thật qua API của Connect Hub vào `sendManualMessageAction` và `approveDraftAction`. Hệ thống xử lý lỗi trả về UI qua Toast và ghi event `message_send_failed` an toàn mà không rollback lưu DB.
+    - **Snapshot Refresh Cron (`/api/cron/hero-care-snapshots`)**: Tạo cron endpoint tự động đồng bộ tồn kho/sản phẩm/đơn hàng từ POS cho inboxes hoạt động trong 24h qua. Trang bị Garbage Collection dọn dẹp các items lỗi thời ở POS.
+    - **Daily Quota Reset Cron (`/api/cron/hero-care-reset`)**: Thiết lập cron endpoint tự động reset số lượng tin nhắn (`dailyMessageCount`) và AI call (`dailyAiCallCount`) hàng ngày về 0, cập nhật thời điểm reset `lastResetAt = NOW()`.
+    - **Test & Verification**: Đã viết các tập lệnh chạy thử độc lập `scratch/test-ai-reply.ts`, `scratch/test-delivery.ts`, `scratch/test-snapshots-cron.ts`, `scratch/test-reset-cron.ts` (kiểm thử mock API POS, Garbage Collection và Reset Quota) và bổ sung unit tests tự động thành công 19/19 tests trong `hero-care-actions.test.ts`.
+
+- **2026-06-08 (hero-care - phase 2 UI, chat client, scripts & snapshots manager)**:
+  - 🚀 **Hoàn thành Phase 2 của Hero Care: Giao diện Chat UI & Các bảng quản trị**:
+    - **Chat UI (`chat/page.tsx`, `chat/chat-client.tsx`) [NEW]**: Thiết kế giao diện 3 cột responsive như SuperChat (UPCHAT), tích hợp Mode Switcher (AI Auto, AI Hybrid, Manual), vùng kiểm duyệt đề xuất câu trả lời nháp từ AI (Draft Zone), và panel thông tin khách hàng/tồn kho/FAQ. Trang bị polling client-side (tin nhắn mỗi 4s, hội thoại mỗi 10s) tải tin nhắn mượt mà.
+    - **FAQ Scripts Manager (`scripts/page.tsx`, `scripts/scripts-client.tsx`) [NEW]**: Thiết kế bảng quản trị FAQ, cho phép CRUD các kịch bản mẫu của robot, thiết lập từ khóa bắt buộc/phủ định, ý định (intent) và ngưỡng tin cậy.
+    - **Snapshots Manager (`snapshots/page.tsx`, `snapshots/snapshots-client.tsx`) [NEW]**: Thiết kế bảng quản trị snapshot cache, cho phép cấu hình đồng bộ sản phẩm/đơn hàng/tồn kho từ Pancake/KiotViet POS, thiết lập chu kỳ quét và thời gian quá hạn (stale time) cùng tính năng trigger đồng bộ nóng.
+    - **Server Actions (`hero-care-actions.ts`) [MODIFY]**: Phát triển bổ sung 9 Server Actions phục vụ Chat UI (lấy danh sách chat, danh sách tin nhắn, chuyển chế độ chat, gửi tin nhắn thủ công, duyệt/hủy tin nháp AI, tìm kiếm sản phẩm tồn kho snapshot, cập nhật thông tin khách hàng). Bảo vệ IDOR tuyệt đối qua `verifyHeroCareAccess`.
+    - **Super Admin Panel (`admin/settings/page.tsx`) [MODIFY]**: Đưa `hero-care` vào danh sách `AVAILABLE_APPS` ở trang cấu hình Super Admin, giúp kích hoạt app này cho các không gian làm việc.
+    - **Verify & Compile Fixes**: Sửa các cảnh báo kiểu TypeScript (strict null checks) trong test file, định nghĩa `Snapshot` interface hỗ trợ Date/string, sửa lỗi đảo tham số runners (DeepSeek, Grok, Qwen) trong Connect Hub engine. 16/16 Unit Tests pass hoàn hảo.
+
+- **2026-06-08 (hero-care - phase 1 foundation, schema, migration & settings UI)**:
+    - **Database Schema (`schema.ts`) [MODIFY]**: Định nghĩa 9 bảng `hero_care_inboxes`, `hero_care_snapshots`, `hero_care_customers`, `hero_care_conversations`, `hero_care_messages`, `hero_care_scripts`, `hero_care_snapshot_items`, `hero_care_guardrails`, `hero_care_events` cùng các quan hệ Drizzle Relations và xuất các types tương ứng.
+    - **Migration Script (`migrate-hero-care.ts`) [NEW]**: Viết script SQL migration và chạy thành công tạo 9 bảng database.
+    - **App Registry (`apps-registry.ts`) [MODIFY]**: Đăng ký app `hero-care` làm module thứ 5 của hệ thống.
+    - **Server Actions (`hero-care-actions.ts`) [NEW]**: Phát triển đầy đủ Server Actions CRUD cho Inboxes, Scripts, Snapshots và Customers có IDOR guard bảo vệ.
+    - **UI Router & Pages (`layout.tsx`, `page.tsx`, `settings-client.tsx`) [NEW]**: Tạo layout cách ly CookieSync, page redirector, trang Dashboard home và trang Settings quản trị inboxes / prompt AI / quota giới hạn.
+    - **Unit Tests (`hero-care-actions.test.ts`) [NEW]**: Bổ sung Vitest và viết file test hoàn chỉnh. Khởi tạo dữ liệu mock Database thực để test IDOR constraints (bắt buộc kiểm tra user logged in, check role team, check activatedApps `'hero-care'`, test cross-team IDOR modification bảo mật tuyệt đối). Clean up an toàn via `afterAll`.
+    - **Verify**: Type check các file mới không có lỗi biên dịch. Migration hoàn thành 100%. Đã pass 16/16 Unit Tests an toàn tuyệt đối.
 
 - **2026-06-08 (ai-upgrade - deepseek, grok, qwen integration & credential protection)**:
   - 🚀 **Tích hợp Runner thực tế cho DeepSeek, Grok (xAI) & Qwen (DashScope) & Bảo mật Credential**:

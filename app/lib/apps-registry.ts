@@ -114,6 +114,32 @@ export const APPS: AppDefinition[] = [
       'Số liệu chính xác 100% do code tính (không AI đoán)'
     ],
     targetUsers: 'Chủ shop, Quản lý kinh doanh, Kế toán cần báo cáo tự động hàng ngày.'
+  },
+  {
+    id: 'hero-care',
+    name: 'Hero Care',
+    description: 'Trợ lý CSKH đa kênh AI — tự động trả lời, quản lý hội thoại, kịch bản FAQ và dữ liệu snapshot đồng bộ.',
+    icon: 'MessageSquare',
+    path: '/hero-care/dashboard',
+    status: 'beta',
+    tier: 'free',
+    category: 'communication',
+    color: 'from-blue-600 to-cyan-500',
+    slogan: 'AI chăm sóc khách hàng có kiểm soát và dữ liệu riêng',
+    longDesc: 'Hộp thư hỗ trợ đa kênh (Zalo, Pancake, Telegram) tích hợp AI tự động trả lời thông minh dựa trên kịch bản FAQ và dữ liệu snapshot được đồng bộ liên tục.',
+    features: [
+      'Nhận tin nhắn đa kênh thời gian thực',
+      '3 chế độ chat linh hoạt: AI Auto, Hybrid và Thủ công',
+      'Hệ thống khớp kịch bản FAQ 3 tầng thông minh',
+      'Smart Snapshots lưu trữ và cập nhật dữ liệu tồn kho, giá cả',
+      'Draft Zone giúp nhân viên kiểm duyệt câu trả lời của AI'
+    ],
+    benefits: [
+      'Tăng 80% tốc độ phản hồi và chăm sóc khách hàng',
+      'Giảm thiểu sai lệch dữ liệu nhờ cơ chế đồng bộ snapshot',
+      'Bảo vệ uy tín thương hiệu với bộ lọc guardrails ngăn AI trả lời sai lệch'
+    ],
+    targetUsers: 'Chủ doanh nghiệp, Quản lý CSKH, các shop bán hàng đa kênh có lượng tin nhắn lớn cần tối ưu quy trình phản hồi.'
   }
 ];
 

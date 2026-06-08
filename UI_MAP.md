@@ -1,5 +1,5 @@
 # AI2HERO — UI MAP
-> Cập nhật: 2026-06-07
+> Cập nhật: 2026-06-08
 > 💡 **Quy tắc vàng**: Khi thiết kế hoặc thêm trang/giao diện mới cho một ứng dụng MVP, hãy xem hướng dẫn tích hợp chi tiết tại [MVP_INTEGRATION_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/MVP_INTEGRATION_GUIDE.md).
 
 ## KIẾN TRÚC TỔNG
@@ -28,6 +28,7 @@ graph TB
             VIDEO[HeroVideo<br>/herovideodownload/dashboard]
             CONNECT[Connect Hub<br>/connect-hub/t/[teamId]/dashboard]
             REPORT[Hero Report<br>/hero-report/dashboard]
+            CARE[Hero Care<br>/hero-care/t/[teamId]/dashboard]
         end
     end
 
@@ -247,8 +248,45 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Đọc/Ghi data**: Đọc/Ghi dữ liệu từ 2 bảng `hero_report_schedules` và `hero_report_runs` thông qua Server Actions trong `hero-report-actions.ts`. Đọc `connectHubConnections` để kết xuất AI động.
 - **Liên kết**: → /dashboard, → /connect-hub/t/[teamId]/connections (để thêm kết nối nếu trống)
 
+### Hero Care Dashboard (`/hero-care/t/[teamId]/dashboard`)
+- **Chức năng**: Trang chủ của Hero Care. Hiển thị các chỉ số hiệu suất hôm nay (tin nhắn nhận, AI call, tỷ lệ chính xác, handoff) được nạp trực tiếp từ DB thực tế và các phím tắt nhanh sang hộp chat, kịch bản, khách hàng, và snapshots.
+- **Vai trò**: MVP App Dashboard
+- **Đọc/Ghi data**: Đọc từ database Postgres các tin nhắn và event logs.
+- **Liên kết**: → /dashboard, → /hero-care/t/[teamId]/chat, → /hero-care/t/[teamId]/scripts, → /hero-care/t/[teamId]/snapshots, → /hero-care/t/[teamId]/customers, → /hero-care/t/[teamId]/settings
 
+### Hộp thư Chat Hero Care (`/hero-care/t/[teamId]/chat`)
+- **Chức năng**: Giao diện Chat 3 cột chuyên nghiệp. Cột trái: Tìm kiếm và lọc hội thoại theo tabs phân loại (Tất cả, Robot, Hybrid, Manual, Resolved). Cột giữa: Khung chat thời gian thực (polling 4s) với 3 chế độ chat (AI Auto, AI Assist/Hybrid, Manual). Tích hợp vùng kiểm duyệt (Draft Zone) để nhân viên duyệt/sửa/gửi câu trả lời gợi ý của AI. Cột phải: Thông tin khách hàng (notes, tags), tra cứu tồn kho sản phẩm trong Snapshot cache, và gợi ý kịch bản FAQ phù hợp.
+- **Vai trò**: MVP App UI
+- **Đọc/Ghi data**: Đọc/Ghi qua Server Actions tin nhắn, cuộc hội thoại, và thông tin chi tiết khách hàng.
+- **Liên kết**: → /hero-care/t/[teamId]/dashboard
 
+### Quản lý kịch bản FAQ (`/hero-care/t/[teamId]/scripts`)
+- **Chức năng**: Quản lý các kịch bản trả lời FAQ mẫu với giao diện 3-Tab: **Chờ duyệt** (pending) / **Đã duyệt** (active/paused) / **Từ chối** (rejected). Cho phép thêm/sửa/xoá mẫu, duyệt nhanh/từ chối kịch bản pending từ AI Learning sinh ra, gán từ khóa, intent và cài đặt ngưỡng tin cậy.
+- **Vai trò**: MVP App UI
+- **Đọc/Ghi data**: Đọc/Ghi bảng `hero_care_scripts` qua Server Actions.
+- **Liên kết**: → /hero-care/t/[teamId]/dashboard
+
+### Quản lý đồng bộ Snapshots (`/hero-care/t/[teamId]/snapshots`)
+- **Chức năng**: Thiết lập chu kỳ đồng bộ tồn kho, sản phẩm, đơn hàng từ Pancake/KiotViet POS. Nút trigger đồng bộ nóng gọi Server Action thực tế `triggerSnapshotSyncAction` hiển thị tiến trình, tốc độ nạp cache và logs thời gian thực.
+- **Vai trò**: MVP App UI
+- **Đọc/Ghi data**: Đọc/Ghi bảng `hero_care_snapshots` và `hero_care_snapshot_items` qua Server Actions.
+- **Liên kết**: → /hero-care/t/[teamId]/dashboard
+
+### Quản lý Khách hàng (`/hero-care/t/[teamId]/customers`) [NEW]
+- **Chức năng**: Bảng quản lý thông tin khách hàng đa kênh. Hiển thị thông tin kênh, tags phân loại, ghi chú liên hệ. Hỗ trợ thanh tìm kiếm, bộ lọc theo kênh và Drawer trượt chỉnh sửa tags/notes tức thì.
+- **Vai trò**: MVP App UI
+- **Đọc/Ghi data**: Đọc/Ghi bảng `hero_care_customers` qua Server Actions.
+- **Liên kết**: → /hero-care/t/[teamId]/dashboard, → /hero-care/t/[teamId]/chat
+
+### Hero Care Settings (`/hero-care/t/[teamId]/settings`)
+- **Chức năng**: Trang cài đặt tổng quan Hero Care với 4-Tab:
+  - **Inboxes**: CRUD inboxes và link chúng tới API Connect Hub.
+  - **Guardrails**: Thiết lập quy tắc an toàn (chặn từ khóa xấu, handoff intent, max turns, stale cache block).
+  - **Quotas**: Biểu đồ thanh tiến trình giám sát giới hạn tin nhắn/AI call của inboxes trong ngày.
+  - **Event Logs**: Nhật ký audit các sự kiện hệ thống kèm Modal xem chi tiết payload JSON.
+- **Vai trò**: MVP Settings Page
+- **Đọc/Ghi data**: Đọc/Ghi các bảng `hero_care_inboxes`, `hero_care_guardrails`, `hero_care_events` và `connect_hub_connections` qua Server Actions.
+- **Liên kết**: → /hero-care/t/[teamId]/dashboard, → /connect-hub/t/[teamId]/connections
 
 ### Super Admin Dashboard (`/admin`)
 - **Chức năng**: Dashboard tổng quan hiển thị 6 chỉ số nền tảng (Người dùng, tổ chức, lượt dùng AI, doanh thu, uptime, hoạt động hôm nay, trong đó Doanh thu và Uptime hiển thị dạng '—' placeholder do chưa kết nối Stripe/monitoring) và 2 biểu đồ Pure CSS Bar Chart tăng trưởng kèm 5 logs hệ thống mới nhất. **Đồng bộ hóa giao diện nền tối Premium Dark Mode.**
@@ -285,6 +323,39 @@ User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
 - **Vai trò**: Super Admin page
 - **Đọc/Ghi data**: Đọc từ Database Postgres thật qua Drizzle, ghi/xoá thông cáo bằng Server Actions `createAnnouncementAction` và `deleteAnnouncementAction`.
 - **Liên kết**: → /admin
+
+### Hero Care Dashboard (`/hero-care/t/[teamId]/dashboard`)
+- **Chức năng**: Trang chủ của Hero Care. Hiển thị các chỉ số hiệu suất hôm nay (tin nhắn nhận, AI call, tỷ lệ chính xác, handoff) và các phím tắt nhanh sang hộp chat, kịch bản, và snapshots.
+- **Vai trò**: MVP App UI
+- **Đọc/Ghi data**: Đọc từ database các tin nhắn và event logs.
+- **Liên kết**: → /dashboard, → /hero-care/t/[teamId]/chat, → /hero-care/t/[teamId]/scripts, → /hero-care/t/[teamId]/snapshots
+
+### Hộp thư Chat Hero Care (`/hero-care/t/[teamId]/chat`)
+- **Chức năng**: Giao diện Chat 3 cột chuyên nghiệp. Cột trái: Tìm kiếm và lọc hội thoại theo tabs phân loại (Tất cả, Robot, Hybrid, Manual, Resolved). Cột giữa: Khung chat thời gian thực (polling 4s) với 3 chế độ chat (AI Auto, AI Assist/Hybrid, Manual). Tích hợp vùng kiểm duyệt (Draft Zone) để nhân viên duyệt/sửa/gửi câu trả lời gợi ý của AI. Cột phải: Thông tin khách hàng (notes, tags), tra cứu tồn kho sản phẩm trong Snapshot cache, và gợi ý kịch bản FAQ phù hợp.
+- **Vai trò**: MVP App UI
+- **Đọc/Ghi data**: Đọc/Ghi qua Server Actions tin nhắn, cuộc hội thoại, và thông tin chi tiết khách hàng.
+- **Liên kết**: → /hero-care/t/[teamId]/dashboard
+
+### Quản lý kịch bản FAQ (`/hero-care/t/[teamId]/scripts`)
+- **Chức năng**: Quản lý các kịch bản trả lời FAQ mẫu. Cho phép thêm/sửa/xoá các mẫu câu hỏi, gán từ khóa bắt buộc và từ khóa phủ định, chọn inbox áp dụng, phân nhóm ý định (intent) và cài đặt ngưỡng tin cậy khớp.
+- **Vai trò**: MVP App UI
+- **Đọc/Ghi data**: Đọc/Ghi bảng `hero_care_scripts` qua Server Actions.
+- **Liên kết**: → /hero-care/t/[teamId]/dashboard
+
+### Quản lý đồng bộ Snapshots (`/hero-care/t/[teamId]/snapshots`)
+- **Chức năng**: Quản lý cấu hình đồng bộ dữ liệu tồn kho, sản phẩm, hoặc thông tin khách hàng từ Pancake/KiotViet POS. Thiết lập chu kỳ đồng bộ tự động (phút) và thời hạn hết hạn (stale time) kèm chính sách fallback an toàn. Hỗ trợ kích hoạt/tạm dừng cấu hình và nút trigger đồng bộ nóng (nạp cache tức thì).
+- **Vai trò**: MVP App UI
+- **Đọc/Ghi data**: Đọc/Ghi bảng `hero_care_snapshots` qua Server Actions.
+- **Liên kết**: → /hero-care/t/[teamId]/dashboard
+- **Vai trò**: MVP App Dashboard
+- **Đọc/Ghi data**: Đọc thông tin inboxes, messages và event log từ database Postgres thật qua Drizzle.
+- **Liên kết**: → /hero-care/t/[teamId]/chat, → /hero-care/t/[teamId]/scripts, → /hero-care/t/[teamId]/snapshots, → /hero-care/t/[teamId]/settings
+
+### Hero Care Settings (`/hero-care/t/[teamId]/settings`)
+- **Chức năng**: Quản lý các Inboxes Hero Care. Cho phép tạo mới, sửa prompt AI, đặt giới hạn quota ngày, bật/tắt hoạt động và gán Connection ID từ Connect Hub tương thích.
+- **Vai trò**: MVP Settings Page
+- **Đọc/Ghi data**: Đọc/Ghi các bảng `hero_care_inboxes` và `connect_hub_connections` qua Server Actions.
+- **Liên kết**: → /hero-care/t/[teamId]/dashboard, → /connect-hub/t/[teamId]/connections
 
 ### API Routes thông báo & thông cáo (`/api/notifications`, `/api/announcements`)
 - **Chức năng**: Cung cấp API endpoints dynamic cho client fetch bằng SWR để render chuông báo Bell và Loa Megaphone.

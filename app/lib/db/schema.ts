@@ -852,3 +852,239 @@ export type NewHeroReportSchedule = typeof heroReportSchedules.$inferInsert;
 export type HeroReportRun = typeof heroReportRuns.$inferSelect;
 export type NewHeroReportRun = typeof heroReportRuns.$inferInsert;
 
+// ============================================================================
+// HERO CARE — MVP AI CSKH Inbox & Snapshot Cache Module
+// ============================================================================
+
+export const heroCareInboxes = pgTable('hero_care_inboxes', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  channel: varchar('channel', { length: 50 }).notNull(), // 'pancake' | 'zalo' | 'telegram' | 'facebook'
+  connectionId: integer('connection_id').references(() => connectHubConnections.id, { onDelete: 'set null' }),
+  webhookId: uuid('webhook_id').references(() => connectHubWebhooks.id, { onDelete: 'set null' }),
+  status: varchar('status', { length: 20 }).notNull().default('active'), // 'active' | 'paused'
+  systemPrompt: text('system_prompt'),
+  defaultReply: text('default_reply').notNull().default('Hiện tại nhân viên đang bận, chúng tôi sẽ phản hồi sớm.'),
+  dailyMessageLimit: integer('daily_message_limit').notNull().default(50),
+  dailyAiCallLimit: integer('daily_ai_call_limit').notNull().default(20),
+  dailyMessageCount: integer('daily_message_count').notNull().default(0),
+  dailyAiCallCount: integer('daily_ai_call_count').notNull().default(0),
+  lastResetAt: timestamp('last_reset_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const heroCareSnapshots = pgTable('hero_care_snapshots', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  inboxId: integer('inbox_id').notNull().references(() => heroCareInboxes.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  dataType: varchar('data_type', { length: 50 }).notNull(), // 'products' | 'orders' | 'customers' | 'inventory'
+  refreshIntervalMinutes: integer('refresh_interval_minutes').notNull().default(15),
+  maxStaleMinutes: integer('max_stale_minutes').notNull().default(60),
+  allowStaleFallback: integer('allow_stale_fallback').notNull().default(1), // 1 = true, 0 = false
+  status: varchar('status', { length: 20 }).notNull().default('active'), // 'active' | 'paused'
+  config: jsonb('config').default('{}'),
+  lastRefreshedAt: timestamp('last_refreshed_at'),
+  nextRefreshAt: timestamp('next_refresh_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const heroCareCustomers = pgTable('hero_care_customers', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  externalCustomerId: varchar('external_customer_id', { length: 255 }), // ID trên kênh gốc
+  channel: varchar('channel', { length: 50 }), // Kênh liên lạc chính
+  name: varchar('name', { length: 255 }),
+  phone: varchar('phone', { length: 20 }),
+  email: varchar('email', { length: 255 }),
+  avatar: text('avatar'),
+  tags: jsonb('tags').default('[]'), // ['vip', 'wholesale', 'complaint']
+  notes: text('notes'),
+  totalConversations: integer('total_conversations').default(0),
+  totalOrders: integer('total_orders').default(0),
+  lastSeenAt: timestamp('last_seen_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  teamIdx: index('hero_care_cust_team_idx').on(table.teamId),
+  externalIdx: index('hero_care_cust_ext_idx').on(table.externalCustomerId),
+}));
+
+export const heroCareConversations = pgTable('hero_care_conversations', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  inboxId: integer('inbox_id').notNull().references(() => heroCareInboxes.id, { onDelete: 'cascade' }),
+  externalConversationId: varchar('external_conversation_id', { length: 255 }).notNull(), // Conversation ID on channel
+  customerId: integer('customer_id').references(() => heroCareCustomers.id, { onDelete: 'set null' }),
+  chatMode: varchar('chat_mode', { length: 20 }).notNull().default('hybrid'), // 'auto' | 'hybrid' | 'manual'
+  status: varchar('status', { length: 20 }).notNull().default('active'), // 'active' | 'pending_agent' | 'resolved'
+  lastMessageAt: timestamp('last_message_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const heroCareMessages = pgTable('hero_care_messages', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  inboxId: integer('inbox_id').notNull().references(() => heroCareInboxes.id, { onDelete: 'cascade' }),
+  conversationId: integer('conversation_id').notNull().references(() => heroCareConversations.id, { onDelete: 'cascade' }),
+  externalMessageId: varchar('external_message_id', { length: 255 }),
+  senderId: varchar('sender_id', { length: 255 }), // Sender ID on channel
+  senderName: varchar('sender_name', { length: 255 }),
+  direction: varchar('direction', { length: 20 }).notNull(), // 'inbound' | 'outbound'
+  messageType: varchar('message_type', { length: 20 }).notNull().default('text'), // 'text' | 'image' | 'file'
+  content: text('content').notNull(),
+  attachments: jsonb('attachments').default('[]'),
+  aiStatus: varchar('ai_status', { length: 20 }), // 'success' | 'failed' | 'fallback' | 'handoff' | 'script' | 'blocked'
+  aiConfidence: integer('ai_confidence'), // 0-100
+  usedSnapshotIds: jsonb('used_snapshot_ids').default('[]'),
+  usedScriptIds: jsonb('used_script_ids').default('[]'),
+  handoffReason: text('handoff_reason'),
+  draftContent: text('draft_content'),
+  draftStatus: varchar('draft_status', { length: 20 }), // 'pending' | 'approved' | 'rejected' | 'edited'
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const heroCareScripts = pgTable('hero_care_scripts', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  inboxId: integer('inbox_id').references(() => heroCareInboxes.id, { onDelete: 'cascade' }),
+  triggerText: text('trigger_text').notNull(),
+  keywords: jsonb('keywords').default('[]'), // ["đổi trả", "hoàn tiền"]
+  negativeKeywords: jsonb('negative_keywords').default('[]'),
+  triggerExamples: jsonb('trigger_examples').default('[]'),
+  intent: varchar('intent', { length: 50 }),
+  confidenceThreshold: integer('confidence_threshold').default(70),
+  replyText: text('reply_text').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('active'), // 'active' | 'paused'
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const heroCareSnapshotItems = pgTable('hero_care_snapshot_items', {
+  id: serial('id').primaryKey(),
+  snapshotId: integer('snapshot_id').notNull().references(() => heroCareSnapshots.id, { onDelete: 'cascade' }),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  dataType: varchar('data_type', { length: 50 }).notNull(), // 'products' | 'orders' | 'customers'
+  entityKey: varchar('entity_key', { length: 255 }).notNull(), // SKU / orderCode / phone
+  entityName: varchar('entity_name', { length: 255 }), // Display name
+  data: jsonb('data').notNull(),
+  dataHash: varchar('data_hash', { length: 64 }), // SHA-256 for updates detection
+  refreshedAt: timestamp('refreshed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  snapshotIdx: index('hero_care_si_snapshot_idx').on(table.snapshotId),
+  entityIdx: index('hero_care_si_entity_idx').on(table.entityKey),
+}));
+
+export const heroCareGuardrails = pgTable('hero_care_guardrails', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  inboxId: integer('inbox_id').references(() => heroCareInboxes.id, { onDelete: 'cascade' }),
+  ruleType: varchar('rule_type', { length: 50 }).notNull(),
+  condition: jsonb('condition').notNull(),
+  action: varchar('action', { length: 20 }).notNull().default('handoff'), // 'handoff' | 'block' | 'warn'
+  enabled: integer('enabled').notNull().default(1),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const heroCareEvents = pgTable('hero_care_events', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  inboxId: integer('inbox_id').references(() => heroCareInboxes.id, { onDelete: 'set null' }),
+  conversationId: integer('conversation_id').references(() => heroCareConversations.id, { onDelete: 'set null' }),
+  eventType: varchar('event_type', { length: 50 }).notNull(),
+  payload: jsonb('payload'),
+  processedAt: timestamp('processed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  teamIdx: index('hero_care_events_team_idx').on(table.teamId),
+  processedIdx: index('hero_care_events_processed_idx').on(table.processedAt),
+}));
+
+// ============================================================================
+// HERO CARE RELATIONS
+// ============================================================================
+
+export const heroCareInboxesRelations = relations(heroCareInboxes, ({ one, many }) => ({
+  team: one(teams, { fields: [heroCareInboxes.teamId], references: [teams.id] }),
+  connection: one(connectHubConnections, { fields: [heroCareInboxes.connectionId], references: [connectHubConnections.id] }),
+  webhook: one(connectHubWebhooks, { fields: [heroCareInboxes.webhookId], references: [connectHubWebhooks.id] }),
+  snapshots: many(heroCareSnapshots),
+  conversations: many(heroCareConversations),
+  scripts: many(heroCareScripts),
+  guardrails: many(heroCareGuardrails),
+  events: many(heroCareEvents),
+}));
+
+export const heroCareSnapshotsRelations = relations(heroCareSnapshots, ({ one, many }) => ({
+  team: one(teams, { fields: [heroCareSnapshots.teamId], references: [teams.id] }),
+  inbox: one(heroCareInboxes, { fields: [heroCareSnapshots.inboxId], references: [heroCareInboxes.id] }),
+  items: many(heroCareSnapshotItems),
+}));
+
+export const heroCareConversationsRelations = relations(heroCareConversations, ({ one, many }) => ({
+  team: one(teams, { fields: [heroCareConversations.teamId], references: [teams.id] }),
+  inbox: one(heroCareInboxes, { fields: [heroCareConversations.inboxId], references: [heroCareInboxes.id] }),
+  customer: one(heroCareCustomers, { fields: [heroCareConversations.customerId], references: [heroCareCustomers.id] }),
+  messages: many(heroCareMessages),
+  events: many(heroCareEvents),
+}));
+
+export const heroCareCustomersRelations = relations(heroCareCustomers, ({ one, many }) => ({
+  team: one(teams, { fields: [heroCareCustomers.teamId], references: [teams.id] }),
+  conversations: many(heroCareConversations),
+}));
+
+export const heroCareMessagesRelations = relations(heroCareMessages, ({ one }) => ({
+  team: one(teams, { fields: [heroCareMessages.teamId], references: [teams.id] }),
+  inbox: one(heroCareInboxes, { fields: [heroCareMessages.inboxId], references: [heroCareInboxes.id] }),
+  conversation: one(heroCareConversations, { fields: [heroCareMessages.conversationId], references: [heroCareConversations.id] }),
+}));
+
+export const heroCareScriptsRelations = relations(heroCareScripts, ({ one }) => ({
+  team: one(teams, { fields: [heroCareScripts.teamId], references: [teams.id] }),
+  inbox: one(heroCareInboxes, { fields: [heroCareScripts.inboxId], references: [heroCareInboxes.id] }),
+}));
+
+export const heroCareSnapshotItemsRelations = relations(heroCareSnapshotItems, ({ one }) => ({
+  team: one(teams, { fields: [heroCareSnapshotItems.teamId], references: [teams.id] }),
+  snapshot: one(heroCareSnapshots, { fields: [heroCareSnapshotItems.snapshotId], references: [heroCareSnapshots.id] }),
+}));
+
+export const heroCareGuardrailsRelations = relations(heroCareGuardrails, ({ one }) => ({
+  team: one(teams, { fields: [heroCareGuardrails.teamId], references: [teams.id] }),
+  inbox: one(heroCareInboxes, { fields: [heroCareGuardrails.inboxId], references: [heroCareInboxes.id] }),
+}));
+
+export const heroCareEventsRelations = relations(heroCareEvents, ({ one }) => ({
+  team: one(teams, { fields: [heroCareEvents.teamId], references: [teams.id] }),
+  inbox: one(heroCareInboxes, { fields: [heroCareEvents.inboxId], references: [heroCareInboxes.id] }),
+  conversation: one(heroCareConversations, { fields: [heroCareEvents.conversationId], references: [heroCareConversations.id] }),
+}));
+
+// ============================================================================
+// HERO CARE TYPES
+// ============================================================================
+
+export type HeroCareInbox = typeof heroCareInboxes.$inferSelect;
+export type NewHeroCareInbox = typeof heroCareInboxes.$inferInsert;
+export type HeroCareSnapshot = typeof heroCareSnapshots.$inferSelect;
+export type NewHeroCareSnapshot = typeof heroCareSnapshots.$inferInsert;
+export type HeroCareConversation = typeof heroCareConversations.$inferSelect;
+export type NewHeroCareConversation = typeof heroCareConversations.$inferInsert;
+export type HeroCareCustomer = typeof heroCareCustomers.$inferSelect;
+export type NewHeroCareCustomer = typeof heroCareCustomers.$inferInsert;
+export type HeroCareMessage = typeof heroCareMessages.$inferSelect;
+export type NewHeroCareMessage = typeof heroCareMessages.$inferInsert;
+export type HeroCareScript = typeof heroCareScripts.$inferSelect;
+export type NewHeroCareScript = typeof heroCareScripts.$inferInsert;
+export type HeroCareSnapshotItem = typeof heroCareSnapshotItems.$inferSelect;
+export type NewHeroCareSnapshotItem = typeof heroCareSnapshotItems.$inferInsert;
+export type HeroCareGuardrail = typeof heroCareGuardrails.$inferSelect;
+export type NewHeroCareGuardrail = typeof heroCareGuardrails.$inferInsert;
+export type HeroCareEvent = typeof heroCareEvents.$inferSelect;
+export type NewHeroCareEvent = typeof heroCareEvents.$inferInsert;

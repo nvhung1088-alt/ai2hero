@@ -49,6 +49,11 @@ export async function runConnectorAction(params: {
 }> {
   const startTime = Date.now();
   const { teamId, connectionId, actionSlug, input, callerModule, normalize = false, isTest = false } = params;
+
+  if ((global as any).mockRunConnectorAction) {
+    return (global as any).mockRunConnectorAction(params);
+  }
+
   let connection: any = null;
 
   try {

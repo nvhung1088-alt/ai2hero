@@ -4,6 +4,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "vitest run",
     "db:setup": "npx tsx lib/db/setup.ts",
     "db:seed": "npx tsx scripts/seed.ts",
     "db:seed-sim": "npx tsx scripts/seed-sim.ts",
@@ -48,6 +49,7 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
-    "baseline-browser-mapping": "^2.10.33"
+    "baseline-browser-mapping": "^2.10.33",
+    "vitest": "^4.1.8"
   }
 }

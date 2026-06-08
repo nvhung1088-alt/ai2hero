@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/drizzle';
-import { connectHubWebhooks, connectHubWebhookLogs } from '@/lib/db/schema';
+import { connectHubWebhooks, connectHubWebhookLogs, heroCareInboxes, heroCareEvents } from '@/lib/db/schema';
 import { decryptField } from '@/lib/sim-crypto';
 import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
@@ -234,6 +234,35 @@ export async function POST(
       );
     } catch (err) {
       console.error('Flow execution error:', err);
+    }
+  }
+
+  // === Phase 3: Hero Care Webhook Routing ===
+  if (status === 'success') {
+    try {
+      const [linkedInbox] = await db
+        .select()
+        .from(heroCareInboxes)
+        .where(
+          and(
+            eq(heroCareInboxes.webhookId, webhook.id),
+            eq(heroCareInboxes.status, 'active')
+          )
+        )
+        .limit(1);
+
+      if (linkedInbox) {
+        await db.insert(heroCareEvents).values({
+          teamId: linkedInbox.teamId,
+          inboxId: linkedInbox.id,
+          eventType: 'webhook_received',
+          payload: parsedPayload,
+          processedAt: null,
+          createdAt: new Date()
+        });
+      }
+    } catch (err) {
+      console.error('[Hero Care] Webhook routing error:', err);
     }
   }
 
