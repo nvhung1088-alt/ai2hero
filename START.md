@@ -1,5 +1,5 @@
 # AI2HERO — START
-> Cap nhat: 2026-06-16
+> Cap nhat: 2026-06-23
 
 ## TRANG THAI
 Mode:         Build
@@ -116,8 +116,13 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[ ]` [Phase 5] Bổ sung công nghệ TTS cao cấp: Tích hợp ElevenLabs API (Cảm xúc điện ảnh) và XTTSv2/CosyVoice (Zero-shot Voice Cloning giữ giọng gốc).
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- [x] **Deploy Production**: Đã cập nhật `.gitignore`, dọn dẹp các tệp media test local, commit và push thành công toàn bộ code MVP lên GitHub (`main` branch) để kích hoạt Vercel auto-deploy.
 - [x] **Sửa lỗi Hàng đợi tác vụ HeroDub**: Đã fix thành công 3 nút chức năng thao tác với file trên máy tính (Mở video trực tiếp trên Web Player, Tải SRT qua Stream Proxy, và Mở thư mục bằng lệnh spawn detached trên Windows).
 - [x] **HeroDub TTS Upgrade (Giai đoạn 1 & 2)**: Đã hoàn thành và kiểm thử logic Speed Alignment (atempo) kết hợp Silence Trimming và Vocal Isolation (Demucs) cho local worker.
+
+- **2026-06-23 (deploy - MVP Production Launch)**:
+  - 🚀 **Dọn dẹp Git Index**: Đã loại bỏ hoàn toàn các folder rác (uploads/, test_workspace/, build/, workspace/) và file media tạm (.mp3, .mp4, .wav) khỏi Git index.
+  - 🚀 **Commit & Push MVP**: Đã commit toàn bộ file source sạch và push thành công lên GitHub remote main branch để deploy production trên Vercel.
 
 - **2026-06-23 (hero-dub - Silence Trimming & Overlap Protection Completed)**:
   - 🚀 **Tích hợp Silence Trimming**: Sử dụng filter `silenceremove` kết hợp `areverse` hai lần để cắt bỏ hoàn toàn khoảng lặng ở đầu/cuối của Edge-TTS với ngưỡng `-40dB` an toàn, giúp Speed Alignment tính tỷ lệ tốc độ cực kỳ chuẩn xác.
