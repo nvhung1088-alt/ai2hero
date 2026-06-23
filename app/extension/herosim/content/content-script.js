@@ -888,3 +888,104 @@ function getEmojiForPlatform(platformKey) {
   }
   return '🔑';
 }
+
+// ─── 12. HeroMarketplace Sync (Shopee/TikTok) ─────────────────────────────
+
+function injectMarketplaceSyncBtn() {
+  const isShopee = window.location.hostname.includes('seller.shopee');
+  const isTikTok = window.location.hostname.includes('seller-vn.tiktok.com');
+  
+  if (!isShopee && !isTikTok) return;
+
+  // Tránh inject nhiều lần
+  if (document.getElementById('hs-market-sync-btn')) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'hs-market-sync-btn';
+  btn.innerHTML = 'HeroMarket Sync';
+  btn.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 999999;
+    background: linear-gradient(135deg, #f97316, #ec4899);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    font-family: inherit;
+    transition: transform 0.2s;
+  `;
+  
+  btn.onmouseover = () => btn.style.transform = 'scale(1.05)';
+  btn.onmouseout = () => btn.style.transform = 'scale(1)';
+
+  btn.addEventListener('click', async () => {
+    btn.innerHTML = '⏳ Đang lấy dữ liệu...';
+    btn.disabled = true;
+    
+    try {
+      let products = [];
+      let platform = isShopee ? 'shopee' : 'tiktok';
+      
+      // Giả lập DOM scraping vì Shopee/TikTok SPA không public state.
+      // Dưới thực tế, ta chặn/intercept XHR hoặc parse DOM. Ở đây parse DOM cơ bản hoặc dummy payload.
+      if (isShopee) {
+        // Dummy data do chưa có trang seller thật
+        products = Array.from(document.querySelectorAll('.product-item')).map((el, index) => ({
+          id: el.getAttribute('data-id') || \`shopee_fake_\${index}\`,
+          name: el.querySelector('.name')?.innerText || \`Sản phẩm Shopee \${index}\`,
+          price: parseInt(el.querySelector('.price')?.innerText?.replace(/\\D/g,'')) || 100000,
+          stock: parseInt(el.querySelector('.stock')?.innerText) || 10,
+        }));
+        
+        // Nếu không tìm thấy, tạo mock
+        if (products.length === 0) {
+          products = [{ id: 'sh1', name: 'Áo Thun Shopee', price: 150000, stock: 50 }];
+        }
+      } else {
+        // TikTok mock
+        products = [{ id: 'tt1', name: 'Quần Jean TikTok', price: 250000, stock: 120 }];
+      }
+      
+      // Tạm thời hardcode shopId = 1 cho demo (cần input từ user hoặc lấy config)
+      const shopId = prompt("Nhập ID Shop của bạn trên HeroMarketplace:", "1");
+      if (!shopId) {
+        btn.innerHTML = 'HeroMarket Sync';
+        btn.disabled = false;
+        return;
+      }
+
+      btn.innerHTML = '⏳ Đang đồng bộ...';
+      const res = await swMsg('SYNC_MARKETPLACE', {
+        platform,
+        products,
+        shopId: parseInt(shopId, 10)
+      });
+
+      if (res.success) {
+        btn.innerHTML = '✅ Đồng bộ thành công';
+        setTimeout(() => { btn.innerHTML = 'HeroMarket Sync'; btn.disabled = false; }, 3000);
+      } else {
+        alert("Lỗi đồng bộ: " + res.error);
+        btn.innerHTML = '❌ Lỗi (Xem console)';
+        btn.disabled = false;
+      }
+    } catch(err) {
+      alert("Lỗi JS: " + err.message);
+      btn.innerHTML = 'HeroMarket Sync';
+      btn.disabled = false;
+    }
+  });
+
+  document.body.appendChild(btn);
+}
+
+// Gọi hàm inject khi trang load xong
+window.addEventListener('load', () => {
+  setTimeout(injectMarketplaceSyncBtn, 2000);
+});

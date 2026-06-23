@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const user = await getUser();
     if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      return Response.json({ success: false, unreadCount: 0, notifications: [], error: 'Unauthorized' }, { status: 200 });
     }
 
     const userNotifications = await db
@@ -25,7 +25,8 @@ export async function GET() {
         id: n.id,
         fromUser: n.fromUserName || 'Hệ thống',
         fromAvatar: n.fromUserAvatar || '👤',
-        message: n.message,
+        content: n.message,
+        url: n.postId ? `/post/${n.postId}` : n.invitationId ? `/groups` : '#',
         timestamp: n.createdAt ? new Date(n.createdAt).toLocaleDateString('vi-VN', {
           hour: '2-digit',
           minute: '2-digit'

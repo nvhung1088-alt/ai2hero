@@ -140,6 +140,157 @@ export const APPS: AppDefinition[] = [
       'Bảo vệ uy tín thương hiệu với bộ lọc guardrails ngăn AI trả lời sai lệch'
     ],
     targetUsers: 'Chủ doanh nghiệp, Quản lý CSKH, các shop bán hàng đa kênh có lượng tin nhắn lớn cần tối ưu quy trình phản hồi.'
+  },
+  {
+    id: 'hero-social',
+    name: 'Hero Social',
+    description: 'Quản lý Pages/Groups, Đặt lịch đăng bài & Đăng chéo tự động đa nền tảng.',
+    icon: 'Share2',
+    path: '/hero-social/dashboard',
+    status: 'beta',
+    tier: 'free',
+    category: 'management',
+    color: 'from-pink-500 to-rose-400',
+    slogan: 'Trạm điều khiển & Tự động hóa Mạng xã hội',
+    longDesc: 'Biến iSocial thành một cỗ máy tự động hóa. Đặt lịch bài đăng, quản lý trang doanh nghiệp, nhóm cộng đồng, và tự động chuyển tiếp (cross-post) lên Facebook, Zalo, Tiktok chỉ với 1 cú click.',
+    features: [
+      'Quản lý tất cả Trang & Nhóm tại một nơi',
+      'Đặt lịch đăng bài (Scheduler) thông minh',
+      'Đăng chéo (Cross-post) tự động qua HeroConnect',
+      'Thống kê tương tác thời gian thực',
+      'Đóng vai trò là MVP mặc định của hệ thống'
+    ],
+    benefits: [
+      'Tiết kiệm hàng giờ đồng hồ mỗi ngày nhờ lên lịch đăng bài',
+      'Quản lý tập trung không bị phân tâm bởi bảng tin giải trí'
+    ],
+    targetUsers: 'Chủ shop, Creator, Marketing Team cần một trung tâm điều khiển MXH chuyên nghiệp.'
+  },
+  {
+    id: 'hero-marketplace',
+    name: 'Hero Marketplace',
+    description: 'Quản lý cửa hàng đa kênh, đồng bộ sản phẩm từ POS, Shopee, TikTok Shop.',
+    icon: 'Store',
+    path: '/hero-marketplace/dashboard',
+    status: 'beta',
+    tier: 'free',
+    category: 'management',
+    color: 'from-orange-500 to-red-500',
+    slogan: 'Trạm điều khiển thương mại điện tử đa kênh',
+    longDesc: 'Quản lý toàn diện cửa hàng đa kênh của bạn. Tự động đồng bộ sản phẩm từ KiotViet, Pancake POS, Shopee, TikTok Shop. Quản lý kho, đơn hàng, vận chuyển và dòng tiền ngay tại một nơi.',
+    features: [
+      'Đồng bộ sản phẩm tự động qua Connect Hub & Extension',
+      'Quản lý kho hàng tập trung đa nền tảng',
+      'Đẩy sản phẩm lên iSocial và HeroWeb tự động',
+      'Quản lý ví thanh toán và đối soát',
+      'Tích hợp vận chuyển GHN, GHTK, ViettelPost'
+    ],
+    benefits: [
+      'Không còn sai sót tồn kho khi bán đa kênh',
+      'Mở rộng kênh bán hàng mà không phát sinh thêm nhân sự quản lý'
+    ],
+    targetUsers: 'Nhà bán lẻ, Chủ doanh nghiệp e-commerce, MMO cần công cụ quản lý bán hàng đa kênh mạnh mẽ.'
+  },
+  {
+    id: 'hero-agent',
+    name: 'Hero Agent',
+    description: 'AI Edge Worker — Cào và phân tích dữ liệu web thông minh từ máy tính của bạn.',
+    icon: 'Bot',
+    path: '/hero-agent/dashboard',
+    status: 'beta',
+    tier: 'pro',
+    category: 'ai',
+    color: 'from-cyan-500 to-blue-500',
+    slogan: 'Biến trình duyệt thành trợ lý nghiên cứu AI',
+    longDesc: 'Chrome Extension chạy trên máy tính khách hàng, cào dữ liệu web bằng session trình duyệt local để bypass anti-bot, gọi AI phân tích sâu và đẩy kết quả về dashboard.',
+    features: [
+      'Cào dữ liệu web bằng session trình duyệt local',
+      'Phân tích nội dung bằng AI tự động',
+      'Hỗ trợ Facebook, Xiaohongshu, Reddit và mọi website',
+      'Kết quả đẩy thẳng về Dashboard AI2Hero'
+    ],
+    benefits: [
+      'Bypass 100% anti-bot chặn IP Cloud của các nền tảng lớn',
+      'Tự động phân tích, trích xuất từ khóa và góc viết chuẩn SEO',
+      'Đồng bộ tức thì, sẵn sàng làm nguyên liệu viết bài'
+    ],
+    targetUsers: 'Marketers, Content Creators, SEO Researchers.'
+  },
+  {
+    id: 'hero-video-maker',
+    name: 'HeroVideoMaker',
+    description: 'Tạo video ngắn bằng AI — soạn kịch bản, sinh ảnh, render tự động.',
+    icon: 'Clapperboard',
+    path: '/hero-video-maker/dashboard',
+    status: 'beta',
+    tier: 'pro',
+    category: 'ai',
+    color: 'from-violet-500 to-fuchsia-500',
+    slogan: 'Biến ý tưởng thành video chỉ bằng 1 câu lệnh',
+    longDesc: 'Tạo video ngắn bằng AI chuyên nghiệp. Bạn chỉ cần nhập ý tưởng, AI sẽ tự động soạn kịch bản và sinh hình ảnh minh họa cho từng cảnh. Render video được thực hiện local giúp tiết kiệm 100% chi phí server và bảo mật dữ liệu tuyệt đối.',
+    features: [
+      'Soạn kịch bản video bằng AI thông minh',
+      'Sinh ảnh minh họa từng cảnh tự động',
+      'Render video local — 0đ server cost',
+      'Đồng bộ hóa Google Drive hoặc lưu máy khách'
+    ],
+    benefits: [
+      'Tiết kiệm 90% chi phí làm video ngắn marketing',
+      'Quy trình tự động hóa hoàn toàn từ kịch bản tới video thành phẩm',
+      'Lưu trữ linh hoạt trên Google Drive cá nhân để giảm tải server'
+    ],
+    targetUsers: 'Content Creators, TikTokers, Affiliate Marketers, Video Editors muốn sản xuất video số lượng lớn.'
+  },
+  {
+    id: 'hero-film',
+    name: 'HeroFilm',
+    description: 'Nền tảng phim ngắn dọc — xem phim bộ nhiều tập kiểu ReelShort/DramaBox.',
+    icon: 'Film',
+    path: '/hero-film/dashboard',
+    status: 'beta',
+    tier: 'free',
+    category: 'ai',
+    color: 'from-rose-500 to-red-500',
+    slogan: 'Xem phim ngắn dọc, nghiện không dứt',
+    longDesc: 'Nền tảng phim ngắn dạng cuộn dọc (vertical drama) với hàng trăm series nhiều tập. Trải nghiệm lướt phim mượt mà kiểu TikTok, quản lý series bằng Admin CMS, sẵn sàng tích hợp hệ thống bán phim và VIP.',
+    features: [
+      'Xem phim dạng cuộn dọc full-screen mượt mà',
+      'Hệ thống Series nhiều tập (Phim bộ)',
+      'Admin CMS quản lý nội dung phim',
+      'Lịch sử xem và tiếp tục xem',
+      'Sẵn sàng tích hợp Coin/VIP/Paywall'
+    ],
+    benefits: [
+      'Trải nghiệm xem phim nghiện như ReelShort/DramaBox',
+      'Quản lý nội dung tập trung, dễ dàng mở rộng thêm series mới'
+    ],
+    targetUsers: 'Nhà sản xuất phim ngắn, Creator nội dung video dọc, Doanh nghiệp giải trí số.'
+  },
+  {
+    id: 'hero-dub',
+    name: 'HeroDub',
+    description: 'Tự động dịch phụ đề phim Trung Quốc sang Tiếng Việt bằng AI.',
+    icon: 'Languages',
+    path: '/hero-dub/dashboard',
+    status: 'beta',
+    tier: 'free',
+    category: 'ai',
+    color: 'from-amber-500 to-orange-500',
+    slogan: 'Phim Trung → Phụ đề Việt, 1 click',
+    longDesc: 'Tự động dịch phụ đề phim Trung Quốc sang Tiếng Việt bằng AI. Dán link video, local worker tự động tải, ASR (Whisper), dịch thuật chất lượng cao và burn phụ đề vào video thành phẩm.',
+    features: [
+      'Hỗ trợ link video Douyin, Bilibili, YouTube',
+      'Nhận dạng giọng nói (ASR) bằng faster-whisper cực nhanh',
+      'Tự động dịch thuật phụ đề thông minh',
+      'Đóng gói và burn trực tiếp phụ đề tiếng Việt vào video',
+      'Quản lý hàng đợi tác vụ dịch thuật trực quan'
+    ],
+    benefits: [
+      'Tiết kiệm 90% thời gian dịch và làm phụ đề phim',
+      'Không tốn chi phí GPU server nhờ tận dụng máy local của user',
+      'Giao diện trực quan dễ sử dụng cho mọi biên dịch viên'
+    ],
+    targetUsers: 'Các nhóm dịch phim Trung Quốc, các nhà sáng tạo nội dung re-up, các kênh phim ngắn.'
   }
 ];
 

@@ -9,6 +9,8 @@ import { redirect } from 'next/navigation';
 import ConnectHubSidebarMenu from '../../connect-hub-sidebar-menu';
 import { getUser } from '@/lib/db/queries';
 import { CookieSync } from '@/components/cookie-sync';
+import { isPreviewMode } from '@/lib/preview-actions';
+import { PreviewBanner } from '@/app/(dashboard)/preview-banner';
 
 export const revalidate = 0;
 
@@ -64,11 +66,14 @@ export default async function ConnectHubDynamicLayout({
     }
   }
 
-  if (!activatedApps.includes('connect-hub')) {
+  const isPreview = await isPreviewMode('connect-hub', teamId);
+  if (!activatedApps.includes('connect-hub') && !isPreview) {
     redirect('/dashboard');
   }
 
   return (
+    <>
+      {isPreview && <PreviewBanner appId="connect-hub" />}
     <div className="flex flex-col min-h-screen bg-gray-950 text-white w-full">
       <CookieSync teamId={teamId} />
       <CreateWorkspaceModal hideTrigger={true} />
@@ -117,5 +122,7 @@ export default async function ConnectHubDynamicLayout({
         </main>
       </div>
     </div>
+  
+    </>
   );
 }

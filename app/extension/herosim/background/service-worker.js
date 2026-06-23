@@ -370,6 +370,53 @@ async function handleMessage(message, sendResponse) {
       break;
     }
 
+    // ─── SYNC_MARKETPLACE: Đẩy sản phẩm lên server HeroMarketplace ────────
+    case 'SYNC_MARKETPLACE': {
+      const key = await getDerivedKey();
+      if (!key) {
+        sendResponse({ success: false, locked: true });
+        return;
+      }
+      try {
+        const { platform, products, shopId } = payload;
+        
+        const stored = await chrome.storage.local.get(['herosim_encrypted_token']);
+        if (!stored.herosim_encrypted_token) {
+          sendResponse({ success: false, error: 'Không tìm thấy token liên kết' });
+          return;
+        }
+
+        const accessToken = await decrypt(stored.herosim_encrypted_token, key);
+
+        // Đẩy lên Next.js API
+        const MARKET_API = API_BASE.replace('/sim/extension', '/marketplace/sync/extension');
+        const res = await fetch(MARKET_API, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({
+            platform,
+            products,
+            shopId
+          })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          sendResponse({ success: false, error: errData.error || `Lỗi HTTP ${res.status}` });
+          return;
+        }
+
+        const data = await res.json();
+        sendResponse(data);
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
+      break;
+    }
+
     // ─── QUERY_URL: Tìm accounts khớp URL (Content Script gọi) ───────────
     case 'QUERY_URL': {
       const key = await getDerivedKey();

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Hero Agent</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <span class="bot-icon">🤖</span>
+        <span class="app-name">Hero Agent</span>
+      </div>
+      <div class="version">v1.0.0</div>
+    </header>
+
+    <main class="app-content">
+      <!-- 1. VIEW LOGGED OUT (Đăng nhập) -->
+      <section id="view-logged-out" class="view active">
+        <p class="subtitle">Đăng nhập bằng tài khoản AI2Hero để liên kết thiết bị.</p>
+        
+        <div class="form-group">
+          <label for="input-email">Email</label>
+          <input type="email" id="input-email" placeholder="name@company.com">
+        </div>
+        
+        <div class="form-group">
+          <label for="input-password">Mật khẩu</label>
+          <input type="password" id="input-password" placeholder="••••••••">
+        </div>
+
+        <div class="form-group toggle-server">
+          <label for="input-server">Máy chủ kết nối</label>
+          <input type="text" id="input-server" value="https://www.ai2hero.com" placeholder="https://www.ai2hero.com">
+        </div>
+
+        <button id="btn-login" class="btn btn-primary">
+          <span class="btn-text">Đăng nhập</span>
+          <span class="spinner hidden"></span>
+        </button>
+        
+        <div id="login-error" class="error-message hidden"></div>
+      </section>
+
+      <!-- 2. VIEW SELECT WORKSPACE (Chọn Workspace) -->
+      <section id="view-select-workspace" class="view">
+        <p class="subtitle">Chọn không gian làm việc (Workspace) để chạy Agent.</p>
+        
+        <div class="form-group">
+          <label for="select-workspace">Workspace khả dụng</label>
+          <select id="select-workspace"></select>
+        </div>
+
+        <button id="btn-select-workspace" class="btn btn-primary">
+          <span class="btn-text">Xác nhận liên kết</span>
+          <span class="spinner hidden"></span>
+        </button>
+        
+        <button id="btn-cancel-workspace" class="btn btn-secondary">Quay lại</button>
+        <div id="workspace-error" class="error-message hidden"></div>
+      </section>
+
+      <!-- 3. VIEW PAIRED (Đã kết nối) -->
+      <section id="view-paired" class="view">
+        <div class="status-card">
+          <div class="status-indicator">
+            <span class="pulse-dot"></span>
+            <span class="status-text">Đang hoạt động</span>
+          </div>
+          
+          <div class="workspace-info">
+            <span class="info-label">Workspace:</span>
+            <span id="txt-workspace-name" class="info-value">Đang tải...</span>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <span class="metric-val" id="txt-completed-count">0</span>
+              <span class="metric-lbl">Đã cào</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">30s</span>
+              <span class="metric-lbl">Chu kỳ quét</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button id="btn-scrape-now" class="btn btn-primary">
+            <span class="btn-text">📤 Gửi trang hiện tại</span>
+            <span class="spinner hidden"></span>
+          </button>
+          
+          <button id="btn-unpair" class="btn btn-secondary">🔌 Ngắt kết nối</button>
+        </div>
+
+        <div id="scrape-message" class="toast-message hidden"></div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

@@ -75,5 +75,38 @@ export async function runChiaSeGPU(
     }
   }
 
+  if (action === 'generate_image') {
+    const prompt = input.prompt;
+    if (!prompt) throw new Error('Thiếu "prompt" để yêu cầu tạo ảnh.');
+    
+    const body = {
+      model: input.model || 'dall-e-3', // Note: Endpoint proxy của Cổng 1 tương thích format openai
+      prompt,
+      n: input.n || 1,
+      size: input.size || input.resolution || '1024x1024'
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60_000); // 60s timeout for image gen
+
+    try {
+      const response = await fetch(`${CHIASEGPU_BASE_URL}/images/generations`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(`ChiaSeGPU API Error (${response.status}): ${err.error?.message || response.statusText}`);
+      }
+
+      return response.json();
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   throw new Error(`Action "${action}" chưa được hỗ trợ trên ChiaSeGPU runner.`);
 }

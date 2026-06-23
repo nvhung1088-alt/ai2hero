@@ -1,6 +1,6 @@
-import { desc, and, eq, isNull, inArray } from 'drizzle-orm';
+import { desc, and, eq, isNull, inArray, sql, lt, or } from 'drizzle-orm';
 import { db } from './drizzle';
-import { activityLogs, teamMembers, teams, users, systemSettings, feedPosts, feedComments, feedLikes, invitations } from './schema';
+import { activityLogs, teamMembers, teams, users, systemSettings, feedPosts, feedComments, feedLikes, invitations, feedStories } from './schema';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/session';
 import { getActiveTeamCookie } from '@/lib/team-cookie';
@@ -226,13 +226,45 @@ export async function getTeamWithMembers(teamId: number) {
   return team || null;
 }
 
-export async function getFeedPosts(userTeamIds: number[]) {
+export async function getFeedPosts(userTeamIds: number[], cursor?: number, limitNum: number = 10) {
   const user = await getUser();
-  if (!user) return [];
-  if (userTeamIds.length === 0) return [];
+
+  const conditions = [];
+  const orConditions = [];
+  
+  if (userTeamIds && userTeamIds.length > 0) {
+    orConditions.push(inArray(feedPosts.teamId, userTeamIds));
+  }
+
+  // Lấy các bài viết từ Group đã tham gia
+  const { getUserJoinedGroupIds } = await import('./social-queries');
+  const userGroupIds = await getUserJoinedGroupIds(user?.id || 0);
+  if (userGroupIds && userGroupIds.length > 0) {
+    orConditions.push(inArray(feedPosts.groupId, userGroupIds));
+  }
+
+  // Lấy các bài viết từ Page đã follow/quản lý (đơn giản hoá: lấy các bài có pageId)
+  // Tính năng "Follow page" hiện tại chưa có list đầy đủ, 
+  // Để đơn giản (trong mvp) ta sẽ hiển thị bài của page mà người dùng là admin
+  const { getMyPages } = await import('./social-page-actions');
+  const userPagesRaw = await getMyPages(user?.id || 0);
+  if (userPagesRaw && userPagesRaw.length > 0) {
+     const userPageIds = userPagesRaw.map((p: any) => p.id);
+     orConditions.push(inArray(feedPosts.pageId, userPageIds));
+  }
+
+  if (orConditions.length > 0) {
+    conditions.push(or(...orConditions));
+  }
+  if (cursor) {
+    conditions.push(lt(feedPosts.id, cursor));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const posts = await db.query.feedPosts.findMany({
-    where: inArray(feedPosts.teamId, userTeamIds),
+    where: whereClause,
+    limit: limitNum,
     with: {
       user: {
         columns: {
@@ -242,6 +274,8 @@ export async function getFeedPosts(userTeamIds: number[]) {
           role: true
         }
       },
+      page: true,
+      group: true,
       comments: {
         orderBy: desc(feedComments.createdAt)
       },
@@ -251,7 +285,8 @@ export async function getFeedPosts(userTeamIds: number[]) {
   });
 
   return posts.map(post => {
-    const likedByMe = post.likesList.some(like => like.userId === user.id);
+    const likedByMe = user ? post.likesList.some(like => like.userId === user.id) : false;
+    const myReactionType = user ? post.likesList.find(like => like.userId === user.id)?.reactionType : null;
     return {
       id: post.id,
       type: post.type,
@@ -261,11 +296,16 @@ export async function getFeedPosts(userTeamIds: number[]) {
       userName: post.user?.name || 'Hệ thống',
       userAvatar: '👤',
       userRole: post.user?.role || 'member',
+      page: post.page ? { id: post.page.id, name: post.page.name, avatar: post.page.avatarUrl } : null,
+      group: post.group ? { id: post.group.id, name: post.group.name, coverUrl: post.group.coverUrl } : null,
       timestamp: new Date(post.createdAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       date: new Date(post.createdAt).toISOString().split('T')[0],
+      createdAt: post.createdAt,
       message: post.message,
       likes: post.likesList.length,
+      likesCount: post.likesList.length,
       likedByMe,
+      myReactionType,
       comments: post.comments.map(c => ({
         id: c.id,
         userId: c.userId,
@@ -398,5 +438,36 @@ export async function updateSystemSetting(key: string, value: any) {
       updatedAt: new Date()
     });
   }
+}
+
+export async function getFeedStories(teamId: number) {
+  const now = new Date().toISOString();
+  const stories = await db
+    .select({
+      id: feedStories.id,
+      imageUrl: feedStories.imageUrl,
+      textContent: feedStories.textContent,
+      bgClass: feedStories.bgClass,
+      createdAt: feedStories.createdAt,
+      user: {
+        id: users.id,
+        name: users.name,
+        avatar: users.avatarUrl
+      }
+    })
+    .from(feedStories)
+    .leftJoin(users, eq(feedStories.userId, users.id))
+    .where(
+      and(
+        eq(feedStories.teamId, teamId),
+        sql`${feedStories.expiresAt} > ${now}`
+      )
+    )
+    .orderBy(desc(feedStories.createdAt));
+
+  return stories.map(s => ({
+    ...s,
+    createdAt: s.createdAt.toISOString()
+  }));
 }
 

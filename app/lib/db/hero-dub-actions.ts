@@ -1,0 +1,585 @@
+'use server';
+
+import { db } from './drizzle';
+import { dubTasks, dubWorkers, teams, users, extensionLinkCodes, connectHubConnections, dubProjects } from './schema';
+import { decryptField } from '../sim-crypto';
+import { eq, and, desc, sql, isNull, gt } from 'drizzle-orm';
+import { SignJWT, jwtVerify } from 'jose';
+import { createHash, randomBytes } from 'crypto';
+import { getPresignedUploadUrl } from '@/lib/storage/r2';
+
+const authSecret = process.env.AUTH_SECRET;
+if (!authSecret) {
+  throw new Error('AUTH_SECRET environment variable is required');
+}
+const key = new TextEncoder().encode(authSecret);
+
+// Token của worker: 90 ngày
+const WORKER_TOKEN_EXPIRY_DAYS = 90;
+
+// === TASK ACTIONS ===
+
+export async function createDubTaskAction(data: {
+  teamId: number;
+  userId: number;
+  sourceUrl: string;
+  taskTitle?: string;
+  sourceThumbnailUrl?: string;
+  sourceLang?: string;
+  targetLang?: string;
+  asrEngine?: string;
+  translateEngine?: string;
+  llmModel?: string;
+  subtitleMode?: string;
+  qualityPreset?: string;
+  ttsEnabled?: boolean;
+  ttsEngine?: string;
+  ttsVoice?: string;
+  ttsSpeed?: string;
+  bgVolume?: string;
+  ttsVolume?: string;
+  outputFolder?: string;
+  projectId?: number;
+  brandingEnabled?: boolean;
+  logoUrl?: string;
+  logoPosition?: string;
+  introVideoUrl?: string;
+  outroVideoUrl?: string;
+}) {
+  try {
+    const sourceUrl = data.sourceUrl.trim();
+    const targetLang = data.targetLang || 'vi';
+    const sourceLang = data.sourceLang || 'zh';
+
+    // Vì MVP chỉ xử lý Local File, mặc định platform là local
+    let sourcePlatform = 'local';
+    let sourceVideoId = '';
+
+    // Dedupe Key: teamId + url + targetLang
+    const dedupeKey = `${data.teamId}:${sourceUrl}:${targetLang}`;
+
+    // Check duplicate
+    const [existing] = await db
+      .select()
+      .from(dubTasks)
+      .where(eq(dubTasks.dedupeKey, dedupeKey))
+      .limit(1);
+
+    if (existing) {
+      return { success: true, taskId: existing.id, isDuplicate: true };
+    }
+
+    const [newTask] = await db
+      .insert(dubTasks)
+      .values({
+        teamId: data.teamId,
+        userId: data.userId,
+        inputType: 'url',
+        sourceUrl,
+        sourceTitle: data.taskTitle || null,
+        sourcePlatform,
+        sourceVideoId: sourceVideoId || null,
+        sourceThumbnailUrl: data.sourceThumbnailUrl || null,
+        sourceLang,
+        targetLang,
+        asrEngine: data.asrEngine || 'faster-whisper',
+        translateEngine: data.llmModel ? 'connect-hub' : (data.translateEngine || 'google-free'),
+        llmModel: data.llmModel || null,
+        subtitleMode: data.subtitleMode || 'burn_subtitle',
+        qualityPreset: data.qualityPreset || 'balanced',
+        ttsEnabled: data.ttsEnabled ?? false,
+        ttsEngine: data.ttsEngine || 'edge-tts',
+        ttsVoice: data.ttsVoice || null,
+        ttsSpeed: data.ttsSpeed || '1.3',
+        bgVolume: data.bgVolume,
+        ttsVolume: data.ttsVolume,
+        outputFolder: data.outputFolder,
+        status: 'pending',
+        progress: 0,
+        dedupeKey,
+        projectId: data.projectId,
+        brandingEnabled: data.brandingEnabled,
+        logoUrl: data.logoUrl,
+        logoPosition: data.logoPosition,
+        introVideoUrl: data.introVideoUrl,
+        outroVideoUrl: data.outroVideoUrl,
+      })
+      .returning();
+
+    return { success: true, taskId: newTask.id };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] createDubTaskAction error:', error);
+    return { error: 'Lỗi tạo tác vụ dịch: ' + error.message };
+  }
+}
+
+export async function getDubTasksAction(
+  teamId: number,
+  filters?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }
+) {
+  try {
+    const limit = filters?.limit || 20;
+    const offset = filters?.offset || 0;
+
+    let conditions = [eq(dubTasks.teamId, teamId)];
+    if (filters?.status) {
+      conditions.push(eq(dubTasks.status, filters.status));
+    }
+
+    const tasks = await db
+      .select()
+      .from(dubTasks)
+      .where(and(...conditions))
+      .orderBy(desc(dubTasks.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(dubTasks)
+      .where(and(...conditions));
+
+    return { success: true, tasks, totalCount: countResult?.count || 0 };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] getDubTasksAction error:', error);
+    return { error: 'Lỗi lấy danh sách tác vụ: ' + error.message };
+  }
+}
+
+export async function getDubTaskDetailAction(taskId: number, teamId: number) {
+  try {
+    const [task] = await db
+      .select()
+      .from(dubTasks)
+      .where(and(eq(dubTasks.id, taskId), eq(dubTasks.teamId, teamId)))
+      .limit(1);
+
+    if (!task) {
+      return { error: 'Không tìm thấy tác vụ' };
+    }
+
+    let worker = null;
+    if (task.workerId) {
+      const [workerRecord] = await db
+        .select({
+          id: dubWorkers.id,
+          deviceName: dubWorkers.deviceName,
+          platform: dubWorkers.platform,
+          status: dubWorkers.status,
+        })
+        .from(dubWorkers)
+        .where(eq(dubWorkers.id, task.workerId))
+        .limit(1);
+      worker = workerRecord || null;
+    }
+
+    return { success: true, task, worker };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] getDubTaskDetailAction error:', error);
+    return { error: 'Lỗi chi tiết tác vụ: ' + error.message };
+  }
+}
+
+export async function retryDubTaskAction(taskId: number, teamId: number) {
+  try {
+    const [task] = await db
+      .select()
+      .from(dubTasks)
+      .where(and(eq(dubTasks.id, taskId), eq(dubTasks.teamId, teamId)))
+      .limit(1);
+
+    if (!task) {
+      return { error: 'Không tìm thấy tác vụ' };
+    }
+
+    await db
+      .update(dubTasks)
+      .set({
+        status: 'pending',
+        progress: 0,
+        error: null,
+        workerId: null,
+        retryCount: task.retryCount + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(dubTasks.id, taskId));
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] retryDubTaskAction error:', error);
+    return { error: 'Lỗi chạy lại tác vụ: ' + error.message };
+  }
+}
+
+export async function deleteDubTaskAction(taskId: number, teamId: number) {
+  try {
+    await db
+      .delete(dubTasks)
+      .where(and(eq(dubTasks.id, taskId), eq(dubTasks.teamId, teamId)));
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] deleteDubTaskAction error:', error);
+    return { error: 'Lỗi xóa tác vụ: ' + error.message };
+  }
+}
+
+// === WORKER ACTIONS ===
+
+export async function getDubWorkersAction(teamId: number) {
+  try {
+    const workers = await db
+      .select()
+      .from(dubWorkers)
+      .where(eq(dubWorkers.teamId, teamId))
+      .orderBy(desc(dubWorkers.createdAt));
+
+    return { success: true, workers };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] getDubWorkersAction error:', error);
+    return { error: 'Lỗi lấy danh sách máy xử lý: ' + error.message };
+  }
+}
+
+export async function deleteDubWorkerAction(workerId: number, teamId: number) {
+  try {
+    await db
+      .delete(dubWorkers)
+      .where(and(eq(dubWorkers.id, workerId), eq(dubWorkers.teamId, teamId)));
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] deleteDubWorkerAction error:', error);
+    return { error: 'Lỗi xóa máy xử lý: ' + error.message };
+  }
+}
+
+// Ghép nối worker qua pair code
+export async function validateAndPairDubWorkerAction(data: {
+  code: string;
+  deviceName: string;
+  platform: string;
+  version: string;
+}) {
+  try {
+    const code = data.code.toUpperCase().trim();
+
+    // Tìm code hợp lệ
+    const [linkCode] = await db
+      .select()
+      .from(extensionLinkCodes)
+      .where(
+        and(
+          eq(extensionLinkCodes.code, code),
+          isNull(extensionLinkCodes.usedAt),
+          gt(extensionLinkCodes.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+
+    if (!linkCode) {
+      return { success: false, error: 'Mã liên kết không hợp lệ hoặc đã hết hạn' };
+    }
+
+    const [team] = await db
+      .select({ id: teams.id, name: teams.name })
+      .from(teams)
+      .where(eq(teams.id, linkCode.teamId))
+      .limit(1);
+
+    if (!team) {
+      return { success: false, error: 'Workspace không tồn tại' };
+    }
+
+    // Sinh JWT token
+    const expiresAt = new Date(Date.now() + WORKER_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+    const accessToken = await new SignJWT({
+      teamId: linkCode.teamId,
+      userId: linkCode.userId,
+      type: 'dub_worker',
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime(`${WORKER_TOKEN_EXPIRY_DAYS}d`)
+      .sign(key);
+
+    const accessTokenHash = createHash('sha256').update(accessToken).digest('hex');
+
+    // Insert worker
+    const [newWorker] = await db
+      .insert(dubWorkers)
+      .values({
+        teamId: linkCode.teamId,
+        userId: linkCode.userId,
+        deviceName: data.deviceName || 'Local Worker',
+        platform: data.platform || 'windows',
+        version: data.version || '1.0.0',
+        status: 'online',
+        lastSeenAt: new Date(),
+        accessTokenHash,
+      })
+      .returning();
+
+    // Đánh dấu code đã dùng
+    await db
+      .update(extensionLinkCodes)
+      .set({ usedAt: new Date() })
+      .where(eq(extensionLinkCodes.id, linkCode.id));
+
+    return {
+      success: true,
+      workerId: newWorker.id,
+      accessToken,
+      teamId: team.id,
+      teamName: team.name,
+      expiresAt,
+    };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] validateAndPairDubWorkerAction error:', error);
+    return { success: false, error: 'Lỗi ghép nối worker: ' + error.message };
+  }
+}
+
+// Xác thực JWT từ header
+export async function verifyDubWorkerToken(bearerToken: string) {
+  try {
+    const { payload } = await jwtVerify(bearerToken, key, { algorithms: ['HS256'] });
+
+    if (payload.type !== 'dub_worker') {
+      return { success: false, error: 'Token không hợp lệ' };
+    }
+
+    const tokenHash = createHash('sha256').update(bearerToken).digest('hex');
+    const [worker] = await db
+      .select()
+      .from(dubWorkers)
+      .where(eq(dubWorkers.accessTokenHash, tokenHash))
+      .limit(1);
+
+    if (!worker) {
+      return { success: false, error: 'Worker không tồn tại hoặc đã bị thu hồi' };
+    }
+
+    await db
+      .update(dubWorkers)
+      .set({ lastSeenAt: new Date(), status: 'online' })
+      .where(eq(dubWorkers.id, worker.id));
+
+    return {
+      success: true,
+      workerId: worker.id,
+      teamId: worker.teamId,
+      userId: worker.userId,
+    };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] verifyDubWorkerToken error:', error);
+    return { success: false, error: 'Token không hợp lệ hoặc đã hết hạn' };
+  }
+}
+
+// === WORKER POLL & UPDATE ACTIONS ===
+
+export async function pollPendingTaskAction(workerId: number, teamId: number) {
+  try {
+    const [task] = await db
+      .select()
+      .from(dubTasks)
+      .where(and(eq(dubTasks.status, 'pending'), eq(dubTasks.teamId, teamId)))
+      .orderBy(dubTasks.createdAt)
+      .limit(1);
+
+    if (!task) {
+      return { success: true, task: null };
+    }
+
+    const [updatedTask] = await db
+      .update(dubTasks)
+      .set({
+        status: 'assigned',
+        workerId,
+        startedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(dubTasks.id, task.id))
+      .returning();
+
+    return { success: true, task: updatedTask };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] pollPendingTaskAction error:', error);
+    return { error: 'Lỗi poll task: ' + error.message };
+  }
+}
+
+export async function updateTaskProgressAction(
+  taskId: number,
+  workerId: number,
+  data: {
+    status: string;
+    progress: number;
+    error?: string;
+    sourceTitle?: string;
+    durationSec?: number;
+  }
+) {
+  try {
+    const updateData: any = {
+      status: data.status,
+      progress: data.progress,
+      updatedAt: new Date(),
+    };
+
+    if (data.error) {
+      updateData.error = data.error;
+    }
+    if (data.sourceTitle) {
+      updateData.sourceTitle = data.sourceTitle;
+    }
+    if (data.durationSec) {
+      updateData.durationSec = data.durationSec;
+    }
+    if (data.status === 'failed') {
+      updateData.completedAt = new Date();
+    }
+
+    await db
+      .update(dubTasks)
+      .set(updateData)
+      .where(and(eq(dubTasks.id, taskId), eq(dubTasks.workerId, workerId)));
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] updateTaskProgressAction error:', error);
+    return { error: 'Lỗi cập nhật tiến độ: ' + error.message };
+  }
+}
+
+// === PROJECTS ===
+
+export async function getDubProjectsAction(teamId: number) {
+  try {
+    const projectsList = await db
+      .select()
+      .from(dubProjects)
+      .where(eq(dubProjects.teamId, teamId))
+      .orderBy(desc(dubProjects.createdAt));
+    return { success: true, projects: projectsList };
+  } catch (error) {
+    console.error('getDubProjectsAction error:', error);
+    return { error: 'Failed to get projects' };
+  }
+}
+
+export async function createDubProjectAction(data: {
+  teamId: number;
+  name: string;
+  logoUrl?: string;
+  logoPosition?: string;
+  introVideoUrl?: string;
+  outroVideoUrl?: string;
+}) {
+  try {
+    const [project] = await db
+      .insert(dubProjects)
+      .values({
+        teamId: data.teamId,
+        name: data.name,
+        logoUrl: data.logoUrl,
+        logoPosition: data.logoPosition || 'top-left',
+        introVideoUrl: data.introVideoUrl,
+        outroVideoUrl: data.outroVideoUrl,
+      })
+      .returning();
+    return { success: true, project };
+  } catch (error) {
+    console.error('createDubProjectAction error:', error);
+    return { error: 'Failed to create project' };
+  }
+}
+
+export async function updateDubProjectAction(id: number, teamId: number, data: {
+  name?: string;
+  logoUrl?: string;
+  logoPosition?: string;
+  introVideoUrl?: string;
+  outroVideoUrl?: string;
+}) {
+  try {
+    const [project] = await db
+      .update(dubProjects)
+      .set({
+        ...data,
+        updatedAt: new Date()
+      })
+      .where(and(eq(dubProjects.id, id), eq(dubProjects.teamId, teamId)))
+      .returning();
+    return { success: true, project };
+  } catch (error) {
+    console.error('updateDubProjectAction error:', error);
+    return { error: 'Failed to update project' };
+  }
+}
+
+export async function deleteDubProjectAction(id: number, teamId: number) {
+  try {
+    await db
+      .delete(dubProjects)
+      .where(and(eq(dubProjects.id, id), eq(dubProjects.teamId, teamId)));
+    return { success: true };
+  } catch (error) {
+    console.error('deleteDubProjectAction error:', error);
+    return { error: 'Failed to delete project' };
+  }
+}
+
+
+export async function completeTaskAction(
+  taskId: number,
+  workerId: number,
+  data: {
+    resultVideoUrl: string;
+    resultSrtUrl: string;
+    preview?: any;
+    actualCost?: number;
+  }
+) {
+  try {
+    await db
+      .update(dubTasks)
+      .set({
+        status: 'completed',
+        progress: 100,
+        resultVideoUrl: data.resultVideoUrl,
+        resultSrtUrl: data.resultSrtUrl,
+        resultPreview: data.preview || null,
+        actualCost: data.actualCost || 0,
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(dubTasks.id, taskId), eq(dubTasks.workerId, workerId)));
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] completeTaskAction error:', error);
+    return { error: 'Lỗi hoàn thành tác vụ: ' + error.message };
+  }
+}
+
+// === R2 PRESIGNED ACTIONS ===
+
+export async function getPresignedUploadUrlAction(taskId: number, teamId: number, fileType: 'video' | 'srt') {
+  try {
+    const ext = fileType === 'video' ? 'mp4' : 'srt';
+    const contentType = fileType === 'video' ? 'video/mp4' : 'text/plain';
+    const key = `hero-dub/${teamId}/${taskId}/result.${ext}`;
+
+    const { uploadUrl, publicUrl } = await getPresignedUploadUrl(key, contentType);
+    return { success: true, uploadUrl, publicUrl };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] getPresignedUploadUrlAction error:', error);
+    return { error: 'Lỗi tạo presigned URL: ' + error.message };
+  }
+}

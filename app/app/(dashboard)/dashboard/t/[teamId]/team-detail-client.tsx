@@ -7,7 +7,7 @@ import {
   getPlanBadgeClass,
   getRoleByKey
 } from '@/lib/shared-constants';
-import { getAppById, APPS } from '@/lib/apps-registry';
+import { getAppById, APPS, getAppDynamicPath } from '@/lib/apps-registry';
 import { useRouter } from 'next/navigation';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 import { setActiveTeamCookie } from '@/lib/team-cookie';
@@ -387,7 +387,7 @@ export default function TeamDetailClient({
                   return (
                     <div key={appId} className="relative group">
                       <Link
-                        href={app.path}
+                        href={getAppDynamicPath(app.id, team.id)}
                         className="block overflow-hidden bg-white/[0.02] border border-white/5 rounded-xl p-4 transition-all hover:bg-white/[0.04] hover:border-white/10 hover:shadow-lg flex flex-col justify-between h-32"
                       >
                         <div className="absolute top-3 right-3 text-gray-600 group-hover:text-orange-400 transition-colors">

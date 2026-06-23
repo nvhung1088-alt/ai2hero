@@ -81,6 +81,32 @@ export const facebookConnector: ConnectorDefinition = {
       aiInstruction: 'Sử dụng action này khi người dùng hỏi về thông tin tổng quan của một Facebook Page cụ thể. Yêu cầu tham số pageId (lấy từ list_user_pages).'
     },
     {
+      slug: 'get_page_posts',
+      name: 'Danh sách bài đăng Page',
+      description: 'Lấy danh sách bài viết trên tường của Page.',
+      group: 'Page',
+      httpMethod: 'GET',
+      endpoint: '/{pageId}/feed',
+      status: 'ready',
+      inputSchema: [
+        {
+          name: 'pageId',
+          label: 'Page ID',
+          type: 'text',
+          required: true
+        },
+        {
+          name: 'limit',
+          label: 'Số lượng',
+          type: 'text',
+          required: false,
+          placeholder: '20'
+        }
+      ],
+      outputFields: ['data[].id', 'data[].message', 'data[].full_picture', 'data[].created_time', 'data[].permalink_url'],
+      aiInstruction: 'Sử dụng action này khi muốn lấy danh sách các bài đăng (posts) trên Page, phục vụ đồng bộ nội dung hoặc phân tích.'
+    },
+    {
       slug: 'get_page_insights',
       name: 'Báo cáo thống kê Page',
       description: 'Lấy báo cáo thống kê đơn giản của Fanpage (Lượt tiếp cận, tương tác).',

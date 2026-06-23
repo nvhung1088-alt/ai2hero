@@ -65,5 +65,35 @@ export async function runOpenAI(
     return response.json();
   }
 
+  if (action === 'text_to_speech') {
+    const text = input.text;
+    if (!text) throw new Error('Thiếu "text" để chuyển văn bản thành giọng nói.');
+    
+    const body = {
+      model: input.model || 'tts-1',
+      input: text,
+      voice: input.voice || 'nova',
+      response_format: 'mp3',
+      speed: input.speed || 1.0
+    };
+    
+    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body)
+    });
+    
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(`OpenAI API Error: ${err.error?.message || response.statusText}`);
+    }
+    
+    const audioBuffer = await response.arrayBuffer();
+    return {
+      audio: Buffer.from(audioBuffer).toString('base64'),
+      format: 'mp3'
+    };
+  }
+
   throw new Error(`Action "${action}" chưa được hỗ trợ trên OpenAI runner.`);
 }

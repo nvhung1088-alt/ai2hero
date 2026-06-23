@@ -8,6 +8,8 @@ import { CreateWorkspaceModal } from '../../../dashboard/create-workspace-modal'
 import { redirect } from 'next/navigation';
 import { getUser } from '@/lib/db/queries';
 import { CookieSync } from '@/components/cookie-sync';
+import { isPreviewMode } from '@/lib/preview-actions';
+import { PreviewBanner } from '@/app/(dashboard)/preview-banner';
 
 export const revalidate = 0;
 
@@ -63,11 +65,14 @@ export default async function HeroVideoDynamicLayout({
     }
   }
 
-  if (!activatedApps.includes('herovideo')) {
+  const isPreview = await isPreviewMode('herovideo', teamId);
+  if (!activatedApps.includes('herovideo') && !isPreview) {
     redirect('/dashboard');
   }
 
   return (
+    <>
+      {isPreview && <PreviewBanner appId="herovideo" />}
     <div className="flex flex-col min-h-screen bg-gray-950 text-white w-full">
       <CookieSync teamId={teamId} />
       <CreateWorkspaceModal hideTrigger={true} />
@@ -130,5 +135,7 @@ export default async function HeroVideoDynamicLayout({
         </main>
       </div>
     </div>
+  
+    </>
   );
 }

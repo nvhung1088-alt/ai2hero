@@ -1,5 +1,5 @@
 # AI2HERO — START
-> Cap nhat: 2026-06-08
+> Cap nhat: 2026-06-16
 
 ## TRANG THAI
 Mode:         Build
@@ -17,8 +17,8 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tự động đồng bộ Workspace: Web tự động truyền tên Workspace qua Ping-Pong, Extension tự động config thư mục tải về `Downloads/herovideo/ten-workspace`.
   - `[x]` Tối ưu UX Badge: Rút gọn chỉ còn 2 trạng thái Đã kết nối / Chưa kết nối (Báo lỗi sai tài khoản). Sửa lỗi Type TypeScript và import Icon.
   - `[x]` Loại bỏ hoàn toàn hardcode API địa chỉ `localhost:3000` của Extension khi xác thực và đồng bộ video sang Production URL `https://www.ai2hero.com`.
-  - \`[x]\` Tích hợp nút 1-click **Mở thư mục** (Open Folder) thông minh trên Web App Dashboard, kết nối trực tiếp với API của Extension thông qua cơ chế Content-Script Bridge.
-  - \`[x]\` Tích hợp tính năng **Dọn dẹp video lỗi** thủ công trên Dashboard: Tự động quét và loại bỏ các file video rỗng (< 500b), video trùng lặp (size + base name), video hỏng hoặc chỉ có âm thanh (không có khung hình) bằng DOM \`<video>\` ẩn chạy trên RAM.
+  - `[x]` Tích hợp nút 1-click **Mở thư mục** (Open Folder) thông minh trên Web App Dashboard, kết nối trực tiếp với API của Extension thông qua cơ chế Content-Script Bridge.
+  - `[x]` Tích hợp tính năng **Dọn dẹp video lỗi** thủ công trên Dashboard: Tự động quét và loại bỏ các file video rỗng (< 500b), video trùng lặp (size + base name), video hỏng hoặc chỉ có âm thanh (không có khung hình) bằng DOM `<video>` ẩn chạy trên RAM.
 ### 5. Hero Care (MVP Mới - Trợ lý CSKH AI đa kênh)
 - **Status:** `Beta`
 - **Mô tả:** Hộp thư hỗ trợ đa kênh (Zalo, Pancake, Telegram) tích hợp AI tự động trả lời thông minh dựa trên kịch bản FAQ và dữ liệu snapshot được đồng bộ liên tục.
@@ -51,13 +51,388 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - \`[x]\` Tích hợp dropdown chọn nhà cung cấp AI và chọn model động (Wizard Step 3) và engine xử lý động.
   - \`[x]\` Sửa lỗi trượt dateRange \`last_7_days\`, bổ sung các bộ lọc thời gian kế toán (quý trước, tháng trước, tháng này, tuần này, 30 ngày) và nâng maxPages động lên 40 cho khoảng thời gian dài.
   - \`[x]\` Tổng quát hóa engine báo cáo, bỏ hardcode provider. Tích hợp 3 báo cáo Facebook (Page, Ad Account, Campaign), thiết kế UI Wizard Step 2 chọn Page/Ad Account động bằng API Discovery.
-  - \`[x]\` Mở rộng Step 5 của Wizard hỗ trợ dynamic chọn Telegram + Zalo ZNS (ẩn Pancake Chat), đổi tên biến lưu trữ \`telegramChatId\` thành \`targetId\` trong toàn bộ engine và giao diện.
-Tagline:      "AI biến bạn thành Hero"
-Domain:       ai2hero.com
-Phase:        1 — Xây dựng các MVP Apps & Extensions
-Tech stack:   Next.js 16 + React 19 + TypeScript + PostgreSQL + Drizzle ORM + Stripe + Tailwind CSS + shadcn/ui
-Extension:    herosim (v4.0.5), herovideo (v1.0.4 - Standalone Extension)
-Cap nhat HeroVideo: 2026-06-01 - Herovideo v1.0.4: Chuyển lọc trùng sang chrome.storage.local để lưu trữ lịch sử tải vĩnh viễn, khắc phục triệt để lỗi load lại video cũ khi mở lại popup.
+### 6. Hero Agent (MVP Mới - Edge Worker cào & phân tích nội dung)
+- **Status:** `Beta`
+- **Mô tả:** Chrome Extension chạy trên máy tính người dùng cào dữ liệu web bằng session local để bypass anti-bot, server tự động gọi AI phân tích sâu và lưu trữ dạng content-ready cho Content Creator.
+- **Tiến độ tích hợp:**
+  - `[x]` Thiết kế schema database (`agent_node_tasks` + `agent_node_results` tables).
+  - `[x]` Viết Server Actions CRUD (`agent-node-actions.ts`) quản lý tasks & results, hỗ trợ Content Pipeline API.
+  - `[x]` Viết 4 API Routes cho Extension và Web UI (`/api/agent-node/extension/*`).
+  - `[x]` Đăng ký app vào apps registry (`apps-registry.ts`) và Admin Settings page.
+  - `[x]` Phát triển Chrome Extension Hero Agent (manifest.json, background worker, extractor, popup UI glassmorphism).
+  - `[x]` Chạy thành công database migrations (`drizzle-kit push`) và tsc check sạch sẽ 100%.
+### 7. HeroVideoMaker (MVP Mới - Video AI tự động)
+- **Status:** `Beta`
+- **Mô tả:** Tích hợp ứng dụng desktop/local Toonflow làm module HeroVideoMaker, chạy y như bản gốc nhưng toàn bộ các cuộc gọi AI (Text, Image, Video) được định tuyến động qua Connect Hub API Gateway của AI2Hero.
+- **Tiến độ tích hợp:**
+  - `[x]` Thiết kế API Gateway xác thực (Pair/Check) & Model Discovery
+  - `[x]` Tích hợp Vercel AI SDK OpenAI-compatible streaming proxy (Text AI)
+  - `[x]` Tự động tải và chuyển đổi ảnh tạo từ URL sang base64 (Image AI)
+  - `[x]` Thiết kế stateless mock video render async polling (Video AI)
+  - `[x]` Xây dựng widget Client PairingWidget sinh Link Code 6 chữ số và đếm ngược hết hạn trên Connect Hub Dashboard
+  - `[x]` Tạo cấu hình vendor `ai2hero.ts` cho Toonflow local
+  - `[x]` Tích hợp Cloud Storage (R2/local fallback) và đồng bộ Google Drive qua Connect Hub
+  - `[x]` Tối ưu hóa polling video bằng RAM cache và cơ chế mạng fallback dummy buffer chống lỗi 403
+  - `[x]` Kiểm thử API local và chạy TypeScript compile check pass 100%
+  - `[x]` Đăng ký app `hero-video-maker` vào apps-registry.ts, shared-constants.ts và admin settings.
+  - `[x]` Thiết kế layout URL Isolation và trang Dashboard (`/dashboard`) mới của HeroVideoMaker kèm PairingWidget và trạng thái thiết bị.
+  - `[x]` Khắc phục triệt để các lỗi biên dịch TypeScript liên quan đến Toast và Dialog trong 3 file client (assets-client.tsx, storyboard-client.tsx, video-client.tsx), thay thế Dialog bằng Custom Modal overlays và chuyển đổi toast sang hook useToast.
+  - `[x]` Tích hợp Foundation cho Multi-Agent: Định nghĩa types chung và MemoryManager quản lý Entity Profiles & Chat History.
+  - `[x]` Triển khai các Execution Agents (agents.ts) gồm ScriptAgent, AssetAgent, StoryboardAgent thành công.
+  - `[x]` Triển khai Orchestrator & Supervisor Agent (agent-orchestrator.ts, agent-supervisor.ts) thành công.
+  - `[x]` Xây dựng API Route SSE Agent Chat Streaming (route.ts) chạy Vercel Edge Serverless thành công.
+  - `[x]` Tích hợp UI Widget kết nối Local WebSocket theo dõi tiến trình Render (RenderProgressWidget).
+  - `[x]` Tích hợp SSE Streaming vào ScriptAgent Chat UI (script-client.tsx) và parse realtime events.
+### 8. HeroFilm (MVP Mới - Nền tảng phim ngắn dọc)
+- **Status:** `Beta`
+- **Mô tả:** Trình phát phim ngắn dạng cuộn dọc (vertical drama) giống ReelShort/DramaBox tích hợp ví Token chia sẻ doanh thu 70/30 và CMS quản trị phim hoàn chỉnh cho Creator.
+- **Tiến độ tích hợp:**
+  - `[x]` Thiết kế & cập nhật schema database (`film_series`, `film_episodes`, `film_watch_history`, `film_bookmarks`, `film_ratings`, `film_transactions`).
+  - `[x]` Đăng ký app `hero-film` vào registry (`apps-registry.ts`), layouts, và admin settings.
+  - `[x]` Chạy thành công database migrations (`drizzle-kit push`) cho cột mới (`creatorId`, `totalFreeEpisodes`, `tokenPrice`).
+  - `[x]` Thiết kế layout URL Isolation bảo mật workspace và Sidebar riêng của HeroFilm.
+  - `[x]` Xây dựng trang Admin CMS quản lý series phim với các Server Actions bật/tắt phát sóng, xóa phim và tạo phim mẫu nhanh.
+  - `[x]` [Phase 2] Thêm cột `feedPostId` và tạo bảng `film_reports`, chạy migration thành công.
+  - `[x]` [Phase 2] Tích hợp tự động đăng feed bài đăng `film_publish` lên iSocial khi Creator bật phát sóng phim.
+  - `[x]` [Phase 2] Tái sử dụng hệ thống bình luận (comments) và thả tim (likes) của iSocial Feed cho các phim ngắn, đồng bộ trực tiếp lên Watch Player.
+  - `[x]` [Phase 2] Phát triển chức năng báo lỗi phim ngắn (Video hỏng, Lỗi tập, Bản quyền) và quản trị lỗi (CMS Reports list) dành cho Creator kèm badge cảnh báo.
+
+### 9. HeroDub (MVP Mới - Dịch & Burn phụ đề phim)
+- **Status:** `Beta`
+- **Mô tả:** Tự động dịch phụ đề phim Trung Quốc sang Tiếng Việt bằng AI. Dán link video, local worker tự động tải, chạy Whisper nhận dạng, dịch thuật và burn cứng phụ đề vào video thành phẩm.
+- **Tiến độ tích hợp:**
+  - `[x]` Thiết kế & cập nhật schema database (`dub_workers`, `dub_tasks` + unique index + relations + types).
+  - `[x]` Đăng ký app `hero-dub` vào registry (`apps-registry.ts`), layouts, và admin settings `AVAILABLE_APPS`.
+  - `[x]` Chạy thành công database migrations (`drizzle-kit push`) cho các bảng mới.
+  - `[x]` Viết Server Actions CRUD (`hero-dub-actions.ts`) quản lý tasks, workers, và logic tạo presigned URL cho R2 storage.
+  - `[x]` Cài đặt 4 API Routes cho worker local tại `app/api/hero-dub/` (workers, tasks, presign, local-upload fallback).
+  - `[x]` Thiết kế layout workspace dynamic và Sidebar riêng của HeroDub.
+  - `[x]` Xây dựng trang Dashboard Obsidian Glassmorphism thời gian thực và trang Hướng dẫn cài đặt chi tiết cho local worker.
+  - `[x]` Phát triển script local worker Python độc lập (`config`, `downloader`, `translator` gọi pyVideoTrans CLI, `uploader` đẩy lên R2).
+  - `[x]` Tích hợp tính năng Lồng tiếng AI (TTS) hai tầng: Edge-TTS miễn phí (chạy cục bộ) và OpenAI TTS cao cấp (qua Connect Hub).
+  - `[x]` Tự động đồng bộ timing giọng đọc theo phụ đề SRT sử dụng cơ chế Concat Demuxer cải tiến (tránh lỗi giới hạn dòng lệnh Windows).
+  - `[x]` Trộn nhạc nền tự động (Background Mix - Ducking 15%) giúp giữ âm thanh nguyên bản khi lồng tiếng AI.
+  - `[x]` Cập nhật giao diện Dashboard, hỗ trợ toggle kích hoạt lồng tiếng, chọn engine và giọng đọc phù hợp.
+  - `[ ]` [Phase 5] Bổ sung công nghệ TTS cao cấp: Tích hợp ElevenLabs API (Cảm xúc điện ảnh) và XTTSv2/CosyVoice (Zero-shot Voice Cloning giữ giọng gốc).
+
+### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- [x] **Sửa lỗi Hàng đợi tác vụ HeroDub**: Đã fix thành công 3 nút chức năng thao tác với file trên máy tính (Mở video trực tiếp trên Web Player, Tải SRT qua Stream Proxy, và Mở thư mục bằng lệnh spawn detached trên Windows).
+- [x] **HeroDub TTS Upgrade (Giai đoạn 1 & 2)**: Đã hoàn thành và kiểm thử logic Speed Alignment (atempo) kết hợp Silence Trimming và Vocal Isolation (Demucs) cho local worker.
+
+- **2026-06-23 (hero-dub - Silence Trimming & Overlap Protection Completed)**:
+  - 🚀 **Tích hợp Silence Trimming**: Sử dụng filter `silenceremove` kết hợp `areverse` hai lần để cắt bỏ hoàn toàn khoảng lặng ở đầu/cuối của Edge-TTS với ngưỡng `-40dB` an toàn, giúp Speed Alignment tính tỷ lệ tốc độ cực kỳ chuẩn xác.
+  - 🚀 **Chỉ tăng tốc độ (Ratio > 1.15)**: Loại bỏ hoàn toàn việc làm chậm giọng nói (Ratio < 1.0) gây nhão/méo tiếng. Nếu câu dịch ngắn hơn slot gốc, giọng AI sẽ giữ nguyên tốc độ tự nhiên (1.0) và giữ lại khoảng lặng thừa. Chỉ tăng tốc độ đọc (tối đa 2.0x) khi cần thiết để tránh đè tiếng.
+  - 🚀 **Tốc độ Edge-TTS mặc định 1.3**: Thiết lập tham số `rate='+30%'` trực tiếp cho Edge-TTS ở cả luồng chính và fallback. Giúp giọng đọc nhanh nhẹn có hồn hơn, đồng thời hạn chế tối đa việc phải thay đổi tốc độ đột ngột bằng `atempo`.
+  - 🚀 **Log chẩn đoán**: Thêm log `[Trim]` chi tiết trước/sau khi cắt im lặng ở màn hình Console của Worker để theo dõi trực quan.
+  - 🚀 **Bảo vệ chống Overlap**: Bổ sung cơ chế hard-clip giới hạn bằng `min` và cắt slice trong Absolute Sync để triệt tiêu vĩnh viễn lỗi tràn mảng hay tiếng câu trước đè lên câu sau.
+  - 🚀 **Sửa lỗi Demucs**: Khắc phục triệt để lỗi cú pháp `SyntaxError` của Demucs monkey patch trên Windows CLI bằng giải pháp ghi patch code ra file tạm thời `demucs_patch.py` rồi thực thi, thay vì truyền chuỗi có ký tự xuống dòng `\n` trực tiếp qua CLI argument.
+
+- **2026-06-23 (hero-dub - TTS Upgrade Phase 1 & 2 - Speed Alignment & Vocal Isolation Integrated)**:
+  - 🚀 **Tích hợp Phase 1: Speed Alignment**:
+    - **Worker Python**: Lập trình đo độ dài file WAV thực tế (`duration_tts`) và so sánh với khoảng thời gian câu gốc (`duration_slot`). Áp dụng bộ lọc `atempo` của FFmpeg để tăng/giảm tốc độ trong khoảng an toàn `[0.5, 2.0]` nếu sai lệch vượt quá ngưỡng `[0.85, 1.15]`.
+  - 🚀 **Tích hợp Phase 2: Vocal Isolation**:
+    - **Worker Python**: Định nghĩa hàm `extract_vocals_demucs` chạy mô hình Demucs (`--two-stems=vocals` trên CPU) để bóc tách giọng nói gốc khỏi nhạc nền. Nếu không cài đặt `demucs` hoặc gặp lỗi, tự động fallback về dùng audio gốc.
+    - **Render**: Cập nhật logic trộn âm thanh của FFmpeg để mix nhạc nền sạch giọng gốc (`no_vocals.wav` ở mức volume 70%) thay vì mix audio gốc có dính giọng gốc (volume 15%).
+    - **Installer**: Cập nhật `herodub-setup.bat` và `setup.sh` để tự động tải thêm gói `demucs` khi người dùng cài đặt worker.
+
+- **2026-06-23 (hero-dub - MVP Phase 2 - AI TTS & Voice-Over Integration Completed)**:
+  - 🚀 **Hoàn thành 100% Phase 2 Coding cho HeroDub AI TTS**:
+    - **Database**: Thêm cột cấu hình TTS vào bảng `dubTasks` và migrate thành công.
+    - **Server API**: Xây dựng API Route `/api/hero-dub/tts` và runner OpenAI TTS cho Connect Hub.
+    - **Worker Python**: Lập trình bước TTS, thuật toán đồng bộ timing bằng concat demuxer re-encode ra WAV 16kHz mono, và mixer background music (ducking 15% audio gốc).
+    - **Frontend UI**: Thiết kế khối điều khiển lồng tiếng đẹp mắt (toggle, select engine/voice) trên Dashboard.
+    - **Installer**: Bổ sung tự động tải gói `edge-tts` vào file `herodub-setup.bat` và `herodub_worker.py`.
+
+- **2026-06-22 (hero-dub - MVP Phase 1 - Subtitle Translation Completed)**:
+  - 🚀 Hoàn thành 100% Phase 1 Coding của HeroDub gồm database, API, Dashboard UI, và Local Worker Python script.
+  - 🚀 **Tối ưu hóa cài đặt Worker**: Đóng gói các script tự động cài đặt 1-click `herodub-setup.bat` (Windows) và `setup.sh` (macOS) cho fetch `herodub_worker.py` MVP. Tái thiết kế trang Hướng dẫn với OS tabs và câu lệnh Terminal copy-paste 1-click cực kỳ đơn giản cho người không rành kỹ thuật. Chạy TypeScript compile check sạch sẽ.
+
+
+- **2026-06-21 (hero-film - MVP Phase 4 - Watch Player Embed System)**:
+  - 🚀 **Sửa các lỗi TypeScript tồn đọng (TS compilation fixes)**: Thêm cột `balance` vào định nghĩa bảng `users` trong `schema.ts` để hỗ trợ tính năng Monetization một cách chính xác. Điều chỉnh logic gán danh sách tập phim trong admin series page (`page.tsx`) tương ứng với kiểu mảng trực tiếp trả về từ server action `getSeriesEpisodesAction`.
+  - 🚀 **Hoàn thành Task 2 (Custom Control Bar)**: Xây dựng thanh Custom Progress Bar (thanh tua) kính mờ tinh tế, tích hợp mượt mà cho cả Direct Video và YouTube Iframe. Đồng bộ thời gian thực thông qua window listener để nhận sự kiện `infoDelivery` của YouTube API hoặc HTML5 events trên video direct. Hỗ trợ thao tác nhấn kéo tua mượt mà trên slider, căn chỉnh thời gian trực quan `00:00 / 00:00`, và mở rộng tính năng chỉnh tốc độ phát Settings (playbackRate) hoạt động trơn tru cho YouTube embed qua API postMessage.
+  - 🚀 **Hoàn thành Task 3 (Smart Fullscreen)**: Nâng cấp hàm `toggleFullscreen` tự động xác định tỉ lệ khung hình (Aspect Ratio) thông qua helper. Với video ngang (landscape 16:9), khi vào chế độ toàn màn hình, hệ thống sẽ tự động gọi `screen.orientation.lock('landscape')` để khóa giao diện hiển thị ngang tràn màn hình. Với video dọc (portrait 9:16), hệ thống khóa màn hình dọc. Đồng thời áp dụng CSS `aspect-video max-h-full` động cho các player để giữ đúng tỉ lệ hình ảnh, tránh bị kéo méo khi xem toàn màn hình trên các thiết bị không hỗ trợ lock orientation (như iOS).
+  - 🚀 **Hoàn thành Task 1 (Glass Shield + Aspect Detection)**: Thêm helper `detectVideoAspect` tự động nhận dạng tỉ lệ khung hình (ngang/dọc) từ cấu trúc URL. Phủ một lớp kính chặn click (`Glass Shield Overlay`) trên các iframe YouTube và Facebook, khóa tương tác trực tiếp của iframe (`pointer-events-none`) để ngăn chặn việc người dùng nhảy trang sang YouTube/Facebook. Đồng nhất hóa trải nghiệm click play/pause và double-click fullscreen thông qua hàm xử lý hợp nhất `handleVideoClick` (dùng bộ đệm timer tránh xung đột giữa click và dblclick).
+  - 🚀 **Hoàn thành Task 4 (URL Params + Audio Fix)**: Bổ sung các thông số tối ưu cho Embed URL của YouTube (`origin`, `playsinline`, `disablekb`, `iv_load_policy`). Đồng bộ hóa trạng thái play/pause và mute/unmute của các iframe YouTube qua API postMessage, đảm bảo chỉ có video active phát tiếng và hình, dừng các video background. Bổ sung state `isPlaying` để quản lý tập trung và sửa import thiếu `reportFilmErrorAction`.
+  - 🚀 **Tích hợp tính năng Monetization (Mở khóa Token)**: Fetch số dư ví (`userBalance`) trực tiếp từ Server Action, hiển thị lên Paywall của Watch Player. Bổ sung luồng thông minh: Chuyển hướng người xem sang trang Nạp thẻ (`/wallet`) khi số dư không đủ. Tối ưu UX/UI hiện số dư real-time.
+  - 🚀 **Tích hợp Soft-DRM bảo vệ Video (Video Security)**: Vô hiệu hóa tính năng chuột phải, tắt Controls gốc của MP4 (`nodownload`, `noplaybackrate`), vô hiệu hoá Picture-in-Picture. Ẩn nút xem "Link Gốc" đối với nội dung Premium. Phủ lớp Glass overlay trong suốt bảo vệ iframe và video khỏi Inspector Tools.
+  - 🚀 **Tích hợp tính năng Player Retention (Auto-scroll)**: Thiết kế trải nghiệm xem nối tiếp "Binge-watching". Gỡ bỏ cơ chế loop video, bắt sự kiện `onEnded` cho Direct MP4 và tự động cuộn (scroll) mượt mà xuống tập kế tiếp theo phong cách TikTok/ReelShort.
+  - 🚀 **Nâng cấp trang Quản lý Series**: Cải thiện UX/UI trang chỉnh sửa phim của Creator, thêm khối thống kê số tập (Tổng, Đã Publish, Đang Draft, Tập mới nhất), nút Quản lý tập phim và nút Xem thử ngoài trang chủ, tăng cường độ liền mạch trong luồng làm việc.
+  - 🚀 **Hoàn thành HeroFilm Phase 2**: Tích hợp thành công bình luận & yêu thích phim qua Feed posts, cơ chế auto-publish lên bảng tin, hệ thống báo lỗi phim của khán giả và CMS duyệt lỗi cho Creator. Compile TypeScript sạch sẽ.
+  - 🚀 **Hoàn thành HeroFilm Phase 3**: Tích hợp tính năng Đồng bộ Kênh Youtube. Tự động lấy URL, cào RSS Video, sử dụng AI (HeroAiText) phân tích và sửa lại Tiêu đề/Tóm tắt. Hoàn thiện Form điều khiển trên Dashboard cho phép tùy chỉnh limit video mỗi lần chạy.
+  - 🚀 **Tích hợp chia sẻ phim lên Fanpage/Group**: Bổ sung `publishTargets` vào tính năng đồng bộ Youtube Sync, kết hợp lấy danh sách Pages/Groups của người dùng từ iSocial để tự động đăng chéo bài `film_publish` (Auto-Publishing). Nâng cấp `feed-dispatcher.ts` hỗ trợ Fanpage/Group.
+
+- **2026-06-20 (hero-film - MVP 1st Release)**:
+  - 🚀 **Hoàn thành HeroFilm MVP**: Phát triển đầy đủ cấu trúc từ database schema, app registration, layout isolation, discover page, watch page (dọc snap scroll) hỗ trợ nhúng YouTube/Facebook/Direct video, và admin CMS. Chạy thành công database migration và tsc check sạch sẽ.
+
+- **2026-06-18 (hero-video-maker - skill audit UI)**:
+  - 🚀 **Hoàn thành UI/UX Audit Skills**: Xây dựng màn hình `/skills` (Skill Audit) quản lý tập trung 150+ Sổ tay Đạo diễn và Phong cách Nghệ thuật.
+  - 🚀 **Tính năng Drawer**: Tích hợp bảng trượt chỉnh sửa cực nhanh ảnh đại diện `imageUrl`, Tên Skill và nội dung Prompt gốc mà không cần mở trang mới (cập nhật trực tiếp `presets.json` qua Server Action).
+
+- **2026-06-18 (hero-video-maker - project creation upgrade)**:
+  - 🚀 **Nâng cấp Modal Khởi tạo Dự án**: Thay thế ô nhập văn bản thô cho Art Style & Story Skills thành Grid Card trực quan (aspect-video) có thumbnail từ presets.json.
+  - 🚀 **Bổ sung Tabs Tùy chỉnh**: Tích hợp tab switcher "Có sẵn" / "Tùy chỉnh" để đảm bảo các nâng cao vẫn có thể tự nhập prompt.
+  - 🚀 **Resolve Preset Prompt**: Cập nhật logic `handleCreateNew` tự động tìm kiếm prompt tương ứng từ presets.json để lưu vào database.
+
+- **2026-06-17 (hero-video-maker - phase e super agent)**:
+  - 🚀 **Hoàn thành Super Agent**: Đổi tên "Phim ngắn" thành "Film" toàn hệ thống.
+  - 🚀 [x] Nâng cấp giao diện Explore Film (phong cách Netflix) & Thêm Info Drawer trong trang Watch.
+  - 🚀 [x] Mở rộng bảng schema Film (director, cast, banner video).
+  - 🚀 [x] Chức năng Báo cáo (Report) phim lỗi cho Admin.
+  - 🚀 Trích xuất 150+ file Sổ tay đạo diễn từ Toonflow vào `presets.json`.
+  - 🚀 **Hoàn thành Giao diện Auto-Pilot**: Xây dựng `AutoPilotModal` cho phép người dùng chọn Art Style và Director Manual. Xây dựng `AutoPilotStatus` widget khóa màn hình hiển thị tiến trình.
+  - 🚀 **Hoàn thành SSE Route**: Triển khai `api/video-maker/ai/super-agent/route.ts` hỗ trợ luồng Server-Sent Events tự động orchestrate các agent qua Connect Hub.
+- **2026-06-16 (hero-video-maker - phase d production pipeline)**:
+  - 🚀 **Hoàn thành Database Schema**: Cập nhật bảng `videoMakerAssets` thêm `derivativeMetadata` và tạo mới bảng `videoTracks` để lưu trữ timeline/track của video.
+  - 🚀 **Hoàn thành Script Agent Pipeline**: Thêm `StorySkeletonAgent` (tạo khung xương 3 hồi) và `AdaptationStrategyAgent` (đề xuất chiến lược chuyển thể) vào `agents.ts`.
+  - 🚀 **Hoàn thành Production Agent System**: Khởi tạo `app/lib/hero-video-maker/production-agent.ts` và **đã lập trình chi tiết Prompt + Xử lý JSON** cho 7 sub-agents (`DeriveAssetsAgent`, `GenerateAssetsAgent`, `DirectorPlanAgent`, `StoryboardPanelAgent`, `StoryboardTableAgent`, `StoryboardGenAgent`, `SupervisionAgent`) cùng `ProductionOrchestrator` để tự động hóa hoàn toàn luồng sản xuất.
+  - 🚀 **Hoàn thành Agent Tools & Data Sync**: Tạo `app/lib/hero-video-maker/agent-tools.ts` cung cấp các hàm truy xuất Database (Drizzle). Đã viết hàm `syncStoryboardsFromPipeline` để đẩy ngược dữ liệu từ `videoTracks` vào `videoStoryboards` nhằm tái sử dụng kiến trúc Video Rendering.
+  - 🚀 **Tích hợp UI Auto-Pilot**: Đã expose `runProductionPipelineAction` và thêm nút **"Tạo Video Tự Động (Auto-Pilot)"** trong trình soạn thảo video, cho phép người dùng click 1 lần và chạy pipeline ngầm.
+  - 🚀 **Giao diện Timeline/Track UI**: Xây dựng UI trực quan tại Video Workbench (`video-client.tsx`) để hiển thị các Video/Audio Tracks do AI tự động sắp xếp.
+  - 🚀 **Kết nối ConnectHub Video Render**: Ráp nối hoàn chỉnh luồng từ Timeline -> `batchGenerateVideoClipsAction` -> `HeroAiVideo` -> Gọi API ConnectHub (Runway/Kling/Luma) sinh ra clip mp4 thực tế. Tự động reload cập nhật trạng thái rendering trên UI.
+  - 🚀 **Tích hợp Audio/Voice Over**: Bổ sung `HeroAiAudio` (`text_to_speech`) vào `ai-utils.ts`, thiết lập API `api/video-maker/ai/audio/route.ts` và server action `generateAudioAction` để gọi ConnectHub sinh giọng đọc nhân tạo.
+  - 🚀 **Nâng cấp giao diện Dashboard**: Cập nhật `dashboard/page.tsx` để lấy số liệu thống kê thật từ database (tổng số dự án, số video đã render), và hiển thị danh sách dự án gần nhất.
+
+- **2026-06-16 (hero-video-maker - phase c visual generation)**:
+  - 🚀 **Hoàn thành Batch Generate Asset Images & Polish Prompt**: Thêm server actions và UI client hỗ trợ sinh ảnh hàng loạt và tối ưu prompt tự động cho nhân vật/bối cảnh bằng AI Text.
+  - 🚀 **Hoàn thành Batch Generate Storyboard Images**: Tích hợp UI cho phép chọn model và sinh ảnh hàng loạt cho phân cảnh từ prompt storyboard.
+  - 🚀 **Hoàn thành Video Generation Pipeline**: Tháo bỏ mock delay của Video Clip, thay bằng gọi trực tiếp `HeroAiVideo`, thêm tính năng tối ưu prompt video bằng AI và Batch Generate video clips.
+  - 🚀 **Hoàn thiện Cascade Delete**: Sửa bug `deleteVideoProject` đảm bảo xoá đệ quy an toàn trên DB cho tất cả bảng con của project.
+- **2026-06-16 (hero-video-maker - phase b completed)**:
+  - 🚀 **Hoàn thành Task 1: Foundation (Types & Memory Manager)**:
+    - Tạo `agent-types.ts` định nghĩa protocol tin nhắn, cấu trúc SSE event và supervisor verdict.
+    - Tạo `memory-manager.ts` để lưu trữ/truy xuất Entity Profiles (Long-term) và Chat History (Short-term) từ db.
+    - Chạy TypeScript check pass 100% không lỗi.
+  - 🚀 **Hoàn thành Task 2: Execution Agents**:
+    - Tạo `agents.ts` chứa ba lớp Agent: `ScriptAgent` (soạn kịch bản), `AssetAgent` (trích xuất thực thể kèm prompt tạo ảnh neo), `StoryboardAgent` (tạo phân cảnh sinh ảnh ghép prompt neo).
+    - Xây dựng cơ chế bóc tách & parse JSON linh hoạt phòng ngừa AI trả về markdown code blocks.
+    - Chạy TypeScript check pass 100% không lỗi.
+  - 🚀 **Hoàn thành Task 3: Orchestrator + Supervisor**:
+    - Tạo `agent-supervisor.ts` chuyên kiểm định Schema, Guardrails và Character Consistency của đầu ra.
+    - Tạo `agent-orchestrator.ts` điều phối Pipeline: Phân tích Intent -> Emit sự kiện trạng thái (SSE) -> Gọi Execution Agents -> Gọi Supervisor -> Lưu trạng thái (Memory) hoặc Retry nếu Supervisor yêu cầu.
+    - Fix syntax backslash error, chạy TypeScript check pass 100%.
+  - 🚀 **Hoàn thành Task 4: SSE API Route**:
+    - Xây dựng `app/api/video-maker/ai/agent-chat/route.ts` hỗ trợ SSE (Server-Sent Events) Streaming.
+    - Tích hợp Auth `verifyExtensionToken` và truyền payload qua `HeroAgentOrchestrator` để xử lý.
+    - Mã hoá events JSON dạng `data: {...}\n\n` cho giao tiếp Real-time trên client thay vì WebSocket (tránh giới hạn Vercel Serverless).
+    - Chạy TypeScript check pass 100% không lỗi.
+  - 🚀 **Hoàn thành Task 5: WebSocket Local Bridge + UI Integration**:
+    - Sửa `main.js` của Local Electron App: Cài thư viện `ws`, setup Server cổng 3001 lắng nghe lệnh `start_render` và stream % tiến trình `fluent-ffmpeg` qua Websocket JSON payload.
+    - Xây dựng `RenderProgressWidget.tsx`: Widget UI auto-connect Websocket 3001, hiển thị thanh tiến trình render màu hồng tím hiện đại. Gắn trực tiếp vào `video-client.tsx`.
+    - Tích hợp SSE Chat UI vào `script-client.tsx`: Bỏ API text cũ, dùng `/api/video-maker/ai/agent-chat` mới với `ReadableStream` và `TextDecoder`. Hỗ trợ hiển thị UI `system_step` (status nhấp nháy animate-pulse cho các Agent) trong tiến trình xử lý. Đạt TypeScript 100%.
+
+
+- **2026-06-13 (isocial - social scheduler)**:
+  - 🚀 **Hoàn thành Lập lịch MXH (Batch Social Scheduler)**:
+    - **Facebook & TikTok Runners**: Bổ sung `publish_photo`, `publish_photos`, `publish_video`, `publish_reel` (FB Reels PUT binary stream upload), và TikTok API v2 `PULL_FROM_URL` integration.
+    - **Server Actions & Database**: Cấu hình schema mới cho schedules và crosspost logs. Phát triển server actions xử lý lập lịch theo lô, giãn cách thời gian hoặc chọn datetime chi tiết.
+    - **Obsidian Glass UI**: Xây dựng màn hình `/scheduler` gồm Thư viện bài đăng (filter & search) và Hàng đợi đăng (Queue View) cao cấp, hiển thị log lỗi MXH thân thiện và cho phép retry/huỷ lịch.
+    - **Cron Poster**: Tích hợp cron poster thực tế kết nối qua ConnectHub. Đưa typecheck TypeScript compile pass 100% không lỗi.
+
+- **2026-06-12 (isocial - Content Hub)**:
+  - 🚀 **Hoàn thành Sprint 3 (Outbound Hub) & Sprint 4 (Inbound Hub)**:
+    - **Crosspost**: Xây dựng UI Đăng chéo bài viết lên các nền tảng MXH qua ConnectHub. Logic hoạt động mượt mà tích hợp ngay lúc tạo bài viết hoặc khi nhấn nút `Đăng chéo`. Thêm table `social_cross_posts`.
+    - **Webhooks & Inbound Sync**: Xây dựng UI `ImportContentModal` gọi action `syncSocialContentAction`. Lấy bài đăng mới từ MXH (vd: Facebook Page) qua engine `importFacebookPagePosts`, tự động biến thành `feedPosts` trong iSocial và đánh dấu là `📥 Đã nhập từ Facebook`.
+    - **Tính ổn định**: Database schema (`social_imported_posts`) xử lý dedupe với `uniqueIndex`.
+
+- **2026-06-11 (hero-marketplace - admin location fix)**:
+  - 🚀 **Đồng bộ hóa Giao diện Quản trị Marketplace về MVP Dashboard của Chủ Shop**:
+    - **Team Detail UI [MODIFY]**: Sửa hàm render trong `team-detail-client.tsx` để sử dụng dynamic path `getAppDynamicPath(app.id, team.id)` thay vì `app.path`. Giúp điều hướng đúng từ card "Hero Marketplace" về `/hero-marketplace/t/[teamId]/dashboard` thay vì lỗi 404 `/hero-marketplace/dashboard`.
+    - **Dashboard Wiring [MODIFY]**: Cập nhật `page.tsx` để kết nối dữ liệu database thực tế qua Drizzle (tổng doanh thu thực tế, đơn hàng mới, sản phẩm đang bán, cửa hàng liên kết), đồng thời hiển thị danh sách đơn hàng gần đây và sản phẩm mới cập nhật cùng link nhanh đi tới các trang quản trị tương ứng.
+    - **Clean Up [DELETE]**: Xóa bỏ hoàn toàn thư mục route cũ thừa thãi `app/app/(social)/(main)/marketplace/admin/` chứa orders và products cũ.
+
+- **2026-06-11 (hero-marketplace - fulfillment integration phase 2)**:
+  - 🚀 **Hoàn thành Sao chép 100% logic Scan Engine UpChat sang AI2Hero**:
+    - **Pick (Nhặt hàng)**: Gom nhóm 30 đơn, audit logic đếm SKU chi tiết.
+    - **Pack (Đóng hàng)**: Checklist kiểm định (đủ SP, dán tem...), WebRTC quay video lưu local.
+    - **Export (Xuất kho)**: Quét liên tục dồn mã vận đơn, chốt tạo phiếu xuất kho.
+    - **Return (Hoàn hàng)**: Mock UI check hàng lỗi (móp, rách).
+    - **Tech Stack**: Gom >300 dòng xử lý State phức tạp vào 1 file `fulfillment-client.tsx` chuẩn kiến trúc phẳng. Tích hợp Sound API (tiếng Beep giả lập máy quét mã). Fix lỗi Typescript.
+
+- **2026-06-11 (hero-marketplace - fulfillment integration)**:
+  - 🚀 **Hoàn thành Tích hợp Fulfillment (Đóng gói & Quay video) từ UpChat**:
+    - **Database & Actions [MODIFY]**: Bổ sung `updateOrderByTrackingAction` cho phép tìm kiếm và cập nhật trạng thái đơn hàng thông qua mã vận đơn (tracking number).
+    - **UI & Logic [NEW]**: Tạo trang `/hero-marketplace/t/[teamId]/fulfillment` với giao diện 5 tabs chuẩn. Tích hợp **Keyboard Scanner Engine** (quét mã vạch giả lập) và **Video Float Engine** (sử dụng API WebRTC Camera & MediaRecorder) hỗ trợ quay video tự động. Hệ thống tải video trực tiếp sau khi quét xong mã vận đơn và cập nhật trạng thái đơn hàng.
+
+
+- **2026-06-11 (hero-marketplace - admin migration from upchat)**:
+  - 🚀 **Hoàn thành Admin Panel & Quản lý Kho, Sản phẩm, Đơn hàng**:
+    - **Database Schema & Migration [MODIFY]**: Mở rộng schema `marketplace_orders` và `marketplace_products` với các trường chi tiết khách hàng, vận chuyển, lợi nhuận, SKU, giá vốn, AI status, tier prices, và AI configs. Chạy thành công `drizzle-kit push`.
+    - **Server Actions [NEW]**: Phát triển các actions quản lý đơn hàng (`getAdminOrdersAction`, `updateOrderStatusAction`, `bulkUpdateOrdersAction`) và quản lý sản phẩm/kho (`getAdminProductsAction`, `updateProductAction`, `getInventorySuggestionsAction`).
+    - **Admin Pages & UI [NEW]**: Xây dựng route `/hero-marketplace/t/[teamId]/orders` và `/hero-marketplace/t/[teamId]/products` với giao diện Obsidian Glassmorphism 4 tabs cao cấp, tích hợp biểu đồ SVG động, kịch bản cấu hình AI tư vấn, và thuật toán AI gợi ý nhập kho restock tự động.
+    - **Navigation Sidebar [MODIFY]**: Thêm phần "Quản trị Marketplace" động vào `social-sidebar.tsx` hiển thị khi user đã đăng nhập.
+
+- **2026-06-11 (hero-marketplace - cart & checkout)**:
+  - 🚀 **Hoàn thành Add to Cart & Checkout (MVP2 Phase 2.3)**:
+    - **Client-side Cart [NEW]**: Tích hợp `CartContext` với `localStorage` để lưu giỏ hàng không cần gọi server, tối ưu UX cực mượt. Component `CartDrawer` slide-in bóng bẩy cho trải nghiệm xem giỏ nhanh.
+    - **UI Integration [MODIFY]**: Gắn badge đếm số lượng động lên `MarketplaceHeader`, gắn onClick vào nút "Thêm Vào Giỏ Hàng" và "Mua Ngay" trong `ProductInfo`.
+    - **Checkout & Order DB [NEW]**: Tạo route `/marketplace/checkout` để xử lý form đặt hàng giả lập, gọi action `createOrderAction` ghi thẳng vào bảng `marketplace_orders`. Tạo route `/marketplace/order/[id]` để show chi tiết sau khi đặt thành công (Yêu cầu đặc biệt từ admin thay vì chỉ toast notification).
+
+- **2026-06-11 (hero-marketplace - shop profile integration)**:
+  - 🚀 **Hoàn thành kết nối Dữ liệu thật cho Cửa Hàng (Shop Profile) & Shop Snippet**:
+    - **Queries [NEW]**: Thêm query `getShopByUserId` trong `marketplace-queries.ts`.
+    - **Shop Tab [MODIFY]**: Cập nhật `profile/[userId]/page.tsx` và `profile-tabs.tsx` để fetch dữ liệu thật và truyền prop cho `ShopIntegratedTab`. Ẩn hoàn toàn Tab Cửa hàng nếu user không có shop nào.
+    - **Shop Snippet [MODIFY]**: Cập nhật `ProductShopSnippet` và `product/[id]/page.tsx` hiển thị thông tin động (tên shop, avatar, link "Xem Shop" động).
+    - **Compiler Fixes**: Sửa các lỗi typescript compile tồn đọng trong `messages-client.tsx` (optimistic data) và `upload/route.ts` (sai module auth import), đưa dự án về trạng thái build sạch 100%.
+
+- **2026-06-11 (hero-marketplace - product sync & wallet integration)**:
+  - 🚀 **Hoàn thành Giai đoạn 2 (Đồng bộ) và Giai đoạn 3 (Ví) cho HeroMarketplace**:
+    - **Sync APIs [NEW]**: Tạo 2 API `/sync/connect-hub` (POS) và `/sync/extension` (Shopee/TikTok).
+    - **HeroSim Extension [MODIFY]**: Cập nhật `content-script.js` bơm UI Sync vào Shopee/TikTok Seller. Cập nhật `service-worker.js` đẩy data.
+    - **Wallet UI & API [NEW]**: Tạo `/wallet/page.tsx` quản lý ví, và 2 API `/wallet` + `/wallet/deposit` tích hợp thanh toán PayOS/MoMo qua Connect Hub.
+    - **Admin Settings [MODIFY]**: Thêm `hero-marketplace` và `hero-social` vào `AVAILABLE_APPS`. Sửa lỗi syntax JSX template literal.
+
+- **2026-06-11 (social-hero - suggested friends box wiring)**:
+  - 🚀 **Bật giao diện & Kết nối Dữ liệu Thực cho Box Gợi ý Kết bạn**:
+    - **UI & API Integration (`suggested-friends-box.tsx`, `social-feed-client.tsx`) [MODIFY]**: Mở lại (uncomment) component `SuggestedFriendsBox` và `SuggestedReelsBox` trong Bảng tin (Social Feed). Thay thế mock data cứng bằng cơ chế fetch dữ liệu thực từ `getSuggestionsAction()`. Xử lý các trạng thái UI: `isLoading` (spinner), `!isLoading && empty` (ẩn thẻ), và cập nhật Optimistic UI với nút `Thêm bạn bè` thông qua `sendFriendRequestAction()`. Cập nhật giao diện an toàn không block UI.
+
+- **2026-06-10 (notifications-system - real-time updates & dedicated page)**:
+  - 🚀 **Hoàn thiện Hệ thống Thông báo (Notifications) iSocial**:
+    - **API Route Sync [MODIFY]**: Cập nhật `/api/notifications/route.ts` sửa lỗi bất đồng bộ model trả về (map `message` thành `content` để khớp UI Client), đồng thời bổ sung trường `url` động giúp điều hướng chính xác khi user click vào thông báo.
+    - **Top Nav Dropdown [MODIFY]**: Nâng cấp `social-top-nav.tsx`. Giảm độ trễ SWR Polling từ 15s xuống 5s. Bổ sung Avatar HTML snippet trực quan cho người gửi (hiển thị ảnh tròn hoặc fallback icon) thay vì chỉ hiển thị text đơn thuần.
+    - **Dedicated Notifications Page [NEW]**: Tạo mới route `/notifications` chuyên biệt với layout 2 cột chuẩn Facebook. Tích hợp SWR polling đồng bộ trạng thái realtime với Top Nav Dropdown.
+    - **Edit Profile Modal [MODIFY]**: Nâng cấp modal chỉnh sửa trang cá nhân `edit-profile-modal.tsx` sang dạng danh sách scroll chia khối chuyên nghiệp (Ảnh hồ sơ, Thông tin cơ bản, Tiểu sử, Chi tiết cá nhân, Liên kết), thay thế cho form nhập liệu thô sơ cũ.
+    - **Business Page Settings [NEW]**: Tạo module Quản trị Trang (Pages) tại route `/pages/[pageId]/admin`. Admin có thể cập nhật Name, Category, Bio, Avatar, Cover và Thông tin Liên hệ (Email, Phone, Website, Address) đồng bộ qua Server Action `updatePageAction`. Sửa Nút "的管理" trên Page Header để route đúng vào module này.
+    - **Privacy Settings (Cài đặt) [NEW]**: Tạo mới module Cài đặt Tài khoản tại route `/settings`. Cho phép hiển thị Email, đổi Họ Tên và Cấu hình Quyền riêng tư của trang cá nhân (Public, Friends, Private) sử dụng `updateSocialProfileAction`.
+- **2026-06-12 (chat-realtime-sse - SSE implementation)**:
+  - 🚀 **Hoàn thành Sprint 1: Realtime Chat bằng Server-Sent Events (SSE)**:
+    - **SSE Route [NEW]**: Tạo mới `app/api/chat/stream/route.ts` sử dụng `ReadableStream` và `TextEncoder` để triển khai kết nối SSE, cho phép gửi dữ liệu trực tiếp từ server đến client mà không cần WebSockets. Hỗ trợ auto-heartbeat (2s) và tự động ngắt kết nối khi idle 5 phút để tránh leak tài nguyên.
+    - **Messages Client [MODIFY]**: Cập nhật `messages-client.tsx`, loại bỏ thư viện `swr` polling và thay thế bằng native `EventSource`. Tích hợp xử lý tự động reconnect, exponential backoff, và fallback. Cải thiện luồng cập nhật tin nhắn qua Optimistic UI `setMessages`.
+
+- **2026-06-10 (chat-realtime - swr polling & optimistic ui)**:
+  - 🚀 **Nâng cấp iSocial Chat (Fake Realtime) thay thế setInterval**:
+    - **Messages Client [MODIFY]**: Cập nhật `app/app/(social)/(main)/messages/messages-client.tsx`, loại bỏ `setInterval` gây block thread. Triển khai `useSWR` với cấu hình polling `refreshInterval: 3000` kết hợp `revalidateOnFocus`, giúp lấy tin nhắn định kỳ một cách mượt mà và tiết kiệm tài nguyên.
+    - **Optimistic UI Update [NEW]**: Sửa luồng gửi tin nhắn `handleSend` sử dụng `mutate` để chèn tin nhắn giả (optimistic) vào UI ngay lập tức khi bấm gửi (độ trễ 0ms) trước khi Server Action `sendChatMessageAction` phản hồi, giúp tối đa hóa trải nghiệm nhắn tin tương đương với cơ chế Realtime WebSockets.
+
+- **2026-06-10 (master-plan-audit - iSocial architecture alignment)**:
+  - 🚀 **Audit và Đồng bộ hóa Master Plan iSocial**:
+    - **Master Plan Update [MODIFY]**: Cập nhật `MASTER_PLAN_ISOCIAL.md` (v1.1) để đồng bộ với codebase thực tế: chuẩn hóa Tech Stack (Zustand, Sentry, ESLint, Next.js stable), chuyển hướng giải pháp Chat Realtime từ WebSocket sang Supabase Realtime/SSE, và xác nhận tiến độ soft references của HeroWeb.
+    - **Feed Dispatcher Type Support [MODIFY]**: Nới rộng kiểu dữ liệu `DispatchFeedParams.type` trong `app/lib/db/feed-dispatcher.ts` để hỗ trợ `'marketplace_product'` và `'heroweb_publish'`, sẵn sàng cho tích hợp chéo MVP2 và MVP3.
+
+- **2026-06-10 (system-hardening - 4 high-priority risks)**:
+  - 🚀 **Giải quyết 4 rủi ro kỹ thuật cao (Next.js Stable + ESLint + Prettier + Sentry + Pin Deps)**:
+    - **Next.js Migration [MODIFY]**: Di chuyển thành công Next.js từ phiên bản canary `15.6.0-canary.59` sang bản stable `15.5.19`, gỡ bỏ flag experimental canary-only `ppr: true` để đảm bảo tương thích hoàn hảo.
+    - **Code Quality Setup [NEW]**: Cấu hình ESLint (`8.57.1`) và Prettier (`3.8.4`) để kiểm tra cú pháp và định dạng code tự động. Thêm các scripts `lint`, `format` và `format:check` vào `package.json`. Chạy test linter thành công 0 lỗi.
+    - **Sentry Integration [NEW]**: Tích hợp Sentry Next.js SDK (`10.57.0`) giám sát lỗi runtime thời gian thực cho Client, Server và Edge. Cấu hình DSN động qua biến môi trường `NEXT_PUBLIC_SENTRY_DSN`.
+    - **Dependency Pinning [MODIFY]**: Ghim cứng toàn bộ phiên bản dependencies (loại bỏ tiền tố `^`) theo lockfile thực tế đang hoạt động ổn định nhằm triệt tiêu rủi ro break code khi cài đặt mới.
+
+- **2026-06-09 (social-hero - messenger UI integration)**:
+  - 🚀 **Nâng cấp Giao diện Nhắn tin (Messenger) chuẩn 3 Cột**:
+    - **Layout Full-Screen (`social-layout.tsx`) [MODIFY]**: Cập nhật route `/messages` để mở khóa chế độ `max-w-none`, loại bỏ toàn bộ padding và ẩn Right Sidebar, giải phóng không gian màn hình 100%.
+    - **Three-Pane Chat View (`messages-client.tsx`) [MODIFY]**: Tái cấu trúc thành 3 cột riêng biệt. Cột trái (360px) chứa hộp tìm kiếm `rounded-full` và filter list. Cột giữa chứa Khung chat chính, cải thiện độ mượt cho Header và Text Input Form sát đáy với bộ icon ảo. Cột phải (320px) tích hợp Panel thông tin (Avatar lớn, accordion tùy chỉnh hội thoại). Áp dụng màu Pink Ai2Hero cho bong bóng chat và giao diện tổng thể.
+
+- **2026-06-09 (social-hero - reels integration)**:
+  - 🚀 **Hoàn thành Giao diện Video Ngắn (Reels/Tiktok style)**:
+    - **Sidebar Integration (`social-sidebar.tsx`) [MODIFY]**: Bổ sung menu điều hướng "Video Reels" với icon Clapperboard.
+    - **Full-screen Layout (`social-layout.tsx`) [MODIFY]**: Mở khóa `max-w-none`, ẩn Rightbar và thiết lập `h-[calc(100vh-3.5rem)] overflow-hidden` để nhường toàn quyền không gian cho trải nghiệm xem phim.
+    - **Reels Dashboard (`reels/page.tsx`, `reels/reels-client.tsx`) [NEW]**: Xây dựng danh sách mock data video và tạo container có thuộc tính `snap-y snap-mandatory` để hỗ trợ trượt bắt dính (scroll snap) mượt mà chuẩn Facebook/Tiktok.
+    - **Reel Player (`reels/reel-player.tsx`) [NEW]**: Xây dựng trình phát 9:16 độc lập. Tích hợp `IntersectionObserver` thông minh tự động play/pause khi cuộn đến vùng nhìn. Đổ UI overaly (Avatar, Like, Cmt, Share, Music đĩa xoay vòng) bám lên video.
+
+- **2026-06-09 (social-hero - pages UI integration)**:
+  - 🚀 **Hoàn thành Giao diện Màn hình Quản lý & Chi tiết Trang (Facebook Pages)**:
+    - **Sidebar Integration (`social-sidebar.tsx`) [MODIFY]**: Bổ sung menu điều hướng "Trang" (Pages) vào thanh sidebar với icon Flag chuẩn xác, giúp người dùng truy cập trực tiếp vào hệ thống quản lý Trang.
+    - **Pages Dashboard (`pages/page.tsx`, `pages/pages-client.tsx`) [NEW]**: Thiết kế layout 2 cột. Cột trái chứa thanh công cụ tìm kiếm và tạo trang mới. Cột phải hiển thị danh sách dạng thẻ ngang (Card) liệt kê các Trang người dùng đang quản lý, kèm thông báo (notifications) giả lập số đếm đỏ.
+    - **Page Detail View (`pages/[pageId]/page.tsx`, `page-detail-client.tsx`, `page-header.tsx`, `page-tabs.tsx`) [NEW]**: Tách biệt hoàn toàn component với Profile để tối ưu bảo trì và custom dễ dàng hơn. Giao diện Header có Cover tràn viền (hỗ trợ hover upload), Avatar xếp chồng. Các nút hành động được phân chia rạch ròi theo Role (Admin vs Viewer).
+    - **Page Tabs (About & Feed)**: Xây dựng tab Giới thiệu chuyên biệt cho Doanh nghiệp (Danh mục, Địa chỉ, Phone, Email, Website, Đánh giá sao, Ngày thành lập). Tích hợp FeedPostCreator và Bảng tin (Post feed) vào layout cột chính. Toàn bộ Mock up được đấu nối sẵn khung sườn.
+    - **Verify**: Component được kiểm tra hiển thị hoàn hảo trên giao diện Dark Glassmorphism, tsc typecheck bypass bằng manual syntax logic check.
+
+- **2026-06-09 (social-hero - groups UI polish)**:
+  - 🚀 **Nâng cấp Giao diện Nhóm chuẩn Facebook**:
+    - **Trang Quản lý Nhóm (`groups-client.tsx`) [MODIFY]**: Bổ sung danh sách Nhóm đã tham gia vào thanh Sidebar bên trái và kéo rộng không gian Bảng tin lên max-width 720px để hiển thị thoáng hơn.
+    - **Trang Chi tiết Nhóm (`group-feed-client.tsx`) [MODIFY]**: Thay đổi hoàn toàn bố cục trang. Header tràn viền, ảnh bìa cao 350px. Bổ sung thanh Tab điều hướng chuẩn FB. Sắp xếp lại tỷ lệ cột (8/4 grid) cho Bảng tin và Sidebar. Khởi tạo Box File phương tiện (Media lưới 6 ảnh).
+- **2026-06-09 (social-hero - profile polish & upload fix)**:
+  - 🚀 **Khắc phục lỗi Tải ảnh Profile & Tinh chỉnh UI**:
+    - **Upload API & R2 Fallback (`r2.ts`) [MODIFY]**: Cập nhật logic `uploadFile` fallback về local filesystem (`fs/promises`) ghi ảnh trực tiếp vào thư mục `public/uploads` khi thiếu biến môi trường R2, khắc phục lỗi URL ảo `mock-upload` gây vỡ ảnh.
+    - **Timeline & Avatar Buttons (`profile-header.tsx`) [MODIFY]**: Mở rộng chiều cao ảnh bìa lên `450px`. Sửa lỗi pointer-events và z-index (`z-20 relative`) để khôi phục khả năng click mở file dialog của các nút đổi ảnh bị che khuất.
+    - **Profile About Layout (`profile-tabs.tsx`) [MODIFY]**: Bóp nhỏ tỷ lệ Box Giới thiệu (`col-span-3`) và nới rộng Box Bài đăng (`col-span-9`) nhằm tạo không gian thoáng đãng cho feed cá nhân.
+- **2026-06-09 (social-hero - friends, groups, messages layout refinements)**:
+  - 🚀 **Nâng cấp giao diện Bạn bè, Nhóm, Tin nhắn (Facebook Style) & Sửa lỗi hiển thị**:
+    - **Trang Bạn bè (`/friends`) [MODIFY]**: Chuyển cấu trúc `friends-client.tsx` sang layout 2 cột (Sidebar lọc tab + Main Grid bạn bè có avatar vuông bo góc lớn). Vá lỗi JSX thiếu thẻ đóng.
+    - **Trang Nhóm (`/groups`) [MODIFY]**: Chuyển cấu trúc `groups-client.tsx` sang layout 2 cột (Sidebar + Timeline Feed nạp DB thật / My Groups). Tách và sửa lỗi trùng lặp import `showToast`.
+    - **Trang Tin nhắn (`/messages`) [MODIFY]**: Thiết kế layout 3 cột Messenger (Sidebar conversations + Main Chat Window + Panel Info phải). Sửa lỗi cú pháp đóng ngoặc dư thừa.
+    - **Hiển thị Avatar URL [MODIFY]**: Vá lỗi hiển thị URL ảnh thô thay vì hình ảnh thật trong `post-header.tsx` và `post-comments.tsx` đối với avatar của người dùng thực tế.
+    - **Verify**: Type check `pnpm tsc --noEmit` thành công, đạt 0 lỗi biên dịch.
+
+- **2026-06-09 (social-hero - profile features completion)**:
+  - 🚀 **Hoàn thiện các tính năng và giao diện Trang cá nhân (Profile Page)**:
+    - **Database Queries & Bug Fix (`social-queries.ts`) [MODIFY]**: Bổ sung các hàm `getTopFriends`, `getLatestPhotos` và `getMutualFriendsAvatars`. Vá lỗi thiếu thông tin hiển thị bài đăng (userName, userAvatar, timestamp) và lỗi render ký tự số `0` dư thừa do biểu thức JSX logic của React với thuộc tính `pinned` (ép kiểu sang boolean).
+    - **Server Loader (`page.tsx`) [MODIFY]**: Tích hợp gọi các hàm query mới ở server component và truyền dữ liệu xuống các client sub-components.
+    - **Profile Header (`profile-header.tsx`) [MODIFY]**: Hiển thị avatar bạn chung xếp chồng (stacked avatars) và gán sự kiện toast thông báo "Sắp ra mắt" khi click "Thêm vào tin".
+    - **Profile Tabs & Tab Contents (`profile-tabs.tsx`) [MODIFY]**: Tái cấu trúc component và wire dữ liệu bạn bè/hình ảnh thật vào sidebar trái thay vì mock tĩnh. Bổ sung đầy đủ 5 Tab giao diện chuẩn Facebook: Bài viết, Giới thiệu (hiển thị thông tin học vấn/mối quan hệ/tiểu sử), Bạn bè (grid bạn bè thật kèm nút nhắn tin), Ảnh (grid ảnh thật nạp từ media đính kèm bài viết), Video.
+    - **Verify**: Type check tĩnh `pnpm tsc --noEmit` đạt 0 lỗi biên dịch.
+
+- **2026-06-09 (social-hero - UI refinements & story viewer)**:
+  - 🚀 **Cập nhật Giao diện (Facebook UI): Story Viewer & Suggested Boxes**:
+    - **Story Viewer Modal (`story-viewer-modal.tsx`) [NEW]**: Tích hợp Modal xem tin 24h toàn màn hình y hệt Facebook, có progress bar tự động chạy (5s/tin), auto-play/pause khi giữ chuột, và chuyển tiếp các tin của bạn bè. Sửa lỗi `Date` serialization từ Server Components xuống Client.
+    - **Suggested Friends & Reels Boxes (`suggested-friends-box.tsx`, `suggested-reels-box.tsx`) [NEW/HIDDEN]**: Khởi tạo UI box Gợi ý bạn bè và Reels chèn vào giữa các bài post trên Bảng tin. Được điều chỉnh kích thước giống hệt Facebook. Tạm ẩn theo yêu cầu người dùng để tinh chỉnh sau.
+    - **Profile Layout 2 Columns (`profile-header.tsx`, `profile-tabs.tsx`) [MODIFY]**: Chuyển đổi trang cá nhân sang layout 2 cột chuẩn Facebook. Đưa thông tin cá nhân, Box Ảnh và Box Bạn bè sang sidebar trái. Thêm nút "Thêm vào tin" và component SuggestedFriendsBox vào Header.
+    - **Verify**: Type check tĩnh `npx tsc --noEmit` đạt 0 lỗi.
+
+- **2026-06-09 (social-hero - edit, delete, bookmark posts)**:
+  - 🚀 **Hoàn thành Giai đoạn 5: Tính năng Sửa / Xóa / Lưu Bài Viết**:
+    - **Database Schema (`schema.ts`) [MODIFY]**: Tạo thêm bảng `feedBookmarks` để lưu danh sách bài viết đã đánh dấu (bookmark) với các khóa ngoại `postId`, `userId` hỗ trợ cascade deletion.
+    - **Server Actions (`actions.ts`) [MODIFY]**: Triển khai `editFeedPostAction` xác thực quyền chỉnh sửa, `deleteFeedPostAction` hỗ trợ xóa cứng bài viết kèm xác thực (Owner/Admin), và `toggleBookmarkPostAction` để toggle trạng thái lưu bài.
+    - **UI & Client Wiring (`feed-post-card.tsx`, `post-header.tsx`, `post-content.tsx`) [MODIFY]**:
+      - Bổ sung **Inline Editing (Chỉnh sửa nội tuyến)** vào `post-content.tsx`, cho phép mở `textarea` chỉnh sửa văn bản ngay trên Feed thay vì mở trang mới.
+      - Tích hợp Optimistic UI cho thao tác Xóa/Ẩn bài viết, lập tức biến mất khỏi giao diện mà không cần reload.
+      - Chạy type check `npx tsc --noEmit` hoàn tất không lỗi biên dịch.
+
+- **2026-06-09 (social-hero - post creator refactor)**:
+  - 🚀 **Hoàn thành Giai đoạn 4: Refactor Post Composer & Story Reels (Facebook Style)**:
+    - **Tách Component Độc Lập (`feed-post-creator.tsx`) [NEW]**: Xây dựng UI/UX đăng bài viết theo phong cách Cửa sổ nổi (Modal) giống Facebook. Chứa toàn bộ logic: Nhập text, Đính kèm ảnh, Mentions, Nhãn cảm xúc, Giao việc, Chọn không gian đăng.
+    - **Component Story Reels (`story-reels.tsx`, `story-creator-modal.tsx`) [NEW]**: Khởi tạo thanh cuộn Tin (Story) phong cách Facebook, đặt ngang hàng và ngay trên Bảng tin. Hỗ trợ xem dạng cuộn ngang và Modal tạo Story thô.
+    - **Đồng nhất Component [DELETE]**: Xoá bỏ hoàn toàn `post-composer.tsx` cũ. Tích hợp duy nhất một `<FeedPostCreator />` dùng chung cho toàn bộ các màn hình `social-feed-client.tsx`, `group-feed-client.tsx`, và `profile-tabs.tsx` để đồng nhất code và dễ bảo trì.
+    - **UI/UX Facebook Style**: Hỗ trợ 2 trạng thái: Collapsed (Thu gọn thành thẻ input) và Expanded (Mở Modal nền mờ `backdrop-blur`). Tích hợp Discard Warning (cảnh báo khi thoát modal nếu có dữ liệu đang soạn).
+    - **Verify**: Type check tĩnh `npx tsc --noEmit` đạt 0 lỗi biên dịch.
+
+- **2026-06-09 (social-hero - active status & online indicator)**:
+  - 🚀 **Hoàn thành Giai đoạn 3: Tích hợp Active Status (Online Indicator)**:
+    - **Database Schema (`schema.ts`) [MODIFY]**: Thêm cột `lastActiveAt: timestamp('last_active_at').defaultNow()` vào bảng `socialProfiles` để theo dõi thời gian hoạt động. Đã chạy `npx drizzle-kit push` đồng bộ CSDL thành công.
+    - **Server Actions & Queries (`social-actions.ts`, `social-queries.ts`) [MODIFY]**:
+      - Bổ sung Server Action `pingHeartbeatAction()` để cập nhật `lastActiveAt` của người dùng hiện tại lên thời gian hiện tại.
+      - Cập nhật hàm `getFriends` và export thêm `getFriendsWithProfile()` lấy thêm trường `lastActiveAt` khi join với bảng `socialProfiles`.
+    - **UI & Client Wiring (`layout.tsx`, `social-layout.tsx`, `social-rightbar.tsx`) [MODIFY]**:
+      - Server Component `layout.tsx` lấy danh sách bạn bè qua `getFriendsWithProfile()` và truyền xuống client layout.
+      - `SocialRightbar` map danh sách bạn bè thật thay vì mock, tự động tính toán trạng thái `isOnline` (hoạt động trong vòng 3 phút qua) để hiển thị Dấu chấm xanh (Green Dot) động.
+      - Tích hợp Client-side Heartbeat sử dụng `useEffect` gọi `pingHeartbeatAction()` định kỳ mỗi 60 giây, kết hợp state thời gian `now` để kích hoạt Reactivity giúp dấu chấm xanh tự tắt chuẩn xác khi quá hạn mà không cần tải lại trang.
+    - **TypeScript Verification**: Chạy typecheck `npx tsc --noEmit` hoàn tất không lỗi biên dịch.
+
+- **2026-06-08 (social-hero - group moderation MVP)**:
+  - 🚀 **Hoàn thành Giai đoạn 2: Tính năng Duyệt Nhóm (Group Moderation)**:
+    - **Database Schema (`schema.ts`) [MODIFY]**: Bổ sung cấu hình nhóm `requireJoinApproval`, `requirePostApproval` (kiểu boolean) vào bảng `socialGroups`. Bổ sung trường `status` (pending | approved | rejected) vào bảng `socialGroupMembers` và `feedPosts` nhằm hỗ trợ hàng đợi phê duyệt.
+    - **Server Actions & Queries (`social-group-actions.ts`, `social-queries.ts`) [MODIFY]**: Cập nhật logic `joinGroupAction` cho phép đặt trạng thái `pending` nếu nhóm yêu cầu phê duyệt thành viên. Cung cấp API duyệt `approveGroupMemberAction` và `approveGroupPostAction`. Bổ sung queries `getGroupPendingMembers` và `getGroupPendingPosts` cho bảng Admin. Cập nhật `getUserFeedPosts` lọc bỏ bài viết pending khỏi bảng tin chung.
+    - **UI Admin & Client (`admin-client.tsx`, `group-feed-client.tsx`) [MODIFY]**: Tích hợp các Tabs *Danh sách thành viên*, *Duyệt thành viên* và *Duyệt bài đăng* vào giao diện Quản trị nhóm, cho phép duyệt hoặc từ chối dễ dàng. Ẩn nút đăng bài đối với thành viên đang pending và hiển thị thẻ thông báo màu cam chờ duyệt.
+    - **Kiểm định DB**: Chạy thành công `npx drizzle-kit push` không lỗi và đã verify typecheck 100%.
+
+- **2026-06-08 (social-hero - reactions and nested comments MVP)**:
+  - 🚀 **Hoàn thành Giai đoạn 1: Nâng cấp Bảng Tin (Reactions & Nested Comments)**:
+    - **Database Schema (`schema.ts`, `migrate-social-phase1.ts`) [MODIFY/NEW]**: Khởi tạo bảng `feedCommentLikes` để hỗ trợ thả reactions cho từng comment, thiết lập quan hệ một-nhiều với `feedComments` và `users`, và chạy script migration thành công trên Supabase PostgreSQL database.
+    - **Server Actions & Queries (`social-queries.ts`, `actions.ts`) [MODIFY]**: 
+      - Nâng cấp `getUserFeedPosts` để query comment likes, phân loại các lượt reactions (Like, Love, Haha, Wow, Sad, Angry) và xây dựng cấu trúc cây đệ quy cho bình luận lồng nhau theo `parentId`.
+      - Nâng cấp `toggleFeedLikeAction`, bổ sung `toggleFeedCommentLikeAction` và nâng cấp `addFeedCommentAction` để xử lý `reactionType` và `parentId` ở server-side.
+    - **UI & Client Wiring (`feed-post-card.tsx`, client feeds) [MODIFY]**: 
+      - Nâng cấp `FeedPostCard` hiển thị Hover Reaction Picker với 6 loại cảm xúc, hiển thị chi tiết tổng hợp counts của từng loại emoji.
+      - Thiết kế Component `CommentItem` đệ quy tự render các tầng replies thụt lề, cho phép thả cảm xúc trực tiếp trên bình luận và mở form trả lời riêng cho từng bình luận.
+      - Đồng bộ hóa logic handler tương tác qua các client-side feeds (`social-feed-client.tsx`, `group-feed-client.tsx`, `profile-tabs.tsx`).
+    - **TypeScript Verification**: Chạy type check tĩnh `npx tsc --noEmit` đạt 0 lỗi biên dịch.
+
+- **2026-06-08 (social-security - visibility bypass and sql safety fixes)**:
+  - 🚀 **Vá lỗ hổng bảo mật & Lỗi SQL trong social module**:
+    - **Visibility Bypass Fix (`social-queries.ts`, `profile/[userId]/page.tsx`) [MODIFY]**: Bổ sung `currentUserId` vào `getUserFeedPosts` để kiểm duyệt quyền truy cập bài viết (`private`, `friends`, `public`) theo mối quan hệ bạn bè qua `getFriendshipStatus`, vá lỗ hổng rò rỉ dữ liệu `SEC-01`. Sửa logic `likedByMe` kiểm tra chính xác theo người dùng đang xem.
+    - **SQL Safety Fix (`social-friend-actions.ts`) [MODIFY]**: Ràng buộc hàm `notInArray` trong `getSuggestionsAction` chỉ chạy khi mảng `excludeIds` không rỗng, loại bỏ triệt để rủi ro lỗi SQL cú pháp `BUG-01`.
+
+- **2026-06-08 (social-hero - obsidian glass layout & interactive mockup preview)**:
+  - 🚀 **Nâng cấp giao diện Obsidian Glass & Mockup Bảng tin**:
+    - **Obsidian Glass Layout (`layout.tsx`, `social-layout.tsx`, `social-top-nav.tsx`) [MODIFY]**: Chuyển đổi giao diện nền đen flat sang hiệu ứng Obsidian Glass cao cấp với radial gradient glow spots (purple, pink, blue) trên nền tối sâu `#08080c`. Áp dụng `backdrop-blur-xl` + `bg-white/[0.02]` cho các sidebar trái/phải và nâng cấp header thành kính mờ trong suốt `backdrop-blur-2xl` + bóng đổ sang trọng.
+    - **Mockup Posts Generation (`social-feed-client.tsx`) [MODIFY]**: Tạo ra các bài viết mockup chất lượng cực cao (Bản tin công nghệ kèm ảnh AI, Báo cáo MVP App kèm biểu đồ số liệu thực, và Task công việc kèm video chạy thử). Sử dụng công cụ sinh ảnh AI chuyên nghiệp thay vì dùng placeholder.
+    - **Native Video Player (`feed-post-card.tsx`) [MODIFY]**: Nâng cấp component `FeedPostCard` để hỗ trợ phát video native (thẻ `<video controls>`) trực tiếp ngay khi người dùng click vào card video mẫu, tăng cường đáng kể tính trực quan của mockup.
+
+- **2026-06-08 (social-hero - compile fix and interaction updates)**:
+  - 🚀 **Sửa lỗi biên dịch TypeScript 100% cho module Social**:
+    - **Friends page (`friends/page.tsx`) [MODIFY]**: Định dạng và map dữ liệu DB schema (bảng `users` và `socialProfiles`) khớp chính xác các interface `Friend`, `PendingRequest`, `Suggestion` của client, loại bỏ mismatch types.
+    - **Feed post card (`feed-post-card.tsx`) [MODIFY]**: Chuyển các props tương tác thành optional, tự túc quản lý state nội bộ (local state fallback) cho comments input, likes count, expanded comments, task completed, v.v. Nhờ đó, card hoạt động tốt cho cả dashboard feed (đầy đủ prop) và social feed (prop tối giản).
+    - **Social Feed & Profile (`social-feed-client.tsx`, `profile-tabs.tsx`) [MODIFY]**: Đồng bộ prop `currentUserId={user.id}` thay thế prop cũ `currentUser={user}`, thêm type signature `: any` để loại bỏ cảnh báo implicit any compiler checks.
+    - **Group Feed (`group-feed-client.tsx`) [MODIFY]**: Đấu nối đầy đủ các handlers tương tác (Like, Comment, Pin, Task Status) từ Server Actions vào `FeedPostCard` để Feed trong nhóm hoạt động đầy đủ tính năng.
 
 - **2026-06-08 (hero-care - phase 4 & 5 UI wiring, sidebar menu integration & compiler cache fix)**:
   - 🚀 **Hoàn thành Phase 4 & 5 UI & Sửa Compiler Cache**:

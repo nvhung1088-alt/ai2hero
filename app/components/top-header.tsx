@@ -146,11 +146,24 @@ interface HeaderUserAvatarProps {
   onClose: () => void;
 }
 
-function HeaderUserAvatar({ isOpen, onToggle, onClose }: HeaderUserAvatarProps) {
-  const { data: user } = useSWR<User>('/api/user', fetcher);
+export function HeaderUserAvatar({ isOpen, onToggle, onClose }: HeaderUserAvatarProps) {
+  const { data: user, isLoading } = useSWR<User>('/api/user', fetcher);
   const router = useRouter();
 
-  if (!user) return null;
+  if (isLoading) return <div className="h-8 w-8 rounded-full bg-white/5 animate-pulse shrink-0" />;
+
+  if (!user) {
+    return (
+      <button 
+        onClick={() => {
+          if (typeof window !== 'undefined') window.dispatchEvent(new Event('open-auth-modal'));
+        }}
+        className="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-full transition-all shrink-0 cursor-pointer"
+      >
+        Đăng nhập
+      </button>
+    );
+  }
   const initial = (user.name || user.email || '?').charAt(0).toUpperCase();
   return (
     <div className="relative">
@@ -237,11 +250,32 @@ export default function TopHeader({ onToggleSidebar }: TopHeaderProps) {
 
   // State Global Search
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<{ apps: any[], members: any[], posts: any[] } | null>(null);
+  const [searchResults, setSearchResults] = useState<any>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
+  const [viewCategory, setViewCategory] = useState<{type: string, title: string} | null>(null);
+  const [fullCategoryResults, setFullCategoryResults] = useState<any[]>([]);
+  const [isLoadingCategory, setIsLoadingCategory] = useState(false);
+
+  const handleViewAll = async (type: string, title: string) => {
+    setViewCategory({type, title});
+    setIsLoadingCategory(true);
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&scope=team&category=${type}`);
+      const data = await res.json();
+      if (data.success) {
+        setFullCategoryResults(data[type] || []);
+      }
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setIsLoadingCategory(false);
+    }
+  };
+
   // Dynamic Data Fetching qua SWR
+  const { data: user } = useSWR<User>('/api/user', fetcher);
   const { data: notifData } = useSWR('/api/notifications', fetcher);
   const { data: announcementsData } = useSWR('/api/announcements', fetcher);
 
@@ -253,6 +287,7 @@ export default function TopHeader({ onToggleSidebar }: TopHeaderProps) {
   const notifRef = useRef<HTMLDivElement>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const markAllAsRead = async () => {
     const res = await markAllNotificationsAsReadAction();
@@ -284,24 +319,34 @@ export default function TopHeader({ onToggleSidebar }: TopHeaderProps) {
     }
   };
 
-  const handleSearchChange = async (val: string) => {
+  const handleSearchChange = (val: string) => {
     setSearchQuery(val);
     if (!val.trim()) {
       setSearchResults(null);
+      setIsSearching(false);
+      setViewCategory(null);
       return;
     }
     setIsSearching(true);
-    try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(val)}`);
-      const data = await res.json();
-      if (data.success) {
-        setSearchResults(data);
+    
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(val)}&scope=team`);
+        const data = await res.json();
+        if (data.success) {
+          setSearchResults(data);
+          if (viewCategory) {
+            handleViewAll(viewCategory.type, viewCategory.title);
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi khi fetch search kết quả:', err);
+      } finally {
+        setIsSearching(false);
       }
-    } catch (err) {
-      console.error('Lỗi khi fetch search kết quả:', err);
-    } finally {
-      setIsSearching(false);
-    }
+    }, 400);
   };
 
   // Phím tắt Ctrl+K để focus nhanh vào ô tìm kiếm toàn cục
@@ -373,31 +418,33 @@ export default function TopHeader({ onToggleSidebar }: TopHeaderProps) {
         </div>
         <div className="flex items-center gap-1">
           {/* Notification mini */}
-          <div className="relative" ref={notifRef}>
-            <button
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="relative p-2 rounded-lg text-gray-400 hover:text-white cursor-pointer"
-              aria-label="Thông báo"
-            >
-              <Bell className="h-4.5 w-4.5" />
-              {bellUnreadCount > 0 && (
-                <span className="absolute top-1 right-1 h-3.5 w-3.5 rounded-full bg-red-500 text-[8px] font-black text-white flex items-center justify-center border border-gray-900">
-                  {bellUnreadCount}
-                </span>
+          {user && (
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                className="relative p-2 rounded-lg text-gray-400 hover:text-white cursor-pointer"
+                aria-label="Thông báo"
+              >
+                <Bell className="h-4.5 w-4.5" />
+                {bellUnreadCount > 0 && (
+                  <span className="absolute top-1 right-1 h-3.5 w-3.5 rounded-full bg-red-500 text-[8px] font-black text-white flex items-center justify-center border border-gray-900">
+                    {bellUnreadCount}
+                  </span>
+                )}
+              </button>
+              {/* Dropdown thông báo di động */}
+              {isNotifOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-gray-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-scale-up">
+                  <NotifDropdownContent
+                    unreadCount={bellUnreadCount}
+                    notifs={notificationsList}
+                    markAllAsRead={markAllAsRead}
+                    handleNotifClick={handleNotifClick}
+                  />
+                </div>
               )}
-            </button>
-            {/* Dropdown thông báo di động */}
-            {isNotifOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-gray-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-scale-up">
-                <NotifDropdownContent
-                  unreadCount={bellUnreadCount}
-                  notifs={notificationsList}
-                  markAllAsRead={markAllAsRead}
-                  handleNotifClick={handleNotifClick}
-                />
-              </div>
-            )}
-          </div>
+            </div>
+          )}
           {/* Avatar mini di động */}
           <div ref={avatarRef} className="shrink-0 size-8 flex items-center justify-center">
             <HeaderUserAvatar
@@ -461,13 +508,59 @@ export default function TopHeader({ onToggleSidebar }: TopHeaderProps) {
             {isSearchFocused && searchQuery.trim() && (
               <div className="absolute left-0 right-0 mt-2 bg-gray-950/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-scale-up max-h-96 overflow-y-auto divide-y divide-white/5 scrollbar-thin">
                 {isSearching ? (
-                  <div className="p-6 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
-                    <span className="animate-spin text-orange-500">⏳</span>
-                    <span>Đang tìm kiếm trên hệ thống...</span>
+                  <div className="p-4 space-y-3">
+                    <div className="h-4 w-32 bg-white/5 rounded animate-pulse"></div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3"><div className="h-8 w-8 rounded-full bg-white/5 animate-pulse"></div><div className="flex-1 space-y-1"><div className="h-3 w-1/2 bg-white/5 animate-pulse"></div><div className="h-2 w-1/4 bg-white/5 animate-pulse"></div></div></div>
+                      <div className="flex items-center gap-3"><div className="h-8 w-8 rounded-full bg-white/5 animate-pulse"></div><div className="flex-1 space-y-1"><div className="h-3 w-1/2 bg-white/5 animate-pulse"></div><div className="h-2 w-1/4 bg-white/5 animate-pulse"></div></div></div>
+                    </div>
                   </div>
-                ) : (!searchResults || (searchResults.apps.length === 0 && searchResults.members.length === 0 && searchResults.posts.length === 0)) ? (
+                ) : (!searchResults || (
+                  searchResults.apps?.length === 0 && 
+                  searchResults.members?.length === 0 && 
+                  searchResults.posts?.length === 0 &&
+                  searchResults.films?.length === 0 &&
+                  searchResults.products?.length === 0 &&
+                  searchResults.groups?.length === 0 &&
+                  searchResults.pages?.length === 0 &&
+                  searchResults.announcements?.length === 0
+                )) ? (
                   <div className="p-6 text-center text-xs text-gray-500 italic">
                     Không tìm thấy kết quả nào khớp với từ khóa "{searchQuery}"
+                  </div>
+                ) : viewCategory ? (
+                  <div className="p-2 space-y-2">
+                    <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10 px-2.5">
+                      <button onClick={() => setViewCategory(null)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                      </button>
+                      <span className="text-xs font-bold text-white uppercase">Tất cả {viewCategory.title}</span>
+                    </div>
+                    {isLoadingCategory ? (
+                      <div className="text-center py-4 text-sm text-gray-500 animate-pulse">Đang tải dữ liệu...</div>
+                    ) : (
+                      <div className="space-y-0.5">
+                        {fullCategoryResults.map((item: any) => {
+                          if (viewCategory.type === 'members') return (
+                            <div key={item.id} className="flex items-center gap-2.5 px-2.5 py-2 hover:bg-white/5 rounded-xl transition-all"><div className="h-6 w-6 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 font-bold text-xs flex items-center justify-center shrink-0">{item.avatar}</div><div className="min-w-0 flex-1 text-left"><p className="text-xs font-bold text-white">{item.name}</p><p className="text-[10px] text-gray-500 truncate">{item.email}</p></div><span className="text-[9px] font-bold bg-white/5 text-gray-400 px-2 py-0.5 rounded-full shrink-0 border border-white/5">{item.role}</span></div>
+                          );
+                          if (viewCategory.type === 'posts') return (
+                            <Link key={item.id} href={`/dashboard/home#post-${item.id}`} onClick={() => setIsSearchFocused(false)} className="block px-2.5 py-2 hover:bg-white/5 rounded-xl transition-all text-left"><p className="text-xs text-gray-300 line-clamp-1 text-left">{item.type === 'task_assignment' ? `📋 [Nhiệm vụ] ${item.taskTitle}` : item.message}</p><p className="text-[9px] text-gray-500 mt-0.5 text-left">{item.createdAt}</p></Link>
+                          );
+                          if (viewCategory.type === 'films') return (
+                            <Link key={item.id} href={`/film/${item.slug}`} onClick={() => setIsSearchFocused(false)} className="flex items-center gap-2.5 px-2.5 py-2 hover:bg-white/5 rounded-xl transition-all"><img src={item.coverUrl || ''} className="h-10 w-7 rounded object-cover" alt="" /><div className="min-w-0 flex-1 text-left"><p className="text-xs font-bold text-white line-clamp-1">{item.title}</p><p className="text-[10px] text-gray-500 truncate">{item.genre}</p></div></Link>
+                          );
+                          if (viewCategory.type === 'products') return (
+                            <Link key={item.id} href={`/marketplace/product/${item.id}`} onClick={() => setIsSearchFocused(false)} className="flex items-center gap-2.5 px-2.5 py-2 hover:bg-white/5 rounded-xl transition-all"><img src={item.images?.[0] || ''} className="h-8 w-8 rounded object-cover bg-white/10" alt="" /><div className="min-w-0 flex-1 text-left"><p className="text-xs font-bold text-white line-clamp-1">{item.name}</p><p className="text-[10px] text-gray-500 truncate">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.price)} - {item.shopName}</p></div></Link>
+                          );
+                          if (viewCategory.type === 'announcements') return (
+                            <div key={item.id} className="block px-2.5 py-2 hover:bg-white/5 rounded-xl transition-all text-left"><p className="text-xs font-bold text-white line-clamp-1 flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full shrink-0 ${item.severity === 'urgent' ? 'bg-red-500' : item.severity === 'warning' ? 'bg-orange-500' : 'bg-blue-500'}`}></span>{item.title}</p></div>
+                          );
+                          return null;
+                        })}
+                        {fullCategoryResults.length === 0 && <div className="text-center py-4 text-xs text-gray-500">Không tìm thấy kết quả nào</div>}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="p-2 space-y-3">
@@ -502,7 +595,10 @@ export default function TopHeader({ onToggleSidebar }: TopHeaderProps) {
                     {/* Nhóm 2: Thành viên */}
                     {searchResults.members.length > 0 && (
                       <div className="space-y-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 px-2.5 block text-left">Thành viên ({searchResults.members.length})</span>
+                        <div className="flex items-center justify-between px-2.5 mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Thành viên ({searchResults.members.length})</span>
+                          {searchResults.members.length >= 5 && <button onClick={() => handleViewAll('members', 'Thành viên')} className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors">Xem tất cả</button>}
+                        </div>
                         <div className="space-y-0.5">
                           {searchResults.members.map((m: any) => (
                             <div
@@ -528,7 +624,10 @@ export default function TopHeader({ onToggleSidebar }: TopHeaderProps) {
                     {/* Nhóm 3: Bài đăng Bảng tin */}
                     {searchResults.posts.length > 0 && (
                       <div className="space-y-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 px-2.5 block text-left">Bảng tin Social ({searchResults.posts.length})</span>
+                        <div className="flex items-center justify-between px-2.5 mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Bảng tin Social ({searchResults.posts.length})</span>
+                          {searchResults.posts.length >= 5 && <button onClick={() => handleViewAll('posts', 'Bảng tin Social')} className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors">Xem tất cả</button>}
+                        </div>
                         <div className="space-y-0.5">
                           {searchResults.posts.map((post: any) => (
                             <Link
@@ -548,6 +647,68 @@ export default function TopHeader({ onToggleSidebar }: TopHeaderProps) {
                               </p>
                               <p className="text-[9px] text-gray-500 mt-0.5 text-left">{post.createdAt}</p>
                             </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Nhóm 4: Phim */}
+                    {searchResults.films && searchResults.films.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between px-2.5 mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Phim ({searchResults.films.length})</span>
+                          {searchResults.films.length >= 5 && <button onClick={() => handleViewAll('films', 'Phim')} className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors">Xem tất cả</button>}
+                        </div>
+                        <div className="space-y-0.5">
+                          {searchResults.films.map((film: any) => (
+                            <Link key={film.id} href={`/film/${film.slug}`} onClick={() => setIsSearchFocused(false)} className="flex items-center gap-2.5 px-2.5 py-2 hover:bg-white/5 rounded-xl transition-all">
+                              <img src={film.coverUrl || ''} className="h-10 w-7 rounded object-cover" alt="" />
+                              <div className="min-w-0 flex-1 text-left">
+                                <p className="text-xs font-bold text-white line-clamp-1">{film.title}</p>
+                                <p className="text-[10px] text-gray-500 truncate">{film.genre}</p>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Nhóm 5: Sản phẩm */}
+                    {searchResults.products && searchResults.products.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between px-2.5 mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Sản phẩm ({searchResults.products.length})</span>
+                          {searchResults.products.length >= 5 && <button onClick={() => handleViewAll('products', 'Sản phẩm')} className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors">Xem tất cả</button>}
+                        </div>
+                        <div className="space-y-0.5">
+                          {searchResults.products.map((p: any) => (
+                            <Link key={p.id} href={`/marketplace/product/${p.id}`} onClick={() => setIsSearchFocused(false)} className="flex items-center gap-2.5 px-2.5 py-2 hover:bg-white/5 rounded-xl transition-all">
+                              <img src={p.images?.[0] || ''} className="h-8 w-8 rounded object-cover bg-white/10" alt="" />
+                              <div className="min-w-0 flex-1 text-left">
+                                <p className="text-xs font-bold text-white line-clamp-1">{p.name}</p>
+                                <p className="text-[10px] text-gray-500 truncate">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.price)} - {p.shopName}</p>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Nhóm 6: Tin tức hệ thống */}
+                    {searchResults.announcements && searchResults.announcements.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between px-2.5 mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Tin tức ({searchResults.announcements.length})</span>
+                          {searchResults.announcements.length >= 5 && <button onClick={() => handleViewAll('announcements', 'Tin tức')} className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors">Xem tất cả</button>}
+                        </div>
+                        <div className="space-y-0.5">
+                          {searchResults.announcements.map((a: any) => (
+                            <div key={a.id} className="block px-2.5 py-2 hover:bg-white/5 rounded-xl transition-all text-left">
+                              <p className="text-xs font-bold text-white line-clamp-1 flex items-center gap-1.5">
+                                <span className={`h-2 w-2 rounded-full shrink-0 ${a.severity === 'urgent' ? 'bg-red-500' : a.severity === 'warning' ? 'bg-orange-500' : 'bg-blue-500'}`}></span>
+                                {a.title}
+                              </p>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -617,49 +778,53 @@ export default function TopHeader({ onToggleSidebar }: TopHeaderProps) {
 
         {/* — Phân vùng Phải: Utilities + Avatar — */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Super Admin Quick Access */}
-          <SuperAdminButton />
-          
-          {/* Icon Loa phát thanh (Megaphone announcements) */}
-          <button
-            onClick={handleOpenAnnouncements}
-            className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
-            title="Cập nhật hệ thống"
-            aria-label="Cập nhật hệ thống"
-          >
-            <Megaphone className="h-4.5 w-4.5" />
-            {megaphoneUnreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-orange-500 border border-gray-950 animate-pulse" />
-            )}
-          </button>
+          {user && (
+            <>
+              {/* Super Admin Quick Access */}
+              <SuperAdminButton />
+              
+              {/* Icon Loa phát thanh (Megaphone announcements) */}
+              <button
+                onClick={handleOpenAnnouncements}
+                className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+                title="Cập nhật hệ thống"
+                aria-label="Cập nhật hệ thống"
+              >
+                <Megaphone className="h-4.5 w-4.5" />
+                {megaphoneUnreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-orange-500 border border-gray-950 animate-pulse" />
+                )}
+              </button>
 
-          {/* Notification Bell */}
-          <div className="relative" ref={notifRef}>
-            <button
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
-              title="Thông báo"
-              aria-label="Thông báo"
-            >
-              <Bell className="h-4.5 w-4.5" />
-              {bellUnreadCount > 0 && (
-                <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-red-500 text-[9px] font-black text-white flex items-center justify-center border-2 border-gray-950 animate-pulse">
-                  {bellUnreadCount}
-                </span>
-              )}
-            </button>
-            {/* Notification Dropdown */}
-            {isNotifOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-gray-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-scale-up">
-                <NotifDropdownContent
-                  unreadCount={bellUnreadCount}
-                  notifs={notificationsList}
-                  markAllAsRead={markAllAsRead}
-                  handleNotifClick={handleNotifClick}
-                />
+              {/* Notification Bell */}
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={() => setIsNotifOpen(!isNotifOpen)}
+                  className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+                  title="Thông báo"
+                  aria-label="Thông báo"
+                >
+                  <Bell className="h-4.5 w-4.5" />
+                  {bellUnreadCount > 0 && (
+                    <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-red-500 text-[9px] font-black text-white flex items-center justify-center border-2 border-gray-950 animate-pulse">
+                      {bellUnreadCount}
+                    </span>
+                  )}
+                </button>
+                {/* Notification Dropdown */}
+                {isNotifOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-gray-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-scale-up">
+                    <NotifDropdownContent
+                      unreadCount={bellUnreadCount}
+                      notifs={notificationsList}
+                      markAllAsRead={markAllAsRead}
+                      handleNotifClick={handleNotifClick}
+                    />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
 
           {/* Icon Trợ giúp */}
           <button className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer" title="Trợ giúp" aria-label="Trợ giúp">

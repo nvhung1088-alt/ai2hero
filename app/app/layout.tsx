@@ -1,6 +1,6 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
-import { Manrope } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import { getUser, getTeamForUser } from '@/lib/db/queries';
 import { SWRConfig } from 'swr';
 import { ToastProvider } from '@/components/ui/toast';
@@ -21,7 +21,7 @@ export const viewport: Viewport = {
   maximumScale: 1
 };
 
-const manrope = Manrope({ subsets: ['latin'], display: 'swap' });
+const fontSans = Inter({ subsets: ['vietnamese', 'latin'], display: 'swap' });
 
 import { cookies } from 'next/headers';
 
@@ -33,16 +33,19 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const hasSession = cookieStore.has('session');
 
-  const fallback: Record<string, any> = {
+  const rawFallback: Record<string, any> = {
     '/api/user': hasSession ? await getUser() : null,
     '/api/team': hasSession ? await getTeamForUser() : null
   };
+  
+  // Serialize fallback to strip any Date objects for RSC payload
+  const fallback = JSON.parse(JSON.stringify(rawFallback));
 
   return (
     <html
       lang="vi"
       translate="no"
-      className={`bg-white dark:bg-gray-950 text-black dark:text-white ${manrope.className}`}
+      className={`bg-white dark:bg-gray-950 text-black dark:text-white ${fontSans.className}`}
       suppressHydrationWarning={true}
     >
       <body className="min-h-[100dvh] bg-gray-50" suppressHydrationWarning={true}>

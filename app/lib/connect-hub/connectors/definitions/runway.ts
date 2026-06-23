@@ -14,5 +14,9 @@ export const runwayConnector: ConnectorDefinition = {
     { slug: 'generate_video', name: 'Tạo Video AI', description: 'Tạo video từ prompt văn bản', inputSchema: [] },
   ],
   popular: true,
-  setupGuide: '<p><b>1.</b> Đăng nhập <a href="https://app.runwayml.com/" target="_blank" rel="noreferrer">RunwayML</a>.</p><p><b>2.</b> Lấy Developer API Key từ phần cài đặt tài khoản (nếu được hỗ trợ/thử nghiệm).</p>'
+  setupGuide: '<p><b>1.</b> Đăng nhập <a href="https://app.runwayml.com/" target="_blank" rel="noreferrer">RunwayML</a>.</p><p><b>2.</b> Lấy Developer API Key từ phần cài đặt tài khoản (nếu được hỗ trợ/thử nghiệm).</p>',
+  aiCapability: ['video'],
+  aiModels: [
+    { name: 'gen3', type: 'video', modes: ['text', 'singleImage'] }
+  ]
 };

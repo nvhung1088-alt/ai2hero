@@ -9,6 +9,7 @@ import {
   Crown,
   Building2,
   Video,
+  Clapperboard,
   type LucideIcon
 } from 'lucide-react';
 
@@ -37,6 +38,7 @@ export const APP_ICON_MAP: Record<string, LucideIcon> = {
   pos: ShoppingCart,
   content: FileText,
   Video,
+  Clapperboard,
 };
 
 // PLAN_ICON gộp từ layout.tsx và dashboard/page.tsx
@@ -225,10 +227,16 @@ export const MOCK_FREE_TIER_LIMITS: FreeTierLimit[] = [
 ];
 
 // === Feed Types ===
-export type FeedPostType = 'system_activity' | 'mvp_result' | 'task_assignment' | 'news';
+export type FeedPostType = 'system_activity' | 'mvp_result' | 'task_assignment' | 'news' | 'film_publish';
 export type ReactionType = 'like' | 'love' | 'celebrate';
 export interface FeedComment {
   id: number; userId: number; userName: string; userAvatar: string; content: string; timestamp: string; mentions?: string[];
+  parentId?: number | null;
+  likesCount?: number;
+  likedByMe?: boolean;
+  reactionType?: string | null;
+  reactionsSummary?: Record<string, number>;
+  replies?: any[];
 }
 export interface FeedAttachment {
   type: 'image' | 'video' | 'file'; url: string; thumbnailUrl?: string; fileName?: string; caption?: string;
@@ -238,4 +246,11 @@ export interface FeedPost {
   message: string; appId?: string; resultPreview?: string; resultMetrics?: { label: string; value: string }[];
   taskTitle?: string; taskStatus?: 'pending' | 'in_progress' | 'completed'; taskAssignee?: string; taskDueDate?: string;
   likes: number; likedByMe: boolean; comments: FeedComment[]; mentions?: string[]; pinned?: boolean; pinnedBy?: string; attachments?: FeedAttachment[];
+  myReactionType?: string | null;
+  reactionsSummary?: Record<string, number>;
+  feeling?: string;
+  location?: string;
+  taggedUsers?: string[];
+  page?: { id: number; name: string; avatar?: string | null };
+  group?: { id: number; name: string; coverUrl?: string | null };
 }

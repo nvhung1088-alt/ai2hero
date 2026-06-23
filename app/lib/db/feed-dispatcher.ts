@@ -8,13 +8,16 @@ import { createNotification } from './notification-actions';
 export interface DispatchFeedParams {
   teamId: number;
   userId: number;
-  type: 'mvp_result' | 'system_activity';
+  type: 'mvp_result' | 'system_activity' | 'marketplace_product' | 'heroweb_publish' | 'film_publish';
   appId: string;
   message: string;
   resultPreview?: string;
   resultMetrics?: { label: string; value: string }[];
   mentions?: string[];
   attachments?: { type: 'image' | 'video' | 'file'; url: string; fileName?: string; caption?: string }[];
+  pageId?: number;
+  groupId?: number;
+  visibility?: 'public' | 'private' | 'team';
 }
 
 /**
@@ -35,22 +38,30 @@ export async function dispatchMvpFeedPost(params: DispatchFeedParams) {
     resultPreview,
     resultMetrics,
     mentions,
-    attachments
+    attachments,
+    pageId,
+    groupId,
+    visibility
   } = params;
 
   // 1. Validate dữ liệu cơ bản
-  if (!teamId || !userId) {
-    return { success: false, error: 'Thiếu teamId hoặc userId bắt buộc.' };
+  if (!teamId && !pageId && !groupId) {
+    return { success: false, error: 'Thiếu định danh nơi đăng (teamId, pageId hoặc groupId).' };
+  }
+  if (!userId) {
+    return { success: false, error: 'Thiếu userId bắt buộc.' };
   }
 
-  // 1b. Verify user thuộc workspace (Tenant Isolation)
-  const [membership] = await db
-    .select()
-    .from(teamMembers)
-    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)))
-    .limit(1);
-  if (!membership) {
-    return { success: false, error: 'Người dùng không thuộc không gian làm việc này.' };
+  // 1b. Verify user thuộc workspace (Tenant Isolation) nếu đăng vào team
+  if (teamId) {
+    const [membership] = await db
+      .select()
+      .from(teamMembers)
+      .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)))
+      .limit(1);
+    if (!membership && !pageId) {
+      return { success: false, error: 'Người dùng không thuộc không gian làm việc này.' };
+    }
   }
 
   if (!message || !message.trim()) {
@@ -76,7 +87,7 @@ export async function dispatchMvpFeedPost(params: DispatchFeedParams) {
     const [newPost] = await db
       .insert(feedPosts)
       .values({
-        teamId,
+        teamId: teamId || null,
         userId,
         type: type || 'mvp_result',
         message: message.trim(),
@@ -87,6 +98,9 @@ export async function dispatchMvpFeedPost(params: DispatchFeedParams) {
         resultPreview: resultPreview || null,
         resultMetrics: safeMetrics,
         pinned: 0,
+        pageId: pageId || null,
+        groupId: groupId || null,
+        visibility: visibility || 'public',
         createdAt: new Date(),
         updatedAt: new Date()
       })
@@ -96,23 +110,25 @@ export async function dispatchMvpFeedPost(params: DispatchFeedParams) {
       return { success: false, error: 'Không thể chèn bài viết vào cơ sở dữ liệu feed_posts.' };
     }
 
-    // 4. Trigger notifications cho tất cả thành viên trong nhóm (trừ chính userId)
-    const workspaceMembers = await db
-      .select({ userId: teamMembers.userId })
-      .from(teamMembers)
-      .where(eq(teamMembers.teamId, teamId));
+    // 4. Trigger notifications cho tất cả thành viên trong nhóm (trừ chính userId) nếu là post team
+    if (teamId) {
+      const workspaceMembers = await db
+        .select({ userId: teamMembers.userId })
+        .from(teamMembers)
+        .where(eq(teamMembers.teamId, teamId));
 
-    for (const member of workspaceMembers) {
-      if (member.userId !== userId) {
-        // Gửi thông báo Bell thời gian thực
-        await createNotification(
-          member.userId,
-          userId,
-          displayName,
-          displayName.charAt(0).toUpperCase(),
-          `🤖 Cập nhật mới từ MVP [${appId}]: "${message.slice(0, 40)}${message.length > 40 ? '...' : ''}"`,
-          newPost.id
-        );
+      for (const member of workspaceMembers) {
+        if (member.userId !== userId) {
+          // Gửi thông báo Bell thời gian thực
+          await createNotification(
+            member.userId,
+            userId,
+            displayName,
+            displayName.charAt(0).toUpperCase(),
+            `🤖 Cập nhật mới từ MVP [${appId}]: "${message.slice(0, 40)}${message.length > 40 ? '...' : ''}"`,
+            newPost.id
+          );
+        }
       }
     }
 

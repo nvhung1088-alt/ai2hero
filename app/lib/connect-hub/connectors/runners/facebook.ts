@@ -393,9 +393,144 @@ export async function runFacebook(
       return { status: 'success', data };
     }
 
+    case 'publish_photo': {
+      const { pageId, pageToken, imageUrl, caption } = input || {};
+      if (!pageId || !imageUrl) {
+        throw new Error('Thiếu pageId hoặc imageUrl để đăng ảnh.');
+      }
+      const tokenToUse = pageToken || accessToken;
+      try {
+        const data = await fetchFB(`/${pageId}/photos`, tokenToUse, 'POST', {
+          url: imageUrl,
+          message: caption || ''
+        });
+        return { status: 'success', data };
+      } catch (error: any) {
+        throw new Error(parseFBError(error));
+      }
+    }
+
+    case 'publish_photos': {
+      const { pageId, pageToken, imageUrls, message } = input || {};
+      if (!pageId || !imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+        throw new Error('Thiếu pageId hoặc danh sách imageUrls.');
+      }
+      const tokenToUse = pageToken || accessToken;
+      try {
+        const mediaFbIds: string[] = [];
+        for (const url of imageUrls) {
+          const photoData = await fetchFB(`/${pageId}/photos`, tokenToUse, 'POST', {
+            url,
+            published: false
+          });
+          if (photoData?.id) {
+            mediaFbIds.push(photoData.id);
+          }
+        }
+        if (mediaFbIds.length === 0) {
+          throw new Error('Không upload được ảnh nào lên Facebook.');
+        }
+        const attachedMedia = mediaFbIds.map(id => ({ media_fbid: id }));
+        const data = await fetchFB(`/${pageId}/feed`, tokenToUse, 'POST', {
+          message: message || '',
+          attached_media: attachedMedia
+        });
+        return { status: 'success', data };
+      } catch (error: any) {
+        throw new Error(parseFBError(error));
+      }
+    }
+
+    case 'publish_video': {
+      const { pageId, pageToken, videoUrl, title, description } = input || {};
+      if (!pageId || !videoUrl) {
+        throw new Error('Thiếu pageId hoặc videoUrl để đăng video.');
+      }
+      const tokenToUse = pageToken || accessToken;
+      try {
+        const data = await fetchFB(`/${pageId}/videos`, tokenToUse, 'POST', {
+          file_url: videoUrl,
+          title: title || '',
+          description: description || ''
+        });
+        return { status: 'success', data };
+      } catch (error: any) {
+        throw new Error(parseFBError(error));
+      }
+    }
+
+    case 'publish_reel': {
+      const { pageId, pageToken, videoUrl, description } = input || {};
+      if (!pageId || !videoUrl) {
+        throw new Error('Thiếu pageId hoặc videoUrl để đăng Reel.');
+      }
+      const tokenToUse = pageToken || accessToken;
+      try {
+        // Bước 1: Khởi tạo upload Reel
+        const startData = await fetchFB(`/${pageId}/video_reels`, tokenToUse, 'POST', {
+          upload_phase: 'start'
+        });
+        const videoId = startData?.video_id;
+        const uploadUrl = startData?.upload_url;
+        if (!videoId || !uploadUrl) {
+          throw new Error('Không thể khởi tạo tiến trình đăng Reel từ Facebook API.');
+        }
+
+        // Bước 2: Download video và PUT binary tới upload_url
+        const videoRes = await fetch(videoUrl);
+        if (!videoRes.ok) {
+          throw new Error(`Không thể tải video từ URL: ${videoUrl}`);
+        }
+        const arrayBuffer = await videoRes.arrayBuffer();
+        const videoBuffer = Buffer.from(arrayBuffer);
+        const fileSize = videoBuffer.length;
+
+        const uploadRes = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `OAuth ${tokenToUse}`,
+            'offset': '0',
+            'file_size': fileSize.toString(),
+            'Content-Type': 'application/octet-stream'
+          },
+          body: videoBuffer
+        });
+
+        if (!uploadRes.ok) {
+          const uploadErrText = await uploadRes.text().catch(() => 'Unknown upload error');
+          throw new Error(`Lỗi upload video Reel lên Facebook storage: ${uploadErrText}`);
+        }
+
+        // Bước 3: Hoàn tất tiến trình upload (finish)
+        const finishData = await fetchFB(`/${pageId}/video_reels`, tokenToUse, 'POST', {
+          upload_phase: 'finish',
+          video_id: videoId,
+          video_state: 'PUBLISHED',
+          description: description || ''
+        });
+
+        return { status: 'success', data: { video_id: videoId, finish: finishData } };
+      } catch (error: any) {
+        throw new Error(parseFBError(error));
+      }
+    }
+
     default:
       throw new Error(`Action "${action}" không được hỗ trợ bởi Meta Platform connector.`);
   }
+}
+
+// ═══ HELPER: parseFBError ═══
+function parseFBError(error: any): string {
+  const message = error.message || '';
+  if (message.includes('1366046')) return 'Lỗi Facebook (1366046): Ảnh quá lớn hoặc định dạng không hợp lệ.';
+  if (message.includes('1390008')) return 'Lỗi Facebook (1390008): Bạn đang đăng bài quá nhanh. Vui lòng thử lại sau.';
+  if (message.includes('1346003')) return 'Lỗi Facebook (1346003): Nội dung bài viết vi phạm chính sách cộng đồng của Facebook.';
+  if (message.includes('1404006')) return 'Lỗi Facebook (1404006): Yêu cầu kiểm tra bảo mật từ Facebook.';
+  if (message.includes('2069019')) return 'Lỗi Facebook (2069019): File video/ảnh không hợp lệ hoặc bị hỏng.';
+  if (message.includes('1404078')) return 'Lỗi Facebook (1404078): Yêu cầu xác thực lại quyền quản lý trang Facebook.';
+  if (message.includes('190') || message.includes('Error validating access token')) return 'Lỗi Facebook (190): Token Facebook đã hết hạn hoặc bị thu hồi.';
+  return message;
 }
 
 // ═══ HELPER: fetchFB ═══

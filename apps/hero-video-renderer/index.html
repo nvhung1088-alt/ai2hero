@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Hero Video Renderer</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 40px; margin: 0; text-align: center; }
+    h1 { color: #818cf8; font-size: 24px; margin-bottom: 10px; }
+    p { color: #94a3b8; font-size: 14px; margin-bottom: 30px; }
+    .card { background-color: #1e293b; padding: 30px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); max-width: 400px; margin: 0 auto; }
+    input { background: #0f172a; border: 1px solid #334155; color: white; padding: 12px 16px; border-radius: 8px; width: calc(100% - 32px); font-size: 20px; text-align: center; letter-spacing: 4px; font-weight: bold; margin-bottom: 20px; }
+    input:focus { outline: none; border-color: #818cf8; }
+    button { background: #4f46e5; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; transition: 0.2s; }
+    button:hover { background: #4338ca; }
+    button:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
+    .status { margin-top: 20px; font-size: 14px; }
+    .success { color: #34d399; }
+    .error { color: #f87171; }
+    .progress-bar { width: 100%; background-color: #334155; border-radius: 4px; margin-top: 10px; display: none; }
+    .progress-fill { height: 8px; background-color: #818cf8; border-radius: 4px; width: 0%; transition: width 0.3s; }
+  </style>
+</head>
+<body>
+  <div class="card" id="pairing-screen">
+    <h1>Ghép Nối AI2Hero</h1>
+    <p>Nhập mã liên kết gồm 6 ký tự hiển thị trên ứng dụng Web để bắt đầu render Video tại máy.</p>
+    
+    <input type="text" id="pairCode" placeholder="ABCDEF" maxlength="6" style="text-transform: uppercase;">
+    <button id="btnPair">KẾT NỐI NGAY</button>
+    <div id="pairStatus" class="status"></div>
+  </div>
+
+  <div class="card" id="render-screen" style="display: none;">
+    <h1 style="color: #34d399">Đã Kết Nối</h1>
+    <p id="deviceInfo">Sẵn sàng nhận lệnh render từ Web.</p>
+    
+    <button id="btnMockRender" style="background: #0ea5e9;">Mô phỏng Nhận Job Render</button>
+    
+    <div id="renderStatus" class="status" style="margin-top: 30px;">Đang chờ việc...</div>
+    <div class="progress-bar" id="progressBarContainer">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+
+  <script src="./renderer.js"></script>
+</body>
+</html>

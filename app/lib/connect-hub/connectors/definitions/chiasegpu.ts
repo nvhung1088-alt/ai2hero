@@ -189,5 +189,16 @@ export const chiasegpuConnector: ConnectorDefinition = {
     updatePolicy: 'manual',
     healthCheckEndpoint: 'https://vilao.ai/api/v2/llm/marketplace/models',
     documentationUrl: 'https://vilao.ai'
-  }
+  },
+  aiCapability: ['text', 'image', 'video'],
+  aiModels: [
+    { name: 'krr/claude-sonnet-4-6', type: 'text' },
+    { name: 'ant/claude-opus-4-7', type: 'text' },
+    { name: 'krr/claude-haiku-4-7', type: 'text' },
+    { name: 'gx/gpt-5.5', type: 'text' },
+    { name: 'gx/gpt-5.4', type: 'text' },
+    { name: 'glm-5.1', type: 'text' },
+    { name: 'imx/gpt-image-2', type: 'image' },
+    { name: 'vid/veo-3.1-4k', type: 'video', modes: ['text', 'singleImage'] }
+  ]
 };

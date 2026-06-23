@@ -1,0 +1,357 @@
+=== BẮT ĐẦU FILE: art_skills/realpeople_modern_city/art_prompt/art_character_derivative.md ===
+---
+name: liveaction_urban_character_derivative
+description: Tài liệu ràng buộc cho việc tạo tài sản dẫn xuất nhân vật đô thị live-action
+metaData: liveaction_urban_art_skills
+---
+
+# Tài liệu ràng buộc cho việc tạo tài sản dẫn xuất nhân vật đô thị live-action
+
+---
+
+## Một, Logic tạo kiểu — Tạo kiểu cho một người thật
+
+> Nhân vật đô thị live-action không thảo luận về "chất liệu chồng chất", "render PBR", "độ chính xác mô hình". Chúng ta thảo luận về: nghệ sĩ trang điểm làm việc trên khuôn mặt người thật, nhà tạo mẫu tóc sử dụng công cụ thật để xử lý tóc thật, nhà tạo mẫu lấy một bộ quần áo đã được mặc từ giá treo — và máy ảnh quay lại tất cả.
+
+1. **Trang điểm là "lớp da thứ hai", không phải "bản đồ khuôn mặt"** — Kem nền sẽ hòa vào dầu da, bút kẻ mắt sẽ theo dáng mắt mà lệch nhẹ, son môi sẽ có chất cảm không đồng đều do vân môi — trang điểm phải có cảm giác chân thực "vừa được vẽ lên"
+2. **Tóc là sống động** — Tóc sau khi tạo kiểu vẫn sẽ có tóc rơi lả tả, chân tóc có độ phồng tự nhiên thay vì tóc giả, vùng đuôi tóc buộc chặt có dấu vết kéo tự nhiên của da đầu
+3. **Quần áo là "mặc trên người", không phải "mặc trên mô hình"** — Đường vai không nhất thiết phải hoàn toàn đối xứng (người thật đứng không đối xứng), chất liệu vải sẽ có nếp nhăn tự nhiên theo chuyển động của cơ thể, cổ áo có biến dạng nhẹ do mặc và cởi
+4. **Tạo kiểu phục vụ cho khuôn mặt, chứ không che khuất khuôn mặt** — Tạo kiểu thất bại nhất là khiến người khác không nhận ra hình mẫu gốc là ai. Tạo kiểu dẫn xuất nên củng cố chứ không che giấu khí chất cốt lõi của nhân vật
+
+---
+
+## Hai, Cấp độ tạo kiểu
+
+| Cấp độ | Nội dung | Hiểu biết của nhân vật đô thị live-action |
+|---|---|---|
+| L0 | Hình mẫu gốc | Hình mẫu cơ bản — không trang điểm, kiểu tóc cơ bản, trang phục hàng ngày cơ bản. Không chỉnh sửa |
+| L1 | Trang điểm | Công việc của nghệ sĩ trang điểm trên khuôn mặt người thật — nền tảng → lông mày và mắt → má → môi. Quyết định cường độ theo cảnh |
+| L2 | Tạo kiểu tóc | Kiểu tóc do nhà tạo mẫu tóc sử dụng công cụ thật — sấy/ buộc/ tết/ uốn + phụ kiện tóc |
+| L3 | Lớp mặc trong | Lớp sát thân — Áo thun/ áo sơ mi/ áo len/ áo dây/ áo lót, thay thế kiểu cơ bản |
+| L4 | Áo khoác/ Trang phục chính | Lớp ngoài — Áo vest/ áo gió/ áo hoodie/ váy đầm/ áo khoác dài/ đồ công sở, quyết định phong cách tổng thể |
+| L5 | Phụ kiện | Trang sức/ mũ/ kính/ khăn quàng/ túi xách/ đồng hồ — Bước cuối cùng của trang phục hàng ngày |
+
+> **Phạm vi giới hạn**: Chỉ mặt tạo kiểu (trang điểm + kiểu tóc + trang phục + phụ kiện). Không bao gồm đạo cụ (điện thoại/ cốc cà phê/ ô/ sách và các vật cầm tay khác), môi trường cảnh, tư thế động tác.
+
+---
+
+## Ba, Trang điểm — Công việc của nghệ sĩ trang điểm trên mặt người thật (L1)
+
+### Nguyên tắc cốt lõi
+
+> Trang điểm là "lớp da thứ hai". Máy ảnh phải có thể nhìn thấy làn da thật dưới lớp trang điểm — lỗ chân lông không bị lấp đầy, nếp nhăn không bị xóa, kem nền không nổi lên như mặt nạ.
+
+### Phân tích manh mối và quyết định trang điểm
+
+| Bước | Nội dung xử lý |
+|---|---|
+| S1 | Trích xuất manh mối người dùng: Bối cảnh, cảm xúc, mô tả trạng thái khuôn mặt |
+| S2 | Lọc manh mối không liên quan đến trang điểm: Đạo cụ/ cảnh/ từ động tác không liên quan đến trang điểm |
+| S3 | Khớp cảnh với cường độ trang điểm: Mức độ da mộc / mức độ hàng ngày / mức độ sự kiện / mức độ lễ hội |
+| S4 | Tạo từ khóa L1 — chỉ xuất kết luận |
+
+### Bản đồ cảnh → cường độ trang điểm
+
+| Cảnh | Cường độ trang điểm | Ý định cốt lõi |
+|---|---|---|
+| Ở nhà/ Sáng sớm/ Trạng thái mặt mộc | Mức độ da mộc — không có dấu vết trang điểm, chỉ làn da tự nhiên | Cảm giác làn da thật, khuôn mặt không qua chỉnh sửa |
+| Đi làm hàng ngày/ Siêu thị/ Đi dạo | Mức độ hàng ngày — Trang điểm nhẹ, nhìn như "không trang điểm nhưng khí sắc tốt" | Trang phục tươm tất trong công việc/ cuộc sống, tinh tế không gây chú ý |
+| Hẹn hò/ Buổi tiệc/ Đi mua sắm | Mức độ sự kiện — Thấy rõ trang điểm nhưng không quá mức | Trang điểm có sự hiện diện nhưng vẫn thuộc phạm vi "cuộc sống hàng ngày" |
+| Dạ tiệc/ Đám cưới/ Lễ hội | Mức độ lễ hội — Trang điểm hoàn chỉnh và tinh tế | Trang điểm thiết kế cho máy ảnh và ánh sáng nhưng nền tảng vẫn thấy được làn da thật |
+
+### Trang điểm nữ — Phù hợp theo loại khuôn mặt
+
+#### Loại lạnh lùng kiềm chế
+
+| Cường độ | Ý định trang điểm | Từ khóa |
+|---|---|---|
+| Mức độ da mộc | Không trang điểm — Da trắng lạnh sạch sẽ, lông mày tự nhiên chưa chỉnh sửa, màu môi tự nhiên | Không dấu vết trang điểm, cảm giác da trắng lạnh tự nhiên, lông mày gốc chưa chỉnh sửa, màu môi là màu tự nhiên |
+| Mức độ hàng ngày | "Có thể tôi chỉ thoa một chút son" — Môi màu nude cực nhẹ, lông mày quét nhẹ, không dấu vết trang điểm mắt | Son môi màu nude cực nhẹ, hình dáng lông mày tự nhiên quét nhẹ, không cảm giác trang điểm mắt, độ bóng của làn da tự nhiên |
+| Mức độ sự kiện | Môi đỏ là trọng điểm duy nhất — Son lì màu gạch đỏ hoặc nâu, lông mày và mắt giữ kiềm chế, nhấn mạnh sự lạnh lùng tách biệt | Son môi màu gạch đỏ lì (trọng điểm duy nhất), kẻ mắt cực mảnh sát đuôi mắt, hình dáng lông mày sạch sẽ gọn gàng, các phần khác gần như không trang điểm |
+| Mức độ lễ hội | Khói lạnh nhưng không đậm — Khói mắt màu xám nâu nhẹ, tạo khối đường viền, son lì đỏ tối, giữ lại cảm giác xương | Trang điểm mắt khói xám nâu, tạo khối nhẹ dưới xương gò má, son lì đỏ tối, giữ lại cảm giác xương mặt |
+
+#### Loại dịu dàng chữa lành
+
+| Cường độ | Ý định trang điểm | Từ khóa |
+|---|---|---|
+| Mức độ da mộc | Da trắng ấm trong suốt, má tự nhiên hồng nhạt, lông mày mềm mại | Da trắng ấm trong suốt không trang điểm, má tự nhiên hồng nhạt, hình dáng lông mày mềm mại, không cảm giác trang điểm |
+| Mức độ hàng ngày | Cảm giác bóng nước — Lớp nền bóng nước, phấn má hồng nhẹ màu hồng, cảm giác son dưỡng môi | Lớp nền bóng nước, phấn má hồng tự nhiên màu hồng phấn, son dưỡng môi trong suốt, ánh mắt dịu dàng |
+| Mức độ sự kiện | Màu ấm dịu dàng — Phấn mắt màu mơ, phấn má hồng kem, son bóng gương, tổng thể dịu dàng | Phấn mắt màu mơ tự nhiên, phấn má hồng kem, son bóng gương, dịu dàng mềm mại |
+| Mức độ lễ hội | Trang điểm tinh tế màu ấm — Phấn mắt ngọc trai màu champagne, lớp nền bóng, son môi màu hoa hồng đậu đỏ, tinh tế không mất đi sự dịu dàng | Phấn mắt ngọc trai màu champagne, phấn sáng bóng, son môi màu hoa hồng đậu đỏ, trang điểm hoàn chỉnh tinh tế và dịu dàng |
+
+#### Loại đô thị sắc sảo
+
+| Cường độ | Ý định trang điểm | Từ khóa |
+|---|---|---|
+| Mức độ da mộc | Da sạch trung tính, lông mày sắc sảo nhưng chưa kẻ | Da sạch trung tính không trang điểm, hình dáng lông mày sắc sảo chưa chỉnh sửa, màu môi tự nhiên, khuôn mặt không trang điểm |
+| Mức độ hàng ngày | "Trang điểm nhẹ cho công sở" — Lớp nền lì, lông mày sắc sảo, màu môi MLBB (môi của tôi nhưng đẹp hơn) | Lớp nền lì tự nhiên, hình dáng lông mày sắc sảo quét nhẹ, màu môi MLBB, tươm tất không gây chú ý |
+| Mức độ sự kiện | Sắc bén nhưng không dữ dội — Kẻ mắt rõ ràng, tạo khối đường viền, màu môi hoa hồng bão hòa thấp | Kẻ mắt rõ ràng sắc bén, tạo khối đường viền mặt, màu môi hoa hồng bão hòa thấp, sắc sảo và mạnh mẽ |
+| Mức độ lễ hội | Trang điểm hoàn chỉnh — Lớp nền lì, tạo khối có cấu trúc, màu môi đỏ hoặc mận chín, khí thế hoàn toàn bùng nổ | Lớp nền lì tinh tế, tạo khối có cấu trúc, màu môi đỏ/ mận chín, hoàn chỉnh nhưng vẫn nhận diện được cấu trúc mặt |
+
+#### Loại trẻ trung năng động
+
+| Cường độ | Ý định trang điểm | Từ khóa |
+|---|---|---|
+| Mức độ da mộc | Collagen là trang điểm — Không cần trang điểm, làn da tự nhiên đã rất sáng | Cảm giác collagen đầy đặn không trang điểm, má hồng tự nhiên, ánh mắt sáng, không cần trang điểm |
+| Mức độ hàng ngày | "Chỉ tăng một chút khí sắc" — Son dưỡng có màu, keo lông mày trong suốt, phấn má dạng kem cực nhẹ | Son dưỡng có màu, keo lông mày trong suốt, phấn má dạng kem cực nhẹ, không thấy rõ trang điểm |
+| Mức độ sự kiện | Sáng sủa vui tươi — Phấn má màu cam/ san hô, son bóng sáng, phấn mắt nhũ nhẹ | Phấn má màu cam tươi tắn, son bóng sáng, phấn mắt nhũ nhẹ, cảm giác trẻ trung sáng sủa |
+| Mức độ lễ hội | Tinh tế nhưng không già dặn — Lớp nền trong suốt, son bóng hoa quả, phấn mắt nhũ nhẹ, giữ vẻ trẻ trung | Lớp nền trong suốt giữ cảm giác da, son bóng hoa quả, phấn mắt nhũ nhẹ, tinh tế nhưng không che giấu sự trẻ trung |
+
+#### Loại phố thị
+
+| Cường độ | Ý định trang điểm | Từ khóa |
+|---|---|---|
+| Mức độ da mộc | Khuôn mặt bị mặt trời chiếu sáng — Dấu vết nắng, màu da tự nhiên không đều, không trang điểm | Khuôn mặt tự nhiên với dấu vết nắng, màu da tự nhiên không đều, da chưa trang điểm, khuôn mặt của cuộc sống thực |
+| Mức độ hàng ngày | "Thoa chút kem dưỡng rồi ra ngoài" — Kem dưỡng có màu nhẹ, màu môi tự nhiên | Kem dưỡng có màu nhẹ, hầu như không thấy lớp nền, màu môi tự nhiên, trạng thái tự nhiên vừa rửa mặt |
+| Mức độ sự kiện | Đơn giản nhưng tươm tất — Son môi màu tự nhiên, lông mày chỉnh sửa nhẹ, lớp nền mỏng | Son môi màu tự nhiên, lông mày chỉnh sửa nhẹ, lớp nền mỏng không nền, tươm tất mộc mạc |
+| Mức độ lễ hội | Ăn mặc nhưng không giả tạo — Phấn mắt màu đất ấm, son môi màu gạch đỏ/ nâu đỏ, lớp nền thấy được chất cảm da | Phấn mắt màu đất ấm, son môi màu gạch đỏ/ nâu đỏ, lớp nền giữ chất cảm da, ăn mặc nhưng không mất đi sự chân thật |
+
+### Trang điểm nam
+
+> Tiêu chuẩn cao nhất của trang điểm nam là "không nhận ra đã trang điểm".
+
+| Cường độ | Cảnh thích hợp | Từ khóa |
+|---|---|---|
+| Mức độ da mộc | Trạng thái mặc định cho tất cả các cảnh | Da nam thật chưa chỉnh sửa, độ bóng dầu tự nhiên, lỗ chân lông rõ ràng, chất cảm thật của cằm sau khi cạo râu |
+| Mức độ hàng ngày | Cận cảnh ống kính/ chụp trong phòng thu/ đối thoại quan trọng | Da đều cực nhẹ (không thấy lớp phấn), lông mày dùng keo lông mày trong suốt quét nhẹ, màu môi tự nhiên chất cảm son dưỡng — tổng thể không nhận ra trang điểm |
+| Mức độ sự kiện | Đám cưới/ lễ hội/ cận cảnh ống kính | Da sạch đều (giữ lại kết cấu lỗ chân lông), lông mày quét nhẹ, màu môi tự nhiên mềm mại — nhận ra đã được chăm sóc kỹ nhưng không thấy lớp phấn nền |
+
+---
+
+## Bốn, Tạo kiểu tóc — Tóc thật dưới tay của nhà tạo mẫu tóc (L2)
+
+### Kiểu tóc nữ
+
+#### Phân loại theo phương pháp tạo kiểu
+
+| Phương pháp tạo kiểu | Loại | Mô tả kiểu tóc | Loại khuôn mặt phù hợp |
+|---|---|---|---|
+| Tự nhiên buông thả | Tóc dài thẳng đen | Tóc thẳng tự nhiên mượt, đuôi tóc hơi cụp vào trong, đường chia ngôi giữa hoặc ngôi lệch, tóc rơi tự nhiên phía trước trán và sau gáy | Lạnh lùng kiềm chế/ Dịu dàng chữa lành/ Đô thị sắc sảo |
+| Tự nhiên buông thả | Xoăn nhẹ lười biếng | Tóc xoăn lười biếng độ cong lớn, chân tóc phồng tự nhiên, độ xoăn không đều (không phải uốn bằng máy một cách đồng nhất), tóc rơi xung quanh mặt | Dịu dàng chữa lành/ Trẻ trung năng động |
+| Tự nhiên buông thả | Tóc ngắn ngang vai nhiều lớp | Dài đến vai, đuôi tóc cắt lớp, một bên vén sau tai để lộ trang sức tai, tóc rơi tự nhiên phía sau gáy | Đô thị sắc sảo/ Lạnh lùng kiềm chế |
+| Tự nhiên buông thả | Xoăn nhỏ kiểu len | Xoăn nhỏ toàn đầu, phồng và có cảm giác không khí, chân tóc tự nhiên đứng thẳng, độ xoăn có cảm giác thủ công không phải đồng nhất cơ học | Trẻ trung năng động/ Phố thị |
+| Tạo kiểu buộc | Đuôi ngựa cao | Buộc ở vị trí cao trên đỉnh đầu, chân tóc phồng tự nhiên, đuôi ngựa có độ cong tự nhiên không thẳng đứng, tóc rơi tự nhiên phía trước trán và bên thái dương | Trẻ trung năng động/ Đô thị sắc sảo/ Cảnh thể thao |
+| Tạo kiểu buộc | Đuôi ngựa thấp/ Búi thấp | Buộc phía sau gáy hoặc sau tai, lỏng nhưng không rối, tóc rơi tự nhiên phía sau gáy, có cảm giác lỏng lẻo như "buộc lên một cách tùy tiện" | Dịu dàng chữa lành/ Phố thị/ Cảnh ở nhà |
+| Tạo kiểu buộc | Tóc búi | Búi ở đỉnh đầu hoặc sau đầu, lỏng lẻo không căng, tóc rơi xung quanh mặt và cổ | Ở nhà/ hàng ngày/ thể thao |
+| Tạo kiểu tết | Tết bím một bên | Tết bím một bên, lỏng và có cảm giác thủ công, tết vào tóc tự nhiên, đuôi tóc rối tự nhiên | Dịu dàng chữa lành/ Trẻ trung năng động |
+| Tạo kiểu tết | Tết đôi/ Bím đôi | Tết đối xứng hai bên, độ chặt vừa phải, phù hợp với kiểu tạo hình trẻ trung | Trẻ trung năng động |
+| Tạo kiểu tóc ngắn | Tóc ngắn ngang tai | Dài trên tai hoặc dưới tai, đuôi tóc cắt đều hoặc cắt lớp, một bên vén sau tai, gáy sạch sẽ | Đô thị sắc sảo/ Lạnh lùng kiềm chế |
+| Tạo kiểu tóc ngắn | Tóc ngắn kiểu thiếu niên | Tóc ngắn cắt lớp, gáy cạo ngắn, tóc rơi tự nhiên phía trước trán | Lạnh lùng kiềm chế/ Đô thị sắc sảo/ Phong cách trung tính |
+
+#### Tóc trong trạng thái thực tế trước máy ảnh (dùng chung cho tất cả kiểu tóc)
+
+| Trạng thái | Từ khóa |
+|---|---|
+| Tóc rơi | Tóc rơi tự nhiên phía trước trán, tóc con bên thái dương, tóc sau gáy, đường tóc không đều tự nhiên |
+| Chân tóc | Chân tóc phồng tự nhiên không bám vào da đầu, đường chia ngôi tự nhiên nhìn thấy da đầu |
+| Đuôi tóc | Đuôi tóc rối tự nhiên/ phân nhánh, đuôi tóc buộc có độ cong tự nhiên |
+| Độ bóng | Phản chiếu tự nhiên của chất tóc khỏe — không bóng dầu không lì, đường viền tóc ấm áp trong ánh ngược sáng |
+| Nghiêm cấm | Đường biên gọn gàng như tóc giả, tóc CG không có tóc rơi, không có tóc con, định hình cứng nhắc |
+
+### Kiểu tóc nam
+
+| Tạo kiểu | Mô tả | Loại khuôn mặt phù hợp |
+|---|---|---|
+| Tóc ngắn gọn gàng | Hai bên cạo ngắn, phần trên để dài có thể tạo kiểu, tóc có hướng tự nhiên, trán có thể thấy | Cứng rắn trưởng thành/ Đô thị sắc sảo (đối với khuôn mặt nam) |
+| Tóc mái phủ nhẹ | Tóc rơi trước trán nhẹ che lông mày, phần trên phồng có lớp, hai bên chuyển tiếp tự nhiên | Thiếu niên nắng ráo/ Dịu dàng nội tâm |
+| Tóc ngắn chia ngôi | Đường chia ngôi, một bên chải ngược, trang trọng nhưng không cứng nhắc | Lạnh lùng kiềm chế/ Dịu dàng nội tâm |
+| Tóc ngắn sát đầu | Tóc ngắn cực, thấy rõ da đầu, đường chân tóc tự nhiên, rõ ràng hình dạng đầu | Cứng rắn trưởng thành/ Phố thị |
+| Tóc sói/ Tóc cá đối | Phần trước ngắn sau dài, đuôi tóc sau gáy dài, cắt lớp gọn gàng, không cắt tỉa kỹ càng | Thiếu niên nắng ráo/ Lạnh lùng kiềm chế |
+| Tóc dài trung bình | Dài đến vai, tự nhiên rơi hoặc buộc nửa, chất tóc tự nhiên | Lạnh lùng kiềm chế/ Khí chất nghệ thuật |
+| Tóc xoăn/ Tóc có texture | Tóc xoăn tự nhiên hoặc làm texture nhẹ, phồng và có cảm giác không khí, không cứng nhắc | Thiếu niên nắng ráo/ Dịu dàng nội tâm |
+
+#### Tóc trong trạng thái thực tế trước máy ảnh (dùng chung cho nam)
+
+| Trạng thái | Từ khóa |
+|---|---|
+| Chất tóc ngắn | Trong trạng thái tóc ngắn, thấy rõ da đầu, tóc có hướng tự nhiên, mối nối giữa tóc mai và râu |
+| Trạng thái hàng ngày | Không có cảm giác keo tóc cứng, tóc tự nhiên phồng hoặc hơi xẹp (phù hợp với hàng ngày), gió thổi tự nhiên rối |
+| Đường chân tóc | Đường chân tóc tự nhiên (cho phép hơi lùi nhẹ), góc trán có thể hơi thưa, không phải kiểu tóc giả gọn gàng |
+| Nghiêm cấm | Cảm giác keo tóc cứng phản chiếu, đường biên tóc giả gọn gàng, tóc CG, kiểu tóc hoàn hảo không tự nhiên |
+
+---
+
+## Năm, Trang phục — Trang phục thực tế, không phải mô hình hóa (L3+L4)
+
+### Logic trang phục của nhân vật đô thị live-action
+
+> Dự án 3D thảo luận về "render chất liệu", "thuộc tính vật lý PBR", "ghép cấu trúc nhiều lớp". Nhân vật đô thị live-action thảo luận về: Mua bộ quần áo này ở đâu? Đã mặc bao nhiêu lần rồi? Tại sao hôm nay chọn nó?
+
+- **Mặc nhiều lớp đến từ thời tiết và sự kiện, không phải từ "thiết kế tầng lớp"**: Áo thun bên ngoài mặc áo sơ mi vì chênh lệch nhiệt độ sáng tối lớn, áo gió vì hôm nay có gió, áo len cardigan vì văn phòng có điều hòa quá lạnh
+- **Quần áo có dấu vết mặc**: Cổ áo hơi biến dạng, cổ tay áo có dấu ma sát, quần jeans có vân kéo căng ở đầu gối, áo thun trắng sau khi giặt hơi phai màu
+- **Vừa vặn chứ không ôm sát**: Quần áo ôm sát cơ thể nhưng không bó chặt, đường vai ở vị trí tự nhiên (có thể lệch nhẹ do tư thế cơ thể), chiều dài quần vừa đủ hoặc hơi chồng lên giày
+- **Trang phục thực tế của đô thị hiện đại Trung Quốc** — không phải phim Hàn, không phải tạp chí Nhật, không phải street style Âu Mỹ
+
+### Ma trận trang phục nữ
+
+| Phong cách mặc | Trang phục cốt lõi | Cảnh sử dụng | Từ khóa |
+|---|---|---|---|
+| Đô thị công sở | Áo vest/ áo sơ mi/ quần ống suông/ váy midi/ áo gió | Văn phòng, cuộc họp công việc, đi lại hàng ngày | Trang phục công sở, áo vest + áo sơ mi + quần âu ống suông, màu camel/ xanh navy/ đen, chất liệu vải rũ tự nhiên, vừa vặn không bó chặt |
+| Thoải mái hàng ngày | Áo thun/ áo hoodie/ quần jeans/ quần ống rộng/ áo len cardigan | Cuối tuần đi chơi, mua sắm siêu thị, quán cà phê, đi dạo | Trang phục hàng ngày thoải mái, áo hoodie rộng + quần jeans ống suông, màu kem/ xám/ kaki, chất liệu cotton tự nhiên |
+| Dịu dàng hẹn hò | Váy len/ váy midi hoa văn/ áo len cashmere/ áo sơ mi kiểu pháp | Hẹn hò, họp mặt bạn bè, trà chiều | Trang phục hẹn hò dịu dàng, váy len + áo cardigan ngắn, màu kem/ hồng phấn/ be nhạt, chất liệu vải mềm mại |
+| Phong cách đường phố | Áo hoodie oversize/ quần cargo/ áo khoác jeans/ mũ lưỡi trai | Đi dạo, chơi trò chơi, lễ hội âm nhạc, cuộc sống về đêm | Phong cách đường phố, áo hoodie oversize + quần cargo ống rộng, màu đen/ xám/ xanh quân đội, tự do có thái độ |
+| Thể thao ngoài trời | Quần yoga/ áo bra thể thao/ áo thun nhanh khô/ áo khoác chống gió/ giày thể thao | Phòng gym, chạy bộ ngoài trời, đạp xe, đi bộ | Trang phục thể thao, quần yoga + áo bra thể thao + áo thun nhanh khô rộng, màu tối, chất liệu vải chức năng tự nhiên |
+| Văn nghệ học đường | Áo len ghi lê + áo sơ mi/ váy xếp ly/ giày vải/ áo khoác ngắn len | Trường học, nhà sách, thư viện, triển lãm | Trang phục văn nghệ học đường, áo len ghi lê mặc ngoài áo sơ mi + váy xếp ly, màu xanh navy/ đỏ rượu/ họa tiết caro, khí chất sách vở |
+| Ở nhà lười biếng | Đồ gia đình cotton rộng/ áo choàng len/ áo khoác lông mềm | Hoạt động hàng ngày ở nhà, buổi sáng, đêm khuya | Trang phục ở nhà, áo dài tay cotton rộng + quần dài gia đình, màu kem/ xám nhạt/ xanh nhạt, chất liệu mềm mại thân thiện với da |
+
+### Ma trận trang phục nam
+
+| Phong cách mặc | Trang phục cốt lõi | Cảnh sử dụng | Từ khóa |
+|---|---|---|---|
+| Đồ công sở | Bộ vest/ áo sơ mi trắng/ cà vạt/ giày công sở | Cuộc họp kinh doanh, sự kiện chính thức, cuộc gặp quan trọng | Trang phục công sở, bộ vest màu xám đậm/ xanh navy + áo sơ mi trắng, cắt may vừa vặn, chất liệu vải cứng cáp có độ rũ |
+| Đồ công sở thoải mái | Áo vest thoải mái + áo thun cổ tròn/ áo len + quần thoải mái | Đi lại hàng ngày, sự kiện công việc nhẹ nhàng | Trang phục công sở thoải mái, áo vest thoải mái + áo thun cổ tròn trắng + quần kaki thoải mái, không thắt cà vạt, thoải mái vừa đủ |
+| Hàng ngày thoải mái | Áo thun màu trơn/ áo dài tay cổ Henley/ áo hoodie + quần jeans ống suông | Cuối tuần, hàng ngày, mọi sự kiện không chính thức | Trang phục hàng ngày thoải mái, áo thun cotton màu trơn + quần jeans ống suông, màu đen/ trắng/ xám/ xanh navy, chất liệu vải tự nhiên thoải mái |
+| Phong cách đường phố | Áo hoodie in họa tiết/ quần cargo/ áo khoác jeans/ giày vải | Đi dạo, họp mặt, cuộc sống về đêm | Trang phục đường phố, áo hoodie in họa tiết + quần cargo bó gấu, màu đen/ xanh quân đội/ xám, tự do có thái độ |
+| Đồ thể thao | Áo thun nhanh khô/ quần short thể thao/ quần dài thể thao/ giày thể thao | Phòng gym, chạy bộ, sân bóng rổ | Trang phục thể thao, áo thun nhanh khô + quần short thể thao, màu đen/ xám đậm, chất liệu vải chức năng |
+| Phong cách văn nghệ | Áo sơ mi cổ suôn/ áo len rộng/ quần âu ống rộng/ giày vải | Nhà sách, triển lãm, quán cà phê | Trang phục văn nghệ, áo sơ mi cotton cổ suôn + quần âu rộng, màu đất/ kem/ xanh navy, chất liệu không cố ý |
+
+---
+
+## Sáu, Phụ kiện — Bước cuối cùng của trang phục hàng ngày (L5)
+
+### Phụ kiện nữ
+
+| Danh mục | Logic phụ kiện của nhân vật đô thị live-action | Từ khóa |
+|---|---|---|
+| Trang sức tai | Không phải "khuyên tai kim loại" — mà là "cặp này được lấy ngẫu nhiên trước khi ra ngoài hôm nay". Chủ yếu nhỏ gọn và đơn giản, phù hợp với phong cách trang phục | Khuyên tai bạc nhỏ gọn/ vòng tai kim loại mỏng/ khuyên tai ngọc trai/ khuyên tai hình học acrylic — Phối hợp với {phong cách trang phục} |
+| Trang sức cổ | Dây chuyền khóa xương hoặc dây chuyền dài vừa, ôm sát đường cong tự nhiên của cổ, không nổi không chìm vào da | Dây chuyền khóa xương mảnh/ dây chuyền kim loại mỏng có mặt/ dây chuyền ngọc trai ngắn — Ôm sát tự nhiên cổ |
+| Đồng hồ/ Trang sức tay | Đồng hồ đeo hàng ngày, vòng tay mảnh hoặc nhẫn, có dấu vết sử dụng (dây da tự nhiên uốn cong, kim loại mài mòn nhẹ) | Đồng hồ dây da/ vòng tay kim loại mảnh/ nhẫn đơn giản — Cảm giác đeo hàng ngày, có dấu vết sử dụng |
+| Mũ | Mũ lưỡi trai/ mũ beret/ mũ len — Vành mũ có độ cong tự nhiên, thân mũ có dấu vết sử dụng | Mũ lưỡi trai (vành mũ cong tự nhiên)/ mũ beret (đội hơi nghiêng)/ mũ len (cảm giác mềm mại) |
+| Kính | Kính cận hoặc kính râm, chất liệu khung tự nhiên, tròng kính có phản chiếu nhẹ nhưng vẫn thấy mắt | Khung kim loại mỏng/ kính khung nhựa, tròng kính phản chiếu nhẹ nhưng vẫn thấy ánh mắt |
+| Túi xách | Túi xách thực tế cho công việc hàng ngày/ đi lại — Da có nếp gấp sử dụng, vải có phai màu tự nhiên | Túi đeo vai da (nếp gấp sử dụng tự nhiên)/ túi tote vải (phai màu nhẹ)/ túi đeo chéo nhỏ |
+
+### Phụ kiện nam
+
+| Danh mục | Từ khóa |
+|---|---|
+| Đồng hồ | Đồng hồ đeo hàng ngày — Dây kim loại mài mòn tự nhiên/ dây da uốn cong/ mặt đồng hồ đơn giản |
+| Kính | Khung kim loại mỏng/ kính khung nhựa, tròng kính phản chiếu nhẹ, mũi tự nhiên ôm sát |
+| Mũ | Mũ lưỡi trai/ mũ len — Trạng thái đội tự nhiên, vành mũ hơi cong, có cảm giác sử dụng hàng ngày |
+| Ba lô | Ba lô/ túi đưa thư — Chất liệu vải hoặc da, có dấu vết sử dụng, dây đeo tự nhiên uốn cong |
+
+---
+
+## Bảy, Tra cứu nhanh tổ hợp tạo kiểu
+
+| Cảnh | Cường độ trang điểm | Kiểu tóc | Phong cách mặc | Phụ kiện |
+|---|---|---|---|---|
+| Ở nhà sáng sớm | Mức độ da mộc | Tự nhiên buông thả/ Buộc tùy tiện | Ở nhà lười biếng | Cực kỳ đơn giản hoặc không có |
+| Đi làm | Mức độ hàng ngày | Tóc thả gọn gàng/ Đuôi ngựa thấp/ Tóc ngắn chia ngôi | Đô thị công sở/ Công sở thoải mái | Đồng hồ + túi xách đơn giản |
+| Cuối tuần ra ngoài | Mức độ hàng ngày | Xoăn nhẹ lười biếng/ Tóc mái phủ nhẹ/ Tóc sói | Thoải mái hàng ngày/ Hàng ngày thoải mái | Túi xách + mũ + đồng hồ |
+| Hẹn hò gặp mặt | Mức độ sự kiện | Tóc xoăn dịu dàng/ Tóc ngắn ngang vai/ Tóc ngắn chia ngôi | Dịu dàng hẹn hò/ Văn nghệ học đường | Trang sức tai + trang sức cổ + túi xách |
+| Quán cà phê/ Nhà sách | Mức độ hàng ngày | Tự nhiên buông thả/ Tóc ngắn nhiều lớp/ Tóc trung bình | Văn nghệ học đường/ Văn nghệ lạnh lùng | Kính + túi vải |
+| Phòng gym/ Ngoài trời | Mức độ da mộc | Đuôi ngựa cao/ Tóc búi/ Tóc ngắn sát đầu | Thể thao ngoài trời/ Đồ thể thao | Đồng hồ thể thao + dây buộc tóc |
+| Dạ tiệc/ Lễ hội | Mức độ lễ hội | Tóc xoăn tinh tế/ Tóc búi/ Tóc dầu chia ngôi | Trang phục chính thức (váy đầm/ vest) | Trang sức tai + trang sức cổ + trang sức tay + túi xách tinh tế |
+| Đêm khuya một mình | Mức độ da mộc | Buông thả tùy tiện/ Hơi rối | Ở nhà lười biếng | Không có |
+| Chợ đêm đường phố | Mức độ sự kiện | Xoăn kiểu len/ Tết bím đấu sĩ/ Tóc sói | Phong cách đường phố/ Trang phục đường phố | Trang sức tai + mũ lưỡi trai |
+| Bệnh viện/ Cảnh chính thức | Mức độ hàng ngày | Tóc buộc gọn/ Tóc ngắn gọn gàng | Trang phục đơn giản màu sắc nhẹ | Cực kỳ đơn giản |
+
+> **Quy tắc suy luận cho cảnh chưa được bao phủ**: Đầu tiên xác định thuộc tính riêng tư/ công cộng của cảnh (riêng tư → mức độ da mộc, công cộng → mức độ hàng ngày trở lên); sau đó xác định mức độ chính thức (cảnh chính thức → mức độ sự kiện/ lễ hội); cuối cùng xác định tình cảm (lãng mạn/ xã giao → mức độ sự kiện). Trang điểm phù hợp với loại khuôn mặt (xem Chương Ba), trang phục phù hợp với nhiệt độ và bầu không khí của cảnh.
+
+---
+
+## Tám, Loạt chân dung nhân vật — Quy chuẩn chụp ảnh từ bốn góc độ
+
+> Sau khi tạo kiểu dẫn xuất vẫn cần xuất loạt chụp ảnh từ bốn góc độ trong studio, đảm bảo sự đồng nhất và nhận diện được trang điểm, kiểu tóc, trang phục trong các góc độ chụp thực tế.
+
+### Định nghĩa bốn góc độ
+
+| Vị trí | Góc độ | Cảnh | Yêu cầu chụp ảnh |
+|---|---|---|---|
+| Trái một | Cận cảnh chính diện | Từ đỉnh đầu đến rìa trên xương đòn | Khuôn mặt chiếm hơn 60%, chi tiết trang điểm rõ ràng (sự hòa quyện của kem nền và da, độ chính xác kẻ mắt, chất cảm màu môi). Tiêu cự 50-85mm |
+| Trái hai | Chính diện 0° | Toàn thân | Tổng thể trang phục chính diện, sự rũ của quần áo, lớp trang phục, phụ kiện đầy đủ. Toàn bộ từ đỉnh đầu đến chân |
+| Phải hai | Bên phải 90° | Toàn thân | Đường viền bên hông + lớp trang phục bên hông, trạng thái kiểu tóc bên hông. Toàn bộ từ đỉnh đầu đến chân |
+| Phải một | Phía sau 180° | Toàn thân | Tổng thể kiểu tóc phía sau đầu, trang phục phía sau, túi xách/ trang sức mũ phía sau. Toàn bộ từ đỉnh đầu đến chân |
+
+### Tiêu chuẩn hình ảnh
+
+| Hạng mục | Yêu cầu chụp ảnh |
+|---|---|
+| Bố cục | Cùng một hình ảnh từ trái sang phải sắp xếp bốn góc độ, khoảng cách đều. Trình bày theo bố cục "ảnh xác nhận tạo kiểu" |
+| Nền | Giấy nền liền màu xám trung bình #B0B0B0, không đốm sáng không chuyển màu không bóng đổ |
+| Tư thế đứng | Giữ tư thế đứng của hình mẫu gốc — tư thế tự nhiên với trọng tâm lệch, không phải đứng nghiêm không phải tạo dáng. **Cấm thay đổi tư thế cơ thể do thay đổi trang phục** |
+| Biểu cảm khuôn mặt | Biểu cảm nhỏ phù hợp với cường độ trang điểm và bầu không khí của cảnh — mức độ da mộc tự nhiên trung tính, mức độ sự kiện hơi mỉm cười, mức độ lễ hội điềm tĩnh tự tin. **Chỉ giới hạn ở biểu cảm khuôn mặt nhỏ, không liên quan đến động tác cơ thể** |
+| Ánh sáng | Ánh sáng mềm của studio — ánh sáng chính từ hộp mềm phía trước + bảng bổ trợ kép hai bên. Ánh sáng và bóng đổ mềm mại, hướng rõ ràng, tỷ lệ ánh sáng khoảng 1:2 đến 1:3, giữ lại cảm giác khối của khuôn mặt. Chất liệu vải và phụ kiện rõ ràng có thể thấy |
+| Sự đồng nhất | Bốn góc độ là ghi chép liên tục của cùng một nhân vật, cùng một lần chụp ảnh tạo kiểu. Khuôn mặt/ trang điểm/ kiểu tóc/ trang phục/ phụ kiện hoàn toàn thể hiện là cùng một lần chụp |
+| Tỷ lệ hình ảnh | Đề nghị tỷ lệ 4:1 hoặc 16:4 chiều rộng |
+
+---
+
+## Chín, Mẫu từ khóa gợi ý
+
+### Ràng buộc định dạng xuất
+
+| Hạng mục | Ràng buộc |
+|---|---|
+| Nội dung xuất | **Chỉ xuất văn bản từ khóa gợi ý**, không xuất quá trình phân tích, so sánh phương án, bảng tra cứu nhanh, giải thích ràng buộc |
+| Cảnh cấm | Không bao gồm bất kỳ mô tả nào về cảnh/ môi trường/ thời tiết/ nền |
+| Đạo cụ cấm | Không bao gồm bất kỳ vật cầm tay/ vật tương tác nào (đạo cụ thuộc tài sản độc lập) |
+| Cấm thay đổi tư thế | Không thay đổi tư thế đứng của hình mẫu gốc, không xuất bất kỳ mô tả nào về động tác/ tư thế cơ thể |
+| Định dạng | Trực tiếp xuất từ khóa gợi ý hoàn chỉnh có thể sử dụng |
+
+### Mẫu từ khóa gợi ý tạo kiểu hoàn chỉnh
+
+Sử dụng hình mẫu gốc của nhân vật làm nền, img2img chồng lên tạo kiểu,
+Loạt chân dung tạo kiểu nhân vật đô thị live-action, chụp ảnh thực tế, ánh sáng mềm của studio, giấy nền liền màu xám trung bình,
+Loạt chân dung nhân vật {giới tính}, phong cách chụp thực tế, không phải 3D không phải render không phải CG,
+character portrait series, live-action photography, studio soft lighting,
+Giữ nguyên mặt của hình mẫu gốc, {khí chất tổng thể},
+【L1·Trang điểm】{cường độ trang điểm — mức độ da mộc/ mức độ hàng ngày/ mức độ sự kiện/ mức độ lễ hội}, {mô tả trang điểm}, trang điểm hòa quyện với da thật, kem nền không giả tạo, kết cấu lỗ chân lông của da vẫn có thể thấy,
+【L2·Kiểu tóc】{mô tả kiểu tóc}, kết cấu tóc thật, {mô tả trạng thái tóc rơi/ chân tóc/ đuôi tóc thật}, không phải tóc giả không phải tóc CG,
+【L3+L4·Trang phục】{phong cách trang phục}, {mô tả áo trên} + {mô tả áo dưới}, {màu sắc}, {chất cảm tự nhiên của vải}, quần áo tự nhiên rũ, có nếp gấp mặc thật, không phải quần áo mẫu,
+【L5·Phụ kiện】{mô tả phụ kiện}, cảm giác đeo hàng ngày, có dấu vết sử dụng, ôm sát cơ thể tự nhiên,
+Cùng một hình ảnh từ trái sang phải sắp xếp: Cận cảnh + Toàn thân chính diện + Toàn thân bên + Toàn thân sau,
+Tư thế đứng tự nhiên hàng ngày (trọng tâm lệch), giấy nền liền màu xám trung bình #B0B0B0, ánh sáng mềm đều của studio, tỷ lệ ánh sáng mềm mại,
+Bốn góc độ là ghi chép liên tục của cùng một lần chụp ảnh tạo kiểu,
+Hình ảnh sạch sẽ không có văn bản, không có watermark, không có chữ ký, không có khung,
+Chất lượng chụp ảnh thực tế, cảm giác nhiếp ảnh full-frame 35mm
+
+### Từ khóa gợi ý tránh tiêu cực
+
+3D render, 3D modeling, CGI, Unreal Engine, Blender, PBR material, 8K modeling, game engine, cartoon, anime, 2D, illustration, hand drawn, painting,
+plastic skin, wax face, silicone skin, airbrushed skin, perfect smooth skin, poreless, doll-like, mannequin,
+symmetrical pose, mannequin pose, runway pose, model stance, military stance, exaggerated pose, action pose,
+heavy makeup, dramatic makeup, makeup mask, foundation mask, fake lashes, colored contacts,
+wig, fake hair, helmet hair, stiff hair, perfect hairline, CG hair strands,
+brand new clothes, showroom clothes, stiff fabric, unrealistically clean, no wrinkles, mannequin clothes,
+古风, 古装, 汉服, 仙侠, 武侠, 民国, 赛博朋克, 科幻, 西方奇幻, 中世纪,
+text, watermark, signature, logo, border, frame
+
+---
+
+## Mười, Quy tắc ràng buộc
+
+### Bắt buộc tuân thủ
+
+| Số | Quy tắc |
+|---|---|
+| R1 | Sau khi chồng lên, khuôn mặt phải giống với hình mẫu gốc — Tạo kiểu phục vụ cho khuôn mặt, không che giấu khuôn mặt |
+| R2 | Trang điểm phải hòa quyện với da thật — Kem nền không giả tạo, kết cấu lỗ chân lông vẫn có thể thấy, không phải cảm giác AI mượt mà |
+| R3 | Kiểu tóc phải thể hiện kết cấu tóc thật — Tóc rơi, độ phồng chân tóc, đuôi tóc rối, không phải tóc giả không phải tóc CG |
+| R4 | Quần áo phải có dấu vết mặc thật — Nếp gấp tự nhiên, chất liệu vải rũ, không phải quần áo mẫu không phải mới xuất xưởng |
+| R5 | Phụ kiện phải có cảm giác đeo hàng ngày — Ôm sát cơ thể, có dấu vết sử dụng, không nổi không chìm vào da |
+| R6 | Phải xuất loạt ảnh từ bốn góc độ của studio (Cận cảnh + Chính diện + Bên + Sau toàn thân) |
+| R7 | Phải chỉ định "giấy nền liền màu xám trung bình #B0B0B0", cấm thêm môi trường cảnh |
+| R8 | Phải chỉ định "bốn góc độ là ghi chép liên tục của cùng một lần chụp ảnh tạo kiểu" |
+| R9 | **Chỉ xuất từ khóa gợi ý** — Không xuất quá trình phân tích, bảng tra cứu nhanh, so sánh phương án và tất cả nội dung không phải từ khóa gợi ý |
+| R10 | **Cấm tương tác đạo cụ** — Không bao gồm vật cầm tay, đạo cụ thuộc tài sản độc lập |
+| R11 | **Tư thế không thay đổi** — Giữ tư thế đứng của hình mẫu gốc, không thêm bất kỳ mô tả nào về động tác/ tư thế cơ thể |
+| R12 | **Cấm mô tả cảnh/ môi trường** — Cảnh thuộc tài sản độc lập |
+| R13 | L1 phải quyết định theo bản đồ cảnh → cường độ trang điểm: Mức độ da mộc/ Mức độ hàng ngày/ Mức độ sự kiện/ Mức độ lễ hội |
+| R14 | Tất cả tài sản dẫn xuất đều cần phương án tạo kiểu — Trong điều kiện bình thường không giữ hoàn toàn mặt mộc trang phục mộc, ít nhất phải đạt mức độ hàng ngày |
+
+### Nghiêm cấm
+
+| Số | Nghiêm cấm |
+|---|---|
+| X1 | Nghiêm cấm "3D render / 3D modeling / CG / PBR material / 8K modeling / UE engine / Blender" và tất cả các thuật ngữ CG |
+| X2 | Nghiêm cấm "2D hand drawn / illustration / animation / 2D" và các phương tiện không phải chụp ảnh |
+| X3 | Nghiêm cấm "quá mượt mà da / da silicon / mặt sáp / không có lỗ chân lông / cảm giác da mượt mà AI" — Dưới lớp trang điểm phải có da thật |
+| X4 | Nghiêm cấm "tóc giả / tóc CG rõ ràng từng sợi / tóc cứng gọn gàng / không có tóc rơi" |
+| X5 | Nghiêm cấm "quần áo mẫu / quần áo hoàn toàn mới không có nếp gấp / phụ kiện nổi / cảm giác quần áo người mẫu" |
+| X6 | Nghiêm cấm "tư thế đứng đối xứng của người mẫu / tư thế catwalk / đứng nghiêm quân nhân / động tác phóng đại" |
+| X7 | Nghiêm cấm "trang điểm đậm che khuôn mặt gốc đến không nhận ra" |
+| X8 | Nghiêm cấm "phong cách cổ/ trang phục cổ/ phục trang Hán/ tiên hiệp/ võ hiệp/ dân quốc/ cyberpunk/ khoa học viễn tưởng/ giả tưởng phương Tây" và các trang phục không phải đô thị hiện đại |
+| X9 | Nghiêm cấm "hở hang/ xuyên thấu/ thấp kém/ mờ ám/ bạo lực máu me" |
+| X10 | Nghiêm cấm "watermark/ chữ/ logo/ chữ ký/ khung/ dấu vết AI" |
+=== KẾT THÚC FILE ===

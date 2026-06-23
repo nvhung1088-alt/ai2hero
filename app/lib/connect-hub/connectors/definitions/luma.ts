@@ -14,5 +14,9 @@ export const lumaConnector: ConnectorDefinition = {
     { slug: 'generate_video', name: 'Tạo Video AI', description: 'Render video bằng Luma', inputSchema: [] },
   ],
   popular: true,
-  setupGuide: '<p><b>1.</b> Truy cập <a href="https://lumalabs.ai/dream-machine" target="_blank" rel="noreferrer">Luma AI</a>.</p><p><b>2.</b> Chuyển sang tài khoản Developer và lấy API Key.</p>'
+  setupGuide: '<p><b>1.</b> Truy cập <a href="https://lumalabs.ai/dream-machine" target="_blank" rel="noreferrer">Luma AI</a>.</p><p><b>2.</b> Chuyển sang tài khoản Developer và lấy API Key.</p>',
+  aiCapability: ['video'],
+  aiModels: [
+    { name: 'dream-machine', type: 'video', modes: ['text', 'singleImage'] }
+  ]
 };

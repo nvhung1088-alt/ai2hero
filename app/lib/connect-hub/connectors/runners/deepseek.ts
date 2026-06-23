@@ -13,7 +13,7 @@ export async function runDeepSeek(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 120000);
 
   try {
     if (actionSlug === 'chat_completion') {
@@ -96,7 +96,7 @@ export async function runDeepSeek(
   } catch (error: any) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
-      throw new Error('Timeout: Phản hồi từ DeepSeek quá chậm (quá 15s).');
+      throw new Error('Timeout: Phản hồi từ DeepSeek quá chậm (quá 120s).');
     }
     throw new Error(`Lỗi DeepSeek: ${error.message}`);
   }

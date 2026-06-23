@@ -37,6 +37,33 @@ export const openaiConnector: ConnectorDefinition = {
       name: 'Danh sách model AI',
       description: 'Cập nhật danh sách các mô hình trí tuệ nhân tạo khả dụng trên OpenAI.',
       inputSchema: []
+    },
+    {
+      slug: 'text_to_speech',
+      name: 'Text to Speech (TTS)',
+      description: 'Chuyển văn bản thành giọng nói AI',
+      inputSchema: [
+        {
+          name: 'model',
+          label: 'Mô hình TTS',
+          type: 'select',
+          required: true,
+          options: ['tts-1', 'tts-1-hd']
+        },
+        {
+          name: 'text',
+          label: 'Văn bản cần đọc',
+          type: 'textarea',
+          required: true
+        },
+        {
+          name: 'voice',
+          label: 'Giọng đọc',
+          type: 'select',
+          required: true,
+          options: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']
+        }
+      ]
     }
   ],
   popular: true,
@@ -45,5 +72,16 @@ export const openaiConnector: ConnectorDefinition = {
     updatePolicy: 'cron',
     healthCheckEndpoint: 'https://status.openai.com/api/v2/status.json',
     documentationUrl: 'https://platform.openai.com/docs/models'
-  }
+  },
+  aiCapability: ['text', 'image', 'tts'],
+  aiModels: [
+    { name: 'gpt-4o', type: 'text' },
+    { name: 'gpt-4o-mini', type: 'text' },
+    { name: 'gpt-4-turbo', type: 'text' },
+    { name: 'gpt-3.5-turbo', type: 'text' },
+    { name: 'dall-e-3', type: 'image' },
+    { name: 'dall-e-2', type: 'image' },
+    { name: 'tts-1', type: 'tts' },
+    { name: 'tts-1-hd', type: 'tts' }
+  ]
 };

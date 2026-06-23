@@ -7,12 +7,13 @@ import { getPlanLabel, getPlanBadgeClass } from '@/lib/shared-constants';
 import {
   Sparkles, Search, MessageSquare, Brain, ShoppingCart,
   FileText, LayoutGrid, Check, Plus, AlertCircle, ArrowRight,
-  Info, Flame, Trash2, X
+  Info, Flame, Trash2, X, Eye
 } from 'lucide-react';
 import { APP_ICON_MAP } from '@/lib/shared-constants';
 import { activateAppAction, deactivateAppAction } from '@/app/(login)/actions';
+import { enablePreviewModeAction } from '@/lib/preview-actions';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useTransition } from 'react';
 
 const CATEGORY_INFO = {
   all: { label: 'Tất cả ứng dụng', emoji: '✨', icon: LayoutGrid },
@@ -116,8 +117,16 @@ export function StoreClient({ user, teams: initialTeams, billingPlans = [] }: St
   const [activationError, setActivationError] = useState<string | null>(null);
   const [isPlanLimitError, setIsPlanLimitError] = useState(false);
   const [pending, setPending] = useState(false);
+  const [isPendingPreview, startTransition] = useTransition();
   const modalRef = useRef<HTMLDivElement>(null);
   const [deactivatingApp, setDeactivatingApp] = useState<{ teamId: number; appId: string; appName: string } | null>(null);
+
+  const handlePreviewApp = () => {
+    if (!selectedApp || !selectedTeamId) return;
+    startTransition(() => {
+      enablePreviewModeAction(selectedApp.id, selectedTeamId);
+    });
+  };
 
   useEffect(() => {
     if (!isModalOpen) return;
@@ -718,18 +727,26 @@ export function StoreClient({ user, teams: initialTeams, billingPlans = [] }: St
                         )}
                       </div>
 
-                      <div className="flex gap-2 w-full md:w-auto shrink-0">
+                      <div className="flex flex-wrap gap-2 w-full md:w-auto shrink-0 justify-end">
                         <button
                           onClick={() => setIsModalOpen(false)}
-                          disabled={pending}
-                          className="flex-1 md:flex-none px-5 py-3 rounded-xl text-xs font-bold border border-white/10 text-gray-300 hover:bg-white/5 transition-all text-center cursor-pointer"
+                          disabled={pending || isPendingPreview}
+                          className="px-4 py-3 rounded-xl text-xs font-bold border border-white/10 text-gray-300 hover:bg-white/5 transition-all text-center cursor-pointer"
                         >
-                          Hủy bỏ
+                          Hủy
+                        </button>
+                        <button
+                          onClick={handlePreviewApp}
+                          disabled={pending || isPendingPreview || adminOrOwnerTeams.length === 0}
+                          className="px-4 py-3 rounded-xl text-xs font-bold border border-white/20 bg-white/10 text-white hover:bg-white/20 disabled:opacity-50 transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>{isPendingPreview ? 'Đang mở...' : 'Xem thử'}</span>
                         </button>
                         <button
                           onClick={handleActivateApp}
-                          disabled={pending || adminOrOwnerTeams.length === 0}
-                          className="flex-grow-[2] md:flex-none px-6 py-3 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-500 to-pink-500 text-white hover:opacity-90 disabled:opacity-50 transition-all text-center flex items-center justify-center gap-1.5 shadow-md shadow-orange-500/10 cursor-pointer"
+                          disabled={pending || isPendingPreview || adminOrOwnerTeams.length === 0}
+                          className="px-6 py-3 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-500 to-pink-500 text-white hover:opacity-90 disabled:opacity-50 transition-all text-center flex items-center justify-center gap-1.5 shadow-md shadow-orange-500/10 cursor-pointer"
                         >
                           <span>{pending ? 'Đang kích hoạt...' : 'Kích hoạt ngay'}</span>
                           <ArrowRight className="h-3.5 w-3.5" />

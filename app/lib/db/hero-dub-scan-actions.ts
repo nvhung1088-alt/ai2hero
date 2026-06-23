@@ -1,0 +1,94 @@
+'use server';
+
+import { db } from './drizzle';
+import { dubScanConfigs } from './schema';
+import { eq, and } from 'drizzle-orm';
+
+export async function getDubScanConfigsAction(teamId: number) {
+  try {
+    const configs = await db.query.dubScanConfigs.findMany({
+      where: (c, { eq }) => eq(c.teamId, teamId),
+      orderBy: (c, { desc }) => [desc(c.createdAt)],
+    });
+    return { success: true, configs };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function saveDubScanConfigAction(data: {
+  teamId: number;
+  userId: number;
+  id?: number | string;
+  name: string;
+  folderPath: string;
+  intervalMinutes: number;
+  sourceLang?: string;
+  targetLang?: string;
+  asrEngine?: string;
+  subtitleMode?: string;
+  ttsEnabled?: boolean;
+  ttsEngine?: string;
+  ttsVoice?: string;
+  ttsSpeed?: string;
+  bgVolume?: string;
+  ttsVolume?: string;
+  aiAppSlug?: string;
+  aiModel?: string;
+}) {
+  try {
+    if (typeof data.id === 'number') {
+      await db.update(dubScanConfigs)
+        .set({
+          name: data.name,
+          folderPath: data.folderPath,
+          intervalMinutes: data.intervalMinutes,
+          sourceLang: data.sourceLang,
+          targetLang: data.targetLang,
+          asrEngine: data.asrEngine,
+          subtitleMode: data.subtitleMode,
+          ttsEnabled: data.ttsEnabled,
+          ttsEngine: data.ttsEngine,
+          ttsVoice: data.ttsVoice,
+          ttsSpeed: data.ttsSpeed,
+          bgVolume: data.bgVolume,
+          ttsVolume: data.ttsVolume,
+          aiAppSlug: data.aiAppSlug,
+          aiModel: data.aiModel,
+        })
+        .where(eq(dubScanConfigs.id, data.id));
+    } else {
+      await db.insert(dubScanConfigs).values({
+        teamId: data.teamId,
+        userId: data.userId,
+        name: data.name,
+        folderPath: data.folderPath,
+        intervalMinutes: data.intervalMinutes,
+        sourceLang: data.sourceLang,
+        targetLang: data.targetLang,
+        asrEngine: data.asrEngine,
+        subtitleMode: data.subtitleMode,
+        ttsEnabled: data.ttsEnabled,
+        ttsEngine: data.ttsEngine,
+        ttsVoice: data.ttsVoice,
+        ttsSpeed: data.ttsSpeed,
+        bgVolume: data.bgVolume,
+        ttsVolume: data.ttsVolume,
+        aiAppSlug: data.aiAppSlug,
+        aiModel: data.aiModel,
+      });
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteDubScanConfigAction(id: number, teamId: number) {
+  try {
+    await db.delete(dubScanConfigs).where(and(eq(dubScanConfigs.id, id), eq(dubScanConfigs.teamId, teamId)));
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

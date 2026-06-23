@@ -9,6 +9,8 @@ import { redirect } from 'next/navigation';
 import HeroCareSidebarMenu from '../../hero-care-sidebar-menu';
 import { getUser } from '@/lib/db/queries';
 import { CookieSync } from '@/components/cookie-sync';
+import { isPreviewMode } from '@/lib/preview-actions';
+import { PreviewBanner } from '@/app/(dashboard)/preview-banner';
 
 export const revalidate = 0;
 
@@ -64,11 +66,14 @@ export default async function HeroCareDynamicLayout({
     }
   }
 
-  if (!activatedApps.includes('hero-care')) {
+  const isPreview = await isPreviewMode('hero-care', teamId);
+  if (!activatedApps.includes('hero-care') && !isPreview) {
     redirect('/dashboard');
   }
 
   return (
+    <>
+      {isPreview && <PreviewBanner appId="hero-care" />}
     <div className="flex flex-col min-h-screen bg-gray-950 text-white w-full">
       <CookieSync teamId={teamId} />
       <CreateWorkspaceModal hideTrigger={true} />
@@ -117,5 +122,7 @@ export default async function HeroCareDynamicLayout({
         </main>
       </div>
     </div>
+  
+    </>
   );
 }

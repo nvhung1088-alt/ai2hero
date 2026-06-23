@@ -1,398 +1,600 @@
-# AI2HERO — UI MAP
-> Cập nhật: 2026-06-08
-> 💡 **Quy tắc vàng**: Khi thiết kế hoặc thêm trang/giao diện mới cho một ứng dụng MVP, hãy xem hướng dẫn tích hợp chi tiết tại [MVP_INTEGRATION_GUIDE.md](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/MVP_INTEGRATION_GUIDE.md).
+# UI_MAP — Bản Đồ Giao Diện Hệ Thống AI2Hero
 
-## KIẾN TRÚC TỔNG
+> **Mục đích**: AI đọc file này để hiểu TOÀN BỘ giao diện, trang nào liên kết trang nào, data flow giữa các module, và design system chung. Cập nhật file này mỗi khi UI thay đổi.
+
+---
+
+## KIẾN TRÚC TỔNG — 3 MVP + Shared Core
 
 ```mermaid
 graph TB
-    subgraph Public["🌐 Public (không cần đăng nhập)"]
-        LP[Landing Page<br>ai2hero.com/]
-        PR[Pricing Page<br>/pricing]
-        LG[Login/Register<br>/sign-in, /sign-up]
+    subgraph SHARED["🧱 SHARED CORE"]
+        AUTH["Auth / Session<br>(JWT, users, teams)"]
+        DS["Design System<br>(globals.css, shadcn/ui)"]
+        TOAST["Toast / Notifications"]
+        TOPHEADER["TopHeader + UserAvatar"]
+        APPSWITCHER["AppSwitcher (5 apps)"]
     end
 
-    subgraph Protected["🔒 Protected (cần đăng nhập)"]
-        DB[Bảng điều khiển<br>/dashboard]
-        ST[Kho ứng dụng<br>/dashboard/store]
-        HM[Trang chủ<br>/dashboard/home]
-        MB[Thành viên<br>/dashboard/members]
-        
-        subgraph MVPs["📦 MVP Apps (App Registry)"]
-            CHAT[AI Chat<br>/dashboard/chat]
-            HUB[AI Hub<br>/dashboard/hub]
-            API[API Hub<br>/dashboard/api]
-            SIM[HeroSim<br>/sim/dashboard]
-            POS[POS<br>/dashboard/pos]
-            CONTENT[Content Hub<br>/dashboard/content]
-            VIDEO[HeroVideo<br>/herovideodownload/dashboard]
-            CONNECT[Connect Hub<br>/connect-hub/t/[teamId]/dashboard]
-            REPORT[Hero Report<br>/hero-report/dashboard]
-            CARE[Hero Care<br>/hero-care/t/[teamId]/dashboard]
-        end
+    subgraph MVP1["🛡️ MVP1: iSocial"]
+        direction TB
+        S_LAYOUT["Social Layout<br>3-column (sidebar/feed/rightbar)"]
+        S_FEED["/ — Bảng tin"]
+        S_PROFILE["/profile/[id]"]
+        S_FRIENDS["/friends"]
+        S_REELS["/reels"]
+        S_SCHEDULER["/scheduler — Lập lịch MXH"]
+        S_GROUPS["/groups + /groups/[id]"]
+        S_PAGES["/pages + /pages/[id]"]
+        S_MESSAGES["/messages"]
+        S_NOTIFICATIONS["/notifications"]
+        S_FILM["/film — Phim Ngắn"]
+        S_FILM_WATCH["/film/watch — Xem phim ngắn"]
+        S_FILM_BOOKMARKS["/film/bookmarks — Phim đã lưu"]
+        S_CHAT["Chat Dock (overlay)"]
     end
 
-    subgraph Admin["👑 Super Admin"]
-        SA[Admin Panel<br>/admin]
-        AN[Announcements<br>/admin/announcements]
+    subgraph MVP2["🛒 MVP2: HeroMarketplace"]
+        direction TB
+        M_LAYOUT["Marketplace Layout<br>(header + cart + search)"]
+        M_HOME["/marketplace"]
+        M_PRODUCT["/product/[id]"]
+        M_SHOP["/shop/[id]"]
     end
 
-    LP --> LG
-    LG --> DB
-    DB --> MVPs
-    DB --> MB
-    SA --> DB
-    AN --> DB
-```
+    subgraph MVP3["🌐 MVP3: HeroWeb"]
+        direction TB
+        W_LAYOUT["HeroWeb Layout<br>(sidebar builder)"]
+        W_STUDIO["/heroweb"]
+        W_PREVIEW["/sites/[subdomain]"]
+    end
 
-## DATA FLOW
+    subgraph MVP4["🎬 MVP4: HeroVideoMaker"]
+        direction TB
+        VM_LAYOUT["Video Maker Layout<br>(sidebar + IDOR check)"]
+        VM_DASHBOARD["/hero-video-maker/t/[teamId]/dashboard"]
+        VM_PROJECTS["/hero-video-maker/t/[teamId]/projects"]
+        VM_EDITOR["/hero-video-maker/t/[teamId]/editor/[id]"]
+        VM_GALLERY["/hero-video-maker/t/[teamId]/gallery"]
+        VM_DEVICES["/hero-video-maker/t/[teamId]/devices"]
+        VM_SETTINGS["/hero-video-maker/t/[teamId]/settings"]
+    end
 
-```
-User đăng ký → Auth (JWT Cookie) → PostgreSQL (Drizzle ORM)
-                                         │
-                                    ┌────┴────┐
-                                    │         │
-                               Teams/Org    App Registry
-                               (RBAC)      (MVP Gating)
-                                    │         │
-                                    └────┬────┘
-                                         │
-                                    Dashboard
-                               (Living Sidebar)
-                                         │
-                               ┌─────────┼─────────┐
-                               │         │         │
-                           AI Chat   AI Hub   SIM Mgr...
+    subgraph MVP8["🎬 MVP8: HeroFilm"]
+        direction TB
+        HF_LAYOUT["HeroFilm Layout<br>(sidebar + IDOR check)"]
+        HF_DASHBOARD["/hero-film/t/[teamId]/dashboard — Phân tích KPI"]
+        HF_SERIES["/hero-film/t/[teamId]/series — Quản lý phim"]
+        HF_REVENUE["/hero-film/t/[teamId]/revenue — Báo cáo doanh thu"]
+    end
+
+    subgraph MVP9["🎬 MVP9: HeroDub"]
+        direction TB
+        HD_LAYOUT["HeroDub Layout<br>(sidebar + IDOR check)"]
+        HD_DASHBOARD["/hero-dub/t/[teamId]/dashboard — Dịch phụ đề"]
+        HD_GUIDE["/hero-dub/t/[teamId]/guide — Hướng dẫn Worker"]
+    end
+
+    AUTH --> S_LAYOUT
+    AUTH --> M_LAYOUT
+    AUTH --> W_LAYOUT
+    AUTH --> VM_LAYOUT
+    AUTH --> HF_LAYOUT
+    AUTH --> HD_LAYOUT
+    DS --> S_LAYOUT
+    DS --> M_LAYOUT
+    DS --> W_LAYOUT
+    DS --> VM_LAYOUT
+    DS --> HF_LAYOUT
+    DS --> HD_LAYOUT
+
+    S_LAYOUT -->|"sidebar link"| M_HOME
+    S_LAYOUT -->|"sidebar link"| W_STUDIO
+    S_LAYOUT -->|"sidebar link"| VM_DASHBOARD
+    S_LAYOUT -->|"sidebar link"| HF_DASHBOARD
+    S_LAYOUT -->|"sidebar link"| HD_DASHBOARD
+    M_LAYOUT -->|"back link"| S_FEED
+
+    S_FEED -.->|"Entity Bridge:<br>sync posts"| W_PREVIEW
+    S_PAGES -.->|"Entity Bridge:<br>sync page feed"| W_PREVIEW
+    M_HOME -.->|"Entity Bridge:<br>sync products"| W_PREVIEW
+    M_HOME -.->|"feed items"| S_FEED
+    VM_DASHBOARD -.->|"Long Polling<br>Render Jobs"| R_APP["💻 Desktop Renderer<br>(Tauri/Electron)"]
+    HD_DASHBOARD -.->|"Long Polling<br>API Tasks"| LW_APP["💻 Local Worker<br>(Python subprocess)"]
 ```
 
 ---
 
-## CHI TIẾT TỪNG TRANG
+## DESIGN SYSTEM CHUNG (Tiêu chuẩn cho cả 3 MVP)
 
-### Landing Page (`/`)
-- **Chức năng**: Giới thiệu AI2Hero, showcase các MVP miễn phí, CTA đăng ký
-- **Vai trò**: Marketing page (public)
-- **Đọc/Ghi data**: Không
-- **Liên kết**: → /pricing, → /sign-in, → /sign-up
+### Fonts
+- **Primary**: `Outfit` (Google Fonts) — set trong root layout
+- **Fallback**: `Manrope, Arial, Helvetica, sans-serif` — set trong globals.css
 
-### Pricing Page (`/pricing`)
-- **Chức năng**: Hiển thị bảng giá Free vs Pro vs Enterprise Việt hóa (đọc động từ DB), nút đăng ký, phần FAQ chi tiết
-- **Vai trò**: Marketing page (public)
-- **Đọc/Ghi data**: Đọc cấu hình các gói cước động từ database (`system_settings` table)
-- **Liên kết**: → /sign-up, → Hỗ trợ Enterprise
-
-### Sign In / Sign Up (`/sign-in`, `/sign-up`)
-- **Chức năng**: Đăng nhập/đăng ký bằng Email + Password hoặc Google OAuth. Giao diện Dark Mode nền tối `#08080A` với card kính mờ glassmorphism và background orbs.
-- **Vai trò**: Auth page
-- **Đọc/Ghi data**: Đọc/Ghi bảng `users`, `teams`, `team_members`, `invitations` (PostgreSQL)
-- **Liên kết**: → /dashboard, → /api/auth/google
-
-### Bảng điều khiển (`/dashboard`)
-- **Chức năng**: Trello-Style Board Overview hiển thị toàn bộ các Không gian làm việc (Workspaces/Teams) mà người dùng tham gia dưới dạng Board Cards tuyệt đẹp. Cho phép xem nhanh plan badge, các ứng dụng đang chạy, thành viên và link mở không gian làm việc. Có widget lịch sử hoạt động compact ở chân trang.
-- **Vai trò**: Orchestrator — trung tâm điều hướng và bao quát toàn bộ hệ thống
-- **Đọc/Ghi data**: Đọc từ database PostgreSQL thật (bảng `teams`, `activity_logs` thông qua `queries.ts`)
-- **Liên kết**: → /dashboard/t/[teamId], → /dashboard/store, → /dashboard/home, → /dashboard/settings
-
-### Kho ứng dụng (`/dashboard/store`)
-- **Chức năng**: Nơi trưng bày toàn bộ MVP hệ thống (lấy cảm hứng từ Trello templates), nhóm theo categories (AI, Quản trị, Giao tiếp, Phân tích), hỗ trợ filter category pill, search thời gian thực và modal kích hoạt ứng dụng vào Team.
-- **Vai trò**: MVP Store
-- **Đọc/Ghi data**: Đọc `lib/apps-registry.ts` (APPS), đọc/ghi database PostgreSQL thật (Server Actions `activateAppAction`/`deactivateAppAction`)
-- **Liên kết**: → /dashboard
-
-### Trang chủ (`/dashboard/home`)
-- **Chức năng**: Kênh giao tiếp nội bộ (Facebook Workplace Style) hiển thị 3 loại cập nhật (System Activity, MVP Result, Task Assignment) dạng timeline. 
-  - **Banner Khẩn Cấp**: Hiển thị thông cáo khẩn cấp (warning/critical) chưa đọc của hệ thống ngay trên cùng, hỗ trợ đóng/dismiss banner riêng lẻ và cập nhật trạng thái đã đọc vào database thật.
-  - **Tối ưu Post Creator UI**: Thu gọn dải Attachment Bar compact; ẩn 4 metrics của MVP Result dưới Accordion **"Chỉ số mở rộng ⚙️"** động; chuyển form Giao việc (Task Assignment) từ grid 3 cột sang layout hàng ngang flex mượt mà. Đính kèm ảnh cho phép nhập URL thực tế.
-  - **Dữ liệu thật & Tenant Isolation (No Mockup) (CRITICAL)**: Cách ly dữ liệu 100% ở cả Backend (`getFeedPosts` filter `userTeamIds`) và Frontend (gợi ý `@mention` trong cả Post Creator & Comment scoped chặt chẽ theo Workspace đang chọn/chứa bài viết). Ngăn chặn hoàn toàn rò rỉ thông tin thành viên và bài đăng chéo giữa các tổ chức.
-  - **Optimistic Rollback & UI Robustness**: Bổ sung snapshot state và rollback thông tin tức thời khi có lỗi API cho 5 hành động tương tác chính (like, comment, task update, pin).
-  - **Thay thế Native Prompt**: Chuyển đổi popup `prompt()` nhập URL ảnh cũ sang inline modal mờ kính Glassmorphism, hỗ trợ phím Escape, Enter và đóng click-outside.
-  - **Phân loại Post Card**: Phân bổ màu sắc viền mờ cao cấp dựa trên loại bài viết (viền vàng cho Task và tím cho MVP Result). Xem chi tiết MVP hiển thị dữ liệu thật từ DB.
-  - **Chức năng cơ bản**: Ghim bài viết quan trọng lên đầu feed, phân trang tĩnh 3 bài đăng/trang với Pagination Footer Premium, hỗ trợ hash URL scroll (#post-{id}) và highlight bài đăng màu cam flash từ Notification.
-- **Vai trò**: Social Feed & Internal Communication Hub
-- **Đọc/Ghi data**: Đọc/Ghi database PostgreSQL thật (các bảng `feed_posts`, `feed_comments`, `feed_likes`, `system_announcements`, `user_announcement_reads`)
-- **Liên kết**: → /dashboard
-
-### Workspace Dashboard (`/dashboard/t/[teamId]`)
-- **Chức năng**: Dashboard tổng quan đầy đủ của một Workspace cụ thể. Hiển thị 7 module: (1) Banner nhóm + Badge plan, (2) 4 Stats Cards tổng quan (AI usage, Apps, Members, Tasks), (3) AI Resource Progress Bar (Chưa kết nối dữ liệu), (4) Quick Launch Grid cho apps đã kích hoạt, (5) Task Board Kanban compact với bộ lọc trạng thái, (6) Biểu đồ Pure CSS Bar Chart lượt dùng AI 7 ngày (Chưa kết nối dữ liệu), (7) Timeline Activity Log thu gọn + Feed riêng nhóm. Dữ liệu cách ly hoàn toàn theo teamId.
-- **Vai trò**: Workspace Dashboard — trung tâm vận hành riêng của từng nhóm
-- **Đọc/Ghi data**: Đọc database PostgreSQL thật (các bảng `teams`, `users`, `feed_posts`, `activity_logs`), đọc `lib/apps-registry.ts` (APPS)
-- **Liên kết**: → /dashboard, → /dashboard/store, → /dashboard/members, → /dashboard/settings, → /dashboard/home, → /dashboard/apps
-
-### Cài đặt nhóm (`/dashboard/settings`)
-- **Chức năng**: Quản lý gói đăng ký hiện hành của nhóm (tích hợp Stripe Portal), xem danh sách thành viên chi tiết và biểu mẫu gửi thư mời thành viên mới theo vai trò (Owner/Member).
-- **Vai trò**: Team Administrator Page
-- **Đọc/Ghi data**: Đọc/Ghi DB (`/api/team`, `/api/user`), DB Actions (`removeTeamMember`, `inviteTeamMember`)
-- **Liên kết**: → /dashboard
-
-### Thành viên (`/dashboard/members`)
-- **Chức năng**: Quản lý danh sách thành viên trong nhóm, thay đổi vai trò (5 vai trò: Owner, Admin, Manager, Staff, Viewer), tạm khóa tài khoản, xóa khỏi nhóm. Xem ma trận quyền hạn chi tiết và quản lý các lời mời. Modal mời thành viên với Role Picker dạng Card cao cấp. **Tự động gửi thông báo in-app (Bell Notification) cho người được mời nếu đã có tài khoản, hỗ trợ phê duyệt nhanh.** Hỗ trợ cuộn ngang ma trận trên mobile và Trap Focus phím Escape để đóng nhanh Modal/Dropdown.
-- **Vai trò**: Quản trị nhóm & phân quyền
-- **Đọc/Ghi data**: Đọc/Ghi database PostgreSQL thật (các bảng `team_members`, `invitations`)
-- **Liên kết**: → /dashboard/apps, → /dashboard
-
-### AI Chat (`/dashboard/chat`) — MVP #1
-- **Chức năng**: Trợ lý AI CSKH tự động (kế thừa từ UPCHAT SuperChat)
-- **Vai trò**: MVP App
-- **Đọc/Ghi data**: Đọc/Ghi conversations, messages, AI responses
-- **Liên kết**: → /dashboard
-
-### AI Hub (`/dashboard/hub`) — MVP #2
-- **Chức năng**: Quản lý và điều phối các model AI
-- **Vai trò**: MVP App
-- **Đọc/Ghi data**: Đọc/Ghi AI models config, usage logs
-- **Liên kết**: → /dashboard
-
-### `/connect-hub/t/[teamId]/mapping`
-- **Chức năng**: Giao diện chuẩn hóa trường dữ liệu (POS Field Mapping) giữa các hệ thống nguồn và chuẩn nội bộ Ai2Hero. Sử dụng cơ chế mapping chọn duy nhất với gợi ý `{ selected, suggestions }` được render dạng danh sách Radio Buttons trực quan. Bổ sung nút bấm "Phân tích dữ liệu mẫu" (AI Auto-Suggest) giúp tự động dò cấu trúc dữ liệu thô (đơn hàng, sản phẩm, khách hàng) từ cửa hàng thật (qua API `probe_sample_data`) và tự sinh đề xuất mapping tối ưu bằng thuật toán chấm điểm độ tương đồng ngữ nghĩa. Tích hợp Tab **"Năng lực API" (AI Capabilities)** hiển thị danh sách các năng lực API được phân loại chi tiết đi kèm cấu trúc hướng dẫn thực hiện cho AI (`aiInstruction`) và nút sao chép nhanh 1-click. Ngoài ra còn hỗ trợ **Modal Chạy thử (Test Run Modal)** trực quan cho phép lập trình viên chạy thử tức thời bất kỳ Năng lực API nào bằng cách nhập JSON payload mẫu và hiển thị log output trực tiếp từ API Gateway.
-- **Vai trò**: UI Quản lý cấu hình mapping động và năng lực AI vận hành
-- **Đọc/Ghi data**: Đọc/Ghi cấu hình mapping vào `connectHubMappingConfigs` (tự động chạy `migrateLegacyConfig` để nâng cấp cấu hình cũ), truy vấn danh mục năng lực thông qua Server Action `getConnectorDetailAction` (tab Năng lực API) để lazy-load động capabilities từ Detail Catalog kết hợp với capabilities tĩnh của registry, gọi Server Action thực thi test qua `runActionAction`.
-- **Liên kết**: Sidebar -> Quản lý ánh xạ (hoặc Mapping)
-
-### API Hub (`/dashboard/api`) — MVP #3
-- **Chức năng**: Quản lý kết nối API bên thứ 3
-- **Vai trò**: MVP App
-- **Đọc/Ghi data**: Đọc/Ghi API providers, connection status
-- **Liên kết**: → /dashboard
-
-### HeroSim (`/sim/dashboard`) — MVP #4
-- **Chức năng**: Giao diện quản trị SIM doanh nghiệp, hiển thị Stats, biểu đồ Donut rủi ro (CSS conic-gradient), danh sách top 5 SIM nguy cấp và các lối tắt nhanh.
-- **Vai trò**: MVP App Home (Server Component + Sub-Sidebar dọc)
-- **Đọc/Ghi data**: 
-  - **Đọc**: Thống kê, SIM, cảnh báo từ DB qua `getCurrentTeamId()` & `sim-queries.ts`. Đọc live thông tin Workspace (Tên Team & Gói plan) trực tiếp từ database `teams` table.
-  - **Đồng bộ API trực tiếp (Extension v4.0)**: Loại bỏ cơ chế Bridge API cũ kém an toàn (qua localStorage/postMessage). Extension v4.0 kết nối và đồng bộ mật khẩu trực tiếp 2 chiều với máy chủ qua giao thức HTTPS và Bearer Token JWT (90 ngày) bền vững, tăng độ bảo mật lên mức tối đa.
-- **Liên kết**: → /sim/assets, → /sim/accounts, → /sim/alerts, → /sim/history, → /sim/settings, → Nút quay lại Workspace Dashboard nhanh (`/dashboard/t/team-[id]`)
-
-### Quản lý SIM (`/sim/assets`)
-- **Chức năng**: Bảng quản lý kho SIM. Cho phép tìm kiếm thời gian thực, lọc mở rộng (theo nhà mạng, rủi ro, loại SIM vật lý/eSIM, độ quan trọng), sắp xếp (Tên SIM, Số điện thoại, Rủi ro, Check gần nhất, Nhà mạng, Người phụ trách) và phân trang 10 dòng/trang với Premium Footer. Tích hợp slide-over Drawer chi tiết (thông tin đăng ký, tài khoản gắn liền, check logs), các modal thêm/sửa/xóa SIM (hỗ trợ đóng nhanh bằng phím Escape và click-outside), kiểm tra bảo mật (tính điểm rủi ro qua engine), và import CSV hàng loạt.
-- **Vai trò**: MVP Asset Manager (Client Component)
-- **Đọc/Ghi data**:
-  - **Đọc**: Dữ liệu SIM, nhân viên, accounts, logs từ server loader.
-  - **Ghi**: CRUD SIM qua server actions `createSimAsset`/`updateSimAsset`/`deleteSimAsset`; thêm check log qua `addSimCheckLog`; nhập lô qua `importSimAssetsBatch`.
-- **Liên kết**: → /sim/dashboard, → chi tiết SIM Drawer
-
-### Tài khoản liên kết (`/sim/accounts`)
-- **Chức năng**: Bảng quản lý tài khoản phẳng (Table). Cho phép tìm kiếm thời gian thực, lọc theo nền tảng và độ quan trọng, sắp xếp linh hoạt các cột và phân trang 15 dòng/trang. Tích hợp tính năng Chọn nhiều (Bulk Select) để Xóa hàng loạt (Bulk Delete), nút giả lập "Nhập từ Chrome" cho Extension sau này. Hỗ trợ Drawer trượt xem chi tiết tài khoản (thông tin OTP, bảo mật, email/SIM khôi phục, ghi chú) và các modal thêm/sửa tài khoản. **Cơ chế bảo mật Vault 2.0 phân quyền: Chỉ Owner mới có thể giải mã và xem mật khẩu trong drawer (ẩn các nút xem/copy đối với các vai trò khác) và thêm/sửa mật khẩu trong các modal. Nâng cấp Bulk Delete sử dụng Premium Confirm Modal kính mờ thay thế confirm() native.**
-- **Vai trò**: MVP Connection Manager (Client Component)
-- **Đọc/Ghi data**:
-  - **Đọc**: Tài khoản liên kết, SIM assets, nhân viên từ server loader. Mật khẩu được giải mã bằng `decryptField()` khi truy vấn nếu người xem là Owner.
-  - **Ghi**: CRUD tài khoản qua actions `createSimLinkedAccount`/`updateSimLinkedAccount`/`deleteSimLinkedAccount` (Mật khẩu được mã hóa tự động bằng `encryptField()`). Xóa hàng loạt qua vòng lặp client-side tối ưu kết nối Server Actions.
-- **Liên kết**: → /sim/dashboard, → /sim/assets, → Drawer chi tiết tài khoản
-
-### Cảnh báo rủi ro (`/sim/alerts`)
-- **Chức năng**: Quản trị danh sách sự cố bảo mật theo 3 Tab (Cần xử lý, Đã giải quyết, Đã bỏ qua). Tích hợp tìm kiếm theo loại/thiết bị/mô tả, lọc cấp độ rủi ro, lọc loại rủi ro động trích xuất từ events, sắp xếp linh hoạt (Thời gian, Độ nghiêm trọng theo trọng số, Tên thiết bị SIM) và phân trang Grid 6 items/trang có Premium Footer. Cho phép giải quyết (ghi chú cách xử lý qua modal có click-outside/Escape), bỏ qua rủi ro hoặc khôi phục sự cố cũ về Cần xử lý.
-- **Vai trò**: MVP Threat Manager (Client Component)
-- **Đọc/Ghi data**:
-  - **Đọc**: Cảnh báo rủi ro từ server loader.
-  - **Ghi**: Xử lý rủi ro qua actions `resolveSimRiskEvent`/`dismissSimRiskEvent`/`restoreSimRiskEvent`.
-- **Liên kết**: → /sim/dashboard
-
-### Lịch sử kiểm tra (`/sim/history`)
-- **Chức năng**: Timeline audit logs dọc thể hiện toàn bộ lịch sử kiểm định bảo mật SIM. Hiển thị thông tin người check, loại check (Thủ công, Extension, API), ghi chú, và biến động điểm rủi ro (tăng/giảm/giữ nguyên).
-- **Vai trò**: MVP Audit Trail (Client Component)
-- **Đọc/Ghi data**:
-  - **Đọc**: Logs từ server loader.
-- **Liên kết**: → /sim/dashboard
-
-### Cài đặt SIM (`/sim/settings`)
-- **Chức năng**: Trang cài đặt HeroSim với **8 tabs cấu hình cao cấp** (Cấu hình chung, Quản lý nhân sự, Danh mục kênh, API & Tích hợp, Telegram Alerts, Chu kỳ kiểm tra, Quy tắc rủi ro, và **Sao lưu dữ liệu tự động** gửi email qua Resend). Tab Sao lưu dữ liệu chỉ hiển thị đối với Chủ sở hữu (Owner), hỗ trợ thiết lập email nhận, chu kỳ gửi (hàng tuần/hàng tháng) và kích hoạt sao lưu nhanh thủ công tức thời về email cá nhân.
-- **Vai trò**: MVP Settings Manager (Server & Client Component)
-- **Đọc/Ghi data**:
-  - **Đọc**: Đọc danh sách nhân viên qua `getSimEmployees`, platforms qua `getSimPlatforms`, system settings qua Server Action `getSystemSetting`, và cấu hình backup qua `getBackupConfig`.
-  - **Ghi**: Thêm/sửa nhân viên qua `createSimEmployee`/`updateSimEmployee`, platforms qua `createSimPlatformAction`/`deleteSimPlatformAction`, cấu hình hệ thống qua `saveSystemSetting`, lưu backup qua `saveBackupConfigAction`, và trigger gửi backup thủ công qua `triggerManualBackupAction`.
-
-### HeroVideo Dashboard (`/herovideodownload/dashboard`)
-- **Chức năng**: Giao diện bảng điều khiển tải video không logo. Hỗ trợ Zero-Cost Local Web Player để quét và phát trực tiếp các video đã tải xuống thông qua File System Access API.
-  - **Nút Mở thư mục 1-Click thông minh**: Tự động sao chép đường dẫn thư mục `Downloads/herovideo/workspace-slug` vào Clipboard và phát đi tín hiệu `HERO_VIDEO_OPEN_FOLDER` qua `window.postMessage` giúp Extension mở thư mục của hệ thống ngay lập tức.
-  - **Duyệt video offline 0s độ trễ**: Render danh sách video trực tiếp từ Folder local của người dùng mà không cần query cơ sở dữ liệu.
-- **Vai trò**: MVP App (Offline-first & Local Storage)
-- **Đọc/Ghi data**: Đọc/ghi các tệp video trực tiếp từ File System của máy tính cá nhân. Đồng bộ danh sách video lên máy chủ AI2Hero qua API của Extension.
-- **Liên kết**: → /dashboard, nút "📂 Mở thư mục"
-
-### Connect Hub Dashboard (`/connect-hub/t/[teamId]/dashboard`)
-- **Chức năng**: Tổng quan trạng thái kết nối API, thống kê số lượng connection, số lượt thực thi trong tháng và lịch sử log mới nhất. Hiển thị 4 thẻ Stats Summary sắc nét.
-- **Vai trò**: MVP App Dashboard
-- **Đọc/Ghi data**: Đọc database PostgreSQL thật qua [connect-hub-queries.ts](file:///c:/Users/ADMIN/OneDrive/Desktop/Ai2Hero/app/lib/db/connect-hub-queries.ts).
-- **Liên kết**: → /connect-hub/t/[teamId]/apps, → /connect-hub/t/[teamId]/connections, → /connect-hub/t/[teamId]/logs, → /dashboard
-
-### Connect Hub App Store (`/connect-hub/t/[teamId]/apps`)
-- **Chức năng**: Kho trưng bày các ứng dụng tích hợp, cho phép lọc theo danh mục pill (🔥 Phổ biến, 🤖 AI, 🛒 POS...) và tìm kiếm thời gian thực.
-  - **Dynamic Connect Modal (Flex Column Fixed & API Capabilities)**: Popup thiết lập kết nối có bố cục Flex Column với chiều cao tối đa `max-h-[90vh]` và các phần Header, Body (cuộn độc lập), Footer phân chia rõ ràng để chống tràn layout. Hiển thị danh sách khả năng của API (`selectedApp.actions`) dưới dạng các ô grid card Dark Mode tinh xảo.
-  - **Dynamic Detail Loading (Catalog Connectors)**: Khi click vào các app thuộc catalog (`runtimeType: 'catalog_only'`), giao diện sẽ tải động chi tiết API schema qua Server Action `getConnectorDetailAction` (đọc từ `catalog-detail.json`), hiển thị Warning Alert và khóa toàn bộ input/nút bấm để bảo mật.
-  - **Meta Platform Connector**: Tích hợp gọi trực tiếp Graph API, Marketing API, Instagram Business API, và Threads API v25.0 (đọc từ env, default v25.0) xử lý 13 actions (gồm 2 Discovery, 4 Page/Inbox/Comments, 3 Ads, 2 Instagram, 2 Threads) và hiển thị 6 actions Write dưới dạng Planned (Phase 2).
-- **Vai trò**: MVP Store & Client Integration
-- **Đọc/Ghi data**: Ghi database qua Server Action `createConnectionAction` mã hóa AES-256-GCM, đọc chi tiết catalog qua Server Action `getConnectorDetailAction`.
-- **Liên kết**: → /connect-hub/t/[teamId]/dashboard
-
-
-### Connect Hub Connections Manager (`/connect-hub/t/[teamId]/connections`)
-- **Chức năng**: Quản lý danh sách kết nối tích hợp API đang chạy. Hỗ trợ kiểm thử ping nhanh (`testConnectionAction`), ngắt kết nối (`deleteConnectionAction`) qua Premium Confirm Modal kính mờ, và xem chi tiết Drawer trượt (credentials masked).
-- **Vai trò**: Connection Manager
-- **Đọc/Ghi data**: Đọc/Ghi database Postgres thật qua Server Actions.
-- **Liên kết**: → /connect-hub/t/[teamId]/apps, → /connect-hub/t/[teamId]/dashboard
-
-### Connect Hub Usage Logs (`/connect-hub/t/[teamId]/logs`)
-- **Chức năng**: Bảng nhật ký ghi nhận đầy đủ lịch sử chạy API tự động hoặc on-demand của Team, hiển thị chi tiết thời gian, action name, module gọi, trạng thái, duration (ms), và hiển thị tooltip báo lỗi chi tiết khi API lỗi. Phân trang 15 dòng/trang.
-- **Vai trò**: MVP Audit Trail
-- **Đọc/Ghi data**: Đọc từ bảng `connect_hub_usage_logs` PostgreSQL thật.
-- **Liên kết**: → /connect-hub/t/[teamId]/dashboard
-
-### Connect Hub Webhooks (`/connect-hub/t/[teamId]/webhooks`)
-- **Chức năng**: Quản lý các Webhook Endpoints để nhận dữ liệu thời gian thực (POST/GET) từ các app bên ngoài. Hỗ trợ tạo webhook mới với giao diện hiển thị duy nhất 1 lần cho Secret Key, bật/tắt nhanh trạng thái, copy URL và Drawer trượt xem nhật ký payload (Headers & JSON body) trực quan. **Đặc biệt tích hợp luồng xử lý tự động (Webhook Flow): Cho phép cấu hình chuỗi các bước thực thi connector actions tuần tự (nội suy biến dynamic từ payload/headers) khi nhận webhook và theo dõi chi tiết lịch sử chạy (Flow Runs) trực quan qua Drawer.**
-- **Vai trò**: Webhook Manager (Incoming gateway)
-- **Đọc/Ghi data**: Đọc/Ghi bảng `connect_hub_webhooks` và `connect_hub_webhook_logs` qua Server Actions trong `connect-hub-actions.ts`.
-- **Liên kết**: → /connect-hub/t/[teamId]/dashboard, → /connect-hub/t/[teamId]/connections
-
-### Hero Report Dashboard (`/hero-report/dashboard`)
-- **Chức năng**: Giao diện chính của Hero Report (MVP Báo cáo tự động đa nguồn). Hiển thị danh sách lịch báo cáo tự động đã thiết lập, trạng thái hoạt động, lịch chạy tiếp theo, lịch sử gửi gần nhất cùng lượng token AI tiêu thụ. Tích hợp Form tạo mới 5 bước thông minh: Bước 1: Chọn một hoặc nhiều nguồn dữ liệu tích hợp (Pancake POS, Pancake Chat...). Bước 2: Đánh dấu chọn động các Năng lực API theo từng nguồn, hỗ trợ bộ lọc thời gian nâng cao 2 hàng nút (Ngày và Kế toán) có cảnh báo thời gian tải dài, và có nút "Xem trước dữ liệu gốc" để test thử nội dung HTML trả về ngay trên giao diện. Bước 3: Chọn cổng AI và Model linh hoạt được load từ Connect Hub kèm custom prompt. Bước 4: Đặt lịch gửi tự động. Bước 5: Cấu hình cổng nhận báo cáo (Telegram Bot hoặc Zalo ZNS & OA). 
-- **Vai trò**: MVP App UI
-- **Đọc/Ghi data**: Đọc/Ghi dữ liệu từ 2 bảng `hero_report_schedules` và `hero_report_runs` thông qua Server Actions trong `hero-report-actions.ts`. Đọc `connectHubConnections` để kết xuất AI động.
-- **Liên kết**: → /dashboard, → /connect-hub/t/[teamId]/connections (để thêm kết nối nếu trống)
-
-### Hero Care Dashboard (`/hero-care/t/[teamId]/dashboard`)
-- **Chức năng**: Trang chủ của Hero Care. Hiển thị các chỉ số hiệu suất hôm nay (tin nhắn nhận, AI call, tỷ lệ chính xác, handoff) được nạp trực tiếp từ DB thực tế và các phím tắt nhanh sang hộp chat, kịch bản, khách hàng, và snapshots.
-- **Vai trò**: MVP App Dashboard
-- **Đọc/Ghi data**: Đọc từ database Postgres các tin nhắn và event logs.
-- **Liên kết**: → /dashboard, → /hero-care/t/[teamId]/chat, → /hero-care/t/[teamId]/scripts, → /hero-care/t/[teamId]/snapshots, → /hero-care/t/[teamId]/customers, → /hero-care/t/[teamId]/settings
-
-### Hộp thư Chat Hero Care (`/hero-care/t/[teamId]/chat`)
-- **Chức năng**: Giao diện Chat 3 cột chuyên nghiệp. Cột trái: Tìm kiếm và lọc hội thoại theo tabs phân loại (Tất cả, Robot, Hybrid, Manual, Resolved). Cột giữa: Khung chat thời gian thực (polling 4s) với 3 chế độ chat (AI Auto, AI Assist/Hybrid, Manual). Tích hợp vùng kiểm duyệt (Draft Zone) để nhân viên duyệt/sửa/gửi câu trả lời gợi ý của AI. Cột phải: Thông tin khách hàng (notes, tags), tra cứu tồn kho sản phẩm trong Snapshot cache, và gợi ý kịch bản FAQ phù hợp.
-- **Vai trò**: MVP App UI
-- **Đọc/Ghi data**: Đọc/Ghi qua Server Actions tin nhắn, cuộc hội thoại, và thông tin chi tiết khách hàng.
-- **Liên kết**: → /hero-care/t/[teamId]/dashboard
-
-### Quản lý kịch bản FAQ (`/hero-care/t/[teamId]/scripts`)
-- **Chức năng**: Quản lý các kịch bản trả lời FAQ mẫu với giao diện 3-Tab: **Chờ duyệt** (pending) / **Đã duyệt** (active/paused) / **Từ chối** (rejected). Cho phép thêm/sửa/xoá mẫu, duyệt nhanh/từ chối kịch bản pending từ AI Learning sinh ra, gán từ khóa, intent và cài đặt ngưỡng tin cậy.
-- **Vai trò**: MVP App UI
-- **Đọc/Ghi data**: Đọc/Ghi bảng `hero_care_scripts` qua Server Actions.
-- **Liên kết**: → /hero-care/t/[teamId]/dashboard
-
-### Quản lý đồng bộ Snapshots (`/hero-care/t/[teamId]/snapshots`)
-- **Chức năng**: Thiết lập chu kỳ đồng bộ tồn kho, sản phẩm, đơn hàng từ Pancake/KiotViet POS. Nút trigger đồng bộ nóng gọi Server Action thực tế `triggerSnapshotSyncAction` hiển thị tiến trình, tốc độ nạp cache và logs thời gian thực.
-- **Vai trò**: MVP App UI
-- **Đọc/Ghi data**: Đọc/Ghi bảng `hero_care_snapshots` và `hero_care_snapshot_items` qua Server Actions.
-- **Liên kết**: → /hero-care/t/[teamId]/dashboard
-
-### Quản lý Khách hàng (`/hero-care/t/[teamId]/customers`) [NEW]
-- **Chức năng**: Bảng quản lý thông tin khách hàng đa kênh. Hiển thị thông tin kênh, tags phân loại, ghi chú liên hệ. Hỗ trợ thanh tìm kiếm, bộ lọc theo kênh và Drawer trượt chỉnh sửa tags/notes tức thì.
-- **Vai trò**: MVP App UI
-- **Đọc/Ghi data**: Đọc/Ghi bảng `hero_care_customers` qua Server Actions.
-- **Liên kết**: → /hero-care/t/[teamId]/dashboard, → /hero-care/t/[teamId]/chat
-
-### Hero Care Settings (`/hero-care/t/[teamId]/settings`)
-- **Chức năng**: Trang cài đặt tổng quan Hero Care với 4-Tab:
-  - **Inboxes**: CRUD inboxes và link chúng tới API Connect Hub.
-  - **Guardrails**: Thiết lập quy tắc an toàn (chặn từ khóa xấu, handoff intent, max turns, stale cache block).
-  - **Quotas**: Biểu đồ thanh tiến trình giám sát giới hạn tin nhắn/AI call của inboxes trong ngày.
-  - **Event Logs**: Nhật ký audit các sự kiện hệ thống kèm Modal xem chi tiết payload JSON.
-- **Vai trò**: MVP Settings Page
-- **Đọc/Ghi data**: Đọc/Ghi các bảng `hero_care_inboxes`, `hero_care_guardrails`, `hero_care_events` và `connect_hub_connections` qua Server Actions.
-- **Liên kết**: → /hero-care/t/[teamId]/dashboard, → /connect-hub/t/[teamId]/connections
-
-### Super Admin Dashboard (`/admin`)
-- **Chức năng**: Dashboard tổng quan hiển thị 6 chỉ số nền tảng (Người dùng, tổ chức, lượt dùng AI, doanh thu, uptime, hoạt động hôm nay, trong đó Doanh thu và Uptime hiển thị dạng '—' placeholder do chưa kết nối Stripe/monitoring) và 2 biểu đồ Pure CSS Bar Chart tăng trưởng kèm 5 logs hệ thống mới nhất. **Đồng bộ hóa giao diện nền tối Premium Dark Mode.**
-- **Vai trò**: Super Admin dashboard
-- **Đọc/Ghi data**: Đọc `lib/admin-mock-data.ts`
-- **Liên kết**: → /admin/users, → /admin/teams, → /admin/settings, → /admin/logs, → /dashboard/apps
-
-### Quản lý người dùng (`/admin/users`)
-- **Chức năng**: Quản lý toàn bộ tài khoản người dùng trên nền tảng, cho phép thăng cấp/hạ cấp Super Admin và tạm khóa/mở khóa tài khoản động. **Hỗ trợ sắp xếp theo cột (Người dùng, Vai trò, Lượt dùng AI) và phân trang 5 dòng/trang với Premium Footer. Chống vỡ giao diện trên mobile.**
-- **Vai trò**: Super Admin page
-- **Đọc/Ghi data**: Đọc từ Database Postgres thật qua `getAdminUsers()`, chỉnh sửa qua Server Actions `toggleUserRoleAction` & `toggleUserStatusAction`.
-- **Liên kết**: → /admin
- 
-### Quản lý tổ chức (`/admin/teams`)
-- **Chức năng**: Quản lý các nhóm và workspace, nâng hạ cấp plan nhanh (Free, Pro, Enterprise), khóa/mở khóa hoạt động của tổ chức. **Tích hợp sắp xếp theo cột (Tổ chức, Thành viên, Lượt dùng AI) và phân trang 5 nhóm/trang. Sử dụng bảng cuộn ngang chống tràn mobile và hiệu ứng hover mượt mà.**
-- **Vai trò**: Super Admin page
-- **Đọc/Ghi data**: Đọc từ Database Postgres thật qua `getAdminTeams()`, nâng/hạ gói qua `changeTeamPlanAction`, khóa/mở khóa qua `toggleTeamStatusAction`.
-- **Liên kết**: → /admin
-
-### Cấu hình hệ thống (`/admin/settings`)
-- **Chức năng**: Quản trị API Keys của OpenAI, Anthropic, Google (ẩn/hiện masked key, xoay vòng Key qua Premium Confirm Modal). Thiết lập và quản lý động cấu hình của 3 gói dịch vụ (Free, Pro, Enterprise) qua giao diện Tabs (giá, chu kỳ, thành viên tối đa, mô tả, tính năng hiển thị và phân quyền các ứng dụng được phép).
-- **Vai trò**: Super Admin page
-- **Đọc/Ghi data**: Đọc/Ghi cấu hình từ database (`system_settings` table) bằng Server Actions
-- **Liên kết**: → /admin
-
-### Nhật ký hệ thống (`/admin/logs`)
-- **Chức năng**: Bảng audit trail logs ghi nhận toàn bộ các thao tác vĩ mô của hệ thống, hỗ trợ bộ lọc nhanh theo 4 mức độ Severity (Tất cả, Info, Warning, Error) và ô tìm kiếm nhanh. **Hỗ trợ sắp xếp theo Thời gian, Hành động, Mức độ nghiêm trọng (trọng số Info < Warning < Error) và phân trang 5 dòng/trang. Tích hợp bảng cuộn ngang chống tràn mobile và hover row mượt mà.**
-- **Vai trò**: Super Admin page
-- **Đọc/Ghi data**: Đọc `lib/admin-mock-data.ts`
-- **Liên kết**: → /admin
-
-### Quản lý thông cáo hệ thống (`/admin/announcements`)
-- **Chức năng**: Giao diện Quản trị Loa Thông Báo Premium Dark Mode dành cho Super Admin, cho phép đăng thông cáo mới (tiêu đề, phiên bản, mức độ, nội dung Markdown) và xoá tin lịch sử (sử dụng Premium Delete Confirm Modal).
-- **Vai trò**: Super Admin page
-- **Đọc/Ghi data**: Đọc từ Database Postgres thật qua Drizzle, ghi/xoá thông cáo bằng Server Actions `createAnnouncementAction` và `deleteAnnouncementAction`.
-- **Liên kết**: → /admin
-
-### Hero Care Dashboard (`/hero-care/t/[teamId]/dashboard`)
-- **Chức năng**: Trang chủ của Hero Care. Hiển thị các chỉ số hiệu suất hôm nay (tin nhắn nhận, AI call, tỷ lệ chính xác, handoff) và các phím tắt nhanh sang hộp chat, kịch bản, và snapshots.
-- **Vai trò**: MVP App UI
-- **Đọc/Ghi data**: Đọc từ database các tin nhắn và event logs.
-- **Liên kết**: → /dashboard, → /hero-care/t/[teamId]/chat, → /hero-care/t/[teamId]/scripts, → /hero-care/t/[teamId]/snapshots
-
-### Hộp thư Chat Hero Care (`/hero-care/t/[teamId]/chat`)
-- **Chức năng**: Giao diện Chat 3 cột chuyên nghiệp. Cột trái: Tìm kiếm và lọc hội thoại theo tabs phân loại (Tất cả, Robot, Hybrid, Manual, Resolved). Cột giữa: Khung chat thời gian thực (polling 4s) với 3 chế độ chat (AI Auto, AI Assist/Hybrid, Manual). Tích hợp vùng kiểm duyệt (Draft Zone) để nhân viên duyệt/sửa/gửi câu trả lời gợi ý của AI. Cột phải: Thông tin khách hàng (notes, tags), tra cứu tồn kho sản phẩm trong Snapshot cache, và gợi ý kịch bản FAQ phù hợp.
-- **Vai trò**: MVP App UI
-- **Đọc/Ghi data**: Đọc/Ghi qua Server Actions tin nhắn, cuộc hội thoại, và thông tin chi tiết khách hàng.
-- **Liên kết**: → /hero-care/t/[teamId]/dashboard
-
-### Quản lý kịch bản FAQ (`/hero-care/t/[teamId]/scripts`)
-- **Chức năng**: Quản lý các kịch bản trả lời FAQ mẫu. Cho phép thêm/sửa/xoá các mẫu câu hỏi, gán từ khóa bắt buộc và từ khóa phủ định, chọn inbox áp dụng, phân nhóm ý định (intent) và cài đặt ngưỡng tin cậy khớp.
-- **Vai trò**: MVP App UI
-- **Đọc/Ghi data**: Đọc/Ghi bảng `hero_care_scripts` qua Server Actions.
-- **Liên kết**: → /hero-care/t/[teamId]/dashboard
-
-### Quản lý đồng bộ Snapshots (`/hero-care/t/[teamId]/snapshots`)
-- **Chức năng**: Quản lý cấu hình đồng bộ dữ liệu tồn kho, sản phẩm, hoặc thông tin khách hàng từ Pancake/KiotViet POS. Thiết lập chu kỳ đồng bộ tự động (phút) và thời hạn hết hạn (stale time) kèm chính sách fallback an toàn. Hỗ trợ kích hoạt/tạm dừng cấu hình và nút trigger đồng bộ nóng (nạp cache tức thì).
-- **Vai trò**: MVP App UI
-- **Đọc/Ghi data**: Đọc/Ghi bảng `hero_care_snapshots` qua Server Actions.
-- **Liên kết**: → /hero-care/t/[teamId]/dashboard
-- **Vai trò**: MVP App Dashboard
-- **Đọc/Ghi data**: Đọc thông tin inboxes, messages và event log từ database Postgres thật qua Drizzle.
-- **Liên kết**: → /hero-care/t/[teamId]/chat, → /hero-care/t/[teamId]/scripts, → /hero-care/t/[teamId]/snapshots, → /hero-care/t/[teamId]/settings
-
-### Hero Care Settings (`/hero-care/t/[teamId]/settings`)
-- **Chức năng**: Quản lý các Inboxes Hero Care. Cho phép tạo mới, sửa prompt AI, đặt giới hạn quota ngày, bật/tắt hoạt động và gán Connection ID từ Connect Hub tương thích.
-- **Vai trò**: MVP Settings Page
-- **Đọc/Ghi data**: Đọc/Ghi các bảng `hero_care_inboxes` và `connect_hub_connections` qua Server Actions.
-- **Liên kết**: → /hero-care/t/[teamId]/dashboard, → /connect-hub/t/[teamId]/connections
-
-### API Routes thông báo & thông cáo (`/api/notifications`, `/api/announcements`)
-- **Chức năng**: Cung cấp API endpoints dynamic cho client fetch bằng SWR để render chuông báo Bell và Loa Megaphone.
-- **Vai trò**: Data API
-- **Đọc/Ghi data**: Đọc bảng `notifications` (bổ sung trả về `type` và `invitationId` để hỗ trợ tương tác Duyệt/Từ chối lời mời tại chỗ) và `system_announcements` join chéo `user_announcement_reads` từ database PostgreSQL.
-
-### API Route Tìm kiếm toàn cục (`/api/search`)
-- **Chức năng**: API thực hiện truy vấn chuỗi tìm kiếm không phân biệt hoa thường đối với Ứng dụng, Thành viên và bài viết Social Feed thật.
-- **Vai trò**: Data API
-- **Đọc/Ghi data**: Truy cập PostgreSQL thông qua Drizzle ORM để tìm kiếm users, feed_posts và lọc PLATFORM_APPS.
-- **Liên kết**: Được gọi tự động từ ô Tìm kiếm toàn cầu trên thanh Header.
-
-
----
-
-## DESIGN SYSTEM (Đã triển khai)
-
-| Token | Giá trị |
-|---|---|
-| **Font chính** | Manrope (Next.js `next/font/google` trong layout) |
-| **Màu thương hiệu** | `--hero-orange: 24 95% 53%` (Cam ấm)<br>`--hero-pink: 330 81% 60%` (Hồng cánh sen)<br>`--hero-gradient: Cam → Hồng` |
-| **Dark mode** | 100% Dark Mode cưỡng bức cho Dashboard và Admin Shell (nền `bg-gray-950`, text `text-white`), không toggle sáng/tối |
-| **Layout** | Full-width 100% viewport, Sidebar cố định (fixed/sticky) bên trái, Content trải dài toàn bộ chiều rộng còn lại |
-| **Component library** | shadcn/ui (Radix + Tailwind CSS) |
-| **Icons** | Lucide React |
-| **Animations** | Custom CSS animations (`float`, `gradient-shift`, `fade-in`, `fade-up`, `pulse-glow`, `shimmer`, `count-up`) |
-| **Sidebar Theme** | Dark Premium (`bg-gradient-to-b from-gray-900 to-gray-950`), active gradient cam-hồng, User Card footer |
-
-
-## COMPONENT CHUNG (Đã triển khai)
-
-| Component | Vị trí | Mô tả |
+### Brand Colors (HSL)
+| Token | HSL | Dùng cho |
 |---|---|---|
-| `Sidebar` | Layout protected | **Context-Aware Living Sidebar**: Menu tinh gọn bắt đầu từ `top-14` (Global Nav, dynamic team accordion đa nhóm tích hợp App Registry, nút "Tạo không gian mới" viền dashed). Không còn Logo Section và UserCard. |
-| `TopHeader` | `app/components/top-header.tsx` | **Premium Sticky Top Header**: Thanh trên cùng dính toàn cục chứa Launcher nhanh, Logo Sparkles gradient, ô **Tìm kiếm Toàn cục thông minh (Ctrl+K) kết nối dữ liệu Postgres thật** hiển thị Popover kết quả kính mờ phân nhóm Apps, Members, Posts. Nút "Tạo mới" (4 hành động nhanh), Loa hệ thống (Drawer), Chuông thông báo (SWR + Bell actions), Help, và Avatar người dùng. Dùng chung cho Dashboard và SIM layout. |
-| `AppCard` | Components | Card hiển thị MVP trên Dashboard grid, hỗ trợ `index` cho staggered animation |
-| `WelcomeBanner` | apps/page.tsx | Banner chào mừng có gradient sang trọng + blobs trang trí |
-| `StatsSummary` | apps/page.tsx | Bộ đếm thống kê động số lượng app theo trạng thái hoạt động |
-| `AppRegistry` | lib/ | Danh sách MVP định nghĩa cứng (thêm MVP mới chỉ cần đăng ký tại đây) |
+| `--hero-orange` | `24 95% 53%` | CTA chính, accent |
+| `--hero-pink` | `330 81% 60%` | Secondary accent, active states |
+| `--hero-gradient` | orange → pink (135°) | Buttons, badges, active indicators |
+| `--hero-gradient-subtle` | gradient 10% opacity | Background highlights |
 
+### Dark Theme (Forced — không có light mode)
+| Token | Giá trị | Dùng cho |
+|---|---|---|
+| `--background` | `240 6% 4%` (#08080c) | Body background |
+| `--foreground` | `0 0% 98%` | Text chính |
+| `--card` | `240 4% 7%` | Card backgrounds |
+| `--muted` | `240 4% 16%` | Disabled states, borders |
+| `--border` | `240 4% 14%` | Borders chung |
+| `--ring` | `24 95% 53%` (orange) | Focus rings |
+
+### Spacing & Radius
+- `--radius`: `0.6rem` (base)
+- Sidebar width: `280px` (lg) / `320px` (xl)
+- Feed max-width: `680px`
+- Header height: `3.5rem` (56px)
+
+### Animations (có sẵn cho cả 3 MVP)
+`float`, `gradient-shift`, `fade-in`, `fade-up`, `pulse-glow`, `shimmer`, `count-up`, `scale-up`, `heart-pop`
+
+### Shared UI Components (`components/ui/`)
+| Component | File | Dùng bởi |
+|---|---|---|
+| Avatar | `avatar.tsx` | Cả 3 MVP |
+| Button | `button.tsx` | Cả 3 MVP (6 variants, 4 sizes) |
+| Card | `card.tsx` | Cả 3 MVP |
+| DropdownMenu | `dropdown-menu.tsx` | Cả 3 MVP |
+| Input | `input.tsx` | Cả 3 MVP |
+| Label | `label.tsx` | Cả 3 MVP |
+| RadioGroup | `radio-group.tsx` | Forms |
+| Textarea | `textarea.tsx` | Forms |
+| Toast | `toast.tsx` | Cả 3 MVP (custom, `window.showToast`) |
+
+### Shared Components Cao Cấp
+| Component | File | Dùng bởi |
+|---|---|---|
+| TopHeader | `components/top-header.tsx` (34.8KB) | Dashboard, HeroWeb, Social (exports `HeaderUserAvatar`) |
+| AppSwitcher | `components/app-switcher.tsx` | Social TopNav |
+| AuthModal | `components/auth-modal.tsx` | Social Layout (Google + Email) |
+| ErrorBoundary | `components/error-boundary.tsx` | Bất kỳ module nào |
+| CookieSync | `components/cookie-sync.tsx` | Social Layout |
+
+---
+
+## MVP1: iSocial (Social-Hero) — Chi Tiết
+
+### Layout
+- **File**: `app/(social)/(main)/social-layout.tsx`
+- **Kiểu**: 3-column Facebook-like
+  - Left sidebar (280-320px): `SocialSidebar` — nav chính
+  - Center feed (max 680px): Nội dung trang
+  - Right sidebar (280-320px, xl only): `SocialRightbar` — context-aware
+
+### Navigation — Social Sidebar (`social-sidebar.tsx`)
+| # | Label | Icon | Route | Auth? |
+|---|---|---|---|---|
+| 1 | Bảng tin | Home | `/` | No |
+| 2 | Trang cá nhân | User | `/profile/{userId}` | Yes |
+| 3 | Bạn bè | Users | `/friends` | Yes |
+| 4 | Video Reels | Clapperboard | `/reels` | No |
+| 5 | Lập lịch MXH | CalendarClock | `/scheduler` | Yes |
+| 6 | **Marketplace** | Store | `/marketplace` | No |
+| 7 | Nhóm | Users | `/groups` | No |
+| 8 | Trang | Flag | `/pages` | No |
+| 9 | Tin nhắn | MessageSquare | `/messages` | Yes |
+| 10 | **Website của tôi** | Globe | `/heroweb` | No |
+| 11 | Cài đặt | Settings | `/settings` | Yes |
+| — | Vào Dashboard | ArrowLeft | `/dashboard/t/{teamId}` | Yes |
+
+### Navigation — Social TopNav (`social-top-nav.tsx`)
+- Left: Brand "AI2Hero" + "Social" badge + AppSwitcher
+- Center: Global search (debounced) — **HOẶC** MarketplaceHeader khi ở /marketplace
+- Right: Quick nav icons (Home, Friends, Messages) + Notifications + UserAvatar
+
+### Trang & Chức Năng
+
+#### `/` — Bảng tin (Feed)
+- **Chức năng**: Hiển thị bài viết từ bạn bè, trang, nhóm đã follow
+- **Vai trò**: Hub trung tâm — nơi aggregator nội dung từ toàn hệ thống
+- **Đọc data từ**: `feedPosts`, `socialProfiles`, `socialFriends`, `socialPages`, `socialGroups`, `postMedia`
+- **Ghi data**: Tạo post mới (`feedPosts` + `postMedia`)
+- **Liên kết**: Profile, Groups, Pages, Marketplace (items trong feed), HeroWeb (posts sync)
+- **Components**: `feed-post-creator.tsx` (42KB), `feed-post-card.tsx`, `story-reels.tsx`, `suggested-friends-box.tsx`, `suggested-reels-box.tsx`
+
+#### `/profile/[userId]` — Trang cá nhân
+- **Chức năng**: Xem/sửa profile, danh sách bài viết, ảnh, bạn bè
+- **Vai trò**: Identity hub — mọi module đều link về đây
+- **Đọc data từ**: `socialProfiles`, `feedPosts`, `socialFriends`, `users`
+- **Ghi data**: Cập nhật `socialProfiles`
+- **Liên kết**: Feed, Friends, HeroWeb (linkedProfileId)
+
+#### `/friends` — Quản lý bạn bè
+- **Chức năng**: Danh sách bạn bè, lời mời kết bạn, gợi ý
+- **Đọc/ghi**: `socialFriends`, `users`
+- **Liên kết**: Profile
+
+#### `/reels` — Video Reels
+- **Chức năng**: Xem video ngắn dạng swipe (full-screen mode)
+- **Layout đặc biệt**: Full height (100vh - 3.5rem), ẩn right sidebar
+- **Đọc data từ**: `feedPosts` (type=video), `postMedia`
+- **Liên kết**: Feed, Profile, HeroWeb (reels sync)
+
+#### `/scheduler` — Lập lịch MXH
+- **Chức năng**: Lập lịch đăng bài hàng loạt lên nhiều kênh (Facebook Page, Facebook Reels, TikTok) từ thư viện feedPosts của team.
+- **Vai trò**: Content Distribution Hub.
+- **Đọc data từ**: `feedPosts`, `connectHubConnections`.
+- **Ghi data**: `heroSocialSchedules`, `socialCrossPosts`.
+- **Liên kết**: iSocial Feed, Connect Hub, Queue View.
+
+#### `/groups` + `/groups/[groupId]`
+- **Chức năng**: Tạo/quản lý nhóm, feed nhóm, thành viên
+- **Đọc/ghi**: `socialGroups`, `socialGroupMembers`, `feedPosts` (groupId filter)
+- **Liên kết**: Feed, Profile
+
+#### `/pages` + `/pages/[pageId]`
+- **Chức năng**: Tạo/quản lý trang (business pages), feed trang
+- **Đọc/ghi**: `socialPages`, `socialPageFollowers`, `feedPosts` (pageId filter)
+- **Liên kết**: Feed, Profile, **HeroWeb** (linkedPageId — trang có thể sync sang website)
+
+#### `/messages`
+- **Chức năng**: Nhắn tin realtime (direct + group)
+- **Layout đặc biệt**: Full height, ẩn right sidebar
+- **Đọc/ghi**: `socialConversations`, `socialConversationMembers`, `socialMessages`
+- **Liên kết**: Profile, Friends
+
+#### `/notifications`
+- **Chức năng**: Xem danh sách thông báo hệ thống (bản mở rộng của dropdown chuông)
+- **Đọc/ghi**: `notifications`
+- **Liên kết**: Feed, Profile, Groups
+
+### Right Sidebar — Context-Aware (`social-rightbar.tsx`)
+| Trang đang xem | Hiển thị |
+|---|---|
+| Default (Feed, Profile) | Gợi ý bạn bè + Bạn online |
+| Groups | Gợi ý nhóm + Nhóm của tôi |
+| Pages | Gợi ý trang + Trang đang follow |
+| Marketplace | Cửa hàng nổi bật + Sản phẩm hot |
+
+---
+
+## MVP2: HeroMarketplace — Chi Tiết
+
+### Layout (HIỆN TẠI → CẦN TÁCH)
+- **Hiện tại**: Nằm trong `(social)/(main)/` → dùng Social sidebar + layout
+- **Mục tiêu**: Tạo route group `(marketplace)/` riêng với layout e-commerce
+  - Header: Logo + Search bar + Categories + Cart icon + User avatar
+  - **KHÔNG** có social sidebar (nhưng có link quay về iSocial)
+  - Mobile-first, grid-based product listing
+
+### Navigation — Marketplace Header (`components/marketplace/marketplace-header.tsx`)
+- Search bar (prominently centered)
+- Category navigation
+- Cart icon + notification badge
+- Link quay về "iSocial" / "Bảng tin"
+
+### Trang & Chức Năng
+
+#### `/marketplace` — Trang chủ Marketplace
+- **Chức năng**: Browse sản phẩm, flash sale, categories, shops nổi bật
+- **Vai trò**: E-commerce storefront — data consumer + aggregator
+- **Đọc data từ**: `marketplace_products` (CHƯA CÓ — đang mock), `marketplace_shops` (CHƯA CÓ)
+- **Ghi data**: Đơn hàng, giỏ hàng (chưa có)
+- **Liên kết**: Product detail, Shop, iSocial feed (sản phẩm hiện trong feed)
+- **Components**: `marketplace-banners.tsx`, `marketplace-categories.tsx`, `marketplace-flash-sale.tsx`, `marketplace-quick-links.tsx`, `marketplace-shopee-mall.tsx`, `marketplace-top-search.tsx`
+- **Trạng thái**: 🔴 **100% Mock UI** — chưa có database
+
+#### `/product/[id]` — Chi tiết sản phẩm
+- **Chức năng**: Xem chi tiết, gallery, reviews, shop info, mua hàng
+- **Đọc data từ**: `marketplace_products` (mock)
+- **Liên kết**: Shop, Marketplace home, iSocial (chia sẻ lên feed), Checkout
+- **Components**: `product-gallery.tsx`, `product-info.tsx`, `product-description.tsx`, `product-reviews.tsx`, `product-shop-snippet.tsx`
+
+#### `/marketplace/checkout` — Thanh toán
+- **Chức năng**: Hiển thị giỏ hàng, thông tin địa chỉ, đặt hàng
+- **Đọc data từ**: `CartContext` (localStorage)
+- **Ghi data**: `marketplace_orders`
+- **Liên kết**: Order detail (`/marketplace/order/[id]`)
+
+#### `/marketplace/order/[id]` — Chi tiết đơn hàng
+- **Chức năng**: Hiển thị đơn hàng sau khi đặt thành công, trạng thái giao hàng
+- **Đọc data từ**: `marketplace_orders`
+- **Liên kết**: Marketplace home, Profile (Lịch sử đơn hàng)
+
+#### `/shop/[id]` — Trang cửa hàng (CHƯA CÓ)
+- **Mục tiêu**: Profile cửa hàng, danh sách sản phẩm, vouchers
+- **Liên kết**: Profile iSocial (1 user = 1 shop), Products, HeroWeb (shop sync)
+- **Components hiện có**: `shop-integrated-tab.tsx`, `shop-vouchers.tsx`
+
+### Marketplace ↔ iSocial Integration Points
+1. Social sidebar chứa link `/marketplace` (line 44)
+2. Social TopNav swap thành MarketplaceHeader khi ở `/marketplace`
+3. Right sidebar hiển thị "Cửa hàng nổi bật + Sản phẩm hot" khi ở Marketplace
+4. Sản phẩm có thể được share lên Social Feed
+5. Shop profile liên kết với Social Profile
+
+---
+
+## MVP3: HeroWeb (Web Studio) — Chi Tiết
+
+### Layout
+- **File**: `app/(dashboard)/heroweb/layout.tsx`
+- **Kiểu**: Sidebar builder (w-60) + main content
+- Auth guard: redirect `/sign-in` nếu chưa login
+
+### Navigation — HeroWeb Sidebar
+| # | Label | Route | Status |
+|---|---|---|---|
+| 1 | Tổng quan | `/heroweb` | ✅ Active |
+| 2 | Kho Giao diện | `#` | 🔴 Chưa link |
+| 3 | Cài đặt chung | `#` | 🔴 Chưa link |
+| — | Về trang chủ AI2Hero | `/dashboard` | ✅ |
+
+### Trang & Chức Năng
+
+#### `/heroweb` — Dashboard Builder
+- **Chức năng**: Quản lý websites, tạo mới, chọn template, config theme
+- **Vai trò**: Orchestrator — kết nối data từ iSocial + Marketplace để tạo website
+- **Đọc data từ**: `websites`, `socialPages` (qua linkedPageId), `socialProfiles` (qua linkedProfileId)
+- **Ghi data**: `websites` (CRUD)
+- **Liên kết**: Social Pages, Social Profiles, Marketplace Shops (tương lai)
+
+#### `/sites/[subdomain]` — Public Website Preview
+- **Chức năng**: Render website công khai theo subdomain
+- **Vai trò**: Data consumer — hiển thị nội dung từ iSocial + Marketplace
+- **Đọc data từ**: `websites` (config), `feedPosts` + `postMedia` (qua Entity Bridge), `marketplace_products` (qua Entity Bridge)
+- **Liên kết**: iSocial (posts, reels), Marketplace (products)
+- **Components**: `ecommerce-template.tsx` (12.7KB) — template chính
+- **Trạng thái**: ⚠️ Đang dùng mock arrays (`mockProducts`, `mockPosts`, `mockReels`)
+- **Routing đặc biệt**: Middleware rewrite subdomain → `/sites/[subdomain]`
+
+### HeroWeb ↔ Other MVP Integration Points
+1. `websites.linkedPageId` → `socialPages.id` (FK cứng — cần chuyển sang soft ref)
+2. `websites.linkedProfileId` → `socialProfiles.userId` (FK cứng — cần chuyển sang soft ref)
+3. Social sidebar chứa link `/heroweb` (line 68)
+4. Website preview cần sync: posts + reels (từ iSocial), products (từ Marketplace)
+
+---
+
+## DATA FLOW DIAGRAM — Cross-Module
+
+```mermaid
+flowchart TD
+    subgraph INPUT["📝 Người dùng tạo nội dung"]
+        CREATE_POST["Đăng bài viết/video<br>(iSocial Feed)"]
+        CREATE_PRODUCT["Đăng sản phẩm<br>(Marketplace)"]
+        CREATE_PAGE["Tạo trang/nhóm<br>(iSocial Pages)"]
+    end
+
+    subgraph STORAGE["💾 Database (Shared Schema)"]
+        FEED_POSTS["feedPosts + postMedia"]
+        MARKET_PRODUCTS["marketplace_products<br>(CHƯA CÓ)"]
+        SOCIAL_PAGES["socialPages"]
+        WEBSITES["websites + themeConfig"]
+    end
+
+    subgraph OUTPUT["🌐 Hiển thị"]
+        SOCIAL_FEED["iSocial Feed<br>(aggregator)"]
+        MARKET_HOME["Marketplace Home<br>(product listing)"]
+        WEB_PREVIEW["HeroWeb Preview<br>(/sites/[subdomain])"]
+    end
+
+    CREATE_POST --> FEED_POSTS
+    CREATE_PRODUCT --> MARKET_PRODUCTS
+    CREATE_PAGE --> SOCIAL_PAGES
+
+    FEED_POSTS --> SOCIAL_FEED
+    FEED_POSTS -->|"Entity Bridge"| WEB_PREVIEW
+    MARKET_PRODUCTS --> MARKET_HOME
+    MARKET_PRODUCTS -->|"Entity Bridge"| WEB_PREVIEW
+    MARKET_PRODUCTS -->|"feed items"| SOCIAL_FEED
+    SOCIAL_PAGES --> WEB_PREVIEW
+
+    WEBSITES -->|"themeConfig.dataSources"| WEB_PREVIEW
+```
+
+---
+
+## COMPONENT MAP — Cái Gì Chung, Cái Gì Riêng
+
+### ✅ CHUNG (Shared — dùng cho cả 3 MVP)
+| Layer | Components | File |
+|---|---|---|
+| UI Primitives | Avatar, Button, Card, Input, Label, Toast, DropdownMenu | `components/ui/*` |
+| Auth | AuthModal, CookieSync | `components/auth-modal.tsx`, `components/cookie-sync.tsx` |
+| Header | TopHeader (export HeaderUserAvatar) | `components/top-header.tsx` |
+| Navigation | AppSwitcher | `components/app-switcher.tsx` |
+| Error | ErrorBoundary | `components/error-boundary.tsx` |
+| Design | globals.css (tokens + animations) | `app/globals.css` |
+
+### 🛡️ RIÊNG — MVP1: iSocial
+| Components | Files |
+|---|---|
+| Social Layout (3-col) | `social-layout.tsx`, `social-sidebar.tsx`, `social-rightbar.tsx` |
+| Social TopNav | `social-top-nav.tsx` |
+| Feed System | `feed-post-creator.tsx`, `components/feed-post/*` (8 files) |
+| Story/Reels | `story-creator-modal.tsx`, `story-reels.tsx`, `story-viewer-modal.tsx` |
+| Suggestions | `suggested-friends-box.tsx`, `suggested-reels-box.tsx` |
+| Chat | `components/chat-dock.tsx`, `chat-popup.tsx` |
+| Groups/Pages | `group-card.tsx`, `message-button.tsx` |
+
+### 🛒 RIÊNG — MVP2: HeroMarketplace
+| Components | Files |
+|---|---|
+| Marketplace Header | `components/marketplace/marketplace-header.tsx` |
+| Home Sections | `marketplace-banners.tsx`, `marketplace-categories.tsx`, `marketplace-flash-sale.tsx`, `marketplace-quick-links.tsx`, `marketplace-shopee-mall.tsx`, `marketplace-top-search.tsx` |
+| Product Detail | `components/marketplace/product/*` (5 files) |
+| Shop | `components/marketplace/shop/*` (2 files) |
+
+### 🌐 RIÊNG — MVP3: HeroWeb
+| Components | Files |
+|---|---|
+| HeroWeb Layout | `app/(dashboard)/heroweb/layout.tsx` (inline sidebar) |
+| Website Templates | `components/website-templates/ecommerce-template.tsx` |
+| Website Preview | `app/(public)/sites/[subdomain]/page.tsx` |
+
+### 🎬 RIÊNG — MVP4: HeroVideoMaker
+| Components | Files |
+|---|---|
+| Video Maker Layout | `app/(dashboard)/hero-video-maker/t/[teamId]/layout.tsx` (IDOR check) |
+| Video Maker Sidebar | `app/app/(dashboard)/hero-video-maker/hero-video-maker-sidebar.tsx` |
+| Pairing Widget | `app/app/(dashboard)/hero-video-maker/t/[teamId]/dashboard/pairing-widget.tsx` |
+
+---
+
+## MVP4: HeroVideoMaker (Video AI tự động) — Chi Tiết
+
+### Layout
+- **File**: `app/(dashboard)/hero-video-maker/t/[teamId]/layout.tsx`
+- **Kiểu**: Sidebar dọc (w-60) + header và IDOR workspace check.
+- Auth guard: redirect `/sign-in` nếu chưa đăng nhập.
+
+### Navigation — HeroVideoMaker Sidebar (`hero-video-maker-sidebar.tsx`)
+| # | Label | Icon | Route | Auth? |
+|---|---|---|---|---|
+| 1 | Tổng quan | LayoutDashboard | `/hero-video-maker/t/[teamId]/dashboard` | Yes |
+| 2 | Dự án video | Video | `/hero-video-maker/t/[teamId]/projects` | Yes |
+| 3 | Thư viện đã tạo | Film | `/hero-video-maker/t/[teamId]/gallery` | Yes |
+| 4 | Thiết bị & App Local | Laptop | `/hero-video-maker/t/[teamId]/devices` | Yes |
+| 5 | Cấu hình & Storage | Settings | `/hero-video-maker/t/[teamId]/settings` | Yes |
+
+### Trang & Chức Năng
+
+#### `/hero-video-maker/t/[teamId]/dashboard` — Bảng điều khiển chính
+- **Chức năng**: Quản lý kết nối tới local renderer app, hiển thị stats dự án, video đã render, danh sách thiết bị.
+- **Vai trò**: Control center cho việc tạo video local.
+- **Đọc data từ**: `extensionTokens`, `videoProjects` (tương lai).
+- **Ghi data**: Sinh mã code liên kết (`extensionLinkCodes`).
+- **Liên kết**: Editor, Projects List, Gallery, Connect Hub (Google Drive connection).
+
+#### `/hero-video-maker/t/[teamId]/projects` — Quản lý dự án video
+- **Chức năng**: Xem danh sách dự án, mở editor của dự án, và khởi tạo dự án mới qua Modal Cài đặt & Sổ tay Đạo diễn.
+- **Vai trò**: Quản lý vòng đời dự án video.
+- **Đọc data từ**: `videoProjects`, `presets.json` (Art Styles & Story Skills preset list).
+- **Ghi data**: Khởi tạo bản ghi mới trong bảng `videoProjects` với prompt resolve từ preset hoặc tự nhập.
+- **Liên kết**: Editor (`/editor/[projectId]`).
+
+---
+
+## MVP9: HeroDub (Dịch & Burn phụ đề phim) — Chi Tiết
+
+### Layout
+- **File**: `app/(dashboard)/hero-dub/t/[teamId]/layout.tsx`
+- **Kiểu**: Sidebar dọc (w-60) + header và IDOR workspace check.
+- Auth guard: redirect `/sign-in` nếu chưa đăng nhập.
+
+### Navigation — HeroDub Sidebar (`hero-dub-sidebar-menu.tsx`)
+| # | Label | Icon | Route | Auth? |
+|---|---|---|---|---|
+| 1 | Tổng quan | LayoutDashboard | `/hero-dub/t/[teamId]/dashboard` | Yes |
+| 2 | Hướng dẫn Worker | HelpCircle | `/hero-dub/t/[teamId]/guide` | Yes |
+
+### Trang & Chức Năng
+
+#### `/hero-dub/t/[teamId]/dashboard` — Bảng điều khiển chính
+- **Chức năng**: Quản lý các worker local, tạo tác vụ dịch video từ link, xem danh sách và trạng thái xử lý video.
+- **Vai trò**: Control center cho dịch thuật phụ đề.
+- **Đọc data từ**: `dubTasks`, `dubWorkers`.
+- **Ghi data**: Tạo tác vụ dịch (`dubTasks`), sinh mã kết nối worker (`extensionLinkCodes`).
+- **Liên kết**: Guide page, R2 Storage public URL (tải kết quả).
+
+#### `/hero-dub/t/[teamId]/guide` — Hướng dẫn cài đặt
+- **Chức năng**: Cung cấp tài liệu hướng dẫn từng bước để tải pyVideoTrans và script worker local, giúp user tự host máy xử lý.
+- **Vai trò**: Tài liệu / Hướng dẫn.
+- **Liên kết**: Dashboard page.
+
+---
+
+## ROUTE SUMMARY — Tổng Hợp 4 MVP
+
+### MVP1: iSocial — Route Group `(social)/(main)`
+| Route | Trạng thái |
+|---|---|
+| `/` | ✅ Beta |
+| `/profile/[userId]` | ✅ Beta |
+| `/friends` | ✅ Beta |
+| `/reels` | ✅ Beta |
+| `/scheduler` | ✅ Beta |
+| `/groups`, `/groups/[groupId]`, `/groups/discover` | ✅ Beta |
+| `/pages`, `/pages/[pageId]` | ✅ Beta |
+| `/messages` | ✅ Beta |
+
+### MVP2: HeroMarketplace — Cửa hàng & Quản lý MVP (Admin Panel)
+| Route | Trạng thái |
+|---|---|
+| `/marketplace` | ✅ Beta (Storefront, giỏ hàng, đặt hàng thực) |
+| `/product/[id]` | ✅ Beta (Chi tiết sản phẩm, shop snippet thực) |
+| `/marketplace/checkout` | ✅ Beta (Form checkout lưu DB thực) |
+| `/marketplace/order/[id]` | ✅ Beta (Chi tiết đơn hàng sau thanh toán) |
+| `/hero-marketplace/t/[teamId]/dashboard` | ✅ Beta (Quản trị Marketplace: tổng quan KPI, top orders/products thực) |
+| `/hero-marketplace/t/[teamId]/products` | ✅ Beta (Quản lý Sản phẩm: SKU, costPrice, minStock, AI restock) |
+| `/hero-marketplace/t/[teamId]/orders` | ✅ Beta (Quản lý Đơn hàng: filters, status, detail sheet, print) |
+| `/hero-marketplace/t/[teamId]/fulfillment` | ✅ Beta (Fulfillment: Quét mã vạch, Đóng gói quay video) |
+| `/hero-marketplace/t/[teamId]/wallet` | ✅ Beta (Ví tiền thanh toán, nạp tiền PayOS/MoMo) |
+
+### MVP3: HeroWeb — Route Group `(dashboard)/heroweb` + `(public)/sites`
+| Route | Trạng thái |
+|---|---|
+| `/heroweb` | ⚠️ Beta (có DB, UI đơn giản) |
+| `/sites/[subdomain]` | ⚠️ Beta (mock data arrays) |
+| `/sites/demo` | ✅ Demo |
+
+### MVP4: HeroVideoMaker — Route Group `(dashboard)/hero-video-maker`
+| Route | Trạng thái |
+|---|---|
+| `/hero-video-maker/t/[teamId]/dashboard` | ✅ Beta (Bảng điều khiển kết nối app local, stats) |
+| `/hero-video-maker/t/[teamId]/projects` | ✅ Beta (Quản lý các dự án video) |
+| `/hero-video-maker/t/[teamId]/editor/[projectId]/[step]` | ✅ Beta (Trình soạn thảo quy trình 6 bước Toonflow) |
+| `/hero-video-maker/t/[teamId]/gallery` | ✅ Beta (Thư viện video thành phẩm) |
+| `/hero-video-maker/t/[teamId]/devices` | ✅ Beta (Danh sách thiết bị kết nối) |
+| `/hero-video-maker/t/[teamId]/settings` | ✅ Beta (Cài đặt lưu trữ Drive/Local) |
+
+### MVP8: HeroFilm — Trình phát & Quản lý Phim Ngắn Dọc
+| Route | Đối tượng | Chức năng | Trạng thái |
+|---|---|---|---|
+| `/film` | Viewer (Public) | Khám phá phim ngắn, chọn thể loại, tìm kiếm phim | ✅ Beta |
+| `/film/watch` | Viewer (Public) | Xem phim snap-scroll dọc, mở khóa tokens, watch history, bookmarks | ✅ Beta |
+| `/film/bookmarks` | Viewer (Public) | Danh sách các phim ngắn mà viewer đã đánh dấu/lưu | ✅ Beta |
+| `/hero-film/t/[teamId]/dashboard` | Creator (Workspace) | Trang tổng quan số liệu KPI phân tích lượt xem và tokens | ✅ Beta |
+| `/hero-film/t/[teamId]/series` | Creator (Workspace) | Quản lý CRUD các bộ phim ngắn của team | ✅ Beta |
+| `/hero-film/t/[teamId]/series/[id]/episodes` | Creator (Workspace) | Quản lý CRUD tập phim, upload link, xem báo cáo hỏng tập | ✅ Beta |
+| `/hero-film/t/[teamId]/reports` | Creator (Workspace) | Quản lý, kiểm duyệt các báo cáo lỗi phim gửi từ người xem | ✅ Beta |
+| `/hero-film/t/[teamId]/revenue` | Creator (Workspace) | Báo cáo doanh thu Tokens chi tiết, nhật ký giao dịch và chia sẻ 70/30 | ✅ Beta |
+
+### MVP9: HeroDub — Dịch & Burn phụ đề phim
+| Route | Đối tượng | Chức năng | Trạng thái |
+|---|---|---|---|
+| `/hero-dub/t/[teamId]/dashboard` | Creator (Workspace) | Quản lý tác vụ dịch, xem video kết quả, kết nối worker local | ✅ Beta |
+| `/hero-dub/t/[teamId]/guide` | Creator (Workspace) | Tài liệu hướng dẫn cài đặt local worker & pyVideoTrans | ✅ Beta |
+
+### 🧩 Chrome Extensions & Edge Worker Node Routes
+| MVP / Extension | Thư mục nguồn | API Routes | Trạng thái |
+|---|---|---|---|
+| **HeroSim** | `/app/extension/herosim/` | `/api/sim/extension/*` | ✅ Beta |
+| **HeroVideo** | `/app/extension/herovideo/` | `/api/video/extension/*` | ✅ Beta |
+| **Hero Agent** | `/app/extension/hero-agent/` | `/api/agent-node/extension/*` | ✅ Beta |
+| **HeroDub Worker** | `/herodub-worker/` | `/api/hero-dub/*` | ✅ Beta |
+
+**Các API Routes của Hero Agent (`appId: hero-agent`):**
+- `GET /api/agent-node/extension/tasks`: Extension lấy danh sách task cào đang chờ (`pending`).
+- `POST /api/agent-node/extension/result`: Extension đẩy nội dung cào về, server tự động gọi AI phân tích và lưu kết quả. (Hỗ trợ cào thủ công với `taskId = 0`).
+- `GET /api/agent-node/extension/health`: Kiểm tra sức khỏe kết nối từ extension.
+- `POST /api/agent-node/extension/scrape`: Web UI tạo task cào mới (Session Auth).
+
+**Các API Routes của HeroDub Worker (`appId: hero-dub`):**
+- `POST /api/hero-dub/workers`: Đăng ký và liên kết worker local sử dụng code 6 chữ số.
+- `GET /api/hero-dub/tasks`: Worker poll lấy tác vụ pending.
+- `PATCH /api/hero-dub/tasks`: Worker cập nhật trạng thái/tiến trình hoặc hoàn thành tác vụ.
+- `POST /api/hero-dub/tasks`: Gửi heartbeat cập nhật trạng thái online của worker.
+- `POST /api/hero-dub/presign`: Worker yêu cầu presigned URL của R2 để tải video/srt lên.
+- `PUT /api/hero-dub/local-upload`: Fallback upload local khi dev offline không có R2.
+
+---
+
+## QUY TẮC CẬP NHẬT UI_MAP
+
+1. **Thêm trang mới** → Ghi đủ 4 mục: Chức năng, Vai trò, Đọc/Ghi data, Liên kết
+2. **Đổi navigation** → Cập nhật bảng Navigation tương ứng
+3. **Thêm component** → Phân loại Chung vs Riêng, ghi vào Component Map
+4. **Thay đổi data flow** → Cập nhật Data Flow Diagram
+5. **Thêm design token** → Cập nhật Design System section

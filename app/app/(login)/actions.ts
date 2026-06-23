@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql, desc } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import {
   User,
@@ -18,14 +18,22 @@ import {
   notifications,
   feedPosts,
   feedComments,
-  feedLikes
+  feedLikes,
+  feedCommentLikes,
+  feedBookmarks,
+  feedStories,
+  systemSettings,
+  socialGroups,
+  socialGroupMembers,
+  socialPages,
+  socialPageFollowers
 } from '@/lib/db/schema';
 import { comparePasswords, hashPassword, setSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { createCheckoutSession } from '@/lib/payments/stripe';
-import { getUser, getUserWithTeam, getSystemSetting, updateSystemSetting, DEFAULT_BILLING_PLANS } from '@/lib/db/queries';
+import { getUser, getUserWithTeam, getSystemSetting, updateSystemSetting, DEFAULT_BILLING_PLANS, getFeedPosts } from '@/lib/db/queries';
 import { createNotification, createInviteNotification } from '@/lib/db/notification-actions';
 import { requireTeamRole, assertMemberInTeam } from '@/lib/db/workspace-helpers';
 import { type TeamMember } from '@/lib/db/schema';
@@ -111,7 +119,7 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
     return createCheckoutSession({ team: foundTeam, priceId });
   }
 
-  redirect('/dashboard');
+  redirect('/');
 });
 
 const signUpSchema = z.object({
@@ -196,7 +204,8 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
   } else {
     // Create a new team if there's no invitation
     const newTeam: NewTeam = {
-      name: `${email}'s Team`
+      name: `${email}'s Team`,
+      activatedApps: ['hero-social']
     };
 
     [createdTeam] = await db.insert(teams).values(newTeam).returning();
@@ -232,7 +241,7 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
     return createCheckoutSession({ team: createdTeam, priceId });
   }
 
-  redirect('/dashboard');
+  redirect('/');
 });
 
 export async function signOut() {
@@ -681,17 +690,22 @@ export async function deactivateAppAction(data: { teamId: number; appId: string 
 }
 
 export async function createFeedPostAction(data: {
-  type: 'mvp_result' | 'task_assignment' | 'system_activity' | 'news';
+  type: 'mvp_result' | 'task_assignment' | 'system_activity' | 'news' | 'product' | 'article';
   teamIdString?: string | null;
   message: string;
   mentions?: string[];
   attachments?: any[];
+  syncWebsite?: boolean;
+  websiteCategory?: string;
+  taggedProducts?: any[];
   appId?: string;
   resultPreview?: string;
   resultMetrics?: any[];
   taskTitle?: string;
   taskAssignee?: string;
   taskDueDate?: string;
+  sharedPostId?: number;
+  visibility?: 'public' | 'friends' | 'private';
 }) {
   const user = await getUser();
   if (!user) {
@@ -704,12 +718,17 @@ export async function createFeedPostAction(data: {
     message,
     mentions,
     attachments,
+    syncWebsite,
+    websiteCategory,
+    taggedProducts,
     appId,
     resultPreview,
     resultMetrics,
     taskTitle,
     taskAssignee,
-    taskDueDate
+    taskDueDate,
+    sharedPostId,
+    visibility
   } = data;
 
   if (!message || message.trim().length === 0) {
@@ -717,28 +736,42 @@ export async function createFeedPostAction(data: {
   }
 
   let teamId: number | null = null;
-  if (teamIdString && teamIdString.startsWith('team-')) {
-    teamId = parseInt(teamIdString.slice(5), 10);
+  let pageId: number | null = null;
+  let groupId: number | null = null;
+
+  if (teamIdString) {
+    if (teamIdString.startsWith('team-')) {
+      teamId = parseInt(teamIdString.slice(5), 10);
+    } else if (teamIdString.startsWith('page-')) {
+      pageId = parseInt(teamIdString.slice(5), 10);
+    } else if (teamIdString.startsWith('group-')) {
+      groupId = parseInt(teamIdString.slice(6), 10);
+    }
   }
 
-  if (!teamId) {
+  if (!teamId && !pageId && !groupId) {
     const userWithTeam = await getUserWithTeam(user.id);
     teamId = userWithTeam?.teamId || null;
   }
 
-  if (!teamId) {
-    return { error: 'Không tìm thấy không gian làm việc tương ứng.' };
+  if (!teamId && !pageId && !groupId) {
+    return { error: 'Không tìm thấy đích đến cho bài đăng.' };
   }
 
   const [newPost] = await db
     .insert(feedPosts)
     .values({
       teamId,
+      pageId,
+      groupId,
       userId: user.id,
       type,
       message,
       mentions: mentions || [],
       attachments: attachments || [],
+      syncWebsite: syncWebsite ? 1 : 0,
+      websiteCategory,
+      taggedProducts: taggedProducts || [],
       appId,
       resultPreview,
       resultMetrics: resultMetrics || [],
@@ -746,7 +779,9 @@ export async function createFeedPostAction(data: {
       taskStatus: type === 'task_assignment' ? 'pending' : undefined,
       taskAssignee,
       taskDueDate,
-      pinned: 0
+      pinned: 0,
+      sharedPostId,
+      visibility: visibility || 'public'
     })
     .returning();
 
@@ -754,7 +789,9 @@ export async function createFeedPostAction(data: {
     return { error: 'Không thể xuất bản bài đăng.' };
   }
 
-  await logActivity(teamId, user.id, `CREATE_FEED_POST:${newPost.id}` as any);
+  if (teamId) {
+    await logActivity(teamId, user.id, `CREATE_FEED_POST:${newPost.id}` as any);
+  }
 
   // Tạo thông báo giao việc Bell động cho Assignee
   if (type === 'task_assignment' && taskAssignee) {
@@ -774,13 +811,26 @@ export async function createFeedPostAction(data: {
   return { success: 'Đăng bài thành công!', postId: newPost.id };
 }
 
-export async function toggleFeedLikeAction(data: { postId: number }) {
+export async function loadMoreFeedAction(activeTeamId: number | undefined, cursor: number | undefined, limitNum: number = 10) {
+  const user = await getUser();
+  if (!user) return { error: 'Không được phép' };
+  try {
+    const userTeamIds = activeTeamId ? [activeTeamId] : [];
+    const posts = await getFeedPosts(userTeamIds, cursor, limitNum);
+    return { success: true, posts };
+  } catch (e: any) {
+    console.error(e);
+    return { error: e.message };
+  }
+}
+
+export async function toggleFeedLikeAction(data: { postId: number; reactionType?: string }) {
   const user = await getUser();
   if (!user) {
     return { error: 'Quyền truy cập bị từ chối. Vui lòng đăng nhập.' };
   }
 
-  const { postId } = data;
+  const { postId, reactionType = 'like' } = data;
 
   const [existingLike] = await db
     .select()
@@ -789,12 +839,18 @@ export async function toggleFeedLikeAction(data: { postId: number }) {
     .limit(1);
 
   if (existingLike) {
-    await db.delete(feedLikes).where(eq(feedLikes.id, existingLike.id));
-    return { success: 'Đã bỏ thích bài đăng', liked: false };
+    if (existingLike.reactionType === reactionType) {
+      await db.delete(feedLikes).where(eq(feedLikes.id, existingLike.id));
+      return { success: 'Đã bỏ thích bài đăng', liked: false, reactionType: null };
+    } else {
+      await db.update(feedLikes).set({ reactionType }).where(eq(feedLikes.id, existingLike.id));
+      return { success: 'Đã cập nhật cảm xúc bài đăng', liked: true, reactionType };
+    }
   } else {
     await db.insert(feedLikes).values({
       postId,
-      userId: user.id
+      userId: user.id,
+      reactionType
     });
     
     // Tạo thông báo Bell động cho tác giả bài viết
@@ -810,17 +866,49 @@ export async function toggleFeedLikeAction(data: { postId: number }) {
       );
     }
     
-    return { success: 'Đã thích bài đăng', liked: true };
+    return { success: 'Đã thích bài đăng', liked: true, reactionType };
   }
 }
 
-export async function addFeedCommentAction(data: { postId: number; content: string }) {
+export async function toggleFeedCommentLikeAction(data: { commentId: number; reactionType?: string }) {
   const user = await getUser();
   if (!user) {
     return { error: 'Quyền truy cập bị từ chối. Vui lòng đăng nhập.' };
   }
 
-  const { postId, content } = data;
+  const { commentId, reactionType = 'like' } = data;
+
+  const [existingLike] = await db
+    .select()
+    .from(feedCommentLikes)
+    .where(and(eq(feedCommentLikes.commentId, commentId), eq(feedCommentLikes.userId, user.id)))
+    .limit(1);
+
+  if (existingLike) {
+    if (existingLike.reactionType === reactionType) {
+      await db.delete(feedCommentLikes).where(eq(feedCommentLikes.id, existingLike.id));
+      return { success: 'Đã bỏ thích bình luận', liked: false, reactionType: null };
+    } else {
+      await db.update(feedCommentLikes).set({ reactionType }).where(eq(feedCommentLikes.id, existingLike.id));
+      return { success: 'Đã cập nhật cảm xúc bình luận', liked: true, reactionType };
+    }
+  } else {
+    await db.insert(feedCommentLikes).values({
+      commentId,
+      userId: user.id,
+      reactionType
+    });
+    return { success: 'Đã thích bình luận', liked: true, reactionType };
+  }
+}
+
+export async function addFeedCommentAction(data: { postId: number; content: string; parentId?: number }) {
+  const user = await getUser();
+  if (!user) {
+    return { error: 'Quyền truy cập bị từ chối. Vui lòng đăng nhập.' };
+  }
+
+  const { postId, content, parentId } = data;
   if (!content || content.trim().length === 0) {
     return { error: 'Nội dung bình luận không được trống.' };
   }
@@ -832,7 +920,8 @@ export async function addFeedCommentAction(data: { postId: number; content: stri
       userId: user.id,
       userName: user.name || 'Hero',
       userAvatar: '🦸‍♂️',
-      content: content.trim()
+      content: content.trim(),
+      parentId: parentId || null
     })
     .returning();
 
@@ -854,6 +943,18 @@ export async function addFeedCommentAction(data: { postId: number; content: stri
   }
 
   return { success: 'Đã thêm bình luận thành công!', comment: newComment };
+}
+
+export async function getFeedCommentsAction(postId: number) {
+  const user = await getUser();
+  if (!user) return [];
+
+  const comments = await db.query.feedComments.findMany({
+    where: eq(feedComments.postId, postId),
+    orderBy: [desc(feedComments.createdAt)],
+  });
+
+  return comments;
 }
 
 export async function toggleFeedPinAction(data: { postId: number }) {
@@ -904,6 +1005,105 @@ export async function toggleFeedPinAction(data: { postId: number }) {
   }
 
   return { success: nextPinned === 1 ? 'Đã ghim bài viết thành công!' : 'Đã bỏ ghim bài viết!', pinned: nextPinned === 1 };
+}
+
+export async function editFeedPostAction(data: { postId: number; message: string }) {
+  const user = await getUser();
+  if (!user) {
+    return { error: 'Quyền truy cập bị từ chối. Vui lòng đăng nhập.' };
+  }
+
+  const { postId, message } = data;
+  if (!message || message.trim().length === 0) {
+    return { error: 'Nội dung bài viết không được trống.' };
+  }
+
+  const [post] = await db
+    .select()
+    .from(feedPosts)
+    .where(eq(feedPosts.id, postId))
+    .limit(1);
+
+  if (!post) {
+    return { error: 'Bài đăng không tồn tại.' };
+  }
+
+  if (post.userId !== user.id && user.role !== 'admin' && user.role !== 'super_admin') {
+    return { error: 'Quyền truy cập bị từ chối. Chỉ tác giả mới có quyền sửa bài viết này.' };
+  }
+
+  await db
+    .update(feedPosts)
+    .set({
+      message: message.trim(),
+      updatedAt: new Date()
+    })
+    .where(eq(feedPosts.id, postId));
+
+  return { success: 'Đã sửa bài viết thành công!' };
+}
+
+export async function deleteFeedPostAction(data: { postId: number }) {
+  const user = await getUser();
+  if (!user) {
+    return { error: 'Quyền truy cập bị từ chối. Vui lòng đăng nhập.' };
+  }
+
+  const { postId } = data;
+
+  const [post] = await db
+    .select()
+    .from(feedPosts)
+    .where(eq(feedPosts.id, postId))
+    .limit(1);
+
+  if (!post) {
+    return { error: 'Bài đăng không tồn tại.' };
+  }
+
+  const [member] = await db
+    .select()
+    .from(teamMembers)
+    .where(and(eq(teamMembers.teamId, post.teamId!), eq(teamMembers.userId, user.id)))
+    .limit(1);
+
+  const isOwner = post.userId === user.id;
+  const isAdmin = member && (member.role === 'owner' || member.role === 'admin');
+
+  if (!isOwner && !isAdmin && user.role !== 'super_admin') {
+    return { error: 'Quyền truy cập bị từ chối. Bạn không có quyền xóa bài viết này.' };
+  }
+
+  // PostgreSQL CASCADE will handle comments and likes deletion.
+  await db.delete(feedPosts).where(eq(feedPosts.id, postId));
+
+  return { success: 'Đã xóa bài viết thành công!' };
+}
+
+export async function toggleBookmarkPostAction(data: { postId: number }) {
+  const user = await getUser();
+  if (!user) {
+    return { error: 'Quyền truy cập bị từ chối. Vui lòng đăng nhập.' };
+  }
+
+  const { postId } = data;
+
+  const [existingBookmark] = await db
+    .select()
+    .from(feedBookmarks)
+    .where(and(eq(feedBookmarks.postId, postId), eq(feedBookmarks.userId, user.id)))
+    .limit(1);
+
+  if (existingBookmark) {
+    await db.delete(feedBookmarks).where(eq(feedBookmarks.id, existingBookmark.id));
+    return { success: 'Đã bỏ lưu bài viết', saved: false };
+  } else {
+    await db.insert(feedBookmarks).values({
+      postId,
+      userId: user.id
+    });
+    return { success: 'Đã lưu bài viết thành công', saved: true };
+  }
 }
 
 export async function changeTaskStatusAction(data: { postId: number; status: 'pending' | 'in_progress' | 'completed' }) {
@@ -1357,4 +1557,134 @@ export async function declineInvitationAction(data: { invitationId: number }) {
 
   revalidatePath('/dashboard');
   return { success: 'Đã từ chối lời mời.' };
+}
+
+export async function createFeedStoryAction(data: {
+  teamIdString?: string | null;
+  imageUrl?: string;
+  textContent?: string;
+  bgClass?: string;
+}) {
+  const user = await getUser();
+  if (!user) {
+    return { error: 'Quyền truy cập bị từ chối. Vui lòng đăng nhập.' };
+  }
+
+  const { teamIdString, imageUrl, textContent, bgClass } = data;
+
+  if (!imageUrl && !textContent) {
+    return { error: 'Story phải có nội dung chữ hoặc hình ảnh.' };
+  }
+
+  let teamId: number | null = null;
+  if (teamIdString && teamIdString.startsWith('team-')) {
+    teamId = parseInt(teamIdString.slice(5), 10);
+  }
+
+  if (!teamId) {
+    const userWithTeam = await getUserWithTeam(user.id);
+    teamId = userWithTeam?.teamId || null;
+  }
+
+  if (!teamId) {
+    return { error: 'Không tìm thấy không gian làm việc tương ứng.' };
+  }
+
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + 24); // Tự động hết hạn sau 24h
+
+  const [newStory] = await db
+    .insert(feedStories)
+    .values({
+      teamId,
+      userId: user.id,
+      imageUrl,
+      textContent,
+      bgClass,
+      expiresAt
+    })
+    .returning();
+
+  const serializedStory = {
+    ...newStory,
+    createdAt: newStory.createdAt.toISOString(),
+    expiresAt: newStory.expiresAt.toISOString()
+  };
+
+  revalidatePath('/dashboard/home');
+  revalidatePath('/');
+  return { success: 'Đã thêm tin mới thành công!', story: serializedStory };
+}
+
+// ==========================================
+// SHARE ACTIONS
+// ==========================================
+
+export async function getUserGroupsAndPagesAction() {
+  const user = await getUser();
+  if (!user) return { groups: [], pages: [] };
+
+  const groups = await db
+    .select({
+      id: socialGroups.id,
+      name: socialGroups.name,
+      coverUrl: socialGroups.coverUrl,
+    })
+    .from(socialGroups)
+    .innerJoin(socialGroupMembers, eq(socialGroupMembers.groupId, socialGroups.id))
+    .where(and(eq(socialGroupMembers.userId, user.id), eq(socialGroupMembers.status, 'approved')));
+
+  // user có thể share lên page mà họ owner
+  const pages = await db
+    .select({
+      id: socialPages.id,
+      name: socialPages.name,
+      avatarUrl: socialPages.avatarUrl,
+    })
+    .from(socialPages)
+    .where(eq(socialPages.ownerId, user.id));
+
+  return { groups, pages };
+}
+
+export async function sharePostToFeedAction(data: {
+  sharedPostId: number;
+  message: string;
+  groupId?: number | null;
+  pageId?: number | null;
+}) {
+  const user = await getUser();
+  if (!user) {
+    return { error: 'Vui lòng đăng nhập.' };
+  }
+
+  const { sharedPostId, message, groupId, pageId } = data;
+
+  const [teamMember] = await db
+    .select()
+    .from(teamMembers)
+    .where(eq(teamMembers.userId, user.id))
+    .limit(1);
+
+  const teamId = teamMember ? teamMember.teamId : 1;
+
+  try {
+    const [newPost] = await db
+      .insert(feedPosts)
+      .values({
+        teamId,
+        userId: user.id,
+        type: 'system_activity',
+        message: message || '',
+        sharedPostId,
+        groupId: groupId || null,
+        pageId: pageId || null,
+      })
+      .returning();
+
+    return { success: 'Chia sẻ bài viết thành công!', post: newPost };
+  } catch (error) {
+    console.error('Error sharing post:', error);
+    return { error: 'Không thể chia sẻ bài viết lúc này.' };
+  }
 }

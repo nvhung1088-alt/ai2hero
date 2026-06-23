@@ -1,0 +1,409 @@
+---
+name: storyboard_prompt_techniques
+description: >-
+  Tham khảo về kỹ thuật gợi ý chung cho kịch bản phân cảnh.
+  Bao gồm các quy tắc ánh xạ phân tích gợi ý, từ điển cảnh, tiêu chuẩn định dạng đầu ra, khung cấu trúc gợi ý, tiêu chuẩn chất lượng hình ảnh, quy tắc chú thích tài sản hình ảnh, quy tắc liên kết vị trí nhân vật, v.v., để Agent kích hoạt sử dụng.
+---
+# Gợi ý kịch bản phân cảnh · Kỹ thuật cơ bản chung
+
+> Dưới đây là **tiêu chuẩn cơ bản chung** cho việc tạo gợi ý kịch bản phân cảnh, áp dụng cho mọi phong cách thị giác. Từ neo phong cách, ánh xạ cảm xúc, từ điển ánh sáng và bóng, chất liệu cảnh, các mục cấm thẩm mỹ, v.v. **nội dung liên quan đến phong cách** được định nghĩa bởi kỹ thuật chuyên biệt phong cách (`director_storyboard`).
+
+---
+
+## Chế độ áp dụng
+
+Quy chuẩn này chỉ hỗ trợ đầu ra theo hai chế độ **tương thích với hình ảnh tham khảo** sau:
+
+- **Chế độ A**: Seedream (doubao-seedream)
+- **Chế độ B**: Nanobanana (Gemini)
+
+> ⚠️ **Không tạo gợi ý cho chế độ văn bản-sinh-hình**; tất cả các đầu ra đều dựa trên **hình ảnh tham khảo (hình ảnh sinh vào hình ảnh / ControlNet / sự nhất quán nhân vật)** theo tiền đề quy trình.
+
+---
+
+## Nguyên tắc trung thành với nội dung bảng phân cảnh (ưu tiên cao nhất)
+
+Tạo gợi ý là **chuyển đổi định dạng**, không phải **viết sáng tạo**. Bảng phân cảnh là nguồn nội dung **duy nhất** cho gợi ý; tất cả thông tin hình ảnh phải trung thành với hàng tương ứng trong bảng phân cảnh, chỉ điều chỉnh định dạng và từ ngữ để đáp ứng yêu cầu của mô hình tạo hình ảnh.
+
+### Nguyên tắc cốt lõi: Mô tả hình ảnh là thân, không phải chất liệu
+
+Trường "Mô tả hình ảnh" trong bảng phân cảnh mang toàn bộ thông tin thị giác của cảnh quay, là **nội dung thân chính** của gợi ý. Từ phong cách, từ chất lượng hình ảnh, từ ánh sáng và bóng tối là **trang trí bổ trợ**, phục vụ mô tả hình ảnh. Khi cả hai tranh giành không gian trong ngân sách token, **mô tả hình ảnh được ưu tiên**, thà cắt giảm từ phong cách chứ không giảm bớt các yếu tố thị giác trong mô tả hình ảnh.
+
+### Quy tắc cứng
+
+1. **Giữ nguyên mô tả hình ảnh**: Tất cả các yếu tố thị giác (chủ thể, vật thể, quan hệ không gian, chi tiết động, quan hệ góc quay) trong trường "Mô tả hình ảnh" của bảng phân cảnh phải xuất hiện đầy đủ trong nội dung thân của gợi ý, **không được bỏ sót bất kỳ yếu tố nào**
+2. **Chuyển đổi ngữ nghĩa tương đương**: Khi chuyển đổi trường từ bảng phân cảnh thành gợi ý, chỉ thay đổi hình thức biểu đạt (Trung ↔ Anh, văn xuôi ↔ từ khóa, ngôn ngữ kể chuyện ↔ mô tả thị giác), **không thay đổi ngữ nghĩa**. Ví dụ: bảng phân cảnh viết "bóng cột không gian kiến trúc sâu" → gợi ý phải thể hiện bóng cột không gian đó tối, không thể thay thế bằng "kiến trúc hoa lệ" với ngữ nghĩa khác
+3. **Cấm sáng tạo phân tán**: Không thêm các yếu tố thị giác trang trí không được đề cập trong bảng phân cảnh (ví dụ: bảng phân cảnh không viết cánh hoa bay, gợi ý không thể tự thêm vào); không diễn giải lại bầu không khí cảnh (bảng phân cảnh viết "lạnh lùng khinh miệt" không được đổi thành "buồn bã cô đơn")
+4. **Từ phong cách thuộc về nội dung**: Từ neo phong cách, từ khóa chất lượng hình ảnh, từ khóa chất liệu cảnh là **bổ trợ trang trí**, phục vụ nội dung hình ảnh đã được định nghĩa trong bảng phân cảnh, không được chiếm ưu thế - khi từ phong cách xung đột với mô tả cụ thể trong bảng phân cảnh, lấy bảng phân cảnh làm chuẩn
+5. **Kiểm tra từng trường**: Sau khi tạo mỗi gợi ý, phải so sánh từng trường với hàng tương ứng trong bảng phân cảnh, xác nhận rằng các ánh xạ sau đã được thể hiện chính xác:
+
+| Trường bảng phân cảnh | Phải thể hiện trong gợi ý | Điểm kiểm tra |
+|---------------------|--------------------------|--------------|
+| Mô tả hình ảnh | Nội dung cốt lõi của đoạn 【hình ảnh】trong gợi ý | Tất cả các chủ thể thị giác, quan hệ không gian, chi tiết quan trọng có được giữ nguyên **không bỏ sót** |
+| Cảnh | Mỏ neo môi trường trong đoạn 【hình ảnh】trong gợi ý | Loại cảnh có khớp không |
+| Loại cảnh | Từ cấu trúc cảnh | Loại cảnh có khớp không (cảnh phức hợp lấy điểm bắt đầu của khung đầu tiên) |
+| Hành động nhân vật | Tư thế và hướng của chủ thể | Ngữ nghĩa hành động có khớp không, hướng có được ghi rõ không |
+| Cảm xúc | Từ mô tả cảm xúc khuôn mặt | Tông cảm xúc có khớp không |
+| Bầu không khí ánh sáng | Đoạn 【ánh sáng】trong gợi ý | Hướng nguồn sáng, xu hướng màu sắc, quan hệ sáng tối có hoàn chỉnh không |
+
+> ⚠️ **Kiểm tra không đạt = gợi ý không hợp lệ**, phải sửa chữa trước khi xuất ra. Các mô hình thất bại phổ biến nhất: các yếu tố cụ thể trong mô tả hình ảnh bị từ mẫu phong cách bao trùm bỏ sót.
+
+---
+
+## Nguyên tắc nhận diện khung đầu tiên
+
+Bảng phân cảnh là **tham khảo khung đầu tiên của video**. Mô hình nên tự động đánh giá trạng thái thị giác của khung này dựa trên ngữ nghĩa "Mô tả hình ảnh" trong bảng phân cảnh, không sử dụng máy móc mẫu "trạng thái chuẩn bị".
+
+**Logic đánh giá**:
+
+| Loại mô tả hình ảnh | Cách xử lý | Ví dụ |
+|-------------------|-----------|------|
+| **Khoảnh khắc tĩnh** (dừng lại ngước nhìn, đứng nhìn chăm chú, cười lạnh nghiêng đầu, viết bài) | **Tạo theo mô tả trực tiếp**, không chỉnh sửa hành động | "Nhân vật dừng lại ngước nhìn vật nào đó" → Gợi ý viết trực tiếp "dừng lại ngước nhìn vật nào đó" |
+| **Quá trình hành động liên tục** (đi qua hành lang, vung kiếm chém xuống, quay lưng rời đi) | Lấy **khoảnh khắc bắt đầu của hành động** (không phải trạng thái chuẩn bị trừu tượng) | "Vung kiếm chém xuống" → "Kiếm đã giơ lên đầu, mũi kiếm hướng xuống, khoảnh khắc sắp chém xuống" |
+| **Chuyển động máy quay** (chậm đẩy đến trung cảnh, kéo ra toàn cảnh, mờ dần) | Lấy **cảnh đầu tiên của đầu khung** làm cấu trúc khung đầu tiên | "Toàn cảnh → trung cảnh" → Khung đầu tiên lấy "cảnh xa" |
+| **Hiệu ứng chuyển tiếp** (mờ dần từ đen, chuyển cảnh chồng lấp) | Giữ mô tả nhưng ghi chú là trạng thái mở đầu | "Mở đầu mờ dần từ đen" → "Hình ảnh nổi lên từ đen, mở đầu cảnh xa..." |
+
+**Cơ sở đánh giá**: Thì động từ và mật độ kể chuyện của mô tả hình ảnh.
+
+> ❌ **Cách làm sai**: Chuyển đổi tất cả hành động thành trạng thái "sắp xảy ra", dẫn đến ngữ nghĩa hành động bị pha loãng
+> - Bảng phân cảnh viết "dừng lại ngước nhìn" → Sai lầm chuyển thành "sắp ngẩng đầu nhìn về phía trước" (hành động bị yếu đi)
+> - Bảng phân cảnh viết "cười lạnh từ trên nhìn xuống" → Sai lầm chuyển thành "miệng sắp nhếch lên" (cảm xúc bị yếu đi)
+>
+> ✅ **Cách làm đúng**: Trung thành với mô tả hành động của bảng phân cảnh, chỉ khi hành động đó thực sự là quá trình liên tục thì mới lấy đầu cảnh
+
+---
+
+## Quy tắc ánh xạ phân tích
+
+| Trường bảng phân cảnh | Xử lý tương ứng trong gợi ý |
+|----------------------|-----------------------------|
+| Mô tả hình ảnh | **Nội dung thân chính**: Nguồn thông tin cốt lõi cho đoạn 【hình ảnh】trong gợi ý. Phải giữ nguyên tất cả các chủ thể có thể nhìn thấy, các tầng không gian, các chi tiết quan trọng, quan hệ góc quay trong mô tả hình ảnh, chỉ chuyển ngôn ngữ kể chuyện thành định dạng mô tả thị giác. Nghiêm cấm cắt giảm các yếu tố quan trọng, thay thế bằng ngữ nghĩa khác hoặc tự thêm các yếu tố thị giác không có trong mô tả hình ảnh |
+| Cảnh | Hòa vào đoạn 【hình ảnh】làm mỏ neo môi trường, kết hợp từ ràng buộc chất liệu cảnh của kỹ thuật chuyên biệt phong cách |
+| Loại cảnh | Từ cấu trúc cảnh (xem từ điển cảnh bên dưới), phải khớp với trường "Loại cảnh" trong bảng phân cảnh. Cảnh phức hợp (như "cảnh xa → trung cảnh") lấy **khung đầu tiên của đầu cảnh** |
+| Chuyển động máy quay | Chỉ là thông tin sản xuất bảng phân cảnh, không đưa vào gợi ý, không xuất ghi chú chuyển động máy quay |
+| Hành động nhân vật | Dựa trên trường "Hành động nhân vật" trong bảng phân cảnh, xử lý theo "Nguyên tắc nhận diện khung đầu tiên". Phải giữ ngữ nghĩa hành động và ghi rõ `｜朝向：` |
+| Cảm xúc | Dựa trên trường "Cảm xúc" trong bảng phân cảnh, chọn từ mô tả khuôn mặt / ánh mắt phù hợp từ bảng ánh xạ cảm xúc của kỹ thuật chuyên biệt phong cách. Tông cảm xúc phải khớp với bảng phân cảnh |
+| Bầu không khí ánh sáng | Dựa trên trường "Bầu không khí ánh sáng" trong bảng phân cảnh, **viết thành đoạn riêng biệt** trong đoạn 【ánh sáng】, giữ nguyên hướng nguồn sáng, xu hướng màu sắc, quan hệ sáng tối, chi tiết chất liệu |
+| Lời thoại | Không đưa vào gợi ý, không xuất |
+| Hiệu ứng âm thanh | Không đưa vào gợi ý, không xuất |
+| Tên / ID tài sản liên kết | Chỉ dùng để tham khảo nội bộ, xử lý theo "Quy tắc chú thích tài sản hình ảnh" |
+
+---
+
+## Từ điển cảnh (chung)
+
+| Đầu vào cảnh | Từ tiếng Anh cho chế độ B (Nanobanana) | Từ tiếng Trung cho chế độ A (Seedream) |
+|-------------|----------------------------------------|--------------------------------------|
+| Đại cảnh xa / Đại toàn cảnh | `extreme wide shot, establishing shot` | Cấu trúc cảnh xa, toàn cảnh môi trường, nhân vật nhỏ bé trong cảnh |
+| Cảnh xa / Toàn cảnh | `wide shot, full shot, full body` | Toàn thân vào khung, cấu trúc cảnh xa, tỷ lệ người và cảnh cân đối |
+| Trung cảnh | `medium shot, cowboy shot, knee shot` | Cấu trúc trung cảnh, nhân vật từ đầu gối trở lên vào khung |
+| Cận cảnh | `medium close-up, upper body` | Cấu trúc cận cảnh, nửa trên cơ thể vào khung, nền mờ nhạt |
+| Bán thân | `half body shot, bust shot` | Cấu trúc bán thân, từ eo trở lên vào khung, độ sâu trường ảnh nông |
+| Đặc tả | `close-up, face focus` | Cấu trúc đặc tả, khuôn mặt hoặc chi tiết cục bộ phóng đại, nền sâu mờ nhạt |
+| Đại đặc tả | `extreme close-up, macro detail` | Đại đặc tả, chi tiết cực kỳ cục bộ, nền mờ |
+| Góc nhìn qua vai | `over the shoulder shot, two shot` | Cấu trúc góc nhìn qua vai, người ở tiền cảnh bị mờ lưng, người ở xa rõ nét |
+
+**Xử lý cảnh phức hợp**: Nếu bảng phân cảnh viết "cảnh xa→trung cảnh""trung cảnh→đặc tả" v.v. chuyển động máy quay, bảng phân cảnh là tham khảo khung đầu tiên, **lấy cảnh đầu tiên của đầu cảnh bên trái mũi tên**.
+
+---
+
+## Tiêu chuẩn định dạng đầu ra
+
+Mỗi bảng phân cảnh **chỉ xuất một chế độ gợi ý văn bản** (chọn một trong hai), không cho phép cùng một bảng phân cảnh xuất đồng thời chế độ A và chế độ B.
+
+**Quy tắc lựa chọn chế độ**:
+
+| Điều kiện | Chọn chế độ |
+|----------|------------|
+| Mô hình mục tiêu là Seedream / dòng Doubao | Chế độ A (Gợi ý tiếng Trung) |
+| Mô hình mục tiêu là dòng Nanobanana / Gemini | Chế độ B (Gợi ý JSON tiếng Anh) |
+| Người dùng không chỉ định mô hình | Mặc định chế độ A, hoặc hỏi để xác nhận với người dùng |
+| Tạo hàng loạt | Duy trì cùng một chế độ trong suốt quá trình, không được chuyển đổi giữa chừng |
+
+**Quy tắc nội dung đầu ra**:
+- Chọn chế độ A: chỉ xuất nội dung `[Prompt]` (không có từ tiêu cực, Seedream không hỗ trợ)
+- Chọn chế độ B: chỉ xuất nội dung `[JSON Prompt]` (bao gồm trường `"negative"`)
+- Ngoài nội dung gợi ý, các nội dung sau mặc định không xuất: tiêu đề bảng phân cảnh, giải thích liên kết hình ảnh tham khảo, ghi chú lời thoại, ghi chú âm thanh, kiểm tra ràng buộc, tóm tắt tài sản
+
+---
+
+## Khung cấu trúc gợi ý (ưu tiên mô tả hình ảnh)
+
+### Nguyên tắc cấu trúc tổng quát
+
+Nội dung gợi ý sử dụng **cấu trúc ba đoạn**, đảm bảo mô tả hình ảnh chiếm vị trí thân chính:
+
+```
+【Hình ảnh】→ Chứa nội dung thị giác hoàn chỉnh của bảng phân cảnh "Mô tả hình ảnh" + "Cảnh" + "Loại cảnh" + "Hành động nhân vật" + "Cảm xúc" (thân chính, mật độ thông tin cao nhất)
+【Ánh sáng】→ Chứa nguồn sáng, xu hướng màu sắc, quan hệ sáng tối của bảng phân cảnh "Bầu không khí ánh sáng" (viết thành đoạn riêng biệt, tránh bị từ phong cách chèn ép)
+【Phong cách】→ Từ neo phong cách + từ khóa chất lượng hình ảnh + tuyên bố cấm (bổ trợ trang trí, ngắn gọn)
+```
+
+> **Nguyên tắc phân bổ độ dài**: Đoạn 【Hình ảnh】là đoạn có mật độ thông tin cao nhất, độ dài lớn nhất, phải chứa hoàn chỉnh tất cả các yếu tố thị giác trong "Mô tả hình ảnh" của bảng phân cảnh; đoạn 【Ánh sáng】là thứ hai, chứa độc lập bầu không khí ánh sáng; đoạn 【Phong cách】ngắn nhất, chỉ chứa từ neo phong cách cần thiết và từ khóa chất lượng hình ảnh. Ba đoạn không thể đảo thứ tự, độ dài không thể đảo - nếu đoạn từ phong cách dài hơn đoạn hình ảnh, đó là đầu ra thất bại.
+
+### Chế độ A: Seedream (API `reference_images`)
+
+Cơ chế: Hình ảnh tham khảo được truyền qua tham số API `reference_images`, sử dụng `@图N` trong gợi ý để liên kết trực tiếp với hình ảnh tham khảo.
+
+Cấu trúc gợi ý:
+
+```
+@图1 为{Tên tài sản}{Loại tài sản} @图2 为{Tên tài sản}{Loại tài sản} ... ,
+
+【Hình ảnh】{Mỏ neo cảnh}, {Từ cấu trúc cảnh}, {Mô tả hình ảnh chuyển đổi hoàn chỉnh - giữ nguyên tất cả các yếu tố thị giác, quan hệ không gian, hành động nhân vật, hướng, cảm xúc}.
+
+【Ánh sáng】{Hướng nguồn sáng}, {Xu hướng màu sắc}, {Quan hệ sáng tối}, {Chi tiết chất liệu}.
+
+【Phong cách】{Từ neo phong cách}, {Từ khóa chất lượng hình ảnh}, cấm phụ đề ngoài khung, watermark, văn bản UI.
+
+Giữ nguyên đặc điểm khuôn mặt, kiểu tóc, trang phục của @图N với hình ảnh tham khảo.
+```
+
+**Quy tắc quan trọng**:
+- Đoạn 【Hình ảnh】phải chứa hoàn chỉnh tất cả thông tin trong trường "Mô tả hình ảnh" của bảng phân cảnh, **không được cắt giảm**
+- Trong đoạn 【Hình ảnh】, tên nhân vật / cảnh / đạo cụ **phải sử dụng `@图N` thay thế** (không dùng tên chữ)
+- Thông tin hướng phải được ghi rõ trong đoạn 【Hình ảnh】 (như "3/4 mặt trước hướng phải")
+- Không cần thêm đoạn tiếng Anh "Based on the reference image... Generate a new scene..." (cơ chế `@图N` đã đảm nhận chức năng liên kết hình ảnh tham khảo, thêm đoạn tiếng Anh sẽ dẫn đến mô tả hình ảnh xuất hiện hai lần, dễ gây xung đột)
+
+> Nội dung cụ thể của `[Từ neo phong cách]`, `[Từ khóa chất lượng hình ảnh]` được định nghĩa bởi **kỹ thuật chuyên biệt phong cách**.
+
+### Chế độ B: Nanobanana (đa phương thức + JSON)
+
+Cơ chế: Hình ảnh tham khảo cùng với gợi ý được đưa vào làm đầu vào đa phương thức, gợi ý sử dụng JSON cấu trúc để ràng buộc sự nhất quán nhân vật.
+
+Cấu trúc gợi ý (khung cố định):
+
+```json
+{
+  "role": "Bạn là một nhà quay phim và nghệ sĩ kịch bản phân cảnh. Giữ sự liên tục thị giác chặt chẽ giữa các cảnh quay.",
+  "character_reference": [
+    { "image": 1, "ref": "@图1", "description": "[Mô tả đặc điểm ngoại hình: màu tóc / kiểu tóc / trang phục / hình dáng]" },
+    { "image": 2, "ref": "@图2", "description": "[Mô tả đặc điểm ngoại hình]" }
+  ],
+  "continuity_rules": [
+    "Trang phục, kiểu tóc, đặc điểm khuôn mặt giống nhau trong TẤT CẢ các cảnh quay",
+    "Môi trường, phong cách ánh sáng, độ màu giống nhau",
+    "Chỉ khung hình, góc, hành động, biểu cảm có thể thay đổi",
+    "KHÔNG được giới thiệu nhân vật mới không có trong hình ảnh tham khảo"
+  ],
+  "shot": {
+    "scene_and_framing": "[Mỏ neo cảnh + Từ cấu trúc cảnh]",
+    "subject_and_action": "[Hành động chủ thể + Hướng + Cảm xúc + Tất cả các yếu tố thị giác trong mô tả hình ảnh, sử dụng @图N thay thế tên nhân vật / cảnh]",
+    "lighting": "[Hướng nguồn sáng + Xu hướng màu sắc + Quan hệ sáng tối + Chi tiết chất liệu]",
+    "style": "[Từ neo phong cách + Từ khóa chất lượng hình ảnh]"
+  },
+  "negative": "[Mẫu từ tiêu cực, bao gồm no subtitles, no watermark, no UI text] (các từ cụ thể được định nghĩa bởi kỹ thuật chuyên biệt phong cách)"
+}
+```
+
+**Quy tắc quan trọng**:
+- Trường `shot` được chia thành 4 trường con, ép buộc mô tả hình ảnh chiếm hai vị trí `scene_and_framing` và `subject_and_action`, tránh bị từ phong cách chèn ép
+- `subject_and_action` là trường có mật độ thông tin cao nhất, phải chứa hoàn chỉnh bảng phân cảnh "Mô tả hình ảnh" + "Hành động nhân vật" + "Cảm xúc"
+- Hình ảnh tham khảo là đầu vào hình ảnh, không phải văn bản URL
+- Mô tả nhân vật giữ 1-2 câu đặc điểm quan trọng, tránh dài dòng
+
+---
+
+## Ngôn ngữ và tiêu chuẩn chất lượng chung
+
+- Chế độ A (Seedream) ưu tiên đoạn văn bằng tiếng Trung tự nhiên
+- Chế độ B (Nanobanana) ưu tiên gợi ý JSON cấu trúc bằng tiếng Anh
+- Gợi ý tập trung vào "biểu hiện nội dung + chất lượng hình ảnh sắc nét", tránh các từ mờ nhạt
+- Không sử dụng các biểu đạt gây mờ hình ảnh (xem bảng "Từ bị cấm hạ chất lượng hình ảnh" bên dưới)
+- Từ tiêu cực của chế độ B theo mẫu "Từ tiêu cực" của kỹ thuật chuyên biệt phong cách, mỗi dòng phải bao gồm, không thể bỏ qua; chế độ A không xuất từ tiêu cực
+- Từ khóa chất lượng hình ảnh theo mẫu "Từ khóa chất lượng hình ảnh" của kỹ thuật chuyên biệt phong cách, mỗi dòng phải bao gồm
+
+---
+
+## Quy tắc về văn bản ngoài hình và văn bản trong hình
+
+- **Văn bản ngoài hình** (phụ đề, watermark, thẻ tiêu đề, chữ lồng vào hình v.v. lớp UI phủ) → **Tuyệt đối cấm**, phải tuyên bố cấm trong đoạn 【Phong cách】và từ tiêu cực
+- **Văn bản trong hình** (văn bản tự nhiên tồn tại trong cảnh: nhân vật viết chữ, chữ trên cuộn sách, biển hiệu, nội dung thư, biển chỉ đường, biển hiệu cửa hàng v.v.) → **Là đạo cụ cảnh**, khi mô tả hình ảnh trong bảng phân cảnh rõ ràng bao gồm nội dung này, nên mô tả bình thường sự tồn tại của nó trong đoạn 【Hình ảnh】, không bị giới hạn bởi quy tắc cấm văn bản
+- **Tiêu chuẩn đánh giá**: Văn bản đó có tồn tại trong **thế giới câu chuyện nội bộ** không. Chữ trên biển hiệu = đạo cụ trong hình ✅; phụ đề dưới cùng hình ảnh là lời thoại nhân vật = phụ đề ngoài hình ❌
+
+---
+
+## Từ bị cấm hạ chất lượng hình ảnh (áp dụng cho mọi phong cách)
+
+| Cách viết bị cấm | Hành vi của mô hình | Thay thế an toàn |
+|-----------------|---------------------|------------------|
+| `film grain` / `hạt phim` | Toàn bộ hình ảnh thêm nhiễu biến mờ | `subtle cinematic texture` / `chất liệu điện ảnh nhẹ nhàng` |
+| `imperfect focus` / `mất nét` | Toàn bộ hình ảnh mất nét | Xoá trực tiếp |
+| `edges not perfectly sharp` | Cạnh bị mờ | Xoá trực tiếp |
+| `slight natural deviation` | Giảm độ phân giải tổng thể | Xoá trực tiếp |
+| `not completely stable` | Hình ảnh mờ | Xoá trực tiếp |
+| `blurry background` (lạm dụng) | Chủ thể cũng bị mờ theo | `background bokeh, subject in sharp focus` |
+| `hazy` / `foggy` (lạm dụng) | Toàn bộ hình ảnh mờ | Chỉ dùng khi cần hiệu ứng không khí, đồng thời thêm `subject sharp` |
+| `mờ mịt` / `cảm giác mờ` | Giảm độ nét tổng thể | Xoá trực tiếp |
+
+> **Nguyên tắc cốt lõi**: Nội dung có thể "không hoàn hảo" (ánh sáng không đều, cấu trúc không đối xứng), nhưng chất lượng hình ảnh phải sắc nét.
+
+---
+
+## Quy tắc xử lý hàng loạt
+
+Khi người dùng nhập nhiều dòng bảng phân cảnh:
+
+1. **Xử lý theo thứ tự từng dòng**, không nhảy qua, không gộp
+2. Mỗi bảng phân cảnh chỉ xuất nội dung gợi ý văn bản của chế độ mục tiêu (Prompt hoặc JSON Prompt)
+3. Nếu cùng một cảnh có nhiều khung liên tiếp, **từ chất liệu cảnh có thể tái sử dụng**, nhưng cảm xúc / ánh sáng / loại cảnh / hành động phải **xử lý độc lập theo từng dòng**
+4. Các khung có cùng tên tài sản liên kết, **từ đánh dấu nhất quán phải nhất quán**
+5. Không thêm bất kỳ khối không phải gợi ý nào (như tóm tắt tài sản, ghi chú lời thoại / âm thanh, kiểm tra ràng buộc)
+
+---
+
+## Quy tắc chú thích tài sản hình ảnh
+
+Trường `prompt` của mỗi bảng phân cảnh phải có **chú thích tài sản hình ảnh** làm tiền tố, và **trong nội dung gợi ý sử dụng `@图N` thay thế trực tiếp tên nhân vật / cảnh / đạo cụ tương ứng**, thiết lập mối quan hệ liên kết trực tiếp giữa hình ảnh tham khảo và mô tả hình ảnh. Chú thích theo thứ tự trích dẫn tài sản trong `associateAssetsIds`, bắt đầu từ `@图1` và tăng dần.
+
+**Định dạng**: `@图1 为{Tên tài sản}{Loại tài sản} @图2 为{Tên tài sản}{Loại tài sản} ... , Trong nội dung sử dụng @图N thay thế tên nhân vật / cảnh trong gợi ý`
+
+**Ánh xạ loại**:
+
+| Loại tài sản | Từ loại chú thích |
+|-------------|-------------------|
+| Vai trò     | Nhân vật          |
+| Công cụ     | Đạo cụ            |
+| Cảnh        | Cảnh              |
+| Đoạn phim   | Đoạn phim         |
+
+**Quy tắc**:
+- Đánh số từ `@图1`, theo thứ tự mảng `associateAssetsIds` tăng dần
+- Mỗi ID tài sản được trích dẫn tương ứng với một mục chú thích, **không được bỏ sót, không được thêm quá**
+- Tên tài sản sử dụng trường `name` của tài sản trong dữ liệu assets
+- Loại tài sản điền theo bảng ánh xạ loại trên
+- Phần chú thích và nội dung gợi ý được ngăn cách bằng `, `
+- Tài sản phái sinh sử dụng tên riêng của nó và loại của tài sản cha
+- **Liên kết nội dung (cốt lõi)**: Trong nội dung gợi ý, tất cả các vị trí đáng lẽ xuất hiện tên nhân vật / cảnh / đạo cụ, **phải thay thế bằng ký hiệu `@图N` tương ứng**, không còn sử dụng tên chữ. Như vậy hình ảnh tham khảo và chủ thể thị giác trong hình ảnh tạo mối quan hệ chỉ định trực tiếp, tránh sự mơ hồ do không nhất quán giữa tên tài sản và tên nhân vật (ví dụ: khi tên của tài sản phái sinh khác với tên nhân vật gốc, sử dụng `@图N` có thể tránh sự mơ hồ về tên và chỉ định trực tiếp tới hình ảnh tham khảo)
+- Cùng một `@图N` có thể xuất hiện nhiều lần trong nội dung (như khi nhân vật có thể thấy ở tiền cảnh và mặt phản chiếu)
+
+**Ví dụ** (giả sử `associateAssetsIds="[A, B, C]"` tương ứng với Nhân vật A (vai trò), Nhân vật B (vai trò), một cảnh (cảnh)):
+
+❌ Sai (nội dung sử dụng tên chữ, không liên kết với chú thích tiền tố):
+```
+@图1 为Nhân vật A nhân vật @图2 为Nhân vật B nhân vật @图3 为Một cảnh cảnh, Nhân vật A cười lạnh, từ trên nhìn xuống Nhân vật B đang quỳ, bóng cột không gian sâu trong cảnh…
+```
+
+✅ Đúng (nội dung sử dụng @图N để liên kết trực tiếp với hình ảnh tham khảo):
+```
+@图1 为Nhân vật A nhân vật @图2 为Nhân vật B nhân vật @图3 为Một cảnh cảnh,
+
+【Hình ảnh】Trong @图3, cấu trúc trung cảnh, @图1 đứng thẳng bên trái của khung hình, mặt 3/4 trước hướng phải, miệng hơi nhếch cười lạnh, nhìn xuống @图2 đang quỳ dưới mặt đất bên phải khung; @图2 cúi đầu nằm trên mặt đất, mặt 3/4 sau hướng trái, hai tay chống đất, vai và lưng căng cứng…
+```
+
+---
+
+## Quy tắc liên tục vị trí và hướng nhân vật
+
+Khi tạo mỗi gợi ý, phải tuân theo các ràng buộc nhất quán về vị trí và hướng nhân vật qua các bảng phân cảnh.
+
+### Một, Quy tắc lấy hướng (lấy hướng mặt nhân vật từ bảng phân cảnh)
+
+Trường "Hành động nhân vật" trong bảng phân cảnh đã bao gồm ghi chú `｜朝向：`, khi tạo gợi ý **ưu tiên trích xuất trực tiếp**, và **ghi rõ** các từ hướng tương ứng (như `facing right` / `mặt hướng phải`, `three-quarter view facing left` / `3/4 mặt bên hướng trái`) trong gợi ý.
+
+**Ưu tiên lấy** (cao → thấp):
+
+| Ưu tiên | Nguồn gốc thông tin | Logic xử lý |
+|---------|---------------------|------------|
+| **1** | **Ghi chú `｜朝向：` trong trường Hành động nhân vật** | Bảng phân cảnh đã ghi rõ → **áp dụng trực tiếp**, không cần suy diễn |
+| 2 | **Từ chỉ hướng rõ ràng trong mô tả hình ảnh** | Mô tả hình ảnh đề cập trực tiếp đến hướng (như "quay lưng với máy ảnh", "nhìn ra cửa sổ", "mặt hướng khán giả") → Sử dụng trực tiếp (chỉ khi ưu tiên 1 thiếu) |
+| 3 | **Quan hệ không gian nhiều nhân vật (trục nhìn 180°)** | Trong cảnh đối thoại / đối đầu / tương tác, hai nhân vật đối diện nhau: Nhân vật bên trái khung hình hướng phải, nhân vật bên phải khung hình hướng trái. Lần xuất hiện đầu tiên thiết lập cơ sở, sau đó khóa toàn cảnh |
+| 4 | **Gợi ý từ loại cảnh** | Góc nhìn qua vai: Nhân vật tiền cảnh quay lưng / bên quay lưng với máy ảnh, nhân vật xa hướng về phía máy ảnh; đặc tả / cận cảnh độc thoại: Mặc định 3/4 mặt bên |
+| 5 | **Cảm xúc và ngữ nghĩa kể chuyện** | Cô đơn / suy tư / hồi tưởng → Đường viền bên hoặc 3/4 mặt sau; Đối đầu / chất vấn → Mặt trước hoặc 3/4 mặt trước hướng về phía đối phương; Tránh né / ngại ngùng → Hơi nghiêng đầu tránh đối phương |
+| 6 | **Logic không gian cảnh** | Đón khách ở cửa → Mặt hướng ra cửa; Nhìn ngắm phong cảnh → Mặt hướng về phong cảnh; Viết bài trên bàn → Mặt hướng xuống bàn |
+
+> **Thông thường chỉ cần đọc ưu tiên 1**, bảng phân cảnh đã ghi chú hoàn chỉnh từ nguồn gốc. Ưu tiên 2~6 chỉ là dự phòng khi bảng phân cảnh thiếu ghi chú.
+
+**Bước lấy**:
+1. Đọc nội dung ghi chú trong bảng phân cảnh hiện tại trong trường "Hành động nhân vật" sau `｜朝向：`
+2. Nếu ghi chú tồn tại và hoàn chỉnh → Sử dụng trực tiếp, bỏ qua các ưu tiên sau
+3. Nếu ghi chú thiếu (như dòng không có nhân vật) → Suy diễn lần lượt theo ưu tiên 2~6
+4. Ghi thông tin hướng lấy được vào vị trí mô tả tương ứng của nhân vật trong gợi ý
+
+**Từ chỉ hướng**:
+
+| Loại hướng | Chế độ A (tiếng Trung) | Chế độ B (tiếng Anh) | Cảnh áp dụng |
+|-----------|----------------------|---------------------|-------------|
+| Mặt trước | Mặt trước hướng máy ảnh | facing camera, front view | Tuyên bố tự thân, đối đầu trực tiếp với ánh mắt khán giả |
+| 3/4 mặt trước | 3/4 mặt bên hơi hướng máy ảnh | three-quarter view facing camera | Chủ thể đối thoại, truyền tải cảm xúc |
+| Mặt bên | Đường viền mặt bên | profile view, side view | Độc thoại, suy tư, đối đầu bóng |
+| 3/4 mặt sau | 3/4 mặt sau | three-quarter back view | Rời đi, xa lánh, hồi tưởng |
+| Mặt sau | Quay lưng với máy ảnh | back view, from behind | Xuất hiện bí ẩn, rời đi, nhìn từ xa |
+| Mặt hướng trái | Mặt hướng bên trái khung hình | facing left | Nhân vật bên phải trục nhìn 180°, hướng về mục tiêu bên trái |
+| Mặt hướng phải | Mặt hướng bên phải khung hình | facing right | Nhân vật bên trái trục nhìn 180°, hướng về mục tiêu bên phải |
+| Hơi cúi đầu | Hơi cúi đầu | slightly looking down | Buồn bã, tội lỗi, suy tư |
+| Hơi ngẩng đầu | Hơi ngẩng đầu | slightly looking up | Kiêu ngạo, ngước nhìn, kỳ vọng |
+
+> Ghi chú hướng phải bao gồm cả **hướng ngang** (mặt hướng trái / phải / máy ảnh) và **xu hướng ngẩng cúi** (nếu có), như "3/4 mặt bên hướng phải, hơi ngẩng đầu".
+
+### Hai, Quy tắc khóa vị trí và hướng
+
+- **Khoá vị trí khung hình**: Cùng một nhân vật trong nhiều dòng bảng phân cảnh cùng cảnh, vị trí trái phải trên khung hình (bên trái khung / trung tâm / bên phải khung) phải giữ cố định, không được thay đổi mà không có lý do kể chuyện
+- **Giữ nguyên hướng**: Cảnh đối thoại / đối đầu tuân theo trục nhìn 180° - nhân vật A hướng phải thì toàn cảnh giữ hướng phải, nhân vật B hướng trái thì toàn cảnh giữ hướng trái; trong gợi ý phải ghi rõ bằng từ chỉ vị trí (facing left / mặt hướng trái, on the left side of frame / bên trái khung v.v.)
+- **Giữ nguyên quan hệ trước sau**: Nếu nhân vật A ở tiền cảnh trong bảng phân cảnh N, nhân vật B ở trung cảnh, trong các bảng phân cảnh tiếp theo cùng cảnh, quan hệ trước sau giữa hai người không nên đảo ngược mà không có lý do
+- **Thay đổi vị trí cần có chuyển động liên kết**: Khi cần thay đổi vị trí khung hình của nhân vật (như nhân vật di chuyển, quay người), trong gợi ý của bảng phân cảnh trước đó phải có mô tả chuyển động / quay người tương ứng, không thể nhảy vị trí mà không có lý do
+- **Thay đổi hướng cần có chuyển động liên kết**: Khi cần thay đổi hướng của nhân vật (như quay đầu, quay người), trong gợi ý của bảng phân cảnh hiện tại phải có mô tả chuyển động quay hướng (như "hơi quay đầu hướng về bên trái khung hình"), và sự thay đổi hướng đó phải nhất quán với trường "Hành động nhân vật" trong bảng phân cảnh, không thể thay đổi hướng mà không có lý do
+- **Có thể đặt lại khi chuyển cảnh**: Khi chuyển sang cảnh hoàn toàn mới, có thể sắp xếp lại vị trí khung hình và hướng, nhưng trong cảnh mới vẫn phải giữ nhất quán
+
+### Ba, Quan hệ thị giác mặt phản chiếu
+
+Khi hình ảnh có mặt phản chiếu (gương, mặt nước, kim loại sáng bóng, kính cửa sổ, ống kính máy ảnh v.v.), cần chú ý các quy tắc sau:
+
+- **Lật gương**: Hướng trái phải của nhân vật trong mặt phản chiếu ngược lại với thực thể (thực thể hướng phải → gương hướng trái), trong gợi ý phải ghi rõ quan hệ hướng giữa thực thể và mặt phản chiếu (như "@图1 hướng phải, trong phản chiếu nước @图1 hướng trái")
+- **Mặt phản chiếu không thay đổi cơ sở vị trí**: Vị trí khung hình của nhân vật dựa trên thực thể, hình ảnh phản chiếu không coi là thay đổi vị trí nhân vật
+- **Nội dung mặt phản chiếu nhất quán với thực thể**: Trang phục, kiểu tóc, biểu cảm của nhân vật trong mặt phản chiếu phải nhất quán với thực thể trong cùng khung hình, không thể có sự sai lệch
+- **Độ sâu trường ảnh và độ nét mặt phản chiếu**: Tùy theo khoảng cách và chất liệu mặt phản chiếu, hình ảnh phản chiếu có thể giảm bớt độ nét một cách phù hợp (như sóng nước làm mờ), nhưng phải ghi chú trong gợi ý (như "hình ảnh phản chiếu trong nước hơi biến dạng")
+- **Kích hoạt nhận diện**: Khi mô tả hình ảnh trong bảng phân cảnh hoặc tài sản cảnh chứa các yếu tố phản chiếu như gương, mặt nước, hồ nước, dòng suối, kính, phản chiếu kim loại, máy ảnh / quay phim v.v., tự động kích hoạt quy tắc này
+
+---
+
+## Phụ lục: Ví dụ đầu ra hoàn chỉnh
+
+Dưới đây là một ví dụ về quá trình hoàn chỉnh từ đầu vào đến đầu ra của một dòng bảng phân cảnh, để Agent tham khảo. Ví dụ này sử dụng các ký hiệu trừu tượng (Nhân vật A, Một cảnh, Đạo cụ X v.v.), khi áp dụng thực tế thay thế bằng nội dung cụ thể trong bảng phân cảnh.
+
+### Đầu vào (một dòng trong bảng phân cảnh)
+
+| Trường | Nội dung |
+|--------|----------|
+| Mô tả hình ảnh | Mở đầu mờ dần từ đen, đầu ra cảnh của Một cảnh, dòng người chảy, vật chỉ dẫn nổi bật đứng bên phải khung hình, Nhân vật A đeo Đạo cụ X đi bộ một mình trong dòng người, máy quay chậm đẩy đến trung cảnh, anh ta nắm chặt Đạo cụ Y đột nhiên dừng bước nhìn lên vật chỉ dẫn, ánh mắt lo lắng nhưng quyết tâm |
+| Cảnh | Đầu ra Một cảnh |
+| Loại cảnh | Cảnh xa → Trung cảnh |
+| Hành động nhân vật | Đeo ba lô đi bộ về phía trước → đột nhiên dừng bước → ngẩng đầu nhìn lên vật chỉ dẫn → nắm chặt Đạo cụ Y｜Hướng: 3/4 mặt trước hướng phải |
+| Cảm xúc | Lo lắng và quyết tâm cùng tồn tại |
+| Bầu không khí ánh sáng | Ánh sáng buổi sáng nhẹ nhàng từ bên trái trải đều, nền màu vàng ấm nhẹ nhàng nhuộm nền đất, vật chỉ dẫn dưới ánh sáng rõ ràng, bóng người ngược sáng tối tạo cảm giác đường viền |
+| ID tài sản liên kết | [a, b, c, d] → Nhân vật A (vai trò), Đạo cụ X (công cụ), Đạo cụ Y (công cụ), Đầu ra Một cảnh (cảnh) |
+
+### Đầu ra (Chế độ A · Seedream)
+
+```
+@图1 为Nhân vật A nhân vật @图2 为Đạo cụ X đạo cụ @图3 为Đạo cụ Y đạo cụ @图4 为Đầu ra Một cảnh cảnh,
+
+【Hình ảnh】@图4, mở đầu từ đen mờ dần, cấu trúc cảnh xa, dòng người chảy qua, bên phải khung hình có vật chỉ dẫn nổi bật đứng; @图1 đeo @图2 đi bộ một mình trong dòng người, tay nắm chặt @图3, cơ thể 3/4 mặt trước hướng phải, dừng lại giữa dòng người, ngẩng đầu nhìn lên vật chỉ dẫn bên phải khung hình, ánh mắt lo lắng nhưng quyết tâm, khuôn mặt lo lắng xen lẫn quyết tâm.
+
+【Ánh sáng】Ánh sáng buổi sáng nhẹ nhàng từ bên trái trải đều, nền màu vàng ấm nhẹ nhàng nhuộm nền đất, vật chỉ dẫn dưới ánh sáng rõ ràng và sáng, bóng người ngược sáng tối tạo cảm giác đường viền, @图1 nửa người dưới ánh sáng nửa người ngược sáng, đường viền khuôn mặt hơi sáng.
+
+【Phong cách】{Từ neo phong cách}, {Từ khóa chất lượng hình ảnh}, cấm phụ đề ngoài khung, watermark, văn bản UI.
+
+Giữ nguyên đặc điểm khuôn mặt, kiểu tóc, trang phục của @图1 với hình ảnh tham khảo.
+```
+
+> Đoạn 【Phong cách】có `{Từ neo phong cách}` `{Từ khóa chất lượng hình ảnh}` do kỹ thuật chuyên biệt phong cách (`director_storyboard`) cung cấp, quy chuẩn chung này không ghi cố định các từ cụ thể.
+
+### Kiểm tra đối chiếu
+
+| Trường bảng phân cảnh | Vị trí thể hiện trong gợi ý | Có khớp không |
+|----------------------|-----------------------------|--------------|
+| Mở đầu mờ dần từ đen | 【Hình ảnh】"mở đầu từ đen mờ dần" | ✅ |
+| Đầu ra Một cảnh | 【Hình ảnh】"@图4" | ✅ |
+| Cảnh xa (khung đầu tiên của đầu cảnh) | 【Hình ảnh】"cấu trúc cảnh xa" | ✅ |
+| Dòng người chảy | 【Hình ảnh】"dòng người chảy qua" | ✅ |
+| Vật chỉ dẫn bên phải | 【Hình ảnh】"bên phải khung hình có vật chỉ dẫn nổi bật đứng" | ✅ |
+| Nhân vật A đeo Đạo cụ X đi một mình | 【Hình ảnh】"@图1 đeo @图2 đi bộ một mình trong dòng người" | ✅ |
+| Tay nắm Đạo cụ Y | 【Hình ảnh】"tay nắm chặt @图3" | ✅ |
+| Dừng bước nhìn lên vật chỉ dẫn | 【Hình ảnh】"dừng lại giữa dòng người, ngẩng đầu nhìn lên vật chỉ dẫn bên phải khung hình" | ✅ |
+| Hướng 3/4 mặt trước hướng phải | 【Hình ảnh】"cơ thể 3/4 mặt trước hướng phải" | ✅ |
+| Lo lắng và quyết tâm | 【Hình ảnh】"ánh mắt lo lắng nhưng quyết tâm" | ✅ |
+| Ánh sáng buổi sáng từ trái + nền màu vàng ấm | 【Ánh sáng】"Ánh sáng buổi sáng nhẹ nhàng từ bên trái trải đều, nền màu vàng ấm" | ✅ |
+| Bóng người ngược sáng đường viền | 【Ánh sáng】"bóng người ngược sáng tối tạo cảm giác đường viền" | ✅ |
+
+**Không bỏ sót, kiểm tra đạt.**

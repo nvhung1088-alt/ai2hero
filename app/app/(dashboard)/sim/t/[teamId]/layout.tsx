@@ -18,6 +18,8 @@ import {
   getSimRiskEvents, 
   getSimCheckLogs 
 } from '@/lib/db/sim-queries';
+import { isPreviewMode } from '@/lib/preview-actions';
+import { PreviewBanner } from '@/app/(dashboard)/preview-banner';
 
 export const revalidate = 0;
 
@@ -91,7 +93,8 @@ export default async function SimDynamicLayout({
     }
   }
 
-  if (!activatedApps.includes('sim')) {
+  const isPreview = await isPreviewMode('sim', teamId);
+  if (!activatedApps.includes('sim') && !isPreview) {
     redirect('/dashboard');
   }
 
@@ -105,6 +108,8 @@ export default async function SimDynamicLayout({
   };
 
   return (
+    <>
+      {isPreview && <PreviewBanner appId="sim" />}
     <div className="flex flex-col min-h-screen bg-gray-950 text-white w-full">
       <CookieSync teamId={teamId} />
       <CreateWorkspaceModal hideTrigger={true} />
@@ -159,5 +164,7 @@ export default async function SimDynamicLayout({
         </main>
       </div>
     </div>
+  
+    </>
   );
 }

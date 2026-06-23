@@ -9,6 +9,8 @@ import {
   index,
   uniqueIndex,
   uuid,
+  boolean,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -20,6 +22,7 @@ export const users = pgTable('users', {
   googleId: varchar('google_id', { length: 255 }).unique(),
   avatarUrl: text('avatar_url'),
   role: varchar('role', { length: 20 }).notNull().default('member'),
+  balance: integer('balance').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),
@@ -88,9 +91,12 @@ export const teamsRelations = relations(teams, ({ many }) => ({
   invitations: many(invitations),
 }));
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   teamMembers: many(teamMembers),
   invitationsSent: many(invitations),
+  socialProfile: one(socialProfiles),
+  friendsRequested: many(socialFriends, { relationName: 'requester' }),
+  friendsReceived: many(socialFriends, { relationName: 'addressee' }),
 }));
 
 export const invitationsRelations = relations(invitations, ({ one }) => ({
@@ -186,6 +192,15 @@ export const feedPosts = pgTable('feed_posts', {
   taskDueDate: varchar('task_due_date', { length: 50 }),
   pinned: integer('pinned').notNull().default(0),
   pinnedBy: varchar('pinned_by', { length: 100 }),
+  visibility: varchar('visibility', { length: 20 }).default('public'),
+  status: varchar('status', { length: 20 }).notNull().default('approved'), // pending | approved | rejected
+  groupId: integer('group_id').references(() => socialGroups.id, { onDelete: 'set null' }),
+  pageId: integer('page_id').references(() => socialPages.id, { onDelete: 'set null' }),
+  sharedPostId: integer('shared_post_id'),
+  linkPreview: jsonb('link_preview'),
+  syncWebsite: integer('sync_website').notNull().default(0), // 0: false, 1: true
+  websiteCategory: varchar('website_category', { length: 100 }),
+  taggedProducts: jsonb('tagged_products'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (table) => ({
@@ -200,6 +215,7 @@ export const feedComments = pgTable('feed_comments', {
   userName: varchar('user_name', { length: 100 }).notNull(),
   userAvatar: varchar('user_avatar', { length: 50 }).notNull().default('👤'),
   content: text('content').notNull(),
+  parentId: integer('parent_id'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
@@ -207,9 +223,33 @@ export const feedLikes = pgTable('feed_likes', {
   id: serial('id').primaryKey(),
   postId: integer('post_id').notNull().references(() => feedPosts.id, { onDelete: 'cascade' }),
   userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  reactionType: varchar('reaction_type', { length: 20 }).default('like'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => ({
   postUserIdx: uniqueIndex('feed_likes_post_user_idx').on(table.postId, table.userId),
+}));
+
+export const feedBookmarks = pgTable('feed_bookmarks', {
+  id: serial('id').primaryKey(),
+  postId: integer('post_id').notNull().references(() => feedPosts.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  bookmarkPostUserIdx: uniqueIndex('feed_bookmarks_post_user_idx').on(table.postId, table.userId),
+}));
+
+export const feedStories = pgTable('feed_stories', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  imageUrl: text('image_url'),
+  textContent: text('text_content'),
+  bgClass: varchar('bg_class', { length: 50 }),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  storyTeamIdx: index('feed_stories_team_idx').on(table.teamId),
+  storyExpiresIdx: index('feed_stories_expires_idx').on(table.expiresAt),
 }));
 
 export const feedPostsRelations = relations(feedPosts, ({ one, many }) => ({
@@ -217,11 +257,38 @@ export const feedPostsRelations = relations(feedPosts, ({ one, many }) => ({
   user: one(users, { fields: [feedPosts.userId], references: [users.id] }),
   comments: many(feedComments),
   likesList: many(feedLikes),
+  bookmarks: many(feedBookmarks),
+  group: one(socialGroups, { fields: [feedPosts.groupId], references: [socialGroups.id] }),
+  page: one(socialPages, { fields: [feedPosts.pageId], references: [socialPages.id] }),
+  media: many(postMedia),
+  sharedPost: one(feedPosts, {
+    fields: [feedPosts.sharedPostId],
+    references: [feedPosts.id],
+    relationName: 'post_shares',
+  }),
+  shares: many(feedPosts, { relationName: 'post_shares' }),
 }));
 
-export const feedCommentsRelations = relations(feedComments, ({ one }) => ({
+export const feedStoriesRelations = relations(feedStories, ({ one }) => ({
+  team: one(teams, { fields: [feedStories.teamId], references: [teams.id] }),
+  user: one(users, { fields: [feedStories.userId], references: [users.id] }),
+}));
+
+export const feedCommentsRelations = relations(feedComments, ({ one, many }) => ({
   post: one(feedPosts, { fields: [feedComments.postId], references: [feedPosts.id] }),
   user: one(users, { fields: [feedComments.userId], references: [users.id] }),
+  parent: one(feedComments, {
+    fields: [feedComments.parentId],
+    references: [feedComments.id],
+    relationName: 'comment_replies',
+  }),
+  replies: many(feedComments, { relationName: 'comment_replies' }),
+  likesList: many(feedCommentLikes),
+}));
+
+export const feedBookmarksRelations = relations(feedBookmarks, ({ one }) => ({
+  post: one(feedPosts, { fields: [feedBookmarks.postId], references: [feedPosts.id] }),
+  user: one(users, { fields: [feedBookmarks.userId], references: [users.id] }),
 }));
 
 export const feedLikesRelations = relations(feedLikes, ({ one }) => ({
@@ -229,12 +296,336 @@ export const feedLikesRelations = relations(feedLikes, ({ one }) => ({
   user: one(users, { fields: [feedLikes.userId], references: [users.id] }),
 }));
 
+export const feedCommentLikes = pgTable('feed_comment_likes', {
+  id: serial('id').primaryKey(),
+  commentId: integer('comment_id').notNull().references(() => feedComments.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  reactionType: varchar('reaction_type', { length: 20 }).default('like'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  commentUserIdx: uniqueIndex('feed_comment_likes_comment_user_idx').on(table.commentId, table.userId),
+}));
+
+export const feedCommentLikesRelations = relations(feedCommentLikes, ({ one }) => ({
+  comment: one(feedComments, { fields: [feedCommentLikes.commentId], references: [feedComments.id] }),
+  user: one(users, { fields: [feedCommentLikes.userId], references: [users.id] }),
+}));
+
+
+// ============================================================
+// SOCIAL HERO MODULE TABLES
+// ============================================================
+
+// --- Social Profiles (mở rộng user info cho social) ---
+export const socialProfiles = pgTable('social_profiles', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  bio: text('bio'),
+  coverUrl: text('cover_url'),
+  location: varchar('location', { length: 200 }),
+  birthday: varchar('birthday', { length: 10 }), // YYYY-MM-DD string
+  website: varchar('website', { length: 500 }),
+  relationship: varchar('relationship', { length: 50 }),
+  visibility: varchar('visibility', { length: 20 }).notNull().default('public'), // public | friends | private
+  lastActiveAt: timestamp('last_active_at').defaultNow(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// --- Friends / Follow ---
+export const socialFriends = pgTable('social_friends', {
+  id: serial('id').primaryKey(),
+  requesterId: integer('requester_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  addresseeId: integer('addressee_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // pending | accepted | blocked
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  requesterIdx: index('social_friends_requester_idx').on(table.requesterId),
+  addresseeIdx: index('social_friends_addressee_idx').on(table.addresseeId),
+  uniquePair: uniqueIndex('social_friends_pair_idx').on(table.requesterId, table.addresseeId),
+}));
+
+// --- Groups ---
+export const socialGroups = pgTable('social_groups', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 200 }).notNull(),
+  description: text('description'),
+  coverUrl: text('cover_url'),
+  privacy: varchar('privacy', { length: 20 }).notNull().default('public'), // public | private | secret
+  createdBy: integer('created_by').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  memberCount: integer('member_count').notNull().default(1),
+  requireJoinApproval: boolean('require_join_approval').notNull().default(false),
+  requirePostApproval: boolean('require_post_approval').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const socialGroupMembers = pgTable('social_group_members', {
+  id: serial('id').primaryKey(),
+  groupId: integer('group_id').notNull().references(() => socialGroups.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: varchar('role', { length: 20 }).notNull().default('member'), // admin | moderator | member
+  status: varchar('status', { length: 20 }).notNull().default('approved'), // pending | approved | rejected
+  joinedAt: timestamp('joined_at').notNull().defaultNow(),
+}, (table) => ({
+  groupUserIdx: uniqueIndex('social_group_members_idx').on(table.groupId, table.userId),
+}));
+
+// --- Pages ---
+export const socialPages = pgTable('social_pages', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 200 }).notNull(),
+  username: varchar('username', { length: 100 }).unique().notNull(),
+  description: text('description'),
+  category: varchar('category', { length: 100 }),
+  website: text('website'),
+  email: varchar('email', { length: 255 }),
+  phone: varchar('phone', { length: 20 }),
+  address: text('address'),
+  avatarUrl: text('avatar_url'),
+  coverUrl: text('cover_url'),
+  ownerId: integer('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  followersCount: integer('followers_count').notNull().default(0),
+  likesCount: integer('likes_count').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const socialPageFollowers = pgTable('social_page_followers', {
+  id: serial('id').primaryKey(),
+  pageId: integer('page_id').notNull().references(() => socialPages.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  pageUserIdx: uniqueIndex('social_page_followers_idx').on(table.pageId, table.userId),
+}));
+
+// --- Conversations & Messages ---
+export const socialConversations = pgTable('social_conversations', {
+  id: serial('id').primaryKey(),
+  type: varchar('type', { length: 20 }).notNull().default('direct'), // direct | group
+  name: varchar('name', { length: 200 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const socialConversationMembers = pgTable('social_conversation_members', {
+  id: serial('id').primaryKey(),
+  conversationId: integer('conversation_id').notNull().references(() => socialConversations.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  joinedAt: timestamp('joined_at').notNull().defaultNow(),
+}, (table) => ({
+  convUserIdx: uniqueIndex('social_conv_members_idx').on(table.conversationId, table.userId),
+}));
+
+export const socialMessages = pgTable('social_messages', {
+  id: serial('id').primaryKey(),
+  conversationId: integer('conversation_id').notNull().references(() => socialConversations.id, { onDelete: 'cascade' }),
+  senderId: integer('sender_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  type: varchar('type', { length: 20 }).notNull().default('text'), // text | image | video | link
+  attachmentUrl: text('attachment_url'),
+  attachments: text('attachments'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  convIdx: index('social_messages_conv_idx').on(table.conversationId),
+  createdAtIdx: index('social_messages_created_idx').on(table.createdAt),
+}));
+
+// --- Post Media (multi-image, video) ---
+export const postMedia = pgTable('post_media', {
+  id: serial('id').primaryKey(),
+  postId: integer('post_id').notNull().references(() => feedPosts.id, { onDelete: 'cascade' }),
+  type: varchar('type', { length: 30 }).notNull(), // image | video_upload | video_external
+  url: text('url').notNull(),
+  thumbnailUrl: text('thumbnail_url'),
+  provider: varchar('provider', { length: 30 }).default('upload'), // upload | youtube | tiktok | vimeo | direct
+  originalUrl: text('original_url'),
+  embedUrl: text('embed_url'),
+  title: varchar('title', { length: 500 }),
+  width: integer('width'),
+  height: integer('height'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// --- Moderation Reports ---
+export const socialReports = pgTable('social_reports', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  reporterId: integer('reporter_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  postId: integer('post_id').references(() => feedPosts.id, { onDelete: 'cascade' }),
+  commentId: integer('comment_id').references(() => feedComments.id, { onDelete: 'cascade' }),
+  reason: varchar('reason', { length: 50 }).notNull(), // spam | harassment | hate_speech | violence | other
+  description: text('description'),
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // pending | resolved | dismissed
+  resolvedBy: integer('resolved_by').references(() => users.id, { onDelete: 'set null' }),
+  resolvedAt: timestamp('resolved_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// --- Content Outbound Hub (Crosspost) ---
+export const socialCrossPosts = pgTable('social_cross_posts', {
+  id: serial('id').primaryKey(),
+  postId: integer('post_id').notNull().references(() => feedPosts.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  platform: varchar('platform', { length: 50 }).notNull(), // facebook, tiktok, zalo, v.v.
+  platformPostId: varchar('platform_post_id', { length: 255 }), // ID bài viết trên platform đích
+  platformJobId: varchar('platform_job_id', { length: 255 }), // ID job upload của platform (ví dụ tiktok publish_id)
+  connectionId: integer('connection_id'), // ID connection trong ConnectHub
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // pending | published | failed
+  errorMessage: text('error_message'),
+  metrics: jsonb('metrics'), // { likes: 0, comments: 0, shares: 0 }
+  publishedAt: timestamp('published_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// ==========================================
+// SOCIAL IMPORTED POSTS (Bài viết import từ MXH)
+// ==========================================
+export const socialImportedPosts = pgTable('social_imported_posts', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  connectionId: integer('connection_id').notNull(),                  // ConnectHub connection ID
+  platform: varchar('platform', { length: 50 }).notNull(),           // facebook, tiktok, v.v.
+  externalPostId: varchar('external_post_id', { length: 255 }).notNull(), // ID bài gốc trên MXH
+  externalUrl: text('external_url'),
+  feedPostId: integer('feed_post_id').references(() => feedPosts.id, { onDelete: 'set null' }), // Bài iSocial tương ứng
+  rawData: jsonb('raw_data'),                                        // Data gốc từ API
+  syncStatus: varchar('sync_status', { length: 20 }).default('synced'), // synced | skipped | error
+  syncedAt: timestamp('synced_at').defaultNow(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  uniqueExternalPost: uniqueIndex('social_imported_posts_external_idx').on(table.connectionId, table.externalPostId),
+}));
+
+// ============================================================
+// SOCIAL HERO RELATIONS
+// ============================================================
+
+export const postMediaRelations = relations(postMedia, ({ one }) => ({
+  post: one(feedPosts, { fields: [postMedia.postId], references: [feedPosts.id] }),
+}));
+
+export const socialReportsRelations = relations(socialReports, ({ one }) => ({
+  team: one(teams, { fields: [socialReports.teamId], references: [teams.id] }),
+  reporter: one(users, { fields: [socialReports.reporterId], references: [users.id] }),
+  post: one(feedPosts, { fields: [socialReports.postId], references: [feedPosts.id] }),
+  comment: one(feedComments, { fields: [socialReports.commentId], references: [feedComments.id] }),
+  resolvedByUser: one(users, { fields: [socialReports.resolvedBy], references: [users.id] }),
+}));
+
+export const socialCrossPostsRelations = relations(socialCrossPosts, ({ one }) => ({
+  post: one(feedPosts, { fields: [socialCrossPosts.postId], references: [feedPosts.id] }),
+  user: one(users, { fields: [socialCrossPosts.userId], references: [users.id] }),
+}));
+
+export const socialImportedPostsRelations = relations(socialImportedPosts, ({ one }) => ({
+  team: one(teams, { fields: [socialImportedPosts.teamId], references: [teams.id] }),
+  user: one(users, { fields: [socialImportedPosts.userId], references: [users.id] }),
+  feedPost: one(feedPosts, { fields: [socialImportedPosts.feedPostId], references: [feedPosts.id] }),
+  // connection is soft-linked to avoid direct cyclical dependencies on bottom of file, but we can do hard link:
+  // connection: one(connectHubConnections, { fields: [socialImportedPosts.connectionId], references: [connectHubConnections.id] })
+}));
+
+export const socialProfilesRelations = relations(socialProfiles, ({ one }) => ({
+  user: one(users, { fields: [socialProfiles.userId], references: [users.id] }),
+}));
+
+export const socialFriendsRelations = relations(socialFriends, ({ one }) => ({
+  requester: one(users, {
+    fields: [socialFriends.requesterId],
+    references: [users.id],
+    relationName: 'requester'
+  }),
+  addressee: one(users, {
+    fields: [socialFriends.addresseeId],
+    references: [users.id],
+    relationName: 'addressee'
+  }),
+}));
+
+export const socialGroupsRelations = relations(socialGroups, ({ one, many }) => ({
+  creator: one(users, { fields: [socialGroups.createdBy], references: [users.id] }),
+  members: many(socialGroupMembers),
+  posts: many(feedPosts),
+}));
+
+export const socialGroupMembersRelations = relations(socialGroupMembers, ({ one }) => ({
+  group: one(socialGroups, { fields: [socialGroupMembers.groupId], references: [socialGroups.id] }),
+  user: one(users, { fields: [socialGroupMembers.userId], references: [users.id] }),
+}));
+
+export const socialPagesRelations = relations(socialPages, ({ one, many }) => ({
+  owner: one(users, { fields: [socialPages.ownerId], references: [users.id] }),
+  followers: many(socialPageFollowers),
+  posts: many(feedPosts),
+}));
+
+export const socialPageFollowersRelations = relations(socialPageFollowers, ({ one }) => ({
+  page: one(socialPages, { fields: [socialPageFollowers.pageId], references: [socialPages.id] }),
+  user: one(users, { fields: [socialPageFollowers.userId], references: [users.id] }),
+}));
+
+export const socialConversationsRelations = relations(socialConversations, ({ many }) => ({
+  members: many(socialConversationMembers),
+  messages: many(socialMessages),
+}));
+
+export const socialConversationMembersRelations = relations(socialConversationMembers, ({ one }) => ({
+  conversation: one(socialConversations, { fields: [socialConversationMembers.conversationId], references: [socialConversations.id] }),
+  user: one(users, { fields: [socialConversationMembers.userId], references: [users.id] }),
+}));
+
+export const socialMessagesRelations = relations(socialMessages, ({ one }) => ({
+  conversation: one(socialConversations, { fields: [socialMessages.conversationId], references: [socialConversations.id] }),
+  sender: one(users, { fields: [socialMessages.senderId], references: [users.id] }),
+}));
+
+// ============================================================
+// SOCIAL HERO TYPES
+// ============================================================
+
+export type SocialProfile = typeof socialProfiles.$inferSelect;
+export type NewSocialProfile = typeof socialProfiles.$inferInsert;
+export type SocialFriend = typeof socialFriends.$inferSelect;
+export type NewSocialFriend = typeof socialFriends.$inferInsert;
+export type SocialGroup = typeof socialGroups.$inferSelect;
+export type NewSocialGroup = typeof socialGroups.$inferInsert;
+export type SocialGroupMember = typeof socialGroupMembers.$inferSelect;
+export type NewSocialGroupMember = typeof socialGroupMembers.$inferInsert;
+export type SocialPage = typeof socialPages.$inferSelect;
+export type NewSocialPage = typeof socialPages.$inferInsert;
+export type SocialPageFollower = typeof socialPageFollowers.$inferSelect;
+export type NewSocialPageFollower = typeof socialPageFollowers.$inferInsert;
+export type SocialConversation = typeof socialConversations.$inferSelect;
+export type NewSocialConversation = typeof socialConversations.$inferInsert;
+export type SocialConversationMember = typeof socialConversationMembers.$inferSelect;
+export type NewSocialConversationMember = typeof socialConversationMembers.$inferInsert;
+export type SocialMessage = typeof socialMessages.$inferSelect;
+export type NewSocialMessage = typeof socialMessages.$inferInsert;
+export type PostMedia = typeof postMedia.$inferSelect;
+export type NewPostMedia = typeof postMedia.$inferInsert;
+export type SocialReport = typeof socialReports.$inferSelect;
+export type NewSocialReport = typeof socialReports.$inferInsert;
+export type SocialCrossPost = typeof socialCrossPosts.$inferSelect;
+export type NewSocialCrossPost = typeof socialCrossPosts.$inferInsert;
+
+export type SocialImportedPost = typeof socialImportedPosts.$inferSelect;
+export type NewSocialImportedPost = typeof socialImportedPosts.$inferInsert;
+
 export type FeedPostDB = typeof feedPosts.$inferSelect;
 export type NewFeedPostDB = typeof feedPosts.$inferInsert;
 export type FeedCommentDB = typeof feedComments.$inferSelect;
 export type NewFeedCommentDB = typeof feedComments.$inferInsert;
 export type FeedLikeDB = typeof feedLikes.$inferSelect;
 export type NewFeedLikeDB = typeof feedLikes.$inferInsert;
+export type FeedBookmarkDB = typeof feedBookmarks.$inferSelect;
+export type NewFeedBookmarkDB = typeof feedBookmarks.$inferInsert;
 
 // ============================================================
 // SYSTEM ANNOUNCEMENTS & NOTIFICATIONS MODULE
@@ -853,6 +1244,52 @@ export type HeroReportRun = typeof heroReportRuns.$inferSelect;
 export type NewHeroReportRun = typeof heroReportRuns.$inferInsert;
 
 // ============================================================================
+// HERO SOCIAL — B2B Social Media Manager & Auto-Poster
+// ============================================================================
+
+export const heroSocialSchedules = pgTable('hero_social_schedules', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  
+  // Link to original iSocial feed post
+  sourcePostId: integer('source_post_id').references(() => feedPosts.id, { onDelete: 'set null' }),
+  
+  // Post content details
+  content: text('content').notNull(),
+  mediaAttachments: jsonb('media_attachments').default('[]'),
+  
+  // Video posting format specification (e.g., 'reel' or 'video')
+  videoFormat: varchar('video_format', { length: 20 }),
+  
+  // Batch identifier to group schedules created together
+  batchId: varchar('batch_id', { length: 50 }),
+  
+  // Scheduler parameters
+  scheduledAt: timestamp('scheduled_at').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'publishing' | 'published' | 'failed'
+  
+  // Cross-posting config
+  targetPlatforms: jsonb('target_platforms').notNull().default('["isocial"]'), // ['isocial', 'facebook', 'zalo']
+  connectionIds: jsonb('connection_ids').default('[]'), // array of ConnectHubConnection IDs
+  
+  // Results
+  publishedPostIds: jsonb('published_post_ids').default('{}'), // { 'isocial': 123, 'facebook': 'fb_post_id' }
+  errorMessage: text('error_message'),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const heroSocialSchedulesRelations = relations(heroSocialSchedules, ({ one }) => ({
+  team: one(teams, { fields: [heroSocialSchedules.teamId], references: [teams.id] }),
+  user: one(users, { fields: [heroSocialSchedules.userId], references: [users.id] }),
+}));
+
+export type HeroSocialSchedule = typeof heroSocialSchedules.$inferSelect;
+export type NewHeroSocialSchedule = typeof heroSocialSchedules.$inferInsert;
+
+// ============================================================================
 // HERO CARE — MVP AI CSKH Inbox & Snapshot Cache Module
 // ============================================================================
 
@@ -1088,3 +1525,921 @@ export type HeroCareGuardrail = typeof heroCareGuardrails.$inferSelect;
 export type NewHeroCareGuardrail = typeof heroCareGuardrails.$inferInsert;
 export type HeroCareEvent = typeof heroCareEvents.$inferSelect;
 export type NewHeroCareEvent = typeof heroCareEvents.$inferInsert;
+
+// ============================================================================
+// HERO WEB (Website Builder)
+// ============================================================================
+
+export const websites = pgTable('websites', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  name: varchar('name', { length: 255 }).notNull(),
+  subdomain: varchar('subdomain', { length: 255 }).unique().notNull(),
+  customDomain: varchar('custom_domain', { length: 255 }).unique(),
+  templateId: varchar('template_id', { length: 50 }).notNull().default('default'),
+  themeConfig: jsonb('theme_config'),
+  linkedPageId: integer('linked_page_id'),
+  linkedProfileId: integer('linked_profile_id'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const websitesRelations = relations(websites, ({ one }) => ({
+  user: one(users, { fields: [websites.userId], references: [users.id] }),
+  linkedPage: one(socialPages, { fields: [websites.linkedPageId], references: [socialPages.id] }),
+  linkedProfile: one(socialProfiles, { fields: [websites.linkedProfileId], references: [socialProfiles.userId] }),
+}));
+
+export type Website = typeof websites.$inferSelect;
+export type NewWebsite = typeof websites.$inferInsert;
+
+// ============================================================================
+// MVP2: HERO MARKETPLACE — Thương Mại Điện Tử Đa Kênh
+// ============================================================================
+
+export const marketplaceShops = pgTable('marketplace_shops', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  avatarUrl: varchar('avatar_url', { length: 500 }),
+  coverUrl: varchar('cover_url', { length: 500 }),
+  status: varchar('status', { length: 50 }).notNull().default('active'), // 'active', 'inactive', 'banned'
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const marketplaceCategories = pgTable('marketplace_categories', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull(),
+  parentId: integer('parent_id'), // self-referencing (can't do it inline cleanly without manual relations sometimes)
+  icon: varchar('icon', { length: 255 }),
+  sortOrder: integer('sort_order').default(0),
+});
+
+export const marketplaceProducts = pgTable('marketplace_products', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  shopId: integer('shop_id').notNull().references(() => marketplaceShops.id, { onDelete: 'cascade' }),
+  categoryId: integer('category_id').references(() => marketplaceCategories.id, { onDelete: 'set null' }),
+  name: varchar('name', { length: 500 }).notNull(),
+  description: text('description'),
+  price: integer('price').notNull().default(0),
+  comparePrice: integer('compare_price'),
+  images: jsonb('images').default('[]'), // array of urls
+  stock: integer('stock').notNull().default(0),
+  status: varchar('status', { length: 50 }).notNull().default('active'), // 'active', 'draft', 'out_of_stock'
+  
+  // New Expanded fields
+  sku: varchar('sku', { length: 100 }),
+  costPrice: integer('cost_price').default(0),
+  minStock: integer('min_stock').default(0),
+  reserved: integer('reserved').default(0), // stock reserved for pending orders
+  avgDailySales: integer('avg_daily_sales').default(0),
+  weight: integer('weight').default(0), // in grams
+  aiStatus: varchar('ai_status', { length: 50 }).default('active'), // 'active', 'limited', 'hidden'
+  tierPrices: jsonb('tier_prices').default('[]'), // array of { moq, price, label }
+  aiConfig: jsonb('ai_config').default('{}'), // aliases, sampleText, dontSay, note, upsellSkus, substituteSkus
+
+  // Sync fields
+  sourcePlatform: varchar('source_platform', { length: 50 }).default('manual'), // 'manual', 'kiotviet', 'shopee', 'tiktok'
+  sourceId: varchar('source_id', { length: 255 }), // original id on source platform
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const marketplaceOrders = pgTable('marketplace_orders', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  shopId: integer('shop_id').notNull().references(() => marketplaceShops.id, { onDelete: 'cascade' }),
+  buyerUserId: integer('buyer_user_id'), // optional if guest, but let's say registered
+  items: jsonb('items').notNull().default('[]'), // array of { productId, quantity, price }
+  totalAmount: integer('total_amount').notNull().default(0),
+  status: varchar('status', { length: 50 }).notNull().default('pending'), // 'pending', 'paid', 'shipping', 'completed', 'cancelled'
+  
+  // New Expanded fields
+  customerName: varchar('customer_name', { length: 255 }),
+  customerPhone: varchar('customer_phone', { length: 50 }),
+  customerAddress: text('customer_address'),
+  source: varchar('source', { length: 50 }).default('manual'), // 'shopee', 'tiktok', 'zalo', 'facebook', 'pos', 'manual'
+  carrier: varchar('carrier', { length: 50 }), // 'ghn', 'ghtk', 'vtp', 'spx', 'jt'
+  trackingNumber: varchar('tracking_number', { length: 255 }),
+  shippingFee: integer('shipping_fee').default(0),
+  discount: integer('discount').default(0),
+  platformFee: integer('platform_fee').default(0),
+  profit: integer('profit').default(0),
+  printCount: integer('print_count').notNull().default(0),
+  shippingDeadline: timestamp('shipping_deadline'),
+  timeline: jsonb('timeline').default('[]'), // [{event, time, by, detail}]
+  returnReason: varchar('return_reason', { length: 100 }),
+  returnStatus: varchar('return_status', { length: 50 }),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const marketplaceWallets = pgTable('marketplace_wallets', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }).unique(),
+  balance: integer('balance').notNull().default(0),
+  currency: varchar('currency', { length: 10 }).notNull().default('VND'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const marketplaceTransactions = pgTable('marketplace_transactions', {
+  id: serial('id').primaryKey(),
+  walletId: integer('wallet_id').notNull().references(() => marketplaceWallets.id, { onDelete: 'cascade' }),
+  amount: integer('amount').notNull(),
+  type: varchar('type', { length: 50 }).notNull(), // 'deposit', 'withdraw', 'payment_received', 'fee'
+  referenceId: varchar('reference_id', { length: 255 }), // external tx id or order id
+  status: varchar('status', { length: 50 }).notNull().default('completed'), // 'pending', 'completed', 'failed'
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const marketplaceShippingConfigs = pgTable('marketplace_shipping_configs', {
+  id: serial('id').primaryKey(),
+  shopId: integer('shop_id').notNull().references(() => marketplaceShops.id, { onDelete: 'cascade' }),
+  provider: varchar('provider', { length: 50 }).notNull(), // 'ghn', 'ghtk', 'viettelpost'
+  connectionId: integer('connection_id').notNull().references(() => connectHubConnections.id),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Relations
+export const marketplaceShopsRelations = relations(marketplaceShops, ({ one, many }) => ({
+  team: one(teams, { fields: [marketplaceShops.teamId], references: [teams.id] }),
+  user: one(users, { fields: [marketplaceShops.userId], references: [users.id] }),
+  products: many(marketplaceProducts),
+  orders: many(marketplaceOrders),
+  shippingConfigs: many(marketplaceShippingConfigs)
+}));
+
+export const marketplaceProductsRelations = relations(marketplaceProducts, ({ one }) => ({
+  shop: one(marketplaceShops, { fields: [marketplaceProducts.shopId], references: [marketplaceShops.id] }),
+  category: one(marketplaceCategories, { fields: [marketplaceProducts.categoryId], references: [marketplaceCategories.id] }),
+  team: one(teams, { fields: [marketplaceProducts.teamId], references: [teams.id] }),
+}));
+
+export const marketplaceOrdersRelations = relations(marketplaceOrders, ({ one }) => ({
+  shop: one(marketplaceShops, { fields: [marketplaceOrders.shopId], references: [marketplaceShops.id] }),
+  team: one(teams, { fields: [marketplaceOrders.teamId], references: [teams.id] }),
+}));
+
+export const marketplaceWalletsRelations = relations(marketplaceWallets, ({ one, many }) => ({
+  team: one(teams, { fields: [marketplaceWallets.teamId], references: [teams.id] }),
+  transactions: many(marketplaceTransactions)
+}));
+
+export const marketplaceTransactionsRelations = relations(marketplaceTransactions, ({ one }) => ({
+  wallet: one(marketplaceWallets, { fields: [marketplaceTransactions.walletId], references: [marketplaceWallets.id] })
+}));
+
+export const marketplaceShippingConfigsRelations = relations(marketplaceShippingConfigs, ({ one }) => ({
+  shop: one(marketplaceShops, { fields: [marketplaceShippingConfigs.shopId], references: [marketplaceShops.id] }),
+  connection: one(connectHubConnections, { fields: [marketplaceShippingConfigs.connectionId], references: [connectHubConnections.id] })
+}));
+
+// Types
+export type MarketplaceShop = typeof marketplaceShops.$inferSelect;
+export type MarketplaceProduct = typeof marketplaceProducts.$inferSelect;
+export type MarketplaceOrder = typeof marketplaceOrders.$inferSelect;
+export type MarketplaceWallet = typeof marketplaceWallets.$inferSelect;
+export type MarketplaceTransaction = typeof marketplaceTransactions.$inferSelect;
+
+export type MarketplaceOrderItem = { productId: number; name: string; sku: string; quantity: number; price: number; }
+export type MarketplaceTimelineEvent = { event: string; time: string; by: string; detail: string; }
+export type MarketplaceTierPrice = { moq: number; price: number; label: string; }
+
+// ============================================================================
+// HERO AGENT NODE MODULE
+// ============================================================================
+
+export const agentNodeTasks = pgTable('agent_node_tasks', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  
+  // Task definition
+  url: text('url').notNull(),
+  type: varchar('type', { length: 50 }).notNull().default('article'),
+  // type: 'article' | 'social_post' | 'comments' | 'product' | 'custom'
+  priority: integer('priority').notNull().default(3), // 1=low, 5=urgent
+  
+  // Execution state
+  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  // status: 'pending' | 'assigned' | 'processing' | 'completed' | 'failed'
+  assignedAt: timestamp('assigned_at'),   // Khi Extension nhận task
+  completedAt: timestamp('completed_at'), // Khi hoàn tất
+  errorMessage: text('error_message'),    // Nếu failed
+  
+  // AI Processing
+  aiConnectionId: integer('ai_connection_id'), // Connect Hub connection để gọi AI
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const agentNodeResults = pgTable('agent_node_results', {
+  id: serial('id').primaryKey(),
+  taskId: integer('task_id').notNull().references(() => agentNodeTasks.id, { onDelete: 'cascade' }),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  
+  // Raw scraped data
+  rawTitle: text('raw_title'),
+  rawContent: text('raw_content'),        // Markdown text đã clean
+  rawMetadata: jsonb('raw_metadata'),     // { platform, author, date, commentCount, ... }
+  rawLength: integer('raw_length'),       // Bytes gốc (trước clean)
+  cleanLength: integer('clean_length'),   // Bytes sau clean
+  sourceUrl: text('source_url'),          // URL gốc (để truy nguồn khi viết bài)
+  
+  // AI analysis result
+  aiSummary: text('ai_summary'),          // Tóm tắt AI
+  aiAnalysis: jsonb('ai_analysis'),       // { sentiment, topics, entities, ... }
+  aiModel: varchar('ai_model', { length: 50 }), // Model đã dùng
+  aiTokensUsed: integer('ai_tokens_used'),
+  
+  // === CONTENT PIPELINE FIELDS (sẵn sàng cho MVP Content Creator) ===
+  tags: jsonb('tags'),                    // ["marketing", "skincare", "trend"] — AI tự gán
+  keywords: jsonb('keywords'),            // ["serum", "vitamin C", "da dầu"] — SEO keywords
+  contentAngles: jsonb('content_angles'),  // ["So sánh sản phẩm", "Review chi tiết"] — góc viết gợi ý
+  tone: varchar('tone', { length: 30 }),  // "professional" | "casual" | "humorous" — tone bài gốc
+  language: varchar('language', { length: 10 }).default('vi'), // "vi" | "en" | "zh"
+  contentReady: boolean('content_ready').default(false), // true = đã qua AI, sẵn sàng dùng
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Relations
+export const agentNodeTasksRelations = relations(agentNodeTasks, ({ one, many }) => ({
+  team: one(teams, { fields: [agentNodeTasks.teamId], references: [teams.id] }),
+  user: one(users, { fields: [agentNodeTasks.userId], references: [users.id] }),
+  results: many(agentNodeResults),
+}));
+
+export const agentNodeResultsRelations = relations(agentNodeResults, ({ one }) => ({
+  task: one(agentNodeTasks, { fields: [agentNodeResults.taskId], references: [agentNodeTasks.id] }),
+  team: one(teams, { fields: [agentNodeResults.teamId], references: [teams.id] }),
+}));
+
+// Types
+export type AgentNodeTask = typeof agentNodeTasks.$inferSelect;
+export type NewAgentNodeTask = typeof agentNodeTasks.$inferInsert;
+export type AgentNodeResult = typeof agentNodeResults.$inferSelect;
+export type NewAgentNodeResult = typeof agentNodeResults.$inferInsert;
+
+// ============================================================================
+// HERO VIDEO MAKER MODULE
+// ============================================================================
+
+export const videoProjects = pgTable('video_projects', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  title: varchar('title', { length: 255 }).notNull(),
+  status: varchar('status', { length: 50 }).default('draft'),
+  // 'draft' | 'generating' | 'ready_to_render' | 'rendering' | 'done' | 'error'
+  scenes: jsonb('scenes').default([]),
+  // [{ order, narration, imageUrl, duration, imagePrompt }]
+  outputUrl: text('output_url'),           // URL video sau render
+  outputStorage: varchar('output_storage', { length: 20 }),  // 'local' | 'google-drive' | 'r2'
+  renderDeviceId: integer('render_device_id'),  // extensionTokens.id
+  totalDuration: integer('total_duration'),      // seconds
+  
+  // Các trường cấu hình bổ sung từ Toonflow
+  projectType: varchar('project_type', { length: 50 }),
+  imageModel: varchar('image_model', { length: 100 }),
+  imageQuality: varchar('image_quality', { length: 50 }),
+  videoModel: varchar('video_model', { length: 100 }),
+  intro: text('intro'),
+  type: varchar('type', { length: 50 }), // 'novel' | 'script'
+  artStyle: text('art_style'),
+  directorManual: text('director_manual'),
+  mode: varchar('mode', { length: 50 }),
+  videoRatio: varchar('video_ratio', { length: 20 }),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Bảng Novel (Chương tiểu thuyết)
+export const videoNovels = pgTable('video_novels', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id').notNull().references(() => videoProjects.id, { onDelete: 'cascade' }),
+  chapterIndex: integer('chapter_index').notNull(),
+  reel: text('reel'),
+  chapter: text('chapter').notNull(), // Tên chương
+  chapterData: text('chapter_data').notNull(), // Nội dung chương
+  eventState: integer('event_state').default(0).notNull(), // 0: draft, 1: generating, 2: ready, 3: error
+  event: text('event'), // Kết quả trích sự kiện
+  errorReason: text('error_reason'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Bảng Kịch bản
+export const videoScripts = pgTable('video_scripts', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id').notNull().references(() => videoProjects.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  content: text('content').notNull(),
+  extractState: integer('extract_state').default(0).notNull(), // 0: draft, 1: extracting, 2: ready, 3: error
+  errorReason: text('error_reason'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Bảng Assets của VideoMaker (Tài sản nhân vật, bối cảnh, đạo cụ)
+export const videoMakerAssets = pgTable('video_maker_assets', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id').notNull().references(() => videoProjects.id, { onDelete: 'cascade' }),
+  scriptId: integer('script_id'), // optional references
+  imageId: integer('image_id'), // optional references (sau khi sinh ảnh cho asset)
+  assetId: integer('asset_id'), // asset gốc nếu là state biến thể (derive)
+  flowId: integer('flow_id'),
+  name: varchar('name', { length: 255 }).notNull(),
+  prompt: text('prompt'),
+  remark: text('remark'),
+  type: varchar('type', { length: 50 }).notNull(), // 'role' | 'scene' | 'tool'
+  describe: text('describe'),
+  startTime: integer('start_time'),
+  promptState: varchar('prompt_state', { length: 50 }), // 'generating' | 'done' | 'error'
+  audioBindState: integer('audio_bind_state'),
+  promptErrorReason: text('prompt_error_reason'),
+  derivativeMetadata: jsonb('derivative_metadata').default('{}'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Bảng Ảnh sinh từ AI
+export const videoImages = pgTable('video_images', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id').notNull().references(() => videoProjects.id, { onDelete: 'cascade' }),
+  assetId: integer('asset_id'), // optional reference to videoMakerAssets
+  filePath: text('file_path').notNull(),
+  type: varchar('type', { length: 50 }), // 'assets' | 'storyboard'
+  model: varchar('model', { length: 100 }),
+  resolution: varchar('resolution', { length: 50 }),
+  state: varchar('state', { length: 50 }).default('generating').notNull(), // 'generating' | 'done' | 'error'
+  errorReason: text('error_reason'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Bảng Phân cảnh (Storyboard)
+export const videoStoryboards = pgTable('video_storyboards', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id').notNull().references(() => videoProjects.id, { onDelete: 'cascade' }),
+  scriptId: integer('script_id').references(() => videoScripts.id, { onDelete: 'cascade' }),
+  prompt: text('prompt'), // Prompt sinh ảnh phân cảnh
+  filePath: text('file_path'), // Đường dẫn ảnh phân cảnh
+  duration: varchar('duration', { length: 50 }),
+  state: varchar('state', { length: 50 }).default('generating').notNull(), // 'generating' | 'done' | 'error'
+  trackId: integer('track_id'),
+  reason: text('reason'),
+  track: varchar('track', { length: 100 }),
+  videoDesc: text('video_desc'), // Mô tả phân cảnh (videoDesc)
+  shouldGenerateImage: integer('should_generate_image').default(1).notNull(), // 0: no, 1: yes
+  flowId: integer('flow_id'),
+  index: integer('index').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Bảng Video Clip ngắn sinh từ AI/render local
+export const videoClips = pgTable('video_clips', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id').notNull().references(() => videoProjects.id, { onDelete: 'cascade' }),
+  storyboardId: integer('storyboard_id').notNull().references(() => videoStoryboards.id, { onDelete: 'cascade' }),
+  filePath: text('file_path').notNull(),
+  errorReason: text('error_reason'),
+  state: varchar('state', { length: 50 }).default('rendering').notNull(), // 'rendering' | 'done' | 'error'
+  model: varchar('model', { length: 100 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Bảng Track / Timeline
+export const videoTracks = pgTable('video_tracks', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id').notNull().references(() => videoProjects.id, { onDelete: 'cascade' }),
+  data: jsonb('data').default('{}').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Bảng liên kết Kịch bản <-> Tài sản (n-n)
+export const videoScriptAssets = pgTable('video_script_assets', {
+  scriptId: integer('script_id').notNull().references(() => videoScripts.id, { onDelete: 'cascade' }),
+  assetId: integer('asset_id').notNull().references(() => videoMakerAssets.id, { onDelete: 'cascade' }),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.scriptId, table.assetId] }),
+}));
+
+// Bảng liên kết Tài sản <-> Phân cảnh (n-n)
+export const videoMakerAssets2Storyboards = pgTable('video_maker_assets_2_storyboards', {
+  assetId: integer('asset_id').notNull().references(() => videoMakerAssets.id, { onDelete: 'cascade' }),
+  storyboardId: integer('storyboard_id').notNull().references(() => videoStoryboards.id, { onDelete: 'cascade' }),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.assetId, table.storyboardId] }),
+}));
+
+// Bảng Phong cách nghệ thuật
+export const videoArtStyles = pgTable('video_art_styles', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  fileUrl: text('file_url'),
+  label: varchar('label', { length: 100 }),
+  prompt: text('prompt').notNull(),
+});
+
+// Bảng Prompts mẫu (eventExtraction, scriptAssetExtraction, v.v.)
+export const videoPrompts = pgTable('video_prompts', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  type: varchar('type', { length: 50 }).notNull(),
+  data: text('data').notNull(),
+  useData: text('use_data'),
+});
+
+// Bảng Dữ liệu làm việc của Agent
+export const videoAgentWorkData = pgTable('video_agent_work_data', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id').notNull().references(() => videoProjects.id, { onDelete: 'cascade' }),
+  episodesId: integer('episodes_id'),
+  key: varchar('key', { length: 100 }), // ví dụ: 'skeleton', 'adaptation', 'flow'
+  data: text('data').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Bảng Tasks AI (Quản lý các task đang chạy bất đồng bộ)
+export const videoTasks = pgTable('video_tasks', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id').notNull().references(() => videoProjects.id, { onDelete: 'cascade' }),
+  taskClass: varchar('task_class', { length: 100 }), // ví dụ: 'event_extraction', 'asset_image_generation'
+  relatedObjects: text('related_objects'), // danh sách IDs liên quan
+  model: varchar('model', { length: 100 }),
+  describe: text('describe'),
+  state: varchar('state', { length: 50 }).default('pending').notNull(), // 'pending' | 'running' | 'completed' | 'failed'
+  startTime: integer('start_time'), // Unix timestamp
+  reason: text('reason'), // lỗi nếu failed
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// --- Relations ---
+
+export const videoProjectsRelations = relations(videoProjects, ({ one, many }) => ({
+  team: one(teams, { fields: [videoProjects.teamId], references: [teams.id] }),
+  user: one(users, { fields: [videoProjects.userId], references: [users.id] }),
+  novels: many(videoNovels),
+  scripts: many(videoScripts),
+  assets: many(videoMakerAssets),
+  images: many(videoImages),
+  storyboards: many(videoStoryboards),
+  clips: many(videoClips),
+  agentWorkDatas: many(videoAgentWorkData),
+  tasks: many(videoTasks),
+  tracks: many(videoTracks),
+}));
+
+export const videoNovelsRelations = relations(videoNovels, ({ one }) => ({
+  project: one(videoProjects, { fields: [videoNovels.projectId], references: [videoProjects.id] }),
+}));
+
+export const videoScriptsRelations = relations(videoScripts, ({ one, many }) => ({
+  project: one(videoProjects, { fields: [videoScripts.projectId], references: [videoProjects.id] }),
+  scriptAssets: many(videoScriptAssets),
+  storyboards: many(videoStoryboards),
+}));
+
+export const videoMakerAssetsRelations = relations(videoMakerAssets, ({ one, many }) => ({
+  project: one(videoProjects, { fields: [videoMakerAssets.projectId], references: [videoProjects.id] }),
+  script: one(videoScripts, { fields: [videoMakerAssets.scriptId], references: [videoScripts.id] }),
+  image: one(videoImages, { fields: [videoMakerAssets.imageId], references: [videoImages.id] }),
+  parentAsset: one(videoMakerAssets, { fields: [videoMakerAssets.assetId], references: [videoMakerAssets.id], relationName: 'deriveAssets' }),
+  deriveAssets: many(videoMakerAssets, { relationName: 'deriveAssets' }),
+  scriptAssets: many(videoScriptAssets),
+  assets2storyboards: many(videoMakerAssets2Storyboards),
+}));
+
+export const videoImagesRelations = relations(videoImages, ({ one }) => ({
+  project: one(videoProjects, { fields: [videoImages.projectId], references: [videoProjects.id] }),
+  asset: one(videoMakerAssets, { fields: [videoImages.assetId], references: [videoMakerAssets.id] }),
+}));
+
+export const videoStoryboardsRelations = relations(videoStoryboards, ({ one, many }) => ({
+  project: one(videoProjects, { fields: [videoStoryboards.projectId], references: [videoProjects.id] }),
+  script: one(videoScripts, { fields: [videoStoryboards.scriptId], references: [videoScripts.id] }),
+  clips: many(videoClips),
+  assets2storyboards: many(videoMakerAssets2Storyboards),
+}));
+
+export const videoClipsRelations = relations(videoClips, ({ one }) => ({
+  project: one(videoProjects, { fields: [videoClips.projectId], references: [videoProjects.id] }),
+  storyboard: one(videoStoryboards, { fields: [videoClips.storyboardId], references: [videoStoryboards.id] }),
+}));
+
+export const videoScriptAssetsRelations = relations(videoScriptAssets, ({ one }) => ({
+  script: one(videoScripts, { fields: [videoScriptAssets.scriptId], references: [videoScripts.id] }),
+  asset: one(videoMakerAssets, { fields: [videoScriptAssets.assetId], references: [videoMakerAssets.id] }),
+}));
+
+export const videoMakerAssets2StoryboardsRelations = relations(videoMakerAssets2Storyboards, ({ one }) => ({
+  asset: one(videoMakerAssets, { fields: [videoMakerAssets2Storyboards.assetId], references: [videoMakerAssets.id] }),
+  storyboard: one(videoStoryboards, { fields: [videoMakerAssets2Storyboards.storyboardId], references: [videoStoryboards.id] }),
+}));
+
+export const videoAgentWorkDataRelations = relations(videoAgentWorkData, ({ one }) => ({
+  project: one(videoProjects, { fields: [videoAgentWorkData.projectId], references: [videoProjects.id] }),
+}));
+
+export const videoTasksRelations = relations(videoTasks, ({ one }) => ({
+  project: one(videoProjects, { fields: [videoTasks.projectId], references: [videoProjects.id] }),
+}));
+
+export const videoTracksRelations = relations(videoTracks, ({ one }) => ({
+  project: one(videoProjects, { fields: [videoTracks.projectId], references: [videoProjects.id] }),
+}));
+
+// --- Export Types ---
+
+export type VideoProject = typeof videoProjects.$inferSelect;
+export type NewVideoProject = typeof videoProjects.$inferInsert;
+
+export type VideoNovel = typeof videoNovels.$inferSelect;
+export type NewVideoNovel = typeof videoNovels.$inferInsert;
+
+export type VideoScript = typeof videoScripts.$inferSelect;
+export type NewVideoScript = typeof videoScripts.$inferInsert;
+
+export type VideoMakerAsset = typeof videoMakerAssets.$inferSelect;
+export type NewVideoMakerAsset = typeof videoMakerAssets.$inferInsert;
+
+export type VideoImage = typeof videoImages.$inferSelect;
+export type NewVideoImage = typeof videoImages.$inferInsert;
+
+export type VideoStoryboard = typeof videoStoryboards.$inferSelect;
+export type NewVideoStoryboard = typeof videoStoryboards.$inferInsert;
+
+export type VideoClip = typeof videoClips.$inferSelect;
+export type NewVideoClip = typeof videoClips.$inferInsert;
+
+export type VideoTrack = typeof videoTracks.$inferSelect;
+export type NewVideoTrack = typeof videoTracks.$inferInsert;
+
+export type VideoScriptAsset = typeof videoScriptAssets.$inferSelect;
+export type NewVideoScriptAsset = typeof videoScriptAssets.$inferInsert;
+
+export type VideoMakerAssets2Storyboard = typeof videoMakerAssets2Storyboards.$inferSelect;
+export type NewVideoMakerAssets2Storyboard = typeof videoMakerAssets2Storyboards.$inferInsert;
+
+export type VideoArtStyle = typeof videoArtStyles.$inferSelect;
+export type NewVideoArtStyle = typeof videoArtStyles.$inferInsert;
+
+export type VideoPrompt = typeof videoPrompts.$inferSelect;
+export type NewVideoPrompt = typeof videoPrompts.$inferInsert;
+
+export type VideoAgentWorkData = typeof videoAgentWorkData.$inferSelect;
+export type NewVideoAgentWorkData = typeof videoAgentWorkData.$inferInsert;
+
+export type VideoTask = typeof videoTasks.$inferSelect;
+export type NewVideoTask = typeof videoTasks.$inferInsert;
+
+// ═══════════════════════════════════════════════════════
+// HERO FILM — Nền tảng phim ngắn dọc (ReelShort/DramaBox style)
+// ═══════════════════════════════════════════════════════
+
+export const filmSeries = pgTable('film_series', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  creatorId: integer('creator_id').references(() => users.id, { onDelete: 'set null' }), // Người tải phim lên (user)
+  
+  title: varchar('title', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }), // Cho URL thân thiện SEO
+  description: text('description'),
+  coverUrl: text('cover_url'),           // Ảnh bìa dọc 9:16
+  bannerUrl: text('banner_url'),         // Ảnh banner ngang (cho trang khám phá)
+  trailerUrl: text('trailer_url'),       // URL video trailer (nếu có)
+  
+  genre: varchar('genre', { length: 100 }),  // 'romance' | 'drama' | 'action' | 'comedy' | 'thriller'
+  tags: jsonb('tags'),                       // ["tình cảm", "ngôn tình", "tổng tài"]
+  totalEpisodes: integer('total_episodes').notNull().default(0),
+  totalFreeEpisodes: integer('total_free_episodes').notNull().default(0), // Số tập miễn phí từ đầu
+  
+  // Mở rộng thông tin
+  director: varchar('director', { length: 255 }), // Đạo diễn (ghi "AI" nếu là AI generate)
+  cast: text('cast'),                             // Diễn viên
+  releaseYear: integer('release_year'),           // Năm phát hành
+  
+  status: varchar('status', { length: 20 }).notNull().default('draft'),
+  // status: 'draft' | 'publishing' | 'completed' | 'archived'
+  
+  viewCount: integer('view_count').notNull().default(0),
+  likeCount: integer('like_count').notNull().default(0),
+  
+  // Sorting & Discovery
+  // Sorting & Discovery
+  isFeatured: boolean('is_featured').notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  
+  feedPostId: integer('feed_post_id').references(() => feedPosts.id, { onDelete: 'set null' }), // Bài đăng feed liên kết khi publishing
+  
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const filmEpisodes = pgTable('film_episodes', {
+  id: serial('id').primaryKey(),
+  seriesId: integer('series_id').notNull().references(() => filmSeries.id, { onDelete: 'cascade' }),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  
+  episodeNumber: integer('episode_number').notNull(),
+  title: varchar('title', { length: 255 }),
+  videoUrl: text('video_url').notNull(),     // URL video hoặc YouTube/Facebook URL gốc
+  videoSource: varchar('video_source', { length: 20 }).notNull().default('direct'),
+  // videoSource: 'direct' (mp4/CDN) | 'youtube' (nhúng iframe) | 'facebook' (nhúng iframe)
+  thumbnailUrl: text('thumbnail_url'),       // Ảnh thu nhỏ tập
+  duration: integer('duration'),             // Thời lượng (giây)
+  
+  isFree: boolean('is_free').notNull().default(true),
+  tokenPrice: integer('token_price').notNull().default(0), // Giá xem tập phim (bằng token)
+  
+  viewCount: integer('view_count').notNull().default(0),
+  reportCount: integer('report_count').notNull().default(0), // Số lần báo lỗi tập phim
+  
+  status: varchar('status', { length: 20 }).notNull().default('draft'),
+  // status: 'draft' | 'published' | 'hidden'
+  
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const filmWatchHistory = pgTable('film_watch_history', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  seriesId: integer('series_id').notNull().references(() => filmSeries.id, { onDelete: 'cascade' }),
+  episodeId: integer('episode_id').notNull().references(() => filmEpisodes.id, { onDelete: 'cascade' }),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  
+  watchedSeconds: integer('watched_seconds').notNull().default(0),
+  isCompleted: boolean('is_completed').notNull().default(false),
+  
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Bảng lưu phim đã đánh dấu (Bookmarks)
+export const filmBookmarks = pgTable('film_bookmarks', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  seriesId: integer('series_id').notNull().references(() => filmSeries.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// Bảng đánh giá của người dùng (Ratings)
+export const filmRatings = pgTable('film_ratings', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  seriesId: integer('series_id').notNull().references(() => filmSeries.id, { onDelete: 'cascade' }),
+  rating: integer('rating').notNull(), // 1-5 sao
+  comment: text('comment'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// Bảng báo lỗi phim (Reports)
+export const filmReports = pgTable('film_reports', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  seriesId: integer('series_id').notNull().references(() => filmSeries.id, { onDelete: 'cascade' }),
+  episodeId: integer('episode_id').references(() => filmEpisodes.id, { onDelete: 'cascade' }),
+  reason: varchar('reason', { length: 50 }).notNull(), // 'broken_video' | 'wrong_content' | 'copyright' | 'other'
+  description: text('description'),
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'resolved' | 'dismissed'
+  adminNote: text('admin_note'),
+  resolvedAt: timestamp('resolved_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// Bảng nhật ký giao dịch mua phim (Transactions)
+export const filmTransactions = pgTable('film_transactions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  seriesId: integer('series_id').notNull().references(() => filmSeries.id, { onDelete: 'cascade' }),
+  episodeId: integer('episode_id').notNull().references(() => filmEpisodes.id, { onDelete: 'cascade' }),
+  creatorTeamId: integer('creator_team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  
+  tokenAmount: integer('token_amount').notNull(),
+  creatorAmount: integer('creator_amount').notNull(),  // 70%
+  platformAmount: integer('platform_amount').notNull(), // 30%
+  
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// Infer types
+export type FilmSeries = typeof filmSeries.$inferSelect;
+export type NewFilmSeries = typeof filmSeries.$inferInsert;
+
+export type FilmEpisode = typeof filmEpisodes.$inferSelect;
+export type NewFilmEpisode = typeof filmEpisodes.$inferInsert;
+
+export type FilmWatchHistory = typeof filmWatchHistory.$inferSelect;
+export type NewFilmWatchHistory = typeof filmWatchHistory.$inferInsert;
+
+export type FilmBookmark = typeof filmBookmarks.$inferSelect;
+export type NewFilmBookmark = typeof filmBookmarks.$inferInsert;
+
+export type FilmRating = typeof filmRatings.$inferSelect;
+export type NewFilmRating = typeof filmRatings.$inferInsert;
+
+export type FilmReport = typeof filmReports.$inferSelect;
+export type NewFilmReport = typeof filmReports.$inferInsert;
+
+export type FilmTransaction = typeof filmTransactions.$inferSelect;
+export type NewFilmTransaction = typeof filmTransactions.$inferInsert;
+
+
+export const youtubeSyncChannels = pgTable('youtube_sync_channels', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  creatorId: integer('creator_id')
+    .references(() => users.id, { onDelete: 'set null' }),
+  channelUrl: text('channel_url').notNull(),
+  channelName: varchar('channel_name', { length: 255 }),
+  thumbnailUrl: text('thumbnail_url'),
+  filters: jsonb('filters').notNull(),
+  lastSyncedAt: timestamp('last_synced_at'),
+  totalSynced: integer('total_synced').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// ═══════════════════════════════════════════════════════
+// HERO DUB — Dịch phụ đề phim Trung Quốc (MVP Phase 1)
+// ═══════════════════════════════════════════════════════
+
+export const dubWorkers = pgTable('dub_workers', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  deviceName: varchar('device_name', { length: 100 }),
+  platform: varchar('platform', { length: 20 }), // 'windows' | 'macos' | 'linux'
+  version: varchar('version', { length: 20 }),
+  status: varchar('status', { length: 20 }).notNull().default('offline'), // 'online' | 'busy' | 'offline'
+  lastSeenAt: timestamp('last_seen_at'),
+  accessTokenHash: varchar('access_token_hash', { length: 255 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const dubProjects = pgTable('dub_projects', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 200 }).notNull(),
+  logoUrl: text('logo_url'),
+  logoPosition: varchar('logo_position', { length: 50 }).notNull().default('top-left'),
+  introVideoUrl: text('intro_video_url'),
+  outroVideoUrl: text('outro_video_url'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const dubScanConfigs = pgTable('dub_scan_configs', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 200 }).notNull(),
+  folderPath: text('folder_path').notNull(),
+  intervalMinutes: integer('interval_minutes').notNull().default(60),
+  sourceLang: varchar('source_lang', { length: 20 }).notNull().default('zh'),
+  targetLang: varchar('target_lang', { length: 20 }).notNull().default('vi'),
+  asrEngine: varchar('asr_engine', { length: 50 }).notNull().default('faster-whisper'),
+  subtitleMode: varchar('subtitle_mode', { length: 50 }).notNull().default('burn_subtitle'),
+  ttsEnabled: boolean('tts_enabled').notNull().default(false),
+  ttsEngine: varchar('tts_engine', { length: 50 }).notNull().default('edge-tts'),
+  ttsVoice: varchar('tts_voice', { length: 100 }),
+  ttsSpeed: varchar('tts_speed', { length: 20 }),
+  bgVolume: varchar('bg_volume', { length: 20 }),
+  ttsVolume: varchar('tts_volume', { length: 20 }),
+  aiAppSlug: varchar('ai_app_slug', { length: 100 }),
+  aiModel: varchar('ai_model', { length: 100 }),
+  lastScanAt: timestamp('last_scan_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const dubTasks = pgTable('dub_tasks', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+
+  // === Input ===
+  inputType: varchar('input_type', { length: 10 }).notNull().default('url'), // 'url' | 'file'
+  sourceUrl: text('source_url').notNull(),
+  sourceTitle: varchar('source_title', { length: 500 }),
+  sourcePlatform: varchar('source_platform', { length: 20 }), // 'douyin' | 'bilibili' | 'youtube' | 'local'
+  sourceVideoId: varchar('source_video_id', { length: 100 }),
+  sourceLang: varchar('source_lang', { length: 10 }).notNull().default('zh'),
+  targetLang: varchar('target_lang', { length: 10 }).notNull().default('vi'),
+  durationSec: integer('duration_sec'),
+  fileSizeMb: integer('file_size_mb'),
+  sourceThumbnailUrl: text('source_thumbnail_url'),
+  outputFolder: text('output_folder'),
+
+  // === Config ===
+  asrEngine: varchar('asr_engine', { length: 30 }).notNull().default('faster-whisper'), // 'faster-whisper' | 'bcut' | 'openai-whisper'
+  translateEngine: varchar('translate_engine', { length: 30 }).notNull().default('connect-hub'), // 'connect-hub' | 'google-free' | 'direct-llm'
+  llmModel: varchar('llm_model', { length: 50 }),
+  subtitleMode: varchar('subtitle_mode', { length: 20 }).notNull().default('burn_subtitle'), // 'srt_only' | 'burn_subtitle' | 'soft_subtitle'
+  qualityPreset: varchar('quality_preset', { length: 10 }).notNull().default('balanced'), // 'fast' | 'balanced' | 'best'
+  ttsEngine: varchar('tts_engine', { length: 30 }).notNull().default('edge-tts'), // 'edge-tts' | 'connect-hub'
+  ttsVoice: varchar('tts_voice', { length: 100 }), // voice model name
+  ttsEnabled: boolean('tts_enabled').notNull().default(false),
+  ttsSpeed: varchar('tts_speed', { length: 10 }).notNull().default('1.3'),
+  bgVolume: varchar('bg_volume', { length: 20 }),
+  ttsVolume: varchar('tts_volume', { length: 20 }),
+  
+  // === Branding ===
+  projectId: integer('project_id').references(() => dubProjects.id, { onDelete: 'set null' }),
+  brandingEnabled: boolean('branding_enabled').notNull().default(false),
+  logoUrl: text('logo_url'),
+  logoPosition: varchar('logo_position', { length: 50 }).notNull().default('top-left'),
+  introVideoUrl: text('intro_video_url'),
+  outroVideoUrl: text('outro_video_url'),
+
+  // === Status ===
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'assigned' | 'downloading' | 'transcribing' | 'translating' | 'tts' | 'burning' | 'uploading' | 'completed' | 'failed'
+  progress: integer('progress').notNull().default(0),
+  error: text('error'),
+  retryCount: integer('retry_count').notNull().default(0),
+  workerId: integer('worker_id').references(() => dubWorkers.id, { onDelete: 'set null' }),
+
+  // === Output ===
+  resultVideoUrl: text('result_video_url'),
+  resultSrtUrl: text('result_srt_url'),
+  resultPreview: jsonb('result_preview'), // { duration, thumbnail, subtitleCount }
+  estimatedCost: integer('estimated_cost'), // cents
+  actualCost: integer('actual_cost'), // cents
+
+  // === Dedupe ===
+  dedupeKey: varchar('dedupe_key', { length: 255 }), // teamId + sourceUrl + targetLang
+
+  // === Timestamps ===
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => {
+  return {
+    dedupeKeyIdx: uniqueIndex('dub_tasks_dedupe_key_idx').on(table.dedupeKey),
+  };
+});
+
+// Relations
+export const dubWorkersRelations = relations(dubWorkers, ({ one, many }) => ({
+  team: one(teams, {
+    fields: [dubWorkers.teamId],
+    references: [teams.id],
+  }),
+  user: one(users, {
+    fields: [dubWorkers.userId],
+    references: [users.id],
+  }),
+  tasks: many(dubTasks),
+}));
+
+export const dubTasksRelations = relations(dubTasks, ({ one }) => ({
+  team: one(teams, {
+    fields: [dubTasks.teamId],
+    references: [teams.id],
+  }),
+  user: one(users, {
+    fields: [dubTasks.userId],
+    references: [users.id],
+  }),
+  worker: one(dubWorkers, {
+    fields: [dubTasks.workerId],
+    references: [dubWorkers.id],
+  }),
+}));
+
+// Types
+export type DubWorker = typeof dubWorkers.$inferSelect;
+export type NewDubWorker = typeof dubWorkers.$inferInsert;
+export type DubTask = typeof dubTasks.$inferSelect;
+export type NewDubTask = typeof dubTasks.$inferInsert;
+
+

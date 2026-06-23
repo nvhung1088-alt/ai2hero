@@ -5,6 +5,7 @@ import {
 } from '@/lib/db/connect-hub-queries';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { getTeamForUser, getUser } from '@/lib/db/queries';
 import {
   Plug,
   AlertCircle,
@@ -21,6 +22,7 @@ import {
   Clock,
   ArrowLeftRight
 } from 'lucide-react';
+import PairingWidget from './pairing-widget';
 
 export const revalidate = 0;
 
@@ -77,10 +79,13 @@ export default async function ConnectHubDynamicDashboardPage({
   const connections = rawConnections.slice(0, 5); // Lấy tối đa 5 dòng mới nhất
 
   // 2. Chạy song song các tiến trình độc lập bằng Promise.all
-  const [stats, logs] = await Promise.all([
+  const [stats, logs, user] = await Promise.all([
     getConnectionStats(teamId, rawConnections),
-    getUsageLogs(teamId, 5)
+    getUsageLogs(teamId, 5),
+    getUser()
   ]);
+
+  const userId = user?.id || 0;
 
   return (
     <div className="space-y-8 text-white">
@@ -237,6 +242,8 @@ export default async function ConnectHubDynamicDashboardPage({
 
         {/* Right Column: Shortcuts and usage logs overview */}
         <div className="space-y-6">
+          <PairingWidget teamId={teamId} userId={userId} />
+          
           {/* Shortcuts panel */}
           <div className="bg-gray-900/40 border border-white/5 rounded-2xl p-5 shadow-sm backdrop-blur-xl space-y-4">
             <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2">

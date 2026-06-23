@@ -77,6 +77,7 @@ const READY_SLUGS = [
   'mailgun',
   'clickup',
   'facebook',
+  'tiktok',
   'gemini',
   'anthropic',
   'deepseek',

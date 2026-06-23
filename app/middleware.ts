@@ -2,13 +2,30 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { signToken, verifyToken } from '@/lib/auth/session';
 
-const protectedRoutes = ['/dashboard', '/admin', '/sim'];
+const protectedRoutes = ['/dashboard', '/admin', '/sim', '/profile', '/friends', '/messages', '/settings'];
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const url = request.nextUrl;
+  const { pathname } = url;
+  const hostname = request.headers.get('host') || '';
+
+  // Determine root domain based on environment
+  const ROOT_DOMAIN = process.env.NODE_ENV === 'production' ? 'ai2hero.com' : hostname;
+
+  // Extract subdomain
+  let subdomain = null;
+  if (hostname !== ROOT_DOMAIN && !hostname.startsWith(`www.${ROOT_DOMAIN}`)) {
+    subdomain = hostname.replace(`.${ROOT_DOMAIN}`, '');
+  }
+
+  // Subdomain routing
+  if (subdomain && !pathname.startsWith('/api') && !pathname.startsWith('/_next') && !pathname.startsWith('/sites')) {
+    return NextResponse.rewrite(new URL(`/sites/${subdomain}${pathname}`, request.url));
+  }
+
   const sessionCookie = request.cookies.get('session');
   const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
+    route === '/' ? pathname === '/' : pathname.startsWith(route)
   );
 
   if (isProtectedRoute && !sessionCookie) {
