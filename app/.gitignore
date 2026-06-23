@@ -43,3 +43,40 @@ postgres_data/
 # Sensitive files
 *.csv
 scratch/
+
+.vercel
+
+# Media & Temp uploads
+public/uploads/
+test_workspace/
+test_workspace2/
+workspace/
+build/
+dist/
+__pycache__/
+*.mp3
+*.mp4
+*.wav
+*.spec
+yt_debug.html
+yt_rss.xml
+
+# Debug & Temporary Scripts
+scratch_get_last_task.ts
+app/scratch_get_last_task.ts
+app/app/clean_db.ts
+app/check_db.ts
+app/cleanup.ts
+app/delete_review.js
+app/find_syntax_errors.js
+app/fix_empty_desc.js
+app/fix_titles_and_members.js
+app/generate_samples.py
+app/test_db.ts
+app/test_edge_tts.py
+app/test_text.ts
+app/test_workflow.py
+app/test_workflow_2.py
+app/app/batch_categorize.ts
+app/app/cleanup.ts
+test_rate.mp3
