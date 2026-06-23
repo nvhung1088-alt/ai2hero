@@ -46,8 +46,13 @@ scratch/
 
 .vercel
 
-# Media & Temp uploads
-public/uploads/
+# Media & Temp uploads (ignore large files, allow small scripts)
+public/uploads/*.mp4
+public/uploads/*.mp3
+public/uploads/*.wav
+public/uploads/*.exe
+public/uploads/*.zip
+public/uploads/*.pyc
 test_workspace/
 test_workspace2/
 workspace/
@@ -80,3 +85,5 @@ app/test_workflow_2.py
 app/app/batch_categorize.ts
 app/app/cleanup.ts
 test_rate.mp3
+
+.vercel
