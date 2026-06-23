@@ -13,8 +13,8 @@ export default function HeroDubGuidePage() {
   const [selectedOs, setSelectedOs] = useState<'windows' | 'macos'>('windows');
   const [copiedText, setCopiedText] = useState(false);
 
-  const winCommand = `curl -o herodub-setup.bat http://localhost:3000/uploads/herodub-setup.bat & herodub-setup.bat`;
-  const macCommand = `curl -o herodub-setup.sh http://localhost:3000/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh`;
+  const winCommand = `curl -o herodub-setup.bat https://www.ai2hero.com/uploads/herodub-setup.bat & herodub-setup.bat`;
+  const macCommand = `curl -o herodub-setup.sh https://www.ai2hero.com/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh`;
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);

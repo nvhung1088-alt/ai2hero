@@ -196,8 +196,8 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   const [guideCopied, setGuideCopied] = useState(false);
   const [guideOs, setGuideOs] = useState<'windows' | 'macos'>('windows');
 
-  const winCmd = 'curl -o herodub-setup.bat http://localhost:3000/uploads/herodub-setup.bat & herodub-setup.bat';
-  const macCmd = 'curl -o herodub-setup.sh http://localhost:3000/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh';
+  const winCmd = 'curl -o herodub-setup.bat https://www.ai2hero.com/uploads/herodub-setup.bat & herodub-setup.bat';
+  const macCmd = 'curl -o herodub-setup.sh https://www.ai2hero.com/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh';
 
   const handleCopyGuideCommand = () => {
     navigator.clipboard.writeText(guideOs === 'windows' ? winCmd : macCmd);
