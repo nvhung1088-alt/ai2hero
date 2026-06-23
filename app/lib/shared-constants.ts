@@ -10,6 +10,7 @@ import {
   Building2,
   Video,
   Clapperboard,
+  Languages,
   type LucideIcon
 } from 'lucide-react';
 
@@ -39,6 +40,7 @@ export const APP_ICON_MAP: Record<string, LucideIcon> = {
   content: FileText,
   Video,
   Clapperboard,
+  Languages,
 };
 
 // PLAN_ICON gộp từ layout.tsx và dashboard/page.tsx
