@@ -820,13 +820,21 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                 </div>
               ) : (
                 <div className="space-y-2 pt-2">
-                  <p className="text-[10px] text-gray-400 font-medium">Nhập đường dẫn tuyệt đối của video trên máy tính (VD: <code className="text-amber-500">D:\Videos\video1.mp4</code>). Mỗi đường dẫn 1 dòng.</p>
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-2">
+                    <p className="text-xs text-amber-500 font-semibold mb-1">💡 Mẹo nhập nhiều video cực nhanh (Windows):</p>
+                    <ol className="text-[11px] text-gray-300 list-decimal pl-4 space-y-0.5">
+                      <li>Bôi đen tất cả các video cần dịch trong máy tính.</li>
+                      <li>Giữ phím <strong>Shift + Click chuột phải</strong> vào các file đó.</li>
+                      <li>Chọn <strong>&quot;Copy as path&quot;</strong> (Sao chép dưới dạng đường dẫn).</li>
+                      <li>Nhấn <strong>Ctrl + V</strong> dán vào ô bên dưới là xong!</li>
+                    </ol>
+                  </div>
                   <textarea
                     value={localFilePaths}
                     onChange={(e) => setLocalFilePaths(e.target.value)}
-                    placeholder={`C:\\Downloads\\video1.mp4\nD:\\Movies\\video2.mp4`}
+                    placeholder={`C:\\Downloads\\video1.mp4\nD:\\Movies\\video2.mp4\n\n(Bấm Ctrl + V vào đây)`}
                     disabled={creatingTask}
-                    className="w-full h-32 bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/50 resize-none font-mono"
+                    className="w-full h-28 bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/50 resize-none font-mono"
                   />
                 </div>
               )}
