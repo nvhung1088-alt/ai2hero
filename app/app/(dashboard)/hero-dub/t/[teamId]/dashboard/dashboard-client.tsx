@@ -1254,19 +1254,12 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                                 </span>
                               ) : null}
                               {task.sourcePlatform === 'local' || task.sourceUrl.includes(':\\') || task.sourceUrl.startsWith('/') ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => { 
-                                    e.preventDefault(); 
-                                    e.stopPropagation(); 
-                                    // Mở thẳng video trên Web Player thay vì dùng Explorer
-                                    setPreviewVideoUrl(task.sourceUrl);
-                                    setPreviewSrtUrl(null); // Video gốc chưa có phụ đề
-                                  }}
-                                  className="text-[10px] text-gray-500 hover:text-gray-300 font-bold flex items-center gap-0.5 cursor-pointer"
+                                <span
+                                  className="text-[10px] text-gray-500 font-medium truncate max-w-[200px]"
+                                  title={task.sourceUrl}
                                 >
-                                  Mở video <Play className="h-2.5 w-2.5 ml-0.5" />
-                                </button>
+                                  {task.sourceUrl}
+                                </span>
                               ) : (
                                 <a
                                   href={task.sourceUrl}
@@ -1312,34 +1305,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                       </td>
                       <td className="py-3">
                         <div className="flex items-center gap-2">
-                          {task.status === 'completed' && (
-                            <>
-                              {task.resultVideoUrl && (
-                                <button
-                                  onClick={() => {
-                                    setPreviewVideoUrl(task.resultVideoUrl);
-                                    setPreviewSrtUrl(task.resultSrtUrl);
-                                  }}
-                                  className="p-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 text-green-400 hover:text-green-300 rounded-lg cursor-pointer transition-all"
-                                  title="Xem kết quả"
-                                >
-                                  <Play className="h-3.5 w-3.5 fill-current" />
-                                </button>
-                              )}
-                              {task.resultSrtUrl && (
-                                <a
-                                  href={task.resultSrtUrl?.startsWith("http") ? task.resultSrtUrl : `http://127.0.0.1:3001/srt?path=${encodeURIComponent(task.resultSrtUrl || '')}`}
-                                  download
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="p-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 hover:text-blue-300 rounded-lg cursor-pointer transition-all"
-                                  title="Tải SRT phụ đề"
-                                >
-                                  <Download className="h-3.5 w-3.5" />
-                                </a>
-                              )}
-                            </>
-                          )}
+
 
                           {task.status === 'failed' && (
                             <button
@@ -1351,19 +1317,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                             </button>
                           )}
 
-                          {task.outputFolder || task.sourcePlatform === 'local' || task.sourceUrl.includes(':\\') || task.sourceUrl.startsWith('/') ? (
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault(); e.stopPropagation();
-                                const folderPath = task.outputFolder || task.sourceUrl.substring(0, Math.max(task.sourceUrl.lastIndexOf('\\'), task.sourceUrl.lastIndexOf('/')));
-                                handleOpenLocal(folderPath, true);
-                              }}
-                              className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-500/80 hover:text-amber-400 rounded-lg cursor-pointer transition-all"
-                              title="Mở thư mục chứa file"
-                            >
-                              <Folder className="h-3.5 w-3.5" />
-                            </button>
-                          ) : null}
+
 
                           <button
                             onClick={() => handleDeleteTask(task.id)}
