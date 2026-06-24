@@ -876,7 +876,7 @@ def poll_tasks(token):
                 print(Fore.RED + "Token da het han hoac khong hop le. Vui long ghep noi lai.")
                 if os.path.exists(CONFIG_FILE):
                     os.remove(CONFIG_FILE)
-                return
+                return False
 
             data = res.json()
             if data.get("success") and data.get("task"):
@@ -894,15 +894,23 @@ def poll_tasks(token):
             time.sleep(5)
 
 if __name__ == "__main__":
-    config = load_config()
-    token = config.get("accessToken")
+    scan_thread_started = False
     
-    if not token:
-        token = pair_device()
+    while True:
+        config = load_config()
+        token = config.get("accessToken")
         
-    if token:
-        # Khoi dong luong quet thu muc
-        t = threading.Thread(target=poll_scan_folders_thread, args=(token,), daemon=True)
-        t.start()
-        
-        poll_tasks(token)
+        if not token:
+            token = pair_device()
+            
+        if token:
+            if not scan_thread_started:
+                # Khoi dong luong quet thu muc
+                t = threading.Thread(target=poll_scan_folders_thread, args=(token,), daemon=True)
+                t.start()
+                scan_thread_started = True
+                
+            # Neu token bi loi (401), poll_tasks tra ve False, vong lap se chay lai va hoi ma lien ket
+            success = poll_tasks(token)
+            if success is False:
+                continue
