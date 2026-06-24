@@ -53,6 +53,7 @@ export async function POST(request: Request) {
         ttsSpeed: config.ttsSpeed,
         bgVolume: config.bgVolume,
         ttsVolume: config.ttsVolume,
+        outputFolder: config.outputFolder,
       });
 
       if (result.success && !result.isDuplicate) {

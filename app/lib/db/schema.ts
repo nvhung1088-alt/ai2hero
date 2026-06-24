@@ -2331,6 +2331,7 @@ export const dubScanConfigs = pgTable('dub_scan_configs', {
   ttsSpeed: varchar('tts_speed', { length: 20 }),
   bgVolume: varchar('bg_volume', { length: 20 }),
   ttsVolume: varchar('tts_volume', { length: 20 }),
+  outputFolder: text('output_folder'),
   aiAppSlug: varchar('ai_app_slug', { length: 100 }),
   aiModel: varchar('ai_model', { length: 100 }),
   lastScanAt: timestamp('last_scan_at'),

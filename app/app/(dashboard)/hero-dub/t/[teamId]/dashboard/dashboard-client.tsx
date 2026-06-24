@@ -187,6 +187,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     ttsSpeed: string;
     bgVolume: string;
     ttsVolume: string;
+    outputFolder?: string;
     aiAppSlug: string;
     aiModel: string;
     isActive: boolean;
@@ -261,6 +262,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
           ttsSpeed: c.ttsSpeed,
           bgVolume: c.bgVolume,
           ttsVolume: c.ttsVolume,
+          outputFolder: c.outputFolder,
           aiAppSlug: c.aiAppSlug || '',
           aiModel: c.aiModel || '',
           lastScanAt: c.lastScanAt ? new Date(c.lastScanAt).getTime() : undefined,
@@ -491,6 +493,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
       subtitleMode: config.subtitleMode,
       ttsEnabled: config.ttsEnabled,
       ttsEngine: config.ttsEngine,
+      outputFolder: config.outputFolder,
       isActive: updated.isActive
     });
     if (!res.success) {
@@ -524,6 +527,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
         ttsSpeed: ttsSpeed || undefined,
         bgVolume: bgVolume || undefined,
         ttsVolume: ttsVolume || undefined,
+        outputFolder: outputFolder.trim() || undefined,
         aiAppSlug: selectedAiAppSlug || undefined,
         aiModel: selectedAiModel || undefined,
       });
@@ -563,6 +567,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     setEditingProjectId(p.id);
     setTaskTitle(p.name);
     setScanFolderPath(p.folderPath);
+    setOutputFolder(p.outputFolder || '');
     setScanInterval(p.intervalMinutes);
     setSourceLang(p.sourceLang);
     setTargetLang(p.targetLang);
@@ -906,7 +911,24 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                                 {p.name}
                                 {!p.isActive && <span className="text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-md">Đã Tạm Dừng</span>}
                               </span>
-                              <span className="text-[10px] text-gray-400 break-all mt-0.5">{p.folderPath}</span>
+                              <span 
+                                className="text-[10px] text-gray-400 break-all mt-0.5 cursor-pointer hover:text-white transition-colors flex items-center gap-1 group"
+                                onClick={() => { navigator.clipboard.writeText(p.folderPath); showToast('Đã copy thư mục gốc', 'success'); }}
+                                title="Click để copy đường dẫn"
+                              >
+                                📁 Gốc: {p.folderPath}
+                                <span className="opacity-0 group-hover:opacity-100 text-[9px] bg-white/10 px-1 rounded">Copy</span>
+                              </span>
+                              {p.outputFolder && (
+                                <span 
+                                  className="text-[10px] text-amber-500/80 break-all mt-0.5 cursor-pointer hover:text-amber-400 transition-colors flex items-center gap-1 group"
+                                  onClick={() => { navigator.clipboard.writeText(p.outputFolder!); showToast('Đã copy thư mục lưu', 'success'); }}
+                                  title="Click để copy thư mục lưu video"
+                                >
+                                  💾 Lưu: {p.outputFolder}
+                                  <span className="opacity-0 group-hover:opacity-100 text-[9px] bg-amber-500/20 px-1 rounded">Copy</span>
+                                </span>
+                              )}
                               <span className="text-[9px] text-amber-500 mt-1 flex flex-col gap-0.5">
                                 <span>{p.intervalMinutes === 0 ? 'Chạy 1 lần' : `Quét mỗi ${p.intervalMinutes} phút`}</span>
                                 <span>Đã quét: <b className="text-white">{p.scannedCount || 0}</b> video {p.lastScanAt && `| Lần cuối: ${new Date(p.lastScanAt).toLocaleTimeString()}`}</span>
@@ -923,7 +945,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                           </div>
                         </div>
                       ))}
-                      <button type="button" onClick={() => { setEditingProjectId('new'); setTaskTitle(''); setScanFolderPath(''); }} className="w-full py-2 bg-white/5 border border-dashed border-white/10 rounded-xl text-xs text-gray-400 hover:text-white transition-all">+ Tạo Dự Án Mới</button>
+                      <button type="button" onClick={() => { setEditingProjectId('new'); setTaskTitle(''); setScanFolderPath(''); setOutputFolder(''); }} className="w-full py-2 bg-white/5 border border-dashed border-white/10 rounded-xl text-xs text-gray-400 hover:text-white transition-all">+ Tạo Dự Án Mới</button>
                     </div>
                   )}
 
