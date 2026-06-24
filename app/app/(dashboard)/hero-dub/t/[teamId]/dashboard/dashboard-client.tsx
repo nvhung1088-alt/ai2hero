@@ -642,6 +642,8 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
           </div>
           <p className="text-xs text-gray-400 font-medium mt-1">
             Tự động tải, nhận dạng ASR, dịch thuật và burn phụ đề phim Trung Quốc sang Tiếng Việt.
+            <br />
+            <a href="file:///C:/Users/ADMIN/OneDrive/Desktop/videotest/%E4%B8%80%E5%8F%A3%E6%B0%9430%E5%88%86%E9%92%9F%E5%B8%A6%E4%BD%A0%E7%9C%8B%E5%AE%8C%E6%9C%80%E6%96%B0%E7%88%86%E7%81%AB%E9%9F%A9%E5%89%A7 %23%E9%9D%92%E5%B9%B4%E5%88%9B%E4%BD%9C%E8%80%85%E6%88%90%E9%95%BF%E8%AE%A1%E5%88%92 %23%E5%BD%B1%E8%A7%86%E8%A7%A3%E8%AF%B4 %23%E6%8A%96%E9%9F%B3%E7%B2%BE%E9%80%89 %23%E4%B8%80%E5%8F%A3%E6%B0%94%E7%9C%8B%E5%AE%8C%E7%B3%BB%E5%88%97.mp4" target="_blank" className="text-amber-500 underline font-bold mt-2 inline-block">🔗 Nhấp vào đây để Test mở Link Video Local (Trình duyệt sẽ chặn)</a>
           </p>
         </div>
 
@@ -873,7 +875,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                       </div>
                       <div className="space-y-1.5">
                          <label className="text-[10px] font-bold text-gray-400 uppercase">Đường dẫn Thư mục (VD: D:\Videos)</label>
-                         <input type="text" value={scanFolderPath} onChange={e => setScanFolderPath(e.target.value)} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/55" />
+                         <input type="text" value={scanFolderPath} onChange={e => setScanFolderPath(e.target.value.replace(/["']/g, ''))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/55" />
                       </div>
                       <div className="space-y-1.5">
                          <label className="text-[10px] font-bold text-gray-400 uppercase">Chu kỳ quét tự động</label>
@@ -900,7 +902,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                   </div>
                   <textarea
                     value={localFilePaths}
-                    onChange={(e) => setLocalFilePaths(e.target.value)}
+                    onChange={(e) => setLocalFilePaths(e.target.value.replace(/["']/g, ''))}
                     placeholder={`C:\\Downloads\\video1.mp4\nD:\\Movies\\video2.mp4\n\n(Bấm Ctrl + V vào đây)`}
                     disabled={creatingTask || isUploadingFile}
                     className="w-full h-28 bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/50 resize-none font-mono"
@@ -1242,7 +1244,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                 type="text"
                 placeholder="VD: C:\Users\ADMIN\Videos"
                 value={outputFolder}
-                onChange={(e) => setOutputFolder(e.target.value)}
+                onChange={(e) => setOutputFolder(e.target.value.replace(/["']/g, ''))}
                 disabled={creatingTask}
                 className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/55 transition-all"
               />
@@ -1344,16 +1346,22 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                               {task.sourcePlatform === 'local' || task.sourceUrl.includes(':\\') || task.sourceUrl.startsWith('/') ? (
                                 <button
                                   type="button"
-                                  onClick={(e) => {
+                                  onClick={async (e) => {
                                     e.preventDefault(); e.stopPropagation();
                                     const cleanUrl = task.sourceUrl.replace(/^["']+|["']+$/g, '');
-                                    navigator.clipboard.writeText(cleanUrl);
-                                    showToast('Đã copy đường dẫn', 'success');
+                                    try {
+                                      await fetch(`http://127.0.0.1:3001/open?path=${encodeURIComponent(cleanUrl)}`);
+                                      navigator.clipboard.writeText(cleanUrl);
+                                      showToast('Đang mở file & Đã copy đường dẫn', 'success');
+                                    } catch (err) {
+                                      navigator.clipboard.writeText(cleanUrl);
+                                      showToast('Đã copy đường dẫn (bật Worker để mở tự động)', 'success');
+                                    }
                                   }}
                                   className="text-[10px] text-emerald-500 hover:text-emerald-400 font-bold flex items-center gap-1 cursor-pointer bg-emerald-500/10 px-1.5 py-0.5 rounded-md truncate max-w-[200px]"
-                                  title={`Click để copy: ${task.sourceUrl}`}
+                                  title={`Click để mở file: ${task.sourceUrl}`}
                                 >
-                                  <Copy className="h-2.5 w-2.5 shrink-0" />
+                                  <ExternalLink className="h-2.5 w-2.5 shrink-0" />
                                   <span className="truncate">{task.sourceUrl}</span>
                                 </button>
                               ) : (
@@ -1414,22 +1422,28 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                           )}
                           {task.outputFolder || task.sourcePlatform === 'local' || task.sourceUrl.includes(':\\') || task.sourceUrl.startsWith('/') ? (
                             <button
-                              onClick={(e) => {
+                              onClick={async (e) => {
                                 e.preventDefault(); e.stopPropagation();
                                 const cleanUrl = task.sourceUrl.replace(/^["']+|["']+$/g, '');
                                 let folderPath = task.outputFolder || cleanUrl.substring(0, Math.max(cleanUrl.lastIndexOf('\\'), cleanUrl.lastIndexOf('/')));
                                 
-                                // Nếu đã dịch xong, copy đúng cái thư mục chứa file kết quả!
+                                // Nếu đã dịch xong, lấy đúng cái thư mục chứa file kết quả
                                 if (task.resultVideoUrl) {
                                   const cleanResultUrl = task.resultVideoUrl.replace(/^["']+|["']+$/g, '');
                                   folderPath = cleanResultUrl.substring(0, Math.max(cleanResultUrl.lastIndexOf('\\'), cleanResultUrl.lastIndexOf('/')));
                                 }
                                 
-                                navigator.clipboard.writeText(folderPath);
-                                showToast('Đã copy đường dẫn thư mục', 'success');
+                                try {
+                                  await fetch(`http://127.0.0.1:3001/open?path=${encodeURIComponent(folderPath)}`);
+                                  navigator.clipboard.writeText(folderPath);
+                                  showToast('Đang mở thư mục & Đã copy đường dẫn', 'success');
+                                } catch (err) {
+                                  navigator.clipboard.writeText(folderPath);
+                                  showToast('Đã copy đường dẫn thư mục', 'success');
+                                }
                               }}
-                              className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-500/80 hover:text-amber-400 rounded-lg cursor-pointer transition-all"
-                              title="Copy đường dẫn thư mục"
+                              className="p-1.5 flex items-center justify-center bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-500/80 hover:text-amber-400 rounded-lg cursor-pointer transition-all"
+                              title="Mở thư mục chứa file"
                             >
                               <Folder className="h-3.5 w-3.5" />
                             </button>

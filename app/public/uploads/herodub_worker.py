@@ -447,34 +447,60 @@ def process_task(token, task):
                                 translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                                 print(Fore.WHITE + f"  [Google] {translated}")
                     else:
-                        try:
-                            error_msg = res.json().get('error', res.text)
-                        except:
-                            error_msg = res.text
-                        print(Fore.RED + f"  [Loi HTTP] {res.status_code}: {error_msg}")
+                        print(Fore.RED + f"  [Loi HTTP] {res.status_code}")
                         print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
                         from googletrans import Translator
+                        import time
                         translator = Translator()
                         for seg in batch_segs:
-                            translated = translator.translate(seg['text'], dest='vi').text
+                            translated = ""
+                            for attempt in range(3):
+                                try:
+                                    translated = translator.translate(seg['text'], dest='vi').text
+                                    break
+                                except Exception as e:
+                                    if attempt == 2: raise e
+                                    time.sleep(2)
+                                    translator = Translator()
                             translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                             print(Fore.WHITE + f"  [Google] {translated}")
                 except Exception as api_err:
                     print(Fore.RED + f"  [Loi Mang] {str(api_err)}")
                     print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
                     from googletrans import Translator
+                    import time
                     translator = Translator()
                     for seg in batch_segs:
-                        translated = translator.translate(seg['text'], dest='vi').text
+                        translated = ""
+                        for attempt in range(3):
+                            try:
+                                translated = translator.translate(seg['text'], dest='vi').text
+                                break
+                            except Exception as e:
+                                if attempt == 2: raise e
+                                time.sleep(2)
+                                translator = Translator()
                         translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                         print(Fore.WHITE + f"  [Google] {translated}")
         else:
             print(Fore.CYAN + "  -> Su dung Google Translate (Mien phi)")
             from googletrans import Translator
+            import time
             translator = Translator()
             
             for seg in extracted_segments:
-                translated = translator.translate(seg['text'], dest='vi').text
+                translated = ""
+                for attempt in range(3):
+                    try:
+                        translated = translator.translate(seg['text'], dest='vi').text
+                        break
+                    except Exception as e:
+                        if attempt == 2:
+                            raise e
+                        print(Fore.YELLOW + f"  [!] Google Translate Timeout. Dang thu lai sau 2s...")
+                        time.sleep(2)
+                        translator = Translator() # Reconnect
+                
                 translated_segments.append({
                     "start": seg['start'],
                     "end": seg['end'],
@@ -924,7 +950,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_cors_headers()
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Range, Content-Length')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Range')
         self.end_headers()
 
     def do_POST(self):
@@ -936,7 +962,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
                 
                 import uuid
                 temp_id = str(uuid.uuid4())
-                save_dir = os.path.abspath(os.path.join(os.getcwd(), "workspace", f"temp_upload_{temp_id}"))
+                save_dir = os.path.abspath(os.path.join(WORKSPACE_DIR, f"temp_upload_{temp_id}"))
                 os.makedirs(save_dir, exist_ok=True)
                 
                 # Cố định tên file là input.mp4 để tránh mọi lỗi ký tự đặc biệt tiếng Trung
