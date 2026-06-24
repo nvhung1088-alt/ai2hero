@@ -936,7 +936,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
             return
             
         if parsed.path == '/open':
-            path_arg = qs.get('path', [''])[0]
+            path_arg = qs.get('path', [''])[0].strip('"\' ')
             if path_arg and os.path.exists(path_arg):
                 import subprocess
                 if sys.platform == 'win32':
@@ -949,7 +949,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
             return
             
         if parsed.path == '/stream' or parsed.path == '/srt':
-            path_arg = qs.get('path', [''])[0]
+            path_arg = qs.get('path', [''])[0].strip('"\' ')
             if not path_arg or not os.path.exists(path_arg):
                 self.send_response(404)
                 self.send_cors_headers()

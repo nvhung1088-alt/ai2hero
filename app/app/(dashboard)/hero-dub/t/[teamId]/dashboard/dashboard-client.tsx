@@ -1256,7 +1256,8 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                                   type="button"
                                   onClick={(e) => {
                                     e.preventDefault(); e.stopPropagation();
-                                    navigator.clipboard.writeText(task.sourceUrl);
+                                    const cleanUrl = task.sourceUrl.replace(/^["']+|["']+$/g, '');
+                                    navigator.clipboard.writeText(cleanUrl);
                                     showToast('Đã copy đường dẫn', 'success');
                                   }}
                                   className="text-[10px] text-emerald-500 hover:text-emerald-400 font-bold flex items-center gap-1 cursor-pointer bg-emerald-500/10 px-1.5 py-0.5 rounded-md truncate max-w-[200px]"
@@ -1325,7 +1326,8 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                             <button
                               onClick={(e) => {
                                 e.preventDefault(); e.stopPropagation();
-                                const folderPath = task.outputFolder || task.sourceUrl.substring(0, Math.max(task.sourceUrl.lastIndexOf('\\'), task.sourceUrl.lastIndexOf('/')));
+                                const cleanUrl = task.sourceUrl.replace(/^["']+|["']+$/g, '');
+                                const folderPath = task.outputFolder || cleanUrl.substring(0, Math.max(cleanUrl.lastIndexOf('\\'), cleanUrl.lastIndexOf('/')));
                                 handleOpenLocal(folderPath, true);
                               }}
                               className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-500/80 hover:text-amber-400 rounded-lg cursor-pointer transition-all"
