@@ -281,7 +281,14 @@ def process_task(token, task):
     import shutil
     
     task_id = task.get("id")
-    source_url = task.get("sourceUrl")
+    source_url = task.get("sourceUrl", "")
+    # Remove surrounding quotes if user copied path with quotes
+    if source_url.startswith('"') and source_url.endswith('"'):
+        source_url = source_url[1:-1]
+    elif source_url.startswith("'") and source_url.endswith("'"):
+        source_url = source_url[1:-1]
+        
+    source_lang = task.get("sourceLang", "zh")
     print(Fore.MAGENTA + Style.BRIGHT + f"\n>>> BAT DAU XU LY TASK #{task_id}")
     print(Fore.MAGENTA + f"    Duong dan File (Local): {source_url}")
 
