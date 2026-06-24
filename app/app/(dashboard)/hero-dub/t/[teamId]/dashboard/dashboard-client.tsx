@@ -124,65 +124,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
 
   const [creatingTask, setCreatingTask] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploadMode, setUploadMode] = useState<'file' | 'folder'>('file');
-  const [uploadProgressMsg, setUploadProgressMsg] = useState('');
-
-  interface AutoScanProject {
-    id: string;
-    name: string;
-    folderPath: string;
-    intervalMinutes: number;
-    sourceLang: string;
-    targetLang: string;
-    asrEngine: string;
-    subtitleMode: string;
-    ttsEnabled: boolean;
-    ttsEngine: string;
-    ttsVoice: string;
-    ttsSpeed: string;
-    bgVolume: string;
-    ttsVolume: string;
-    aiAppSlug: string;
-    aiModel: string;
-    lastScanAt?: number;
-  }
-  const [scanProjects, setScanProjects] = useState<AutoScanProject[]>([]);
-  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-  const [scanFolderPath, setScanFolderPath] = useState('');
-  const [scanInterval, setScanInterval] = useState(60);
-
-
-
-  const generateVideoThumbnail = (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      const video = document.createElement('video');
-      const canvas = document.createElement('canvas');
-      video.autoplay = true;
-      video.muted = true;
-      video.src = URL.createObjectURL(file);
-      video.onloadeddata = () => {
-        video.currentTime = 1; // grab frame at 1 second
-      };
-      video.onseeked = () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.5));
-        URL.revokeObjectURL(video.src);
-      };
-      video.onerror = () => {
-        resolve(''); // if error, return empty string
-      };
-    });
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('video/'));
-    if (files.length === 0) return;
-    setSelectedFiles(files);
-  };
+  const [localFilePaths, setLocalFilePaths] = useState('');
 
   // Pairing State
   const [pairingCode, setPairingCode] = useState<string | null>(null);
@@ -342,12 +284,15 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   };
 
   const handleCreateTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedFiles.length === 0) {
-      showToast('Vui lòng chọn file video!', 'error');
-      return;
+    if (uploadMode === 'file') {
+      if (!localFilePaths.trim()) {
+        showToast('Vui lòng nhập đường dẫn video.', 'warning');
+        return;
+      }
+    } else {
+      // Logic for standard file upload if needed
     }
-
+    
     setCreatingTask(true);
 
     const selProj = selectedProjectId ? projects.find(p => p.id === selectedProjectId) : null;
@@ -361,57 +306,44 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     };
 
     try {
-      if (selectedFiles.length > 0) {
+      if (localFilePaths.trim() !== '') {
+        const paths = localFilePaths.split('\n').filter(p => p.trim() !== '');
         let successCount = 0;
-        for (let i = 0; i < selectedFiles.length; i++) {
-          const file = selectedFiles[i];
-          setUploadProgressMsg(`Đang xử lý ${i + 1}/${selectedFiles.length}: ${file.name}`);
+        for (let i = 0; i < paths.length; i++) {
+          const pathStr = paths[i].trim();
+          const fileName = pathStr.split('\\').pop()?.split('/').pop() || 'Video';
+          setUploadProgressMsg(`Đang xử lý ${i + 1}/${paths.length}: ${fileName}`);
           
-          // Generate thumbnail
-          const thumbBase64 = await generateVideoThumbnail(file);
-
-          // Upload file
-          const formData = new FormData();
-          formData.append('file', file);
-          const resUpload = await fetch('/api/hero-dub/local-upload', {
-            method: 'POST',
-            body: formData,
+          const res = await createDubTaskAction({
+            teamId: parseInt(teamId),
+            userId: parseInt(userId),
+            sourceUrl: pathStr,
+            taskTitle: taskTitle.trim() ? `${taskTitle.trim()} - ${fileName}` : fileName,
+            sourceThumbnailUrl: undefined,
+            sourceLang,
+            targetLang,
+            asrEngine,
+            subtitleMode,
+            llmModel: selectedAiAppSlug && selectedAiModel ? `${selectedAiAppSlug}|${selectedAiModel}` : undefined,
+            ttsEnabled,
+            ttsEngine: ttsEnabled ? ttsEngine : undefined,
+            ttsVoice: ttsEnabled ? ttsVoice : undefined,
+            ttsSpeed: ttsEnabled ? ttsSpeed : undefined,
+            bgVolume: ttsEnabled ? bgVolume : undefined,
+            ttsVolume: ttsEnabled ? ttsVolume : undefined,
+            outputFolder: outputFolder.trim() || undefined,
+            ...taskBranding,
           });
-          const data = await resUpload.json();
 
-          if (resUpload.ok && data.success) {
-            // Create task
-            const res = await createDubTaskAction({
-              teamId,
-              userId,
-              sourceUrl: data.localPath,
-              taskTitle: taskTitle.trim() ? `${taskTitle.trim()} - ${file.name}` : file.name,
-              sourceThumbnailUrl: thumbBase64 || undefined,
-              sourceLang,
-              targetLang,
-              asrEngine,
-              subtitleMode,
-              llmModel: selectedAiAppSlug && selectedAiModel ? `${selectedAiAppSlug}|${selectedAiModel}` : undefined,
-              ttsEnabled,
-              ttsEngine: ttsEnabled ? ttsEngine : undefined,
-              ttsVoice: ttsEnabled ? ttsVoice : undefined,
-              ttsSpeed: ttsEnabled ? ttsSpeed : undefined,
-              bgVolume: ttsEnabled ? bgVolume : undefined,
-              ttsVolume: ttsEnabled ? ttsVolume : undefined,
-              outputFolder: outputFolder.trim() || undefined,
-              ...taskBranding,
-            });
-
-            if (!res.error && !res.isDuplicate) {
-              successCount++;
-            }
+          if (!res.error && !res.isDuplicate) {
+            successCount++;
           }
         }
-        showToast(`Đã thêm ${successCount}/${selectedFiles.length} video vào hàng đợi!`, 'success');
-        setSelectedFiles([]);
+        showToast(`Đã thêm ${successCount}/${paths.length} video vào hàng đợi!`, 'success');
+        setLocalFilePaths('');
         refreshData();
       } else {
-        showToast('Vui lòng chọn video để dịch.', 'warning');
+        showToast('Vui lòng nhập đường dẫn video.', 'warning');
       }
     } catch (err) {
       console.error('Create task error:', err);
@@ -795,7 +727,6 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-gray-400 uppercase flex justify-between items-center">
                 <span>Nguồn Video</span>
-                {selectedFiles.length > 0 && <span className="text-green-400">Đã chọn ({selectedFiles.length} file)</span>}
               </label>
 
               <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
@@ -862,39 +793,15 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                   )}
                 </div>
               ) : (
-                <div className={`relative border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-6 text-center transition-all ${selectedFiles.length > 0 ? 'border-green-500/30 bg-green-500/5' : 'border-white/10 hover:border-amber-500/30 hover:bg-amber-500/5'}`}>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    multiple={false}
-                    onChange={handleFileChange}
-                    disabled={creatingTask || isUploadingFile}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
+                <div className="space-y-2 pt-2">
+                  <p className="text-[10px] text-gray-400 font-medium">Nhập đường dẫn tuyệt đối của video trên máy tính (VD: <code className="text-amber-500">D:\Videos\video1.mp4</code>). Mỗi đường dẫn 1 dòng.</p>
+                  <textarea
+                    value={localFilePaths}
+                    onChange={(e) => setLocalFilePaths(e.target.value)}
+                    placeholder={`C:\\Downloads\\video1.mp4\nD:\\Movies\\video2.mp4`}
+                    disabled={creatingTask}
+                    className="w-full h-32 bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/50 resize-none font-mono"
                   />
-                  {isUploadingFile || creatingTask ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <Loader2 className="h-6 w-6 text-amber-500 animate-spin" />
-                      <span className="text-xs text-amber-500 font-semibold">{uploadProgressMsg || 'Đang nạp dữ liệu...'}</span>
-                    </div>
-                  ) : selectedFiles.length > 0 ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <CheckCircle className="h-6 w-6 text-green-500" />
-                      <span className="text-xs text-green-400 font-medium break-all px-4">
-                        {selectedFiles.length === 1 ? selectedFiles[0].name : `Đã chọn ${selectedFiles.length} video`}
-                      </span>
-                      <span className="text-[10px] text-gray-500">Nhấp hoặc kéo thả để chọn lại</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                        <Video className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <span className="text-sm font-semibold text-gray-300">
-                        Kéo thả hoặc nhấp để chọn Video
-                      </span>
-                      <span className="text-[10px] text-gray-500">Hỗ trợ các định dạng MP4, WebM, MOV...</span>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
