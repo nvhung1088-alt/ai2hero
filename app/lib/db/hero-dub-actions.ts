@@ -47,7 +47,10 @@ export async function createDubTaskAction(data: {
   outroVideoUrl?: string;
 }) {
   try {
-    const sourceUrl = data.sourceUrl.trim();
+    let sourceUrl = data.sourceUrl.trim();
+    if ((sourceUrl.startsWith('"') && sourceUrl.endsWith('"')) || (sourceUrl.startsWith("'") && sourceUrl.endsWith("'"))) {
+      sourceUrl = sourceUrl.slice(1, -1).trim();
+    }
     const targetLang = data.targetLang || 'vi';
     const sourceLang = data.sourceLang || 'zh';
 
