@@ -28,6 +28,7 @@ except ImportError:
 # ---------------------------------------------------------
 API_BASE_URL = "https://www.ai2hero.com/api/hero-dub"
 CONFIG_FILE = "config.json"
+WORKSPACE_DIR = "workspace"
 
 def get_device_info():
     return {
