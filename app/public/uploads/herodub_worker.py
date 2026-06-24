@@ -874,7 +874,7 @@ def scan_single_config(config, token):
             full_path = os.path.join(folder_path, file)
             if full_path not in scan_cache:
                 new_files.append(full_path)
-    if new_files:
+    if True: # Always send payload so server updates lastScanAt
         payload = {
             'videoPaths': new_files,
             'config': config
@@ -884,12 +884,15 @@ def scan_single_config(config, token):
             if post_res.status_code == 200:
                 post_data = post_res.json()
                 if post_data.get('success'):
-                    with scan_cache_lock:
-                        scan_cache = load_scan_cache()
-                        for nf in new_files:
-                            scan_cache[nf] = True
-                        save_scan_cache(scan_cache)
-                    print(Fore.CYAN + f"\n[Auto-Scan] Phat hien {len(new_files)} video moi o {folder_path} - Da nop len server.")
+                    if new_files:
+                        with scan_cache_lock:
+                            scan_cache = load_scan_cache()
+                            for nf in new_files:
+                                scan_cache[nf] = True
+                            save_scan_cache(scan_cache)
+                        print(Fore.CYAN + f"\n[Auto-Scan] Phat hien {len(new_files)} video moi o {folder_path} - Da nop len server.")
+                    else:
+                        print(Fore.GREEN + f"\n[Auto-Scan] Da quet {folder_path} - Khong co video moi.")
         except Exception as e:
             pass
 

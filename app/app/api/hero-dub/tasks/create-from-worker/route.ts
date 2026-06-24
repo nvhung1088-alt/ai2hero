@@ -27,6 +27,9 @@ export async function POST(request: Request) {
     // config is the scan config
 
     if (!videoPaths || !Array.isArray(videoPaths) || videoPaths.length === 0) {
+      if (config && config.id) {
+        await updateDubScanConfigStatsAction(config.id, 0);
+      }
       return NextResponse.json({ success: true, count: 0, message: 'No new videos to process' });
     }
 
