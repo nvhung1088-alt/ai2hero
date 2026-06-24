@@ -332,10 +332,8 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
         for (let i = 0; i < paths.length; i++) {
           let pathStr = paths[i].trim();
           
-          // Remove surrounding quotes (useful for Windows "Copy as path")
-          if ((pathStr.startsWith('"') && pathStr.endsWith('"')) || (pathStr.startsWith("'") && pathStr.endsWith("'"))) {
-            pathStr = pathStr.slice(1, -1).trim();
-          }
+          // Remove surrounding quotes and whitespaces
+          pathStr = pathStr.replace(/^["']+|["']+$/g, '').trim();
 
           const fileName = pathStr.split('\\').pop()?.split('/').pop() || 'Video';
           setUploadProgressMsg(`Đang xử lý ${i + 1}/${paths.length}: ${fileName}`);
@@ -1254,12 +1252,19 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                                 </span>
                               ) : null}
                               {task.sourcePlatform === 'local' || task.sourceUrl.includes(':\\') || task.sourceUrl.startsWith('/') ? (
-                                <span
-                                  className="text-[10px] text-gray-500 font-medium truncate max-w-[200px]"
-                                  title={task.sourceUrl}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault(); e.stopPropagation();
+                                    navigator.clipboard.writeText(task.sourceUrl);
+                                    showToast('Đã copy đường dẫn', 'success');
+                                  }}
+                                  className="text-[10px] text-emerald-500 hover:text-emerald-400 font-bold flex items-center gap-1 cursor-pointer bg-emerald-500/10 px-1.5 py-0.5 rounded-md truncate max-w-[200px]"
+                                  title={`Click để copy: ${task.sourceUrl}`}
                                 >
-                                  {task.sourceUrl}
-                                </span>
+                                  <Copy className="h-2.5 w-2.5 shrink-0" />
+                                  <span className="truncate">{task.sourceUrl}</span>
+                                </button>
                               ) : (
                                 <a
                                   href={task.sourceUrl}
