@@ -919,9 +919,43 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_cors_headers()
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Range')
         self.end_headers()
+
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == '/upload':
+            try:
+                content_length = int(self.headers.get('Content-Length', 0))
+                file_data = self.rfile.read(content_length)
+                
+                import uuid
+                temp_id = str(uuid.uuid4())
+                save_dir = os.path.abspath(os.path.join(WORKSPACE_DIR, f"temp_upload_{temp_id}"))
+                os.makedirs(save_dir, exist_ok=True)
+                
+                # Cố định tên file là input.mp4 để tránh mọi lỗi ký tự đặc biệt tiếng Trung
+                save_path = os.path.join(save_dir, "input.mp4")
+                
+                with open(save_path, 'wb') as f:
+                    f.write(file_data)
+                    
+                self.send_response(200)
+                self.send_cors_headers()
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                
+                import json
+                self.wfile.write(json.dumps({"status": "ok", "path": save_path}).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_cors_headers()
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                import json
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
+            return
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)

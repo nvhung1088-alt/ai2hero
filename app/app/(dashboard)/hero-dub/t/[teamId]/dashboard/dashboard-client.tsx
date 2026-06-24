@@ -303,6 +303,39 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     setTimeout(() => setPairingCopied(false), 2000);
   };
 
+  const handleLocalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingFile(true);
+    setUploadProgressMsg('Đang gửi file xuống Local Worker...');
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const res = await fetch('http://127.0.0.1:3001/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Length': arrayBuffer.byteLength.toString()
+        },
+        body: arrayBuffer,
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'ok') {
+        const currentPaths = localFilePaths.trim();
+        setLocalFilePaths(currentPaths ? `${currentPaths}\n${data.path}` : data.path);
+        showToast('Đã chuyển file xuống Worker thành công!', 'success');
+      } else {
+        throw new Error(data.message || 'Lỗi từ Worker');
+      }
+    } catch (err: any) {
+      console.error('Local upload error:', err);
+      showToast(`Lỗi gửi file xuống Worker: ${err.message}. Đảm bảo Worker đang chạy!`, 'error');
+    } finally {
+      setIsUploadingFile(false);
+      setUploadProgressMsg('');
+      if (e.target) e.target.value = ''; // reset input
+    }
+  };
+
   const handleCreateTask = async (e: React.FormEvent) => {
     if (uploadMode === 'file') {
       if (!localFilePaths.trim()) {
@@ -831,9 +864,25 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                     value={localFilePaths}
                     onChange={(e) => setLocalFilePaths(e.target.value)}
                     placeholder={`C:\\Downloads\\video1.mp4\nD:\\Movies\\video2.mp4\n\n(Bấm Ctrl + V vào đây)`}
-                    disabled={creatingTask}
+                    disabled={creatingTask || isUploadingFile}
                     className="w-full h-28 bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/50 resize-none font-mono"
                   />
+                  <div className="flex justify-end pt-1">
+                    <input 
+                      type="file" 
+                      id="localFileInput" 
+                      className="hidden" 
+                      accept="video/*"
+                      onChange={handleLocalFileUpload}
+                    />
+                    <label 
+                      htmlFor="localFileInput" 
+                      className="text-[10px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-3 py-1.5 rounded-lg cursor-pointer transition-all flex items-center gap-1.5 font-bold"
+                    >
+                      {isUploadingFile ? <Loader2 className="w-3 h-3 animate-spin" /> : <FolderOpen className="w-3 h-3" />}
+                      Hoặc chọn file từ máy...
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
