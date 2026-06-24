@@ -1,7 +1,8 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 echo ==============================================
 echo   HERODUB LOCAL WORKER INSTALLER
+echo   Version: 1.1 (Python-based)
 echo ==============================================
 
 :: Setup Folder
@@ -9,18 +10,37 @@ set WORKER_DIR=%USERPROFILE%\HeroDubWorker
 if not exist "%WORKER_DIR%" mkdir "%WORKER_DIR%"
 cd /d "%WORKER_DIR%"
 
-:: Download worker exe from GitHub Releases
-echo [INFO] Dang tai ung dung HeroDubWorker.exe...
-curl -s -L -o HeroDubWorker.exe "https://github.com/nvhung1088-alt/ai2hero/releases/latest/download/HeroDubWorker.exe"
-
-if not exist HeroDubWorker.exe (
-    echo [ERROR] Khong the tai ung dung. Vui long kiem tra ket noi Internet.
+:: Kiem tra Python
+echo [INFO] Kiem tra Python...
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Python chua duoc cai dat!
+    echo [INFO]  Vui long tai Python tai: https://www.python.org/downloads/
+    echo [INFO]  Nho tich chon "Add Python to PATH" khi cai dat.
+    start https://www.python.org/downloads/
     pause >nul
     exit /b 1
 )
+for /f "tokens=*" %%v in ('python --version 2^>^&1') do echo [OK] Phat hien: %%v
 
-echo [OK] Tai xong! Dang khoi dong Worker...
+:: Tai Worker Script moi nhat
+echo [INFO] Dang tai herodub_worker.py tu ai2hero.com...
+curl -s -L -o herodub_worker.py "https://www.ai2hero.com/uploads/herodub_worker.py"
+
+if not exist herodub_worker.py (
+    echo [ERROR] Khong the tai script. Kiem tra ket noi Internet.
+    pause >nul
+    exit /b 1
+)
+echo [OK] Tai script thanh cong!
+
+:: Cai dat thu vien Python can thiet
+echo [INFO] Kiem tra va cai dat thu vien...
+pip install -q requests colorama
+
+:: Khoi dong Worker
 echo ==============================================
-start HeroDubWorker.exe
-echo [OK] Ung dung da khoi dong. Ban co the dong cua so nay.
-pause >nul
+echo [OK] Dang khoi dong HeroDub Worker...
+echo [!]  Vui long de cua so nay mo de Worker hoat dong.
+echo ==============================================
+python herodub_worker.py
