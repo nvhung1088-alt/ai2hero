@@ -189,7 +189,9 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     ttsVolume: string;
     aiAppSlug: string;
     aiModel: string;
-    lastScanAt?: number;
+    isActive: boolean;
+    scannedCount: number;
+    lastScanAt?: number | string | Date | null;
   }
   const [scanProjects, setScanProjects] = useState<AutoScanProject[]>([]);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
