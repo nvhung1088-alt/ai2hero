@@ -447,7 +447,11 @@ def process_task(token, task):
                                 translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                                 print(Fore.WHITE + f"  [Google] {translated}")
                     else:
-                        print(Fore.RED + f"  [Loi HTTP] {res.status_code}")
+                        try:
+                            error_msg = res.json().get('error', res.text)
+                        except:
+                            error_msg = res.text
+                        print(Fore.RED + f"  [Loi HTTP] {res.status_code}: {error_msg}")
                         print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
                         from googletrans import Translator
                         translator = Translator()
@@ -920,7 +924,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_cors_headers()
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Range')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Range, Content-Length')
         self.end_headers()
 
     def do_POST(self):
@@ -932,7 +936,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
                 
                 import uuid
                 temp_id = str(uuid.uuid4())
-                save_dir = os.path.abspath(os.path.join(WORKSPACE_DIR, f"temp_upload_{temp_id}"))
+                save_dir = os.path.abspath(os.path.join(os.getcwd(), "workspace", f"temp_upload_{temp_id}"))
                 os.makedirs(save_dir, exist_ok=True)
                 
                 # Cố định tên file là input.mp4 để tránh mọi lỗi ký tự đặc biệt tiếng Trung

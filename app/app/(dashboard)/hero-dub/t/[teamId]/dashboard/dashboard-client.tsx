@@ -105,8 +105,35 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   const [selectedAiAppSlug, setSelectedAiAppSlug] = useState<string>('');
   const [selectedAiModel, setSelectedAiModel] = useState<string>('');
 
+  const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
+
   useEffect(() => {
-    if (connectedAiApps && connectedAiApps.length > 0) {
+    if (!hasLoadedSettings) {
+      try {
+        const saved = localStorage.getItem('heroDubSettings');
+        if (saved) {
+          const s = JSON.parse(saved);
+          if (s.sourceLang) setSourceLang(s.sourceLang);
+          if (s.targetLang) setTargetLang(s.targetLang);
+          if (s.asrEngine) setAsrEngine(s.asrEngine);
+          if (s.subtitleMode) setSubtitleMode(s.subtitleMode);
+          if (s.ttsEnabled !== undefined) setTtsEnabled(s.ttsEnabled);
+          if (s.ttsEngine) setTtsEngine(s.ttsEngine);
+          if (s.ttsVoice) setTtsVoice(s.ttsVoice);
+          if (s.ttsSpeed) setTtsSpeed(s.ttsSpeed);
+          if (s.bgVolume) setBgVolume(s.bgVolume);
+          if (s.ttsVolume) setTtsVolume(s.ttsVolume);
+          if (s.outputFolder) setOutputFolder(s.outputFolder);
+          
+          if (s.selectedAiAppSlug !== undefined) setSelectedAiAppSlug(s.selectedAiAppSlug);
+          if (s.selectedAiModel !== undefined) setSelectedAiModel(s.selectedAiModel);
+          setHasLoadedSettings(true);
+          return;
+        }
+      } catch (e) {}
+    }
+
+    if (!hasLoadedSettings && connectedAiApps && connectedAiApps.length > 0) {
       const deepseekApp = connectedAiApps.find(app => app.slug === 'deepseek');
       if (deepseekApp) {
         setSelectedAiAppSlug(deepseekApp.slug);
@@ -119,8 +146,22 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
           setSelectedAiModel(connectedAiApps[0].models[0].name);
         }
       }
+      setHasLoadedSettings(true);
+    } else if (!hasLoadedSettings && connectedAiApps) {
+      setHasLoadedSettings(true);
     }
-  }, [connectedAiApps]);
+  }, [connectedAiApps, hasLoadedSettings]);
+
+  useEffect(() => {
+    if (hasLoadedSettings) {
+      const settings = {
+        sourceLang, targetLang, asrEngine, subtitleMode, ttsEnabled, ttsEngine,
+        ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder,
+        selectedAiAppSlug, selectedAiModel
+      };
+      localStorage.setItem('heroDubSettings', JSON.stringify(settings));
+    }
+  }, [sourceLang, targetLang, asrEngine, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, hasLoadedSettings]);
 
   const [creatingTask, setCreatingTask] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -313,9 +354,6 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
       const arrayBuffer = await file.arrayBuffer();
       const res = await fetch('http://127.0.0.1:3001/upload', {
         method: 'POST',
-        headers: {
-          'Content-Length': arrayBuffer.byteLength.toString()
-        },
         body: arrayBuffer,
       });
       const data = await res.json();
@@ -952,43 +990,46 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                   </Link>
                 )}
               </label>
-              {connectedAiApps && connectedAiApps.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <select
-                    value={selectedAiAppSlug}
-                    onChange={(e) => {
-                      setSelectedAiAppSlug(e.target.value);
-                      const app = connectedAiApps.find(a => a.slug === e.target.value);
+              <div className="grid grid-cols-2 gap-3">
+                <select
+                  value={selectedAiAppSlug}
+                  onChange={(e) => {
+                    setSelectedAiAppSlug(e.target.value);
+                    if (e.target.value === '') {
+                      setSelectedAiModel('');
+                    } else {
+                      const app = connectedAiApps?.find(a => a.slug === e.target.value);
                       if (app && app.models && app.models.length > 0) {
                         setSelectedAiModel(app.models[0].name);
                       } else {
                         setSelectedAiModel('');
                       }
-                    }}
-                    disabled={creatingTask}
-                    className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
-                  >
-                    {connectedAiApps.map(app => (
-                      <option key={app.slug} value={app.slug}>{app.name}</option>
-                    ))}
-                  </select>
-                  
-                  <select
-                    value={selectedAiModel}
-                    onChange={(e) => setSelectedAiModel(e.target.value)}
-                    disabled={creatingTask || !selectedAiAppSlug}
-                    className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
-                  >
-                    {connectedAiApps.find(a => a.slug === selectedAiAppSlug)?.models.map(m => (
+                    }
+                  }}
+                  disabled={creatingTask}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                >
+                  <option value="">Google Dịch (Miễn phí)</option>
+                  {connectedAiApps?.map(app => (
+                    <option key={app.slug} value={app.slug}>{app.name}</option>
+                  ))}
+                </select>
+                
+                <select
+                  value={selectedAiModel}
+                  onChange={(e) => setSelectedAiModel(e.target.value)}
+                  disabled={creatingTask || !selectedAiAppSlug}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 disabled:opacity-50 cursor-pointer"
+                >
+                  {!selectedAiAppSlug ? (
+                    <option value="">Tự động</option>
+                  ) : (
+                    connectedAiApps?.find(a => a.slug === selectedAiAppSlug)?.models.map(m => (
                       <option key={m.name} value={m.name}>{m.name}</option>
-                    )) || <option value="">Chọn Model...</option>}
-                  </select>
-                </div>
-              ) : (
-                <div className="w-full bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2.5 text-xs text-amber-500/80 leading-normal">
-                  Chưa kết nối AI nào (VD: OpenAI, DeepSeek). Hệ thống sẽ dùng <span className="font-bold text-amber-400">Google Dịch (Free)</span> mặc định.
-                </div>
-              )}
+                    )) || <option value="">Chọn Model...</option>
+                  )}
+                </select>
+              </div>
             </div>
 
             <div className="space-y-2">

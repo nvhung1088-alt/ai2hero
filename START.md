@@ -119,6 +119,11 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - [x] **Deploy Production**: Đã cập nhật `.gitignore`, dọn dẹp các tệp media test local, commit và push thành công toàn bộ code MVP lên GitHub (`main` branch) để kích hoạt Vercel auto-deploy.
 - [x] **Sửa lỗi Hàng đợi tác vụ HeroDub**: Đã fix thành công 3 nút chức năng thao tác với file trên máy tính (Mở video trực tiếp trên Web Player, Tải SRT qua Stream Proxy, và Mở thư mục bằng lệnh spawn detached trên Windows).
 - [x] **HeroDub TTS Upgrade (Giai đoạn 1 & 2)**: Đã hoàn thành và kiểm thử logic Speed Alignment (atempo) kết hợp Silence Trimming và Vocal Isolation (Demucs) cho local worker.
+- [x] **Đồng bộ Database Production**: Đã chạy thành công `db:push` lên Supabase Production DB, giải quyết triệt để lỗi thiếu bảng `websites` và cột `balance` của bảng `users`.
+
+- **2026-06-24 (deploy - Production Database Synced)**:
+  - 🚀 **Đồng bộ DB Production**: Chuyển tạm thời `.env` sang kết nối Supabase Production DB và chạy thành công lệnh `pnpm db:push` (giữ nguyên dữ liệu của 6 user hiện có).
+  - 🚀 **Khôi phục cấu hình local**: Trỏ `.env` quay lại Docker DB local (`localhost:5433/ai2hero`) để bảo vệ DB Production.
 
 - **2026-06-23 (deploy - MVP Production Launch)**:
   - 🚀 **Dọn dẹp Git Index**: Đã loại bỏ hoàn toàn các folder rác (uploads/, test_workspace/, build/, workspace/) và file media tạm (.mp3, .mp4, .wav) khỏi Git index.
@@ -1698,3 +1703,4 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - `PLAN_TEMPLATE.md` - Template chuẩn cho Opus viết Plan
 - `WORKFLOW_AI2HERO_PLAN.md` - Workflow lệnh `ai2hero plan`
 - `WORKFLOW_AI2HERO_CODE.md` - Workflow lệnh `ai2hero code`
+- **2026-06-24**: Fix loi Connect Hub model khi tao task tu Thu muc theo doi (Auto Scan). Chinh sua logic UI de tranh bi trung video cu khi load lai component.
