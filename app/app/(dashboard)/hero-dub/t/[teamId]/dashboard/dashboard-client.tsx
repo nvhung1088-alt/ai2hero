@@ -125,6 +125,32 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   const [creatingTask, setCreatingTask] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [localFilePaths, setLocalFilePaths] = useState('');
+  const [uploadMode, setUploadMode] = useState<'file' | 'folder'>('file');
+  const [uploadProgressMsg, setUploadProgressMsg] = useState('');
+
+  interface AutoScanProject {
+    id: string;
+    name: string;
+    folderPath: string;
+    intervalMinutes: number;
+    sourceLang: string;
+    targetLang: string;
+    asrEngine: string;
+    subtitleMode: string;
+    ttsEnabled: boolean;
+    ttsEngine: string;
+    ttsVoice: string;
+    ttsSpeed: string;
+    bgVolume: string;
+    ttsVolume: string;
+    aiAppSlug: string;
+    aiModel: string;
+    lastScanAt?: number;
+  }
+  const [scanProjects, setScanProjects] = useState<AutoScanProject[]>([]);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [scanFolderPath, setScanFolderPath] = useState('');
+  const [scanInterval, setScanInterval] = useState(60);
 
   // Pairing State
   const [pairingCode, setPairingCode] = useState<string | null>(null);
