@@ -1327,7 +1327,14 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                               onClick={(e) => {
                                 e.preventDefault(); e.stopPropagation();
                                 const cleanUrl = task.sourceUrl.replace(/^["']+|["']+$/g, '');
-                                const folderPath = task.outputFolder || cleanUrl.substring(0, Math.max(cleanUrl.lastIndexOf('\\'), cleanUrl.lastIndexOf('/')));
+                                let folderPath = task.outputFolder || cleanUrl.substring(0, Math.max(cleanUrl.lastIndexOf('\\'), cleanUrl.lastIndexOf('/')));
+                                
+                                // Nếu đã dịch xong, copy đúng cái thư mục chứa file kết quả!
+                                if (task.resultVideoUrl) {
+                                  const cleanResultUrl = task.resultVideoUrl.replace(/^["']+|["']+$/g, '');
+                                  folderPath = cleanResultUrl.substring(0, Math.max(cleanResultUrl.lastIndexOf('\\'), cleanResultUrl.lastIndexOf('/')));
+                                }
+                                
                                 navigator.clipboard.writeText(folderPath);
                                 showToast('Đã copy đường dẫn thư mục', 'success');
                               }}
