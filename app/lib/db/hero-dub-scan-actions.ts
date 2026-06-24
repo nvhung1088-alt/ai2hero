@@ -35,6 +35,7 @@ export async function saveDubScanConfigAction(data: {
   ttsVolume?: string;
   aiAppSlug?: string;
   aiModel?: string;
+  isActive?: boolean;
 }) {
   try {
     if (typeof data.id === 'number') {
@@ -55,6 +56,7 @@ export async function saveDubScanConfigAction(data: {
           ttsVolume: data.ttsVolume,
           aiAppSlug: data.aiAppSlug,
           aiModel: data.aiModel,
+          isActive: data.isActive !== undefined ? data.isActive : true,
         })
         .where(eq(dubScanConfigs.id, data.id));
     } else {
@@ -76,6 +78,7 @@ export async function saveDubScanConfigAction(data: {
         ttsVolume: data.ttsVolume,
         aiAppSlug: data.aiAppSlug,
         aiModel: data.aiModel,
+        isActive: data.isActive !== undefined ? data.isActive : true,
       });
     }
     return { success: true };
@@ -87,6 +90,28 @@ export async function saveDubScanConfigAction(data: {
 export async function deleteDubScanConfigAction(id: number, teamId: number) {
   try {
     await db.delete(dubScanConfigs).where(and(eq(dubScanConfigs.id, id), eq(dubScanConfigs.teamId, teamId)));
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+import { sql } from 'drizzle-orm';
+
+export async function updateDubScanConfigStatsAction(configId: number, newVideosCount: number) {
+  try {
+    if (newVideosCount > 0) {
+      await db.update(dubScanConfigs)
+        .set({
+          lastScanAt: new Date(),
+          scannedCount: sql`${dubScanConfigs.scannedCount} + ${newVideosCount}`
+        })
+        .where(eq(dubScanConfigs.id, configId));
+    } else {
+      await db.update(dubScanConfigs)
+        .set({ lastScanAt: new Date() })
+        .where(eq(dubScanConfigs.id, configId));
+    }
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

@@ -38,7 +38,10 @@ import {
   Terminal,
   Folder,
   FolderOpen,
-  Edit
+  Edit,
+  Zap,
+  Pause,
+  PlayCircle
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -449,6 +452,50 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     }
   };
 
+  const handleScanNow = async (config: any) => {
+    try {
+      showToast('Đang gửi lệnh quét tới Worker...', 'info');
+      const res = await fetch('http://127.0.0.1:3001/scan', {
+        method: 'POST',
+        body: JSON.stringify(config),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        showToast('Đã nhận lệnh quét ngay thành công!', 'success');
+      } else {
+        showToast('Worker báo lỗi hoặc không mở tính năng quét!', 'error');
+      }
+    } catch (e) {
+      showToast('Không kết nối được tới Worker Local. Hãy đảm bảo Worker đang chạy.', 'error');
+    }
+  };
+
+  const handleToggleActive = async (config: any) => {
+    const updated = { ...config, isActive: !config.isActive };
+    // Optimistic update
+    setScanProjects(prev => prev.map(p => p.id === config.id ? updated : p));
+    const res = await saveDubScanConfigAction({
+      teamId,
+      userId: userId!,
+      id: config.id,
+      name: config.name,
+      folderPath: config.folderPath,
+      intervalMinutes: config.intervalMinutes,
+      sourceLang: config.sourceLang,
+      targetLang: config.targetLang,
+      asrEngine: config.asrEngine,
+      subtitleMode: config.subtitleMode,
+      ttsEnabled: config.ttsEnabled,
+      ttsEngine: config.ttsEngine,
+      isActive: updated.isActive
+    });
+    if (!res.success) {
+      showToast('Lỗi khi lưu trạng thái Dự án!', 'error');
+      // Revert if error
+      setScanProjects(prev => prev.map(p => p.id === config.id ? config : p));
+    }
+  };
+
   const handleSaveScanProject = async () => {
     if (!taskTitle.trim() || !scanFolderPath.trim()) {
       showToast('Vui lòng nhập Tên Dự án và Đường dẫn Thư mục', 'warning');
@@ -839,7 +886,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                   onClick={() => setUploadMode('folder')}
                   className={`flex-1 text-[11px] py-1.5 rounded-lg font-bold transition-all ${uploadMode === 'folder' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
                 >
-                  Dự án Quét Tự Động
+                  Dự án
                 </button>
               </div>
               
@@ -848,18 +895,27 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                   {scanProjects.length > 0 && !editingProjectId && (
                     <div className="space-y-2">
                       {scanProjects.map(p => (
-                        <div key={p.id} className="bg-black/40 p-3 rounded-xl border border-white/10 flex items-center justify-between">
-                          <div className="flex flex-col">
-                            <span className="text-xs font-bold text-white">{p.name}</span>
-                            <span className="text-[10px] text-gray-400 break-all">{p.folderPath}</span>
-                            <span className="text-[9px] text-amber-500 mt-0.5">
-                              {p.intervalMinutes === 0 ? 'Chạy 1 lần' : `Quét mỗi ${p.intervalMinutes} phút`} 
-                              {p.lastScanAt && ` - Lần cuối: ${new Date(p.lastScanAt).toLocaleTimeString()}`}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => handleEditScanProject(p)} className="p-1.5 bg-white/5 rounded-lg text-gray-400 hover:text-amber-400"><Edit className="h-3 w-3" /></button>
-                            <button type="button" onClick={() => handleDeleteScanProject(p.id)} className="p-1.5 bg-white/5 rounded-lg text-gray-400 hover:text-red-400"><Trash2 className="h-3 w-3" /></button>
+                        <div key={p.id} className={`bg-black/40 p-3 rounded-xl border ${p.isActive ? 'border-white/10' : 'border-red-500/20 opacity-75'} flex flex-col gap-2`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-white flex items-center gap-2">
+                                {p.name}
+                                {!p.isActive && <span className="text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-md">Đã Tạm Dừng</span>}
+                              </span>
+                              <span className="text-[10px] text-gray-400 break-all mt-0.5">{p.folderPath}</span>
+                              <span className="text-[9px] text-amber-500 mt-1 flex flex-col gap-0.5">
+                                <span>{p.intervalMinutes === 0 ? 'Chạy 1 lần' : `Quét mỗi ${p.intervalMinutes} phút`}</span>
+                                <span>Đã quét: <b className="text-white">{p.scannedCount || 0}</b> video {p.lastScanAt && `| Lần cuối: ${new Date(p.lastScanAt).toLocaleTimeString()}`}</span>
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-wrap justify-end max-w-[120px]">
+                              <button type="button" onClick={() => handleScanNow(p)} className="p-1.5 bg-amber-500/10 rounded-lg text-amber-400 hover:bg-amber-500/20" title="Quét ngay lập tức"><Zap className="h-3 w-3" /></button>
+                              <button type="button" onClick={() => handleToggleActive(p)} className={`p-1.5 rounded-lg ${p.isActive ? 'bg-white/5 text-gray-400 hover:text-white' : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'}`} title={p.isActive ? "Tạm dừng quét" : "Tiếp tục quét"}>
+                                {p.isActive ? <Pause className="h-3 w-3" /> : <PlayCircle className="h-3 w-3" />}
+                              </button>
+                              <button type="button" onClick={() => handleEditScanProject(p)} className="p-1.5 bg-white/5 rounded-lg text-gray-400 hover:text-amber-400" title="Sửa dự án"><Edit className="h-3 w-3" /></button>
+                              <button type="button" onClick={() => handleDeleteScanProject(p.id)} className="p-1.5 bg-white/5 rounded-lg text-gray-400 hover:text-red-400" title="Xóa dự án"><Trash2 className="h-3 w-3" /></button>
+                            </div>
                           </div>
                         </div>
                       ))}

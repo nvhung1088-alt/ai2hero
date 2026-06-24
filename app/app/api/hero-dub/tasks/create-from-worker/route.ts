@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyDubWorkerToken, createDubTaskAction } from '@/lib/db/hero-dub-actions';
+import { updateDubScanConfigStatsAction } from '@/lib/db/hero-dub-scan-actions';
 import * as path from 'path';
 
 function extractBearerToken(request: Request): string | null {
@@ -56,10 +57,14 @@ export async function POST(request: Request) {
       }
     }
 
+    if (config.id) {
+      await updateDubScanConfigStatsAction(config.id, successCount);
+    }
+
     return NextResponse.json({ 
       success: true, 
       count: successCount,
-      message: `Đã nạp ${successCount} video mới thành công.` 
+      message: `Đã nộp ${successCount} video mới thành công.` 
     });
   } catch (error: any) {
     console.error('[API Create Task from Worker] Error:', error);
