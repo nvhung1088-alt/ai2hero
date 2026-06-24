@@ -261,9 +261,11 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
           ttsSpeed: c.ttsSpeed,
           bgVolume: c.bgVolume,
           ttsVolume: c.ttsVolume,
-          aiAppSlug: c.aiAppSlug,
-          aiModel: c.aiModel,
+          aiAppSlug: c.aiAppSlug || '',
+          aiModel: c.aiModel || '',
           lastScanAt: c.lastScanAt ? new Date(c.lastScanAt).getTime() : undefined,
+          isActive: c.isActive !== undefined ? c.isActive : true,
+          scannedCount: c.scannedCount || 0
         }));
         setScanProjects(mappedConfigs);
       }
