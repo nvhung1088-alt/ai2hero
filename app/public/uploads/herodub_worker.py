@@ -842,6 +842,8 @@ import threading
 
 SCAN_CACHE_FILE = 'scan_cache.json'
 VIDEO_EXTENSIONS = {'.mp4', '.mov', '.avi', '.mkv', '.webm'}
+GLOBAL_TOKEN = None
+scan_cache_lock = threading.Lock()
 
 def load_scan_cache():
     if os.path.exists(SCAN_CACHE_FILE):
@@ -856,6 +858,41 @@ def save_scan_cache(cache):
     with open(SCAN_CACHE_FILE, 'w') as f:
         json.dump(cache, f)
 
+def scan_single_config(config, token):
+    if not config.get('isActive', True):
+        return
+    headers = {'Authorization': f'Bearer {token}'}
+    folder_path = config.get('folderPath')
+    if not folder_path or not os.path.isdir(folder_path):
+        return
+    with scan_cache_lock:
+        scan_cache = load_scan_cache()
+    new_files = []
+    for file in os.listdir(folder_path):
+        ext = os.path.splitext(file)[1].lower()
+        if ext in VIDEO_EXTENSIONS:
+            full_path = os.path.join(folder_path, file)
+            if full_path not in scan_cache:
+                new_files.append(full_path)
+    if new_files:
+        payload = {
+            'videoPaths': new_files,
+            'config': config
+        }
+        try:
+            post_res = requests.post(f'{API_BASE_URL}/tasks/create-from-worker', json=payload, headers=headers)
+            if post_res.status_code == 200:
+                post_data = post_res.json()
+                if post_data.get('success'):
+                    with scan_cache_lock:
+                        scan_cache = load_scan_cache()
+                        for nf in new_files:
+                            scan_cache[nf] = True
+                        save_scan_cache(scan_cache)
+                    print(Fore.CYAN + f"\n[Auto-Scan] Phat hien {len(new_files)} video moi o {folder_path} - Da nop len server.")
+        except Exception as e:
+            pass
+
 def poll_scan_folders_thread(token):
     headers = {'Authorization': f'Bearer {token}'}
     while True:
@@ -865,38 +902,8 @@ def poll_scan_folders_thread(token):
                 data = res.json()
                 if data.get('success') and data.get('configs'):
                     configs = data.get('configs')
-                    scan_cache = load_scan_cache()
-                    needs_save = False
-
                     for config in configs:
-                        folder_path = config.get('folderPath')
-                        if not folder_path or not os.path.isdir(folder_path):
-                            continue
-                        
-                        new_files = []
-                        for file in os.listdir(folder_path):
-                            ext = os.path.splitext(file)[1].lower()
-                            if ext in VIDEO_EXTENSIONS:
-                                full_path = os.path.join(folder_path, file)
-                                if full_path not in scan_cache:
-                                    new_files.append(full_path)
-                        
-                        if new_files:
-                            payload = {
-                                'videoPaths': new_files,
-                                'config': config
-                            }
-                            post_res = requests.post(f'{API_BASE_URL}/tasks/create-from-worker', json=payload, headers=headers)
-                            if post_res.status_code == 200:
-                                post_data = post_res.json()
-                                if post_data.get('success'):
-                                    for nf in new_files:
-                                        scan_cache[nf] = True
-                                    needs_save = True
-                                    print(Fore.CYAN + f"\n[Auto-Scan] Phat hien {len(new_files)} video moi o {folder_path} - Da nop len server.")
-
-                    if needs_save:
-                        save_scan_cache(scan_cache)
+                        scan_single_config(config, token)
 
         except Exception as e:
             pass # Ignore errors in background thread
@@ -986,6 +993,26 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 import json
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
+            return
+            
+        elif parsed.path == '/scan':
+            try:
+                content_length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_length)
+                import json
+                data = json.loads(body)
+                if GLOBAL_TOKEN:
+                    scan_single_config(data, GLOBAL_TOKEN)
+                self.send_response(200)
+                self.send_cors_headers()
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(b'{"status": "ok"}')
+            except Exception as e:
+                self.send_response(500)
+                self.send_cors_headers()
+                self.end_headers()
+                self.wfile.write(b'{"error": "internal error"}')
             return
 
     def do_GET(self):
@@ -1098,6 +1125,7 @@ if __name__ == "__main__":
             token = pair_device()
             
         if token:
+            GLOBAL_TOKEN = token
             if not scan_thread_started:
                 # Khoi dong luong quet thu muc
                 t = threading.Thread(target=poll_scan_folders_thread, args=(token,), daemon=True)
