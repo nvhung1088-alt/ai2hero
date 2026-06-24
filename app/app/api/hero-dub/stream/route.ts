@@ -28,6 +28,13 @@ export async function GET(request: Request) {
       const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
       const chunksize = (end - start) + 1;
       const file = fs.createReadStream(absolutePath, { start, end });
+      const webStream = new ReadableStream({
+        start(controller) {
+          file.on('data', (chunk) => controller.enqueue(chunk));
+          file.on('end', () => controller.close());
+          file.on('error', (err) => controller.error(err));
+        }
+      });
       const head: Record<string, string> = {
         'Content-Range': `bytes ${start}-${end}/${fileSize}`,
         'Accept-Ranges': 'bytes',
@@ -37,7 +44,7 @@ export async function GET(request: Request) {
       if (absolutePath.endsWith('.srt')) {
         head['Content-Disposition'] = `attachment; filename="${encodeURIComponent(path.basename(absolutePath))}"`;
       }
-      return new NextResponse(file as any, { status: 206, headers: head });
+      return new NextResponse(webStream, { status: 206, headers: head });
     } else {
       const head: Record<string, string> = {
         'Content-Length': fileSize.toString(),
@@ -47,7 +54,14 @@ export async function GET(request: Request) {
         head['Content-Disposition'] = `attachment; filename="${encodeURIComponent(path.basename(absolutePath))}"`;
       }
       const file = fs.createReadStream(absolutePath);
-      return new NextResponse(file as any, { status: 200, headers: head });
+      const webStream = new ReadableStream({
+        start(controller) {
+          file.on('data', (chunk) => controller.enqueue(chunk));
+          file.on('end', () => controller.close());
+          file.on('error', (err) => controller.error(err));
+        }
+      });
+      return new NextResponse(webStream, { status: 200, headers: head });
     }
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

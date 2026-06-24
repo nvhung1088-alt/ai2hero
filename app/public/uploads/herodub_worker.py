@@ -904,8 +904,122 @@ def poll_tasks(token):
             print(Fore.RED + f"Loi vong lap poll: {str(e)}")
             time.sleep(5)
 
+import urllib.parse
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import mimetypes
+
+class LocalWorkerHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Range')
+        self.end_headers()
+
+    def do_GET(self):
+        parsed = urllib.parse.urlparse(self.path)
+        qs = urllib.parse.parse_qs(parsed.query)
+        
+        if parsed.path == '/ping':
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"status": "ok"}')
+            return
+            
+        if parsed.path == '/open':
+            path_arg = qs.get('path', [''])[0]
+            if path_arg and os.path.exists(path_arg):
+                import subprocess
+                if sys.platform == 'win32':
+                    win_path = path_arg.replace('/', '\\\\')
+                    subprocess.Popen(['explorer.exe', '/select,', win_path], shell=True)
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(b'ok')
+            return
+            
+        if parsed.path == '/stream' or parsed.path == '/srt':
+            path_arg = qs.get('path', [''])[0]
+            if not path_arg or not os.path.exists(path_arg):
+                self.send_response(404)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(b'Not found')
+                return
+                
+            file_size = os.path.getsize(path_arg)
+            range_header = self.headers.get('Range')
+            
+            content_type = 'video/mp4'
+            if path_arg.endswith('.srt'):
+                content_type = 'text/plain'
+                
+            if range_header:
+                try:
+                    parts = range_header.replace("bytes=", "").split("-")
+                    start = int(parts[0])
+                    end = int(parts[1]) if parts[1] else file_size - 1
+                    
+                    self.send_response(206)
+                    self.send_header('Content-Type', content_type)
+                    self.send_header('Accept-Ranges', 'bytes')
+                    self.send_header('Content-Range', f'bytes {start}-{end}/{file_size}')
+                    self.send_header('Content-Length', str((end - start) + 1))
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    
+                    with open(path_arg, 'rb') as f:
+                        f.seek(start)
+                        chunk_size = 8192
+                        bytes_to_read = (end - start) + 1
+                        while bytes_to_read > 0:
+                            read_size = min(chunk_size, bytes_to_read)
+                            chunk = f.read(read_size)
+                            if not chunk:
+                                break
+                            self.wfile.write(chunk)
+                            bytes_to_read -= len(chunk)
+                except Exception as e:
+                    pass
+            else:
+                self.send_response(200)
+                self.send_header('Content-Type', content_type)
+                if parsed.path == '/srt':
+                    filename = os.path.basename(path_arg)
+                    self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+                self.send_header('Content-Length', str(file_size))
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                
+                with open(path_arg, 'rb') as f:
+                    try:
+                        import shutil
+                        shutil.copyfileobj(f, self.wfile)
+                    except Exception:
+                        pass
+            return
+            
+        self.send_response(404)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+
+def start_local_server():
+    try:
+        server = HTTPServer(('127.0.0.1', 3001), LocalWorkerHandler)
+        server.serve_forever()
+    except Exception as e:
+        print(Fore.RED + f"Khong the khoi dong Local Server: {str(e)}")
+
+
 if __name__ == "__main__":
     scan_thread_started = False
+    server_thread_started = False
     
     while True:
         config = load_config()
@@ -920,6 +1034,12 @@ if __name__ == "__main__":
                 t = threading.Thread(target=poll_scan_folders_thread, args=(token,), daemon=True)
                 t.start()
                 scan_thread_started = True
+                
+            if not server_thread_started:
+                # Khoi dong Local Server
+                t_server = threading.Thread(target=start_local_server, daemon=True)
+                t_server.start()
+                server_thread_started = True
                 
             # Neu token bi loi (401), poll_tasks tra ve False, vong lap se chay lai va hoi ma lien ket
             success = poll_tasks(token)

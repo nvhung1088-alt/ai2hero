@@ -258,26 +258,20 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
 
   const handleOpenLocal = async (path: string, isFolder: boolean = false) => {
     try {
-      // Tự động sao chép đường dẫn vào clipboard để user có thể tự mở
+      const res = await fetch(`http://127.0.0.1:3001/open?path=${encodeURIComponent(path)}`, {
+        method: 'GET'
+      });
+      if (!res.ok) {
+        throw new Error('Worker Local Server is not running. Vui lng b-t HeroDub Worker ln ? dng tnh nng ny!');
+      }
+    } catch (err: any) {
+      console.error('Failed to open local path', err);
       try {
         await navigator.clipboard.writeText(path);
         showToast('Đã copy đường dẫn. Bạn có thể tự dán vào thư mục (Explorer) để mở!', 'success');
-      } catch (err) {
-        showToast(`Đang mở: ${path}`, 'success');
-      }
-      
-      const res = await fetch('/api/hero-dub/open-local', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path, isFolder }),
-      });
-      const data = await res.json();
-      if (!data.success) {
+      } catch (e) {
         showToast(`Không thể tự động mở, vui lòng dùng đường dẫn đã copy.`, 'warning');
       }
-    } catch (e: any) {
-      console.error('Failed to open local path', e);
-      showToast(`Không thể tự động mở, vui lòng dùng đường dẫn đã copy.`, 'warning');
     }
   };
 
@@ -336,7 +330,13 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
         const paths = localFilePaths.split('\n').filter(p => p.trim() !== '');
         let successCount = 0;
         for (let i = 0; i < paths.length; i++) {
-          const pathStr = paths[i].trim();
+          let pathStr = paths[i].trim();
+          
+          // Remove surrounding quotes (useful for Windows "Copy as path")
+          if ((pathStr.startsWith('"') && pathStr.endsWith('"')) || (pathStr.startsWith("'") && pathStr.endsWith("'"))) {
+            pathStr = pathStr.slice(1, -1).trim();
+          }
+
           const fileName = pathStr.split('\\').pop()?.split('/').pop() || 'Video';
           setUploadProgressMsg(`Đang xử lý ${i + 1}/${paths.length}: ${fileName}`);
           
@@ -1328,7 +1328,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                               )}
                               {task.resultSrtUrl && (
                                 <a
-                                  href={task.resultSrtUrl?.startsWith("http") ? task.resultSrtUrl : `/api/hero-dub/stream?path=${encodeURIComponent(task.resultSrtUrl || '')}`}
+                                  href={task.resultSrtUrl?.startsWith("http") ? task.resultSrtUrl : `http://127.0.0.1:3001/srt?path=${encodeURIComponent(task.resultSrtUrl || '')}`}
                                   download
                                   target="_blank"
                                   rel="noreferrer"
@@ -1448,7 +1448,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
             {/* Video Content */}
             <div className="aspect-video w-full bg-[#0b0c10] relative flex items-center justify-center border-y border-white/5">
               <video
-                src={previewVideoUrl.startsWith("http") ? previewVideoUrl : `/api/hero-dub/stream?path=${encodeURIComponent(previewVideoUrl)}`}
+                src={previewVideoUrl.startsWith("http") ? previewVideoUrl : `http://127.0.0.1:3001/stream?path=${encodeURIComponent(previewVideoUrl)}`}
                 controls
                 autoPlay
                 className="w-full h-full object-contain"
@@ -1459,7 +1459,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
             <div className="flex justify-end items-center gap-3 px-4 py-3 bg-black/40 border-t border-white/5">
               {previewSrtUrl && (
                 <a
-                  href={previewSrtUrl.startsWith("http") ? previewSrtUrl : `/api/hero-dub/stream?path=${encodeURIComponent(previewSrtUrl)}`}
+                  href={previewSrtUrl.startsWith("http") ? previewSrtUrl : `http://127.0.0.1:3001/srt?path=${encodeURIComponent(previewSrtUrl)}`}
                   download="result.srt"
                   target="_blank"
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-bold text-white transition-colors flex items-center gap-2 cursor-pointer"
