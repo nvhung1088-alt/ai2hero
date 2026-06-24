@@ -1316,9 +1316,19 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                               <RefreshCw className="h-3.5 w-3.5" />
                             </button>
                           )}
-
-
-
+                          {task.outputFolder || task.sourcePlatform === 'local' || task.sourceUrl.includes(':\\') || task.sourceUrl.startsWith('/') ? (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault(); e.stopPropagation();
+                                const folderPath = task.outputFolder || task.sourceUrl.substring(0, Math.max(task.sourceUrl.lastIndexOf('\\'), task.sourceUrl.lastIndexOf('/')));
+                                handleOpenLocal(folderPath, true);
+                              }}
+                              className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-500/80 hover:text-amber-400 rounded-lg cursor-pointer transition-all"
+                              title="Mở thư mục chứa file"
+                            >
+                              <Folder className="h-3.5 w-3.5" />
+                            </button>
+                          ) : null}
                           <button
                             onClick={() => handleDeleteTask(task.id)}
                             className="p-1.5 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 hover:border-red-500/25 text-red-500/80 hover:text-red-400 rounded-lg cursor-pointer transition-all"

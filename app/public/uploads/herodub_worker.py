@@ -912,9 +912,13 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
+    def send_cors_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Private-Network', 'true')
+
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_cors_headers()
         self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Range')
         self.end_headers()
@@ -925,7 +929,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
         
         if parsed.path == '/ping':
             self.send_response(200)
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_cors_headers()
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(b'{"status": "ok"}')
@@ -939,7 +943,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
                     win_path = path_arg.replace('/', '\\\\')
                     subprocess.Popen(['explorer.exe', '/select,', win_path], shell=True)
             self.send_response(200)
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_cors_headers()
             self.end_headers()
             self.wfile.write(b'ok')
             return
@@ -948,7 +952,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
             path_arg = qs.get('path', [''])[0]
             if not path_arg or not os.path.exists(path_arg):
                 self.send_response(404)
-                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_cors_headers()
                 self.end_headers()
                 self.wfile.write(b'Not found')
                 return
@@ -971,7 +975,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
                     self.send_header('Accept-Ranges', 'bytes')
                     self.send_header('Content-Range', f'bytes {start}-{end}/{file_size}')
                     self.send_header('Content-Length', str((end - start) + 1))
-                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_cors_headers()
                     self.end_headers()
                     
                     with open(path_arg, 'rb') as f:
@@ -994,7 +998,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
                     filename = os.path.basename(path_arg)
                     self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
                 self.send_header('Content-Length', str(file_size))
-                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_cors_headers()
                 self.end_headers()
                 
                 with open(path_arg, 'rb') as f:
@@ -1006,7 +1010,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
             return
             
         self.send_response(404)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_cors_headers()
         self.end_headers()
 
 def start_local_server():
