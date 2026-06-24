@@ -289,6 +289,10 @@ def process_task(token, task):
         source_url = source_url[1:-1]
         
     source_lang = task.get("sourceLang", "zh")
+    branding_enabled = task.get("brandingEnabled", False)
+    logo_url = task.get("logoUrl", "")
+    intro_url = task.get("introVideoUrl", "")
+    outro_url = task.get("outroVideoUrl", "")
     print(Fore.MAGENTA + Style.BRIGHT + f"\n>>> BAT DAU XU LY TASK #{task_id}")
     print(Fore.MAGENTA + f"    Duong dan File (Local): {source_url}")
 
