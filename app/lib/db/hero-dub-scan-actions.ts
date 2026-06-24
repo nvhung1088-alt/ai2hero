@@ -38,7 +38,8 @@ export async function saveDubScanConfigAction(data: {
   isActive?: boolean;
 }) {
   try {
-    if (typeof data.id === 'number') {
+    const configId = data.id ? Number(data.id) : undefined;
+    if (configId && !isNaN(configId)) {
       await db.update(dubScanConfigs)
         .set({
           name: data.name,
@@ -58,7 +59,7 @@ export async function saveDubScanConfigAction(data: {
           aiModel: data.aiModel,
           isActive: data.isActive !== undefined ? data.isActive : true,
         })
-        .where(eq(dubScanConfigs.id, data.id));
+        .where(eq(dubScanConfigs.id, configId));
     } else {
       await db.insert(dubScanConfigs).values({
         teamId: data.teamId,
