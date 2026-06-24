@@ -341,8 +341,8 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
           setUploadProgressMsg(`Đang xử lý ${i + 1}/${paths.length}: ${fileName}`);
           
           const res = await createDubTaskAction({
-            teamId: parseInt(teamId),
-            userId: parseInt(userId),
+            teamId,
+            userId,
             sourceUrl: pathStr,
             taskTitle: taskTitle.trim() ? `${taskTitle.trim()} - ${fileName}` : fileName,
             sourceThumbnailUrl: undefined,
