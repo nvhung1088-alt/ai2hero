@@ -24,6 +24,7 @@ import {
   Download,
   RefreshCw,
   Trash2,
+  RotateCcw,
   ExternalLink,
   AlertTriangle,
   CheckCircle,
@@ -1549,6 +1550,13 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                               <Folder className="h-3.5 w-3.5" />
                             </button>
                           ) : null}
+                          <button
+                            onClick={() => handleRetryTask(task.id)}
+                            className="p-1.5 bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/10 hover:border-blue-500/25 text-blue-500/80 hover:text-blue-400 rounded-lg cursor-pointer transition-all"
+                            title="Chạy lại tác vụ"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </button>
                           <button
                             onClick={() => handleDeleteTask(task.id)}
                             className="p-1.5 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 hover:border-red-500/25 text-red-500/80 hover:text-red-400 rounded-lg cursor-pointer transition-all"
