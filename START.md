@@ -125,6 +125,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - **2026-06-25 (hero-dub - Security Hardening & Dedupe Fix)**:
   - 🚀 **Vá lỗ hổng IDOR**: Thêm kiểm tra quyền sở hữu `taskId` với `teamId` của token worker trước khi sinh R2 presigned URL trong `getPresignedUploadUrlAction`. Ngăn chặn nguy cơ cross-team file overwrite.
   - 🚀 **Sửa bug Dedupe Key**: Bổ sung bộ lọc status active (`pending`, `assigned`, v.v.) vào logic check trùng lặp URL. Giờ đây người dùng có thể tạo lại tác vụ dịch với cùng URL nguồn một cách dễ dàng sau khi tác vụ cũ đã hoàn thành hoặc thất bại.
+  - 🚀 **Fix Bug Scoping Python Worker**: Khắc phục triệt để lỗi scoping Python worker (`cannot access local variable 'time'`) do khai báo `import time` cục bộ trong các block rẽ nhánh của hàm `process_task`. Đã cập nhật cho cả worker chạy local hiện tại và file template `/uploads/herodub_worker.py` trên server.
   - 🚀 **Verification**: Đã chạy compile check bằng `npx tsc --noEmit` thành công 100%.
 
 - **2026-06-25 (hero-dub - Activity History & Realtime Logs)**:

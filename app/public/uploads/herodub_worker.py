@@ -380,7 +380,6 @@ def process_task(token, task):
             from faster_whisper import WhisperModel
             model = WhisperModel("small", device="auto", compute_type="default")
             
-            import time
             asr_start_time = time.time()
             
             segments, info = model.transcribe(audio_path, beam_size=5, vad_filter=True)
@@ -483,7 +482,6 @@ def process_task(token, task):
                         print(Fore.RED + f"  [Loi HTTP] {res.status_code}")
                         print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
                         from googletrans import Translator
-                        import time
                         translator = Translator()
                         for seg in batch_segs:
                             translated = ""
@@ -501,7 +499,6 @@ def process_task(token, task):
                     print(Fore.RED + f"  [Loi Mang] {str(api_err)}")
                     print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
                     from googletrans import Translator
-                    import time
                     translator = Translator()
                     for seg in batch_segs:
                         translated = ""
@@ -518,7 +515,6 @@ def process_task(token, task):
         else:
             print(Fore.CYAN + "  -> Su dung Google Translate (Mien phi)")
             from googletrans import Translator
-            import time
             translator = Translator()
             
             for seg in extracted_segments:
@@ -846,7 +842,6 @@ def process_task(token, task):
     output_folder = task.get("outputFolder")
     if output_folder and os.path.isdir(output_folder):
         try:
-            import time
             timestamp = int(time.time())
             base_name = f"dubbed_{task_id}_{timestamp}"
             
