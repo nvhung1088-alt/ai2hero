@@ -920,7 +920,9 @@ def scan_single_config(config, token):
         ext = os.path.splitext(file)[1].lower()
         if ext in VIDEO_EXTENSIONS:
             full_path = os.path.join(folder_path, file)
-            if full_path not in scan_cache:
+            file_stat = os.stat(full_path)
+              cache_key = f'{file_stat.st_size}_{file_stat.st_mtime}'
+              if scan_cache.get(full_path) != cache_key:
                 # Kiem tra xem file co dang duoc tai ve hay dang bi khoa boi tien trinh khac khong
                 is_locked = False
                 try:
@@ -946,7 +948,8 @@ def scan_single_config(config, token):
                         with scan_cache_lock:
                             scan_cache = load_scan_cache()
                             for nf in new_files:
-                                scan_cache[nf] = True
+                                fs = os.stat(nf)
+                                scan_cache[nf] = f'{fs.st_size}_{fs.st_mtime}'
                             save_scan_cache(scan_cache)
                         print(Fore.CYAN + f"\n[Auto-Scan] Phat hien {len(new_files)} video moi o {folder_path} - Da nop len server.")
                     else:
