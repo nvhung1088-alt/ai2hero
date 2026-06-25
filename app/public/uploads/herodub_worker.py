@@ -888,7 +888,7 @@ def scan_single_config(config, token):
     if not config.get('isActive', True):
         return
         
-    interval_minutes = config.get('intervalMinutes', 0)
+    interval_minutes = int(config.get('intervalMinutes', config.get('interval_minutes', 0)))
     config_id = config.get('id')
     
     # Kiem tra thoi gian quet cuc bo (tranh loi timezone tu server)
@@ -920,7 +920,17 @@ def scan_single_config(config, token):
         if ext in VIDEO_EXTENSIONS:
             full_path = os.path.join(folder_path, file)
             if full_path not in scan_cache:
-                new_files.append(full_path)
+                # Kiem tra xem file co dang duoc tai ve hay dang bi khoa boi tien trinh khac khong
+                is_locked = False
+                try:
+                    os.rename(full_path, full_path)
+                except OSError:
+                    is_locked = True
+                    
+                if is_locked:
+                    print(Fore.YELLOW + f"  [!] File {file} dang bi khoa (dang tai xuong hoac dang mo). Bo qua.")
+                else:
+                    new_files.append(full_path)
     if True: # Always send payload so server updates lastScanAt
         payload = {
             'videoPaths': new_files,
