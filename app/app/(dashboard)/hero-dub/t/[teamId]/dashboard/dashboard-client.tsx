@@ -207,8 +207,25 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   const [pairingCopied, setPairingCopied] = useState(false);
 
   // Guide State
-  const [showGuide, setShowGuide] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
   const [guideCopied, setGuideCopied] = useState(false);
+
+  useEffect(() => {
+    const hideGuide = localStorage.getItem('hideHerodubGuide');
+    if (hideGuide === 'true') {
+      setShowGuide(false);
+    }
+  }, []);
+
+  const handleToggleGuide = () => {
+    const newVal = !showGuide;
+    setShowGuide(newVal);
+    if (!newVal) {
+      localStorage.setItem('hideHerodubGuide', 'true');
+    } else {
+      localStorage.removeItem('hideHerodubGuide');
+    }
+  };
   const [guideOs, setGuideOs] = useState<'windows' | 'macos'>('windows');
 
   const winCmd = 'curl -o herodub-setup.bat https://www.ai2hero.com/uploads/herodub-setup.bat & herodub-setup.bat';
@@ -690,16 +707,14 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-orange-500 tracking-tight">
-              HeroDub Subtitle Translation
+              HeroDub Studio
             </h1>
             <span className="bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase">
               Phase 1 MVP
             </span>
           </div>
           <p className="text-xs text-gray-400 font-medium mt-1">
-            Tự động tải, nhận dạng ASR, dịch thuật và burn phụ đề phim Trung Quốc sang Tiếng Việt.
-            <br />
-            <a href="file:///C:/Users/ADMIN/OneDrive/Desktop/videotest/%E4%B8%80%E5%8F%A3%E6%B0%9430%E5%88%86%E9%92%9F%E5%B8%A6%E4%BD%A0%E7%9C%8B%E5%AE%8C%E6%9C%80%E6%96%B0%E7%88%86%E7%81%AB%E9%9F%A9%E5%89%A7 %23%E9%9D%92%E5%B9%B4%E5%88%9B%E4%BD%9C%E8%80%85%E6%88%90%E9%95%BF%E8%AE%A1%E5%88%92 %23%E5%BD%B1%E8%A7%86%E8%A7%A3%E8%AF%B4 %23%E6%8A%96%E9%9F%B3%E7%B2%BE%E9%80%89 %23%E4%B8%80%E5%8F%A3%E6%B0%94%E7%9C%8B%E5%AE%8C%E7%B3%BB%E5%88%97.mp4" target="_blank" className="text-amber-500 underline font-bold mt-2 inline-block">🔗 Nhấp vào đây để Test mở Link Video Local (Trình duyệt sẽ chặn)</a>
+            Hệ thống tự động hóa ASR, dịch thuật (Trung/Anh -&gt; Việt) và lồng tiếng/burn phụ đề hàng loạt theo lịch.
           </p>
         </div>
 
@@ -741,7 +756,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
           )}
           
           <button
-            onClick={() => setShowGuide(!showGuide)}
+            onClick={handleToggleGuide}
             className={`px-3 py-2 border rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
               showGuide 
                 ? 'bg-white/10 border-white/20 text-white shadow-inner' 
@@ -755,12 +770,12 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
 
       {showGuide && (
         <div className="bg-gray-900/60 border border-amber-500/30 p-5 rounded-2xl shadow-sm mb-6 animate-fade-in relative backdrop-blur-sm">
-          <button onClick={() => setShowGuide(false)} className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg cursor-pointer transition-colors">
+          <button onClick={handleToggleGuide} className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg cursor-pointer transition-colors">
             <X className="h-4 w-4" />
           </button>
           
-          <div className="flex flex-wrap items-center gap-4 mb-5">
-            <h2 className="text-lg font-black text-white">Hướng Dẫn Cài Đặt</h2>
+          <div className="flex flex-wrap items-center gap-4 mb-3">
+            <h2 className="text-lg font-black text-white">Quy Trình & Lợi Ích Của Local Worker</h2>
             <div className="bg-black/50 border border-white/5 p-1 rounded-lg flex gap-1">
               <button
                 onClick={() => setGuideOs('windows')}
@@ -779,6 +794,10 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                 <Terminal className="h-3.5 w-3.5" /> Mac / Linux
               </button>
             </div>
+          </div>
+          
+          <div className="text-xs text-gray-300 mb-6 bg-black/30 p-3 rounded-xl border border-white/5 leading-relaxed">
+            <span className="text-amber-500 font-bold">💡 Tại sao cần Local Worker?</span> Bằng cách chạy phần mềm trên máy tính cá nhân của bạn, Worker tận dụng tài nguyên (CPU/GPU) có sẵn để xử lý nhận dạng âm thanh (ASR) và Render Video tốc độ cao hoàn toàn miễn phí. Hơn nữa, nó giúp tự động hóa việc quét thư mục, xử lý hàng loạt hàng trăm video cùng lúc mà không cần treo trình duyệt.
           </div>
           
           <div className="flex items-start gap-4">
