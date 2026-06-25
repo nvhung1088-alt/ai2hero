@@ -860,24 +860,29 @@ def save_scan_cache(cache):
     with open(SCAN_CACHE_FILE, 'w') as f:
         json.dump(cache, f)
 
+LAST_SCANNED_DICT = {}
+
 def scan_single_config(config, token):
     if not config.get('isActive', True):
         return
         
     interval_minutes = config.get('intervalMinutes', 0)
-    last_scan_str = config.get('lastScanAt')
+    config_id = config.get('id')
     
-    if interval_minutes > 0 and last_scan_str:
-        try:
-            last_scan_str_iso = last_scan_str.replace('Z', '+00:00')
-            last_scan_time = datetime.fromisoformat(last_scan_str_iso)
-            now = datetime.now(timezone.utc)
-            delta = now - last_scan_time
+    # Kiem tra thoi gian quet cuc bo (tranh loi timezone tu server)
+    if interval_minutes > 0 and config_id:
+        last_local_scan = LAST_SCANNED_DICT.get(config_id)
+        if last_local_scan:
+            now = datetime.now()
+            delta = now - last_local_scan
             if delta.total_seconds() < interval_minutes * 60:
                 return # Chua den gio quet
-        except Exception as e:
-            pass
-            
+                
+    # Ghi nhan thoi gian quet cuc bo hien tai
+    if config_id:
+        LAST_SCANNED_DICT[config_id] = datetime.now()
+        
+    last_scan_str = config.get('lastScanAt')
     if interval_minutes == 0 and last_scan_str:
         return # Chay 1 lan va da chay roi
         
