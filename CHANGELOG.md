@@ -1,5 +1,12 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-25 — Nâng cấp Lịch sử & Logs chi tiết cho HeroDub
+- **Database Schema**: Thêm cột `logs` kiểu `jsonb` vào bảng `dubTasks` và chạy migration `pnpm db:push` đồng bộ cấu trúc database local và production (Supabase).
+- **Realtime logging**: Định nghĩa helper `appendTaskLog` trong server actions, tích hợp ghi logs chi tiết theo mốc thời gian thực khi tạo task, worker nhận việc, chạy từng công đoạn (download, whisper, translate, tts, burn, upload) và khi hoàn thành hoặc lỗi.
+- **UI Timeline Inline**: Cập nhật trang Lịch sử hoạt động `/hero-dub/t/[teamId]/history` hiển thị trực tiếp danh sách timeline logs inline ngay dưới video của mỗi dòng tác vụ.
+- **Smart Fallback Logs**: Tích hợp helper `getTaskLogs` tự động giả lập timeline logs cho các tác vụ cũ dựa trên mốc thời gian chênh lệch (`createdAt`, `startedAt`, `completedAt`) giúp người dùng nhìn thấy timeline ngay lập tức trên UI.
+- **TypeScript Verification**: Biên dịch TypeScript tĩnh (`tsc --noEmit`) thành công 100% không lỗi.
+
 ## 2026-06-16 — Hoàn thành Multi-Agent System & SSE Streaming (HeroVideoMaker Phase B)
 - **Hệ thống Multi-Agent**: Xây dựng thành công bộ khung `agent-types.ts` và 3 Execution Agents (`ScriptAgent`, `AssetAgent`, `StoryboardAgent`) với khả năng tự động phân tích và trích xuất JSON/Markdown chính xác từ văn bản thuần.
 - **Orchestration & Supervision**: Triển khai `agent-orchestrator.ts` và `agent-supervisor.ts` nhằm điều phối luồng xử lý Agent (Intent -> Execution -> Verify -> Retry), đảm bảo đầu ra luôn đạt chuẩn kỹ thuật, nhất quán nhân vật và tuân thủ Guardrails an toàn.
