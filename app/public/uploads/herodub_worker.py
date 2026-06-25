@@ -300,7 +300,17 @@ def process_task(token, task):
 
     headers = {"Authorization": f"Bearer {token}"}
     
-    workspace = f"workspace/task_{task_id}"
+    if source_url.startswith("http"):
+        workspace = f"workspace/task_{task_id}"
+    else:
+        import hashlib
+        try:
+            file_stat = os.stat(source_url)
+            unique_str = f"{source_url}_{file_stat.st_size}_{file_stat.st_mtime}"
+        except OSError:
+            unique_str = f"{source_url}_{task_id}"
+        path_hash = hashlib.md5(unique_str.encode("utf-8")).hexdigest()
+        workspace = f"workspace/video_{path_hash}"
     os.makedirs(workspace, exist_ok=True)
     
     # Copy/Download video vao workspace de tien xu ly
