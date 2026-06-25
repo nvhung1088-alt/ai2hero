@@ -53,17 +53,15 @@ export default function HistoryClient({ teamId }: HistoryClientProps) {
 
   useEffect(() => {
     fetchTasks();
+    
     // Auto refresh every 10 seconds for the first page
-    const interval = setInterval(() => {
-      setOffset(prevOffset => {
-        if (prevOffset === 0) {
-          fetchTasks(false);
-        }
-        return prevOffset;
-      });
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [fetchTasks]);
+    if (offset === 0) {
+      const interval = setInterval(() => {
+        fetchTasks(false);
+      }, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [fetchTasks, offset]);
 
   const handleRetryTask = async (taskId: number) => {
     try {
