@@ -863,6 +863,24 @@ def save_scan_cache(cache):
 def scan_single_config(config, token):
     if not config.get('isActive', True):
         return
+        
+    interval_minutes = config.get('intervalMinutes', 0)
+    last_scan_str = config.get('lastScanAt')
+    
+    if interval_minutes > 0 and last_scan_str:
+        try:
+            last_scan_str_iso = last_scan_str.replace('Z', '+00:00')
+            last_scan_time = datetime.fromisoformat(last_scan_str_iso)
+            now = datetime.now(timezone.utc)
+            delta = now - last_scan_time
+            if delta.total_seconds() < interval_minutes * 60:
+                return # Chua den gio quet
+        except Exception as e:
+            pass
+            
+    if interval_minutes == 0 and last_scan_str:
+        return # Chay 1 lan va da chay roi
+        
     headers = {'Authorization': f'Bearer {token}'}
     folder_path = config.get('folderPath')
     if not folder_path or not os.path.isdir(folder_path):
