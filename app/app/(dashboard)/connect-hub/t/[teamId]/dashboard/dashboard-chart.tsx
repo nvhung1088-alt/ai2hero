@@ -118,7 +118,7 @@ export default function DashboardChart({ data }: { data: ChartDataPoint[] }) {
               <Tooltip 
                 contentStyle={{ backgroundColor: '#111827', borderColor: '#ffffff20', borderRadius: '12px', fontSize: '12px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(10px)' }}
                 itemStyle={{ color: '#fff', padding: '2px 0' }}
-                formatter={(value: any, name: string) => {
+                formatter={(value: any, name: any) => {
                   if (typeof value !== 'number') return [value, name];
                   if (name === 'cost') return [`$${value.toFixed(4)}`, 'Chi phí USD'];
                   if (name === 'requests') return [value, 'Số Request'];
