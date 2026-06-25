@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getDubTasksAction, retryDubTaskAction, deleteDubTaskAction } from '@/lib/db/hero-dub-actions';
 import { History, Search, Loader2, Video, CheckCircle2, XCircle, Clock, PlayCircle, Trash2, RotateCcw, ExternalLink, Filter } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 
 interface HistoryClientProps {
   teamId: number;
@@ -17,12 +17,6 @@ export default function HistoryClient({ teamId }: HistoryClientProps) {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const LIMIT = 50;
-
-  const showToast = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
-    if (type === 'success') toast.success(msg);
-    else if (type === 'error') toast.error(msg);
-    else toast(msg);
-  };
 
   const fetchTasks = useCallback(async (isLoadMore = false) => {
     if (!isLoadMore) setLoading(true);
