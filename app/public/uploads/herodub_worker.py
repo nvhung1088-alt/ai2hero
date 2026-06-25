@@ -6,6 +6,7 @@ import platform
 import socket
 import requests
 import subprocess
+from datetime import datetime
 from colorama import init, Fore, Style
 
 init(autoreset=True)
@@ -1069,10 +1070,12 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(b'{"status": "ok"}')
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 self.send_response(500)
                 self.send_cors_headers()
                 self.end_headers()
-                self.wfile.write(b'{"error": "internal error"}')
+                self.wfile.write(f'{{"error": "{str(e)}"}}\n'.encode())
             return
 
     def do_GET(self):
