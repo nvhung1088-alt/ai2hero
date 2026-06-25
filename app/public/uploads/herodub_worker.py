@@ -339,46 +339,57 @@ def process_task(token, task):
     print(Fore.CYAN + "[-] Dang nhan dang giong noi (Whisper AI) - Se mat vai phut tuy do dai video...")
     requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "transcribing", "progress": 30, "durationSec": int(duration_sec)}, headers=headers)
     
+    extracted_segments_file = os.path.join(workspace, "extracted_segments.json")
+    
     try:
-        audio_path = os.path.join(workspace, "audio.wav")
-        print(Fore.CYAN + "[-] Dang trich xuat am thanh (WAV 16kHz) tu Video de tranh loi ASR...")
-        import subprocess
-        result = subprocess.run([
-            "ffmpeg", "-y", "-i", local_input, 
-            "-vn", "-acodec", "pcm_s16le", 
-            "-ar", "16000", "-ac", "1", 
-            audio_path
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        import json
+        if os.path.exists(extracted_segments_file):
+            print(Fore.GREEN + "[-] Phat hien du lieu STT cu, bo qua STT va chay tiep...")
+            with open(extracted_segments_file, "r", encoding="utf-8") as f:
+                extracted_segments = json.load(f)
+        else:
+            audio_path = os.path.join(workspace, "audio.wav")
+            if not os.path.exists(audio_path):
+                print(Fore.CYAN + "[-] Dang trich xuat am thanh (WAV 16kHz) tu Video de tranh loi ASR...")
+                import subprocess
+                result = subprocess.run([
+                    "ffmpeg", "-y", "-i", local_input, 
+                    "-vn", "-acodec", "pcm_s16le", 
+                    "-ar", "16000", "-ac", "1", 
+                    audio_path
+                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        if result.returncode != 0:
-            err_str = result.stderr.decode('utf-8', errors='ignore').lower()
-            if "does not contain any stream" in err_str or "no streams to output" in err_str:
-                raise Exception("Video KHONG CO AM THANH! Xin kiem tra lai file goc (doi khi file tai tren web bi tach rieng hinh va tieng).")
-            else:
-                raise Exception(f"Loi FFMPEG khi trich xuat am thanh: {err_str[-150:]}")
+                if result.returncode != 0:
+                    err_str = result.stderr.decode('utf-8', errors='ignore').lower()
+                    if "does not contain any stream" in err_str or "no streams to output" in err_str:
+                        raise Exception("Video KHONG CO AM THANH! Xin kiem tra lai file goc.")
+                    else:
+                        raise Exception(f"Loi FFMPEG khi trich xuat am thanh: {err_str[-150:]}")
 
-
-        from faster_whisper import WhisperModel
-        model = WhisperModel("small", device="auto", compute_type="default")
-        
-        import time
-        asr_start_time = time.time()
-        
-        segments, info = model.transcribe(audio_path, beam_size=5, vad_filter=True)
-        
-        extracted_segments = []
-        for segment in segments:
-            extracted_segments.append({
-                "start": segment.start,
-                "end": segment.end,
-                "text": segment.text
-            })
-            print(Fore.WHITE + f"  [{format_timestamp(segment.start)} -> {format_timestamp(segment.end)}] {segment.text}")
+            from faster_whisper import WhisperModel
+            model = WhisperModel("small", device="auto", compute_type="default")
             
-        asr_end_time = time.time()
-        asr_duration = asr_end_time - asr_start_time
-        print(Fore.YELLOW + Style.BRIGHT + f"\n[!] THOI GIAN HOAN THANH NHAN DANG (STT): {asr_duration:.2f} giay.\n")
-
+            import time
+            asr_start_time = time.time()
+            
+            segments, info = model.transcribe(audio_path, beam_size=5, vad_filter=True)
+            
+            extracted_segments = []
+            for segment in segments:
+                extracted_segments.append({
+                    "start": segment.start,
+                    "end": segment.end,
+                    "text": segment.text
+                })
+                print(Fore.WHITE + f"  [{format_timestamp(segment.start)} -> {format_timestamp(segment.end)}] {segment.text}")
+                
+            with open(extracted_segments_file, "w", encoding="utf-8") as f:
+                json.dump(extracted_segments, f, ensure_ascii=False, indent=2)
+                
+            asr_end_time = time.time()
+            asr_duration = asr_end_time - asr_start_time
+            print(Fore.YELLOW + Style.BRIGHT + f"\n[!] THOI GIAN HOAN THANH NHAN DANG (STT): {asr_duration:.2f} giay.\n")
+            
     except Exception as e:
          print(Fore.RED + f"[-] Loi Nhan dang (ASR): {str(e)}")
          requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Loi Whisper ASR: {str(e)}"}, headers=headers)
@@ -388,9 +399,17 @@ def process_task(token, task):
     print(Fore.CYAN + "[-] Dang dich phu de sang Tieng Viet...")
     requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "translating", "progress": 60}, headers=headers)
     
+    translated_segments_file = os.path.join(workspace, "translated_segments.json")
+    
     translate_start_time = time.time()
     try:
-        translated_segments = []
+        import json
+        if os.path.exists(translated_segments_file):
+            print(Fore.GREEN + "[-] Phat hien du lieu Dich thuat cu, bo qua Dich thuat va chay tiep...")
+            with open(translated_segments_file, "r", encoding="utf-8") as f:
+                translated_segments = json.load(f)
+        else:
+            translated_segments = []
         
         if task.get("translateEngine") == "connect-hub":
             print(Fore.CYAN + "  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 50 cau/lan)")
@@ -510,6 +529,9 @@ def process_task(token, task):
                     "text": translated
                 })
                 print(Fore.WHITE + f"  [Google] {translated}")
+
+            with open(translated_segments_file, "w", encoding="utf-8") as f:
+                json.dump(translated_segments, f, ensure_ascii=False, indent=2)
 
         vi_srt_path = os.path.join(workspace, "vi.srt")
         with open(vi_srt_path, "w", encoding="utf-8") as f:
