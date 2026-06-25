@@ -113,13 +113,18 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tự động đồng bộ timing giọng đọc theo phụ đề SRT sử dụng cơ chế Concat Demuxer cải tiến (tránh lỗi giới hạn dòng lệnh Windows).
   - `[x]` Trộn nhạc nền tự động (Background Mix - Ducking 15%) giúp giữ âm thanh nguyên bản khi lồng tiếng AI.
   - `[x]` Cập nhật giao diện Dashboard, hỗ trợ toggle kích hoạt lồng tiếng, chọn engine và giọng đọc phù hợp.
+  - `[x]` Xây dựng trang Lịch sử hoạt động (Activity History) với tính năng phân trang, auto-refresh và quản lý tiến độ.
   - `[ ]` [Phase 5] Bổ sung công nghệ TTS cao cấp: Tích hợp ElevenLabs API (Cảm xúc điện ảnh) và XTTSv2/CosyVoice (Zero-shot Voice Cloning giữ giọng gốc).
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
-- [x] **Deploy Production**: Đã cập nhật `.gitignore`, dọn dẹp các tệp media test local, commit và push thành công toàn bộ code MVP lên GitHub (`main` branch) để kích hoạt Vercel auto-deploy.
-- [x] **Sửa lỗi Hàng đợi tác vụ HeroDub**: Đã fix thành công 3 nút chức năng thao tác với file trên máy tính (Mở video trực tiếp trên Web Player, Tải SRT qua Stream Proxy, và Mở thư mục bằng lệnh spawn detached trên Windows).
-- [x] **HeroDub TTS Upgrade (Giai đoạn 1 & 2)**: Đã hoàn thành và kiểm thử logic Speed Alignment (atempo) kết hợp Silence Trimming và Vocal Isolation (Demucs) cho local worker.
-- [x] **Đồng bộ Database Production**: Đã chạy thành công `db:push` lên Supabase Production DB, giải quyết triệt để lỗi thiếu bảng `websites` và cột `balance` của bảng `users`.
+- [x] **Hoàn thành Trang Lịch sử hoạt động HeroDub**: Đã code xong `history-client.tsx`, tích hợp phân trang, bộ lọc trạng thái và auto-refresh.
+- [x] **Fix lỗi Worker HeroDub**: Đã cập nhật file `herodub_worker.py` (sửa lỗi thiếu `ffmpeg_exe`, import datetime, và fix lỗi intervalMinutes scan quá nhanh).
+- [x] **Deploy Production**: Đã commit và push tất cả thay đổi lên Vercel.
+
+- **2026-06-25 (hero-dub - Activity History & Worker fixes)**:
+  - 🚀 **Trang Lịch sử hoạt động**: Đã xây dựng trang Lịch sử tại `/hero-dub/t/[teamId]/history` giúp người dùng quản lý toàn bộ các tác vụ dịch thuật từ web và local worker.
+  - 🚀 **Fix Worker Local**: Khắc phục lỗi crash `ffmpeg_exe` khi fallback, và bổ sung logic giới hạn tần suất quét thư mục `intervalMinutes` tránh spam task lên server.
+  - 🚀 **UI/UX Hotfixes**: Sửa lỗi `react-hot-toast` và lỗi render `setState` của React trong `history-client.tsx`.
 
 - **2026-06-24 (deploy - Production Database Synced)**:
   - 🚀 **Đồng bộ DB Production**: Chuyển tạm thời `.env` sang kết nối Supabase Production DB và chạy thành công lệnh `pnpm db:push` (giữ nguyên dữ liệu của 6 user hiện có).
