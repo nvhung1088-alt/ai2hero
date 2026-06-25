@@ -1,6 +1,6 @@
 import { db } from './drizzle';
 import { connectHubConnections, connectHubUsageLogs } from './schema';
-import { eq, and, desc, count, sql, gte } from 'drizzle-orm';
+import { eq, and, desc, count, sql, gte, sum } from 'drizzle-orm';
 
 /**
  * Lấy danh sách kết nối API của một Team
@@ -74,7 +74,11 @@ export async function getConnectionStats(teamId: number, rawConnections?: any[])
     startOfMonth.setHours(0, 0, 0, 0);
 
     const monthlyLogsResult = await db
-      .select({ count: count() })
+      .select({ 
+        count: count(),
+        totalTokens: sum(connectHubUsageLogs.tokensUsed),
+        totalCost: sum(connectHubUsageLogs.costUsd)
+      })
       .from(connectHubUsageLogs)
       .where(
         and(
@@ -84,12 +88,45 @@ export async function getConnectionStats(teamId: number, rawConnections?: any[])
       );
 
     const monthlyUsage = monthlyLogsResult[0]?.count || 0;
+    const monthlyTokens = Number(monthlyLogsResult[0]?.totalTokens || 0);
+    const monthlyCost = Number(monthlyLogsResult[0]?.totalCost || 0);
+
+    // Tính kết nối MVP
+    const mvpSet = new Set<string>();
+    connections.forEach(c => {
+      let arr = c.usedByModules || [];
+      if (typeof arr === 'string') {
+        try { arr = JSON.parse(arr); } catch(e) { arr = []; }
+      }
+      if (Array.isArray(arr)) {
+        arr.forEach((m: string) => mvpSet.add(m));
+      }
+    });
+    const totalMvpLinked = mvpSet.size;
+
+    // Tính Error Rate trong tháng
+    const monthlyErrorsResult = await db
+      .select({ count: count() })
+      .from(connectHubUsageLogs)
+      .where(
+        and(
+          eq(connectHubUsageLogs.teamId, teamId),
+          eq(connectHubUsageLogs.status, 'error'),
+          gte(connectHubUsageLogs.createdAt, startOfMonth)
+        )
+      );
+    const monthlyErrors = monthlyErrorsResult[0]?.count || 0;
+    const errorRate = monthlyUsage > 0 ? (monthlyErrors / monthlyUsage) * 100 : 0;
 
     return {
       totalConnections,
       activeConnections,
       errorConnections,
-      monthlyUsage
+      monthlyUsage,
+      monthlyTokens,
+      monthlyCost,
+      totalMvpLinked,
+      errorRate
     };
   } catch (error) {
     console.error('Lỗi khi lấy getConnectionStats:', error);
@@ -97,7 +134,47 @@ export async function getConnectionStats(teamId: number, rawConnections?: any[])
       totalConnections: 0,
       activeConnections: 0,
       errorConnections: 0,
-      monthlyUsage: 0
+      monthlyUsage: 0,
+      monthlyTokens: 0,
+      monthlyCost: 0,
+      totalMvpLinked: 0,
+      errorRate: 0
     };
+  }
+}
+
+/**
+ * Lấy data vẽ Chart Dashboard
+ */
+export async function getUsageChartData(teamId: number, days: number = 30) {
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
+
+    const logs = await db
+      .select({
+        date: sql<string>`DATE(${connectHubUsageLogs.createdAt})`,
+        cost: sum(connectHubUsageLogs.costUsd),
+        requests: count()
+      })
+      .from(connectHubUsageLogs)
+      .where(
+        and(
+          eq(connectHubUsageLogs.teamId, teamId),
+          gte(connectHubUsageLogs.createdAt, startDate)
+        )
+      )
+      .groupBy(sql`DATE(${connectHubUsageLogs.createdAt})`)
+      .orderBy(sql`DATE(${connectHubUsageLogs.createdAt})`);
+
+    return logs.map(l => ({
+      date: l.date,
+      cost: Number(l.cost || 0),
+      requests: Number(l.requests || 0)
+    }));
+  } catch (error) {
+    console.error('Lỗi khi lấy getUsageChartData:', error);
+    return [];
   }
 }

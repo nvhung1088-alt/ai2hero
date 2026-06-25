@@ -11,6 +11,7 @@ import {
   uuid,
   boolean,
   primaryKey,
+  real,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -948,6 +949,7 @@ export const connectHubConnections = pgTable('connect_hub_connections', {
   encryptedCredentials: text('encrypted_credentials').notNull(),
   status: varchar('status', { length: 50 }).default('connected').notNull(),
   usedByModules: jsonb('used_by_modules').default('[]'),
+  healthScore: integer('health_score').notNull().default(100),
   lastTestedAt: timestamp('last_tested_at'),
   lastUsedAt: timestamp('last_used_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -964,6 +966,10 @@ export const connectHubUsageLogs = pgTable('connect_hub_usage_logs', {
   status: varchar('status', { length: 50 }).notNull(),
   durationMs: integer('duration_ms'),
   errorMessage: text('error_message'),
+  tokensUsed: integer('tokens_used').notNull().default(0),
+  costUsd: real('cost_usd').notNull().default(0),
+  modelName: varchar('model_name', { length: 255 }),
+  mvpId: varchar('mvp_id', { length: 100 }),
   isTest: integer('is_test').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

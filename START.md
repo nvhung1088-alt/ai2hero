@@ -127,6 +127,11 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🚀 **Worker & Security**: Push mã vá lỗi subprocess progress jumping và vá bảo mật webhook/film. Mọi mã nguồn đã sẵn sàng Production.
   - 🚀 **Connect Hub Catalog**: Bổ sung bộ lọc con cho ứng dụng Trí Tuệ Nhân Tạo (AI Text, AI Code, AI Video, AI TTS, AI Image) & cập nhật tags cho từng nhà cung cấp.
 
+- **2026-06-25 (connect-hub - Dashboard Analytics & Auto Healing)**:
+  - 🚀 **Dashboard Analytics UI**: Xây dựng lại giao diện Dashboard `connect-hub` tích hợp các thẻ KPI tính toán Token, Chi phí thực tế USD, tổng số MVP kết nối và Tỷ lệ lỗi (Error Rate). Triển khai Client Component `dashboard-chart.tsx` vẽ đồ thị luồng Request / Chi phí 30 ngày rất mượt với Recharts. 
+  - 🚀 **Cơ sở dữ liệu Token & Cost**: Đã update `schema.ts` thêm các field `tokens_used`, `cost_usd`, `model_name`, `mvp_id` vào `connectHubUsageLogs`, và cột `health_score` vào `connectHubConnections`. Push DB thành công.
+  - 🚀 **Auto-Healing Worker**: Khởi tạo Engine Health Check `runAutoHealingCheck` tại `lib/connect-hub/health-worker.ts` giúp hệ thống quét lỗi API kết nối (Vd hết tiền thẻ), chuyển sang trạng thái chờ phục hồi (healing), tự test ẩn và khôi phục hoạt động nếu API sẵn sàng trở lại. Hiển thị badge 'Auto-Healed' chuyên nghiệp trên UI.
+
 - **2026-06-25 (connect-hub - Multi-TTS Providers Integration)**:
   - 🚀 **Tích hợp FPT AI & Viettel AI**: Cấu hình definitions và runners cho 2 nhà cung cấp TTS Tiếng Việt tốt nhất hiện nay, hỗ trợ tùy chỉnh tốc độ và tự động polling fetch audio file buffer an toàn.
   - 🚀 **Tích hợp Google TTS & ElevenLabs**: Tích hợp bộ API TTS toàn cầu cao cấp, hỗ trợ 8 giọng đọc ElevenLabs phổ biến và wave-net của Google.
