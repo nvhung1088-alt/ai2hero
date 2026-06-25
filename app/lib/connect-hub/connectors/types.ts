@@ -77,10 +77,10 @@ export interface ConnectorDefinition {
   connectorStatus?: 'active' | 'deprecated' | 'planned';
   permissionScope?: string[];
   riskLevel?: 'safe' | 'medium' | 'high';
-  aiCapability?: ('text' | 'image' | 'video' | 'audio' | 'tts')[];
+  aiCapability?: ('text' | 'image' | 'video' | 'audio' | 'tts' | 'code')[];
   aiModels?: {
     name: string;
-    type: 'text' | 'image' | 'video' | 'tts';
+    type: 'text' | 'image' | 'video' | 'tts' | 'code';
     modes?: string[];      // cho video: 'text', 'singleImage', etc.
     think?: boolean;        // cho text: reasoning model
   }[];

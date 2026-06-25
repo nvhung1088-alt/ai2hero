@@ -5,6 +5,8 @@
 - **Tối ưu HeroDub Worker**: Nâng cấp Parser (Regex) bắt tiến độ thực từ `pyVideoTrans` (Subprocess stdout), áp dụng trọng số linh hoạt (Transcribing: 30-60%, Translating: 60-80%, Burning: 80-95%) và chặn hiện tượng "nhảy lùi" (giật progress bar) trên UI mượt mà. Cấu hình int8 cho Whisper model giảm tải RAM.
 - **Vá bảo mật Hệ thống**: Chuyển logic check `tokenPrice` sang Server-side (`film-actions.ts`) kết hợp `db.transaction`. Fix lỗi bypass 401 trên route `webhook/route.ts` bằng HMAC validation chặt chẽ.
 - **Sửa giao diện**: Khắc phục lỗi bảo mật XSS của React khi render `helpText` trong Connect Hub thông qua `dangerouslySetInnerHTML`.
+- **UI Connect Hub AI Catalog**: Cấu hình bộ lọc Sub-menu trực quan riêng cho hạng mục "Trí tuệ nhân tạo" bao gồm các lựa chọn phân tách (`AI Text`, `AI Code`, `AI Video`, `AI TTS`, `AI Image`).
+- **Phân loại AI Models**: Chuẩn hóa cấu trúc Model Definition API cho phép tích hợp các MVP tương lai dựa trên `aiCapability`, đồng thời cập nhật Capability `code` cho các mô hình của OpenAI, Anthropic, Gemini, DeepSeek, Qwen, Grok.
 
 ## 2026-06-25 — Nâng cấp Lịch sử & Logs chi tiết cho HeroDub
 - **Database Schema**: Thêm cột `logs` kiểu `jsonb` vào bảng `dubTasks` và chạy migration `pnpm db:push` đồng bộ cấu trúc database local và production (Supabase).

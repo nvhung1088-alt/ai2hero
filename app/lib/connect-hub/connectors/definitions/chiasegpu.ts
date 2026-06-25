@@ -190,7 +190,7 @@ export const chiasegpuConnector: ConnectorDefinition = {
     healthCheckEndpoint: 'https://vilao.ai/api/v2/llm/marketplace/models',
     documentationUrl: 'https://vilao.ai'
   },
-  aiCapability: ['text', 'image', 'video'],
+  aiCapability: ['text', 'image', 'video', 'code'],
   aiModels: [
     { name: 'krr/claude-sonnet-4-6', type: 'text' },
     { name: 'ant/claude-opus-4-7', type: 'text' },

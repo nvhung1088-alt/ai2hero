@@ -187,6 +187,7 @@ export default function ConnectHubAppsClient({
   const [connectedSlugs, setConnectedSlugs] = useState<string[]>(initialConnectedSlugs);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<'popular' | 'ai' | 'pos' | 'payment' | 'social' | 'chat' | 'storage' | 'email' | 'developer' | 'all'>('popular');
+  const [activeAiSubCategory, setActiveAiSubCategory] = useState<'all' | 'text' | 'code' | 'video' | 'tts' | 'image'>('all');
   const [filterReady, setFilterReady] = useState(false);
   const [selectedApp, setSelectedApp] = useState<ConnectorDefinition | null>(null);
   
@@ -291,8 +292,22 @@ export default function ConnectHubAppsClient({
 
     // 2. Lọc theo danh mục active
     if (activeCategory === 'all') return true;
-    if (activeCategory === 'popular') return !!app.popular;
-    return app.category === activeCategory;
+    
+    // Nếu activeCategory là 'popular', chỉ filter theo isPopular
+    if (activeCategory === 'popular' && !app.popular) return false;
+    if (activeCategory === 'popular' && app.popular) return true;
+
+    // Các category khác
+    if (app.category !== activeCategory) return false;
+
+    // 3. Sub-filter cho AI
+    if (activeCategory === 'ai' && activeAiSubCategory !== 'all') {
+      if (!app.aiCapability?.includes(activeAiSubCategory as any)) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   const handleOpenConnect = async (app: ConnectorDefinition) => {
@@ -508,6 +523,32 @@ export default function ConnectHubAppsClient({
           <span className="text-xs font-bold text-emerald-400 select-none">Chỉ hiện App ✅ Sẵn sàng</span>
         </label>
       </div>
+
+      {/* Sub-Filters cho AI */}
+      {activeCategory === 'ai' && (
+        <div className="flex flex-wrap gap-2 pb-5 pt-1 animate-fade-in border-b border-white/5">
+          {[
+            { id: 'all', label: 'Tất cả AI' },
+            { id: 'text', label: '📝 AI Text' },
+            { id: 'code', label: '💻 AI Code' },
+            { id: 'video', label: '🎬 AI Video' },
+            { id: 'tts', label: '🎙️ AI TTS' },
+            { id: 'image', label: '🖼️ AI Image' }
+          ].map((sub) => (
+            <button
+              key={sub.id}
+              onClick={() => setActiveAiSubCategory(sub.id as any)}
+              className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all duration-200 cursor-pointer ${
+                activeAiSubCategory === sub.id
+                  ? 'bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30 shadow-sm'
+                  : 'bg-transparent border border-white/10 text-gray-400 hover:text-gray-200 hover:bg-white/5'
+              }`}
+            >
+              {sub.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Global Security Alert */}
       <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center gap-3 shadow-sm animate-fade-in">

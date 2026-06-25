@@ -75,7 +75,7 @@ export const openaiConnector: ConnectorDefinition = {
     healthCheckEndpoint: 'https://status.openai.com/api/v2/status.json',
     documentationUrl: 'https://platform.openai.com/docs/models'
   },
-  aiCapability: ['text', 'image', 'tts'],
+  aiCapability: ['text', 'image', 'tts', 'code'],
   aiModels: [
     { name: 'gpt-4o', type: 'text' },
     { name: 'gpt-4o-mini', type: 'text' },

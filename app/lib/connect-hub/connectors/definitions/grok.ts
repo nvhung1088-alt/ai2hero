@@ -62,6 +62,11 @@ export const grokConnector: ConnectorDefinition = {
   ],
   popular: true,
   setupGuide: '<p><b>1.</b> Truy cập <a href="https://console.x.ai/" target="_blank" rel="noreferrer">xAI Console</a>.</p><p><b>2.</b> Tạo tài khoản và vào mục API Keys để tạo mã bảo mật.</p>',
+  aiCapability: ['text', 'code'],
+  aiModels: [
+    { name: 'grok-2-latest', type: 'text' },
+    { name: 'grok-beta', type: 'text' }
+  ],
   lifecycle: {
     updatePolicy: 'cron',
     healthCheckEndpoint: 'https://api.x.ai/status',

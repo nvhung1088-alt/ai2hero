@@ -125,6 +125,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - **2026-06-25 (deploy - Multi-TTS & Security Updates)**:
   - 🚀 **Hoàn thiện TTS**: Đã thêm 4 API FPT, Viettel, Google, ElevenLabs với setup guide hoàn chỉnh hiển thị UI.
   - 🚀 **Worker & Security**: Push mã vá lỗi subprocess progress jumping và vá bảo mật webhook/film. Mọi mã nguồn đã sẵn sàng Production.
+  - 🚀 **Connect Hub Catalog**: Bổ sung bộ lọc con cho ứng dụng Trí Tuệ Nhân Tạo (AI Text, AI Code, AI Video, AI TTS, AI Image) & cập nhật tags cho từng nhà cung cấp.
 
 - **2026-06-25 (connect-hub - Multi-TTS Providers Integration)**:
   - 🚀 **Tích hợp FPT AI & Viettel AI**: Cấu hình definitions và runners cho 2 nhà cung cấp TTS Tiếng Việt tốt nhất hiện nay, hỗ trợ tùy chỉnh tốc độ và tự động polling fetch audio file buffer an toàn.

@@ -62,7 +62,7 @@ export const deepseekConnector: ConnectorDefinition = {
   ],
   popular: true,
   setupGuide: '<p><b>1.</b> Truy cập <a href="https://platform.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek Platform</a>.</p><p><b>2.</b> Tạo API Key trong phần cài đặt tài khoản.</p>',
-  aiCapability: ['text'],
+  aiCapability: ['text', 'code'],
   aiModels: [
     { name: 'deepseek-chat', type: 'text' },
     { name: 'deepseek-reasoner', type: 'text', think: true }

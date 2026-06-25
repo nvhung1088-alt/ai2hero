@@ -61,5 +61,11 @@ export const qwenConnector: ConnectorDefinition = {
     }
   ],
   popular: true,
-  setupGuide: '<p><b>1.</b> Truy cập <a href="https://dashscope.console.aliyun.com/" target="_blank" rel="noreferrer">DashScope Console</a> của Alibaba Cloud.</p><p><b>2.</b> Tạo một API-KEY để bắt đầu sử dụng.</p>'
+  setupGuide: '<p><b>1.</b> Truy cập <a href="https://dashscope.console.aliyun.com/" target="_blank" rel="noreferrer">DashScope Console</a> của Alibaba Cloud.</p><p><b>2.</b> Tạo một API-KEY để bắt đầu sử dụng.</p>',
+  aiCapability: ['text', 'code'],
+  aiModels: [
+    { name: 'qwen-max', type: 'text' },
+    { name: 'qwen-plus', type: 'text' },
+    { name: 'qwen-turbo', type: 'text' }
+  ]
 };

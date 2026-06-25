@@ -62,7 +62,7 @@ export const geminiConnector: ConnectorDefinition = {
   ],
   popular: true,
   setupGuide: '<p><b>1.</b> Mở <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">Google AI Studio</a>.</p><p><b>2.</b> Nhấn <b>Create API Key</b>, chọn Google Cloud Project của bạn và copy key.</p>',
-  aiCapability: ['text'],
+  aiCapability: ['text', 'code'],
   aiModels: [
     { name: 'gemini-2.5-flash', type: 'text' },
     { name: 'gemini-2.5-pro', type: 'text' },
