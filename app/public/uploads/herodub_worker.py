@@ -330,6 +330,8 @@ def process_task(token, task):
     # 1. TRANSCRIBING
     duration_sec = 0
     try:
+        import imageio_ffmpeg
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
         duration_sec = get_audio_duration(ffmpeg_exe, local_input)
     except Exception as e:
         print(Fore.YELLOW + f"[!] Khong the lay thoi luong video: {e}")
