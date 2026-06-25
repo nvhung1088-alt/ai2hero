@@ -122,6 +122,11 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - [x] **Fix lỗi Worker HeroDub**: Đã cập nhật file `herodub_worker.py` (sửa lỗi thiếu `ffmpeg_exe`, import datetime, và fix lỗi intervalMinutes scan quá nhanh).
 - [x] **Deploy Production**: Đã commit và push tất cả thay đổi lên Vercel.
 
+- **2026-06-25 (hero-dub - Security Hardening & Dedupe Fix)**:
+  - 🚀 **Vá lỗ hổng IDOR**: Thêm kiểm tra quyền sở hữu `taskId` với `teamId` của token worker trước khi sinh R2 presigned URL trong `getPresignedUploadUrlAction`. Ngăn chặn nguy cơ cross-team file overwrite.
+  - 🚀 **Sửa bug Dedupe Key**: Bổ sung bộ lọc status active (`pending`, `assigned`, v.v.) vào logic check trùng lặp URL. Giờ đây người dùng có thể tạo lại tác vụ dịch với cùng URL nguồn một cách dễ dàng sau khi tác vụ cũ đã hoàn thành hoặc thất bại.
+  - 🚀 **Verification**: Đã chạy compile check bằng `npx tsc --noEmit` thành công 100%.
+
 - **2026-06-25 (hero-dub - Activity History & Realtime Logs)**:
   - 🚀 **Nâng cấp Lịch sử & Logs**: Tích hợp trường `logs` kiểu `jsonb` trong database và Drizzle schema để lưu vết toàn bộ các công đoạn xử lý (Khởi tạo, Worker nhận, Tải video, Nhận dạng Whisper, Dịch thuật AI, Lồng tiếng TTS, Burn & Mix, Tải lên R2, Hoàn thành hoặc Thất bại) kèm theo mốc thời gian thực chính xác.
   - 🚀 **UI Timeline Inline**: Cập nhật trang Lịch sử `/hero-dub/t/[teamId]/history` hiển thị trực tiếp danh sách timeline logs inline (thụt lề có border-left chỉ định) ngay dưới mỗi video, tự động bôi màu làm nổi bật mốc trạng thái mới nhất giúp người dùng theo dõi trực quan và phát hiện lỗi tức thì.

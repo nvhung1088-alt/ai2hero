@@ -3,7 +3,7 @@
 import { db } from './drizzle';
 import { dubTasks, dubWorkers, teams, users, extensionLinkCodes, connectHubConnections, dubProjects } from './schema';
 import { decryptField } from '../sim-crypto';
-import { eq, and, desc, sql, isNull, gt } from 'drizzle-orm';
+import { eq, and, desc, sql, isNull, gt, inArray } from 'drizzle-orm';
 import { SignJWT, jwtVerify } from 'jose';
 import { createHash, randomBytes } from 'crypto';
 import { getPresignedUploadUrl } from '@/lib/storage/r2';
@@ -92,11 +92,17 @@ export async function createDubTaskAction(data: {
     // Dedupe Key: teamId + url + targetLang
     const dedupeKey = `${data.teamId}:${sourceUrl}:${targetLang}`;
 
-    // Check duplicate
+    // Check duplicate (chỉ block khi tác vụ cùng dedupeKey đang trong trạng thái active/xử lý)
+    const ACTIVE_STATUSES = ['pending', 'assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading'];
     const [existing] = await db
       .select()
       .from(dubTasks)
-      .where(eq(dubTasks.dedupeKey, dedupeKey))
+      .where(
+        and(
+          eq(dubTasks.dedupeKey, dedupeKey),
+          inArray(dubTasks.status, ACTIVE_STATUSES)
+        )
+      )
       .limit(1);
 
     if (existing) {
@@ -681,6 +687,17 @@ export async function completeTaskAction(
 
 export async function getPresignedUploadUrlAction(taskId: number, teamId: number, fileType: 'video' | 'srt') {
   try {
+    // 🔐 SECURITY: Verify taskId belongs to teamId (chống IDOR)
+    const [task] = await db
+      .select({ id: dubTasks.id })
+      .from(dubTasks)
+      .where(and(eq(dubTasks.id, taskId), eq(dubTasks.teamId, teamId)))
+      .limit(1);
+
+    if (!task) {
+      return { error: 'Tác vụ không tồn tại hoặc không thuộc quyền truy cập của bạn' };
+    }
+
     const ext = fileType === 'video' ? 'mp4' : 'srt';
     const contentType = fileType === 'video' ? 'video/mp4' : 'text/plain';
     const key = `hero-dub/${teamId}/${taskId}/result.${ext}`;
