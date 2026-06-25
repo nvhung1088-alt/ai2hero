@@ -1,1 +1,18 @@
-export default function HistoryPage() { return <div className="p-6 text-white"><h1 className="text-xl font-bold mb-4">Lịch sử hoạt động</h1><p className="text-gray-400">Tính năng đang được xây dựng...</p></div>; }
+import HistoryClient from './history-client';
+
+export const revalidate = 0;
+
+export default async function HistoryPage({
+  params,
+}: {
+  params: Promise<any>;
+}) {
+  const { teamId: teamIdStr } = await params;
+  const teamId = parseInt(teamIdStr, 10);
+  
+  if (isNaN(teamId)) {
+    return <div>Invalid Team ID</div>;
+  }
+
+  return <HistoryClient teamId={teamId} />;
+}
