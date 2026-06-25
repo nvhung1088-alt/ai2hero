@@ -378,20 +378,54 @@ def process_task(token, task):
                         raise Exception(f"Loi FFMPEG khi trich xuat am thanh: {err_str[-150:]}")
 
             from faster_whisper import WhisperModel
-            model = WhisperModel("small", device="auto", compute_type="default")
+            try:
+                model = WhisperModel("small", device="auto", compute_type="default")
+            except Exception as model_err:
+                print(Fore.YELLOW + f"  [!] Loi nap model Whisper GPU: {model_err}. Dang thu fallback sang CPU...")
+                model = WhisperModel("small", device="cpu", compute_type="int8")
             
             asr_start_time = time.time()
             
-            segments, info = model.transcribe(audio_path, beam_size=5, vad_filter=True)
+            try:
+                segments, info = model.transcribe(audio_path, beam_size=5, vad_filter=True)
+                segments = list(segments)
+            except Exception as trans_err:
+                print(Fore.YELLOW + f"  [!] Loi chay Whisper GPU: {trans_err}. Dang thu fallback sang CPU...")
+                model = WhisperModel("small", device="cpu", compute_type="int8")
+                segments, info = model.transcribe(audio_path, beam_size=5, vad_filter=True)
+                segments = list(segments)
             
             extracted_segments = []
+            prev_end = 0.0
+            
             for segment in segments:
+                s_start = segment.start
+                s_end = segment.end
+                s_text = segment.text.strip()
+                
+                if s_start < prev_end:
+                    s_start = prev_end + 0.1
+                
+                if duration_sec > 0 and s_end > duration_sec:
+                    s_end = duration_sec
+                    
+                if s_end - s_start > 15.0 and len(s_text) < 10:
+                    continue
+                    
+                if s_start >= s_end or not s_text:
+                    continue
+                    
+                prev_end = s_end
+                
                 extracted_segments.append({
-                    "start": segment.start,
-                    "end": segment.end,
-                    "text": segment.text
+                    "start": s_start,
+                    "end": s_end,
+                    "text": s_text
                 })
                 print(Fore.WHITE + f"  [{format_timestamp(segment.start)} -> {format_timestamp(segment.end)}] {segment.text}")
+                
+            if len(extracted_segments) == 0:
+                raise Exception("Video khong co giong noi (Empty Speech). Vui long chon video co tieng nguoi.")
                 
             with open(extracted_segments_file, "w", encoding="utf-8") as f:
                 json.dump(extracted_segments, f, ensure_ascii=False, indent=2)
@@ -598,7 +632,12 @@ def process_task(token, task):
             print(Fore.CYAN + f"  -> Engine: {tts_engine} | Voice: {tts_voice} | Speed: {tts_speed}x ({rate_str})")
             
             total_segs = len(translated_segments)
+            failed_tts_count = 0
+            
             for i, seg in enumerate(translated_segments):
+                if not seg['text'].strip():
+                    continue
+                    
                 output_file = os.path.join(tts_dir, f"seg_{i:04d}.mp3")
                 
                 # In tien do
@@ -607,11 +646,12 @@ def process_task(token, task):
                 
                 # Chi sinh lai file neu chua co
                 if not os.path.exists(output_file):
+                    success = False
+                    
                     if tts_engine == "edge-tts":
                         import subprocess
                         import sys
                         
-                        # Ghi text vao file de tranh loi Encoding Command Line tren Windows
                         tmp_txt = os.path.join(workspace, "tmp_tts.txt")
                         with open(tmp_txt, "w", encoding="utf-8") as f:
                             f.write(seg['text'])
@@ -619,38 +659,62 @@ def process_task(token, task):
                         script = f"import edge_tts, asyncio\nwith open(r'{tmp_txt}', 'r', encoding='utf-8') as f:\n    text = f.read()\nasyncio.run(edge_tts.Communicate(text, '{tts_voice}', rate='{rate_str}').save(r'{output_file}'))"
                         cmd = [sys.executable, "-c", script]
                         
-                        try:
-                            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=45)
-                        except subprocess.TimeoutExpired:
-                            print(Fore.RED + f"  [!] Timeout khi sinh TTS cho segment {i}, bo qua.")
+                        for attempt in range(3):
+                            try:
+                                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=45)
+                                if result.returncode == 0 and os.path.exists(output_file):
+                                    success = True
+                                    break
+                                else:
+                                    raise Exception(f"Edge-TTS failed with code {result.returncode}")
+                            except Exception as e:
+                                if attempt < 2:
+                                    print(Fore.YELLOW + f"  [!] Loi/Timeout Edge-TTS, dang thu lai sau 2s (lan {attempt+2})...")
+                                    time.sleep(2)
+                                else:
+                                    print(Fore.RED + f"  [!] That bai Edge-TTS sau 3 lan thu cho segment {i}.")
                     else:
                         # Goi Connect Hub qua Server API
-                        try:
-                            resp = requests.post(f"{API_BASE_URL}/tts",
-                                json={"taskId": task_id, "text": seg['text'], "voice": tts_voice},
-                                headers=headers, timeout=45)
-                            if resp.status_code == 200:
-                                with open(output_file, "wb") as f:
-                                    f.write(resp.content)
-                            else:
-                                # Neu loi Connect Hub, fallback sang edge-tts giong Viet mac dinh
-                                print(Fore.YELLOW + f"  [!] Connect Hub TTS loi (HTTP {resp.status_code}), fallback sang edge-tts...")
-                                import subprocess
-                                import sys
-                                
-                                tmp_txt = os.path.join(workspace, "tmp_tts.txt")
-                                with open(tmp_txt, "w", encoding="utf-8") as f:
-                                    f.write(seg['text'])
+                        for attempt in range(3):
+                            try:
+                                resp = requests.post(f"{API_BASE_URL}/tts",
+                                    json={"taskId": task_id, "text": seg['text'], "voice": tts_voice},
+                                    headers=headers, timeout=45)
+                                if resp.status_code == 200:
+                                    with open(output_file, "wb") as f:
+                                        f.write(resp.content)
+                                    success = True
+                                    break
+                                else:
+                                    raise Exception(f"HTTP {resp.status_code}")
+                            except Exception as req_err:
+                                if attempt < 2:
+                                    print(Fore.YELLOW + f"  [!] Loi Connect Hub TTS: {req_err}. Thu lai (lan {attempt+2})...")
+                                    time.sleep(2)
+                                else:
+                                    # Fallback sang edge-tts 1 lan cuoi cung
+                                    print(Fore.YELLOW + f"  [!] Connect Hub TTS that bai, fallback sang edge-tts...")
+                                    import subprocess
+                                    import sys
                                     
-                                script = f"import edge_tts, asyncio\nwith open(r'{tmp_txt}', 'r', encoding='utf-8') as f:\n    text = f.read()\nasyncio.run(edge_tts.Communicate(text, 'vi-VN-HoaiMyNeural', rate='{rate_str}').save(r'{output_file}'))"
-                                cmd = [sys.executable, "-c", script]
-                                
-                                try:
-                                    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=45)
-                                except subprocess.TimeoutExpired:
-                                    pass
-                        except Exception as req_err:
-                            print(Fore.RED + f"  [!] Loi ket noi Connect Hub TTS: {str(req_err)}")
+                                    tmp_txt = os.path.join(workspace, "tmp_tts.txt")
+                                    with open(tmp_txt, "w", encoding="utf-8") as f:
+                                        f.write(seg['text'])
+                                        
+                                    script = f"import edge_tts, asyncio\nwith open(r'{tmp_txt}', 'r', encoding='utf-8') as f:\n    text = f.read()\nasyncio.run(edge_tts.Communicate(text, 'vi-VN-HoaiMyNeural', rate='{rate_str}').save(r'{output_file}'))"
+                                    cmd = [sys.executable, "-c", script]
+                                    
+                                    try:
+                                        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=45)
+                                        if os.path.exists(output_file):
+                                            success = True
+                                    except subprocess.TimeoutExpired:
+                                        pass
+                                    if not success:
+                                        print(Fore.RED + f"  [!] That bai ca ConnectHub lan Edge-TTS fallback cho segment {i}.")
+                                        
+                    if not success:
+                        failed_tts_count += 1
                             
                 # Convert sang WAV 16000Hz mono ngay sau khi sinh va ap dung Speed Alignment (Giai doan 1)
                 output_wav = os.path.join(tts_dir, f"seg_{i:04d}.wav")
@@ -705,6 +769,9 @@ def process_task(token, task):
                                 except:
                                     pass
             
+            if total_segs > 0 and (failed_tts_count / total_segs) > 0.3:
+                raise Exception(f"Loi ket noi mang: {failed_tts_count}/{total_segs} cau thoai khong the tao giong doc AI (Loi qua 30%). Vui long kiem tra mang va thu lai sau.")
+
             # Ghep am thanh
             dubbed_audio_path = merge_tts_segments(ffmpeg_exe, tts_dir, translated_segments, workspace)
             
