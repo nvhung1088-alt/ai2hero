@@ -17,6 +17,37 @@ const key = new TextEncoder().encode(authSecret);
 // Token của worker: 90 ngày
 const WORKER_TOKEN_EXPIRY_DAYS = 90;
 
+// === HELPER LOGGING ===
+
+export async function appendTaskLog(taskId: number, action: string, message: string, tx?: any) {
+  const dbClient = tx || db;
+  try {
+    const [task] = await dbClient
+      .select({ logs: dubTasks.logs })
+      .from(dubTasks)
+      .where(eq(dubTasks.id, taskId))
+      .limit(1);
+
+    if (task) {
+      const currentLogs = Array.isArray(task.logs) ? (task.logs as any[]) : [];
+      const newLogs = [
+        ...currentLogs,
+        {
+          time: new Date().toISOString(),
+          action,
+          message,
+        }
+      ];
+      await dbClient
+        .update(dubTasks)
+        .set({ logs: newLogs, updatedAt: new Date() })
+        .where(eq(dubTasks.id, taskId));
+    }
+  } catch (err) {
+    console.error(`[appendTaskLog] Error logging task ${taskId}:`, err);
+  }
+}
+
 // === TASK ACTIONS ===
 
 export async function createDubTaskAction(data: {
@@ -106,6 +137,13 @@ export async function createDubTaskAction(data: {
         logoPosition: data.logoPosition,
         introVideoUrl: data.introVideoUrl,
         outroVideoUrl: data.outroVideoUrl,
+        logs: [
+          {
+            time: new Date().toISOString(),
+            action: 'create',
+            message: '➕ Khởi tạo tác vụ: Khởi tạo thành công, đang chờ Worker nhận việc.',
+          }
+        ],
       })
       .returning();
 
@@ -210,6 +248,12 @@ export async function retryDubTaskAction(taskId: number, teamId: number) {
         updatedAt: new Date(),
       })
       .where(eq(dubTasks.id, taskId));
+
+    await appendTaskLog(
+      taskId,
+      'retry',
+      `🔄 Thử lại tác vụ: Người dùng yêu cầu chạy lại tác vụ (Thử lại lần thứ ${task.retryCount + 1}).`
+    );
 
     return { success: true };
   } catch (error: any) {
@@ -410,6 +454,20 @@ export async function pollPendingTaskAction(workerId: number, teamId: number) {
       .where(eq(dubTasks.id, task.id))
       .returning();
 
+    // Lấy thông tin worker để ghi log trực quan
+    const [worker] = await db
+      .select({ deviceName: dubWorkers.deviceName })
+      .from(dubWorkers)
+      .where(eq(dubWorkers.id, workerId))
+      .limit(1);
+    
+    const workerName = worker?.deviceName || `Worker #${workerId}`;
+    await appendTaskLog(
+      task.id,
+      'assigned',
+      `💻 Worker nhận việc: Worker [${workerName}] đã nhận tác vụ xử lý.`
+    );
+
     return { success: true, task: updatedTask };
   } catch (error: any) {
     console.error('[hero-dub-actions] pollPendingTaskAction error:', error);
@@ -448,10 +506,52 @@ export async function updateTaskProgressAction(
       updateData.completedAt = new Date();
     }
 
+    // Lấy task hiện tại để kiểm tra thay đổi status
+    const [existingTask] = await db
+      .select({ status: dubTasks.status })
+      .from(dubTasks)
+      .where(eq(dubTasks.id, taskId))
+      .limit(1);
+
     await db
       .update(dubTasks)
       .set(updateData)
       .where(and(eq(dubTasks.id, taskId), eq(dubTasks.workerId, workerId)));
+
+    // Log khi thay đổi trạng thái hoặc gặp lỗi
+    if (existingTask && existingTask.status !== data.status) {
+      let message = '';
+      switch (data.status) {
+        case 'downloading':
+          message = `📥 Đang tải video: Worker bắt đầu tải video nguồn.`;
+          break;
+        case 'transcribing':
+          message = `🎙️ Nhận dạng Whisper: Bắt đầu chạy module AI Whisper nhận dạng giọng nói gốc.`;
+          break;
+        case 'translating':
+          message = `🤖 Dịch thuật AI: Đang gọi ConnectHub API dịch phụ đề sang tiếng Việt.`;
+          break;
+        case 'tts':
+          message = `🗣️ Lồng tiếng AI (TTS): Đang sinh giọng lồng tiếng bằng AI.`;
+          break;
+        case 'burning':
+          message = `🎬 Burn Subtitles & Mix: Đang burn cứng phụ đề vào video và trộn nhạc nền.`;
+          break;
+        case 'uploading':
+          message = `🚀 Tải lên máy chủ: Đang tải video thành phẩm lên máy chủ lưu trữ.`;
+          break;
+        case 'failed':
+          message = `❌ Tác vụ thất bại: Gặp lỗi trong quá trình xử lý. Chi tiết: ${data.error || 'Lỗi không xác định'}`;
+          break;
+        default:
+          message = `🔄 Cập nhật trạng thái: Chuyển sang bước [${data.status}].`;
+      }
+      
+      await appendTaskLog(taskId, data.status, message);
+    } else if (data.status === 'failed' && data.error) {
+      // Trường hợp status không đổi (đã failed từ trước) nhưng có log error mới
+      await appendTaskLog(taskId, 'failed', `❌ Gặp lỗi: ${data.error}`);
+    }
 
     return { success: true };
   } catch (error: any) {
@@ -563,6 +663,12 @@ export async function completeTaskAction(
         updatedAt: new Date(),
       })
       .where(and(eq(dubTasks.id, taskId), eq(dubTasks.workerId, workerId)));
+
+    await appendTaskLog(
+      taskId,
+      'completed',
+      `✅ Hoàn thành: Video đã được xử lý xong và sẵn sàng phát hoặc tải về máy.`
+    );
 
     return { success: true };
   } catch (error: any) {

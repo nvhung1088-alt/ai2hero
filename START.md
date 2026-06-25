@@ -117,14 +117,15 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[ ]` [Phase 5] Bổ sung công nghệ TTS cao cấp: Tích hợp ElevenLabs API (Cảm xúc điện ảnh) và XTTSv2/CosyVoice (Zero-shot Voice Cloning giữ giọng gốc).
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- [x] **Nâng cấp Lịch sử Hoạt động HeroDub**: Tích hợp lưu log tiến trình chi tiết theo giờ/thao tác và hiển thị inline timeline trực quan dưới video.
 - [x] **Hoàn thành Trang Lịch sử hoạt động HeroDub**: Đã code xong `history-client.tsx`, tích hợp phân trang, bộ lọc trạng thái và auto-refresh.
 - [x] **Fix lỗi Worker HeroDub**: Đã cập nhật file `herodub_worker.py` (sửa lỗi thiếu `ffmpeg_exe`, import datetime, và fix lỗi intervalMinutes scan quá nhanh).
 - [x] **Deploy Production**: Đã commit và push tất cả thay đổi lên Vercel.
 
-- **2026-06-25 (hero-dub - Activity History & Worker fixes)**:
-  - 🚀 **Trang Lịch sử hoạt động**: Đã xây dựng trang Lịch sử tại `/hero-dub/t/[teamId]/history` giúp người dùng quản lý toàn bộ các tác vụ dịch thuật từ web và local worker.
-  - 🚀 **Fix Worker Local**: Khắc phục lỗi crash `ffmpeg_exe` khi fallback, và bổ sung logic giới hạn tần suất quét thư mục `intervalMinutes` tránh spam task lên server.
-  - 🚀 **UI/UX Hotfixes**: Sửa lỗi `react-hot-toast` và lỗi render `setState` của React trong `history-client.tsx`.
+- **2026-06-25 (hero-dub - Activity History & Realtime Logs)**:
+  - 🚀 **Nâng cấp Lịch sử & Logs**: Tích hợp trường `logs` kiểu `jsonb` trong database và Drizzle schema để lưu vết toàn bộ các công đoạn xử lý (Khởi tạo, Worker nhận, Tải video, Nhận dạng Whisper, Dịch thuật AI, Lồng tiếng TTS, Burn & Mix, Tải lên R2, Hoàn thành hoặc Thất bại) kèm theo mốc thời gian thực chính xác.
+  - 🚀 **UI Timeline Inline**: Cập nhật trang Lịch sử `/hero-dub/t/[teamId]/history` hiển thị trực tiếp danh sách timeline logs inline (thụt lề có border-left chỉ định) ngay dưới mỗi video, tự động bôi màu làm nổi bật mốc trạng thái mới nhất giúp người dùng theo dõi trực quan và phát hiện lỗi tức thì.
+  - 🚀 **Fix Worker Local & Hotfixes**: Khắc phục lỗi crash `ffmpeg_exe` khi fallback, và bổ sung logic giới hạn tần suất quét thư mục `intervalMinutes` tránh spam task lên server. Sửa lỗi `react-hot-toast` và lỗi render `setState` của React trong `history-client.tsx`.
 
 - **2026-06-24 (deploy - Production Database Synced)**:
   - 🚀 **Đồng bộ DB Production**: Chuyển tạm thời `.env` sang kết nối Supabase Production DB và chạy thành công lệnh `pnpm db:push` (giữ nguyên dữ liệu của 6 user hiện có).

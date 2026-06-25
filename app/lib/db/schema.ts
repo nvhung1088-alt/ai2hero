@@ -2400,6 +2400,9 @@ export const dubTasks = pgTable('dub_tasks', {
   // === Dedupe ===
   dedupeKey: varchar('dedupe_key', { length: 255 }), // teamId + sourceUrl + targetLang
 
+  // === Logs ===
+  logs: jsonb('logs').default([]),
+
   // === Timestamps ===
   startedAt: timestamp('started_at'),
   completedAt: timestamp('completed_at'),
