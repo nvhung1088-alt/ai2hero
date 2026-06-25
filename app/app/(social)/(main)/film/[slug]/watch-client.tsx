@@ -543,7 +543,7 @@ export default function HeroFilmWatchClient({
 
     setUnlockingId(episode.id);
     try {
-      const res = await unlockEpisodeAction(series.id, episode.id, episode.tokenPrice);
+      const res = await unlockEpisodeAction(series.id, episode.id);
       if (res.success) {
         setLocalUnlockedIds(prev => [...prev, episode.id]);
         setUserBalance(prev => prev - episode.tokenPrice);

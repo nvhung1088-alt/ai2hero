@@ -70,10 +70,19 @@ def run_pyvideotrans(pyvideotrans_dir, video_path, task_data, progress_callback)
         env=env
     )
 
-    # Theo dõi log đầu ra để update progress thô
-    # Vì pyVideoTrans in log dạng text tiếng Trung/Anh, ta có thể parse cơ bản
+    # Khai báo cấu trúc trọng số của các Phase
+    # Transcribing: 30% -> 60% (base=30, weight=30)
+    # Translating: 60% -> 80% (base=60, weight=20)
+    # Burning: 80% -> 95% (base=80, weight=15)
+    phase_ranges = {
+        'transcribing': {'base': 30, 'weight': 30},
+        'translating': {'base': 60, 'weight': 20},
+        'burning': {'base': 80, 'weight': 15}
+    }
+    
     current_status = 'transcribing'
-    progress_callback(current_status, 30)
+    last_reported_progress = 30
+    progress_callback(current_status, last_reported_progress)
 
     while True:
         line = process.stdout.readline()
@@ -84,16 +93,37 @@ def run_pyvideotrans(pyvideotrans_dir, video_path, task_data, progress_callback)
             line_str = line.strip()
             print(f"[pyVideoTrans Console] {line_str}")
             
-            # Phân tích một số trạng thái log mẫu để báo cáo tiến trình lên UI web
+            # Chuyển phase dựa trên từ khóa
             if "Speech Transcription" in line_str or "语音转录" in line_str:
                 current_status = 'transcribing'
-                progress_callback(current_status, 40)
             elif "Subtitle Translation" in line_str or "字幕翻译" in line_str:
                 current_status = 'translating'
-                progress_callback(current_status, 65)
             elif "novoice.mp4" in line_str:
                 current_status = 'burning'
-                progress_callback(current_status, 80)
+                
+            # Phân tích phần trăm từ output log bằng Regex
+            # Bắt mẫu như "10%", "[15%]", "Progress: 20%"
+            match = re.search(r'(?:\[|\b|progress:?\s*)?(\d{1,3})\s*%', line_str, re.IGNORECASE)
+            
+            current_base = phase_ranges[current_status]['base']
+            current_weight = phase_ranges[current_status]['weight']
+            
+            if match:
+                try:
+                    percent_val = int(match.group(1))
+                    if 0 <= percent_val <= 100:
+                        calculated_progress = current_base + int((percent_val / 100.0) * current_weight)
+                        # Đảm bảo "Tiến lên không lùi" để UI mượt mà
+                        if calculated_progress > last_reported_progress:
+                            last_reported_progress = calculated_progress
+                            progress_callback(current_status, last_reported_progress)
+                except ValueError:
+                    pass
+            else:
+                # Nếu không có % trong dòng này, ta check xem việc chuyển phase (từ khóa) có khiến progress nhảy vọt lên không
+                if current_base > last_reported_progress:
+                    last_reported_progress = current_base
+                    progress_callback(current_status, last_reported_progress)
                 
     rc = process.poll()
     if rc != 0:

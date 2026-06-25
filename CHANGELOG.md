@@ -1,5 +1,11 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-25 — Hoàn thiện Tích hợp 4 hệ thống TTS (ElevenLabs, Google, Viettel, FPT) & Tối ưu HeroDub Worker Real-time
+- **Tích hợp TTS**: Hoàn thiện toàn bộ 4 connector (FPT, Viettel, Google, ElevenLabs) trong `definitions/` và `runners/`. Đã đăng ký thành công vào `registry.ts` và `engine.ts`. Các runner trả về Base64 chuẩn và tích hợp `helpText` cùng `setupGuide` chi tiết cho UI Connect Hub.
+- **Tối ưu HeroDub Worker**: Nâng cấp Parser (Regex) bắt tiến độ thực từ `pyVideoTrans` (Subprocess stdout), áp dụng trọng số linh hoạt (Transcribing: 30-60%, Translating: 60-80%, Burning: 80-95%) và chặn hiện tượng "nhảy lùi" (giật progress bar) trên UI mượt mà. Cấu hình int8 cho Whisper model giảm tải RAM.
+- **Vá bảo mật Hệ thống**: Chuyển logic check `tokenPrice` sang Server-side (`film-actions.ts`) kết hợp `db.transaction`. Fix lỗi bypass 401 trên route `webhook/route.ts` bằng HMAC validation chặt chẽ.
+- **Sửa giao diện**: Khắc phục lỗi bảo mật XSS của React khi render `helpText` trong Connect Hub thông qua `dangerouslySetInnerHTML`.
+
 ## 2026-06-25 — Nâng cấp Lịch sử & Logs chi tiết cho HeroDub
 - **Database Schema**: Thêm cột `logs` kiểu `jsonb` vào bảng `dubTasks` và chạy migration `pnpm db:push` đồng bộ cấu trúc database local và production (Supabase).
 - **Realtime logging**: Định nghĩa helper `appendTaskLog` trong server actions, tích hợp ghi logs chi tiết theo mốc thời gian thực khi tạo task, worker nhận việc, chạy từng công đoạn (download, whisper, translate, tts, burn, upload) và khi hoàn thành hoặc lỗi.

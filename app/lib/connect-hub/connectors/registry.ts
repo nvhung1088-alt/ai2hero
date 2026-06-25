@@ -24,6 +24,10 @@ import { tiktokConnector } from './definitions/tiktok';
 import { chiasegpuConnector } from './definitions/chiasegpu';
 import { coreLogicConnector } from './definitions/core-logic';
 import { zaloZnsConnector } from './definitions/zalo-zns';
+import { fptAiConnector } from './definitions/fpt-ai';
+import { viettelAiConnector } from './definitions/viettel-ai';
+import { googleTtsConnector } from './definitions/google-tts';
+import { elevenlabsConnector } from './definitions/elevenlabs';
 
 import { GENERATED_CONNECTORS } from './registry-generated';
 
@@ -52,6 +56,10 @@ const RAW_CONNECTORS: ConnectorDefinition[] = [
   tiktokConnector,
   gmailConnector,
   telegramConnector,
+  fptAiConnector,
+  viettelAiConnector,
+  googleTtsConnector,
+  elevenlabsConnector,
   customHttpConnector
 ];
 
@@ -82,7 +90,11 @@ const READY_SLUGS = [
   'anthropic',
   'deepseek',
   'grok',
-  'qwen'
+  'qwen',
+  'fpt-ai',
+  'viettel-ai',
+  'google-tts',
+  'elevenlabs'
 ];
 
 // Combine manual and generated connectors. Manual configuration overrides generated ones.

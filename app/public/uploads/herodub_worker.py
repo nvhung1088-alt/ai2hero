@@ -379,7 +379,7 @@ def process_task(token, task):
 
             from faster_whisper import WhisperModel
             try:
-                model = WhisperModel("small", device="auto", compute_type="default")
+                model = WhisperModel("small", device="auto", compute_type="int8")
             except Exception as model_err:
                 print(Fore.YELLOW + f"  [!] Loi nap model Whisper GPU: {model_err}. Dang thu fallback sang CPU...")
                 model = WhisperModel("small", device="cpu", compute_type="int8")
@@ -388,12 +388,10 @@ def process_task(token, task):
             
             try:
                 segments, info = model.transcribe(audio_path, beam_size=5, vad_filter=True)
-                segments = list(segments)
             except Exception as trans_err:
                 print(Fore.YELLOW + f"  [!] Loi chay Whisper GPU: {trans_err}. Dang thu fallback sang CPU...")
                 model = WhisperModel("small", device="cpu", compute_type="int8")
                 segments, info = model.transcribe(audio_path, beam_size=5, vad_filter=True)
-                segments = list(segments)
             
             extracted_segments = []
             prev_end = 0.0
@@ -402,6 +400,17 @@ def process_task(token, task):
                 s_start = segment.start
                 s_end = segment.end
                 s_text = segment.text.strip()
+                
+                print(Fore.CYAN + f"    [{s_start:.2f}s -> {s_end:.2f}s] {s_text}")
+                
+                if duration_sec > 0 and len(extracted_segments) % 5 == 0:
+                    current_prog = int(30 + (s_end / duration_sec) * 30)
+                    current_prog = min(59, current_prog)
+                    try:
+                        requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "transcribing", "progress": current_prog}, headers=headers)
+                    except:
+                        pass
+                
                 
                 if s_start < prev_end:
                     s_start = prev_end + 0.1

@@ -16,6 +16,10 @@ import { runGrok } from './runners/grok';
 import { runQwen } from './runners/qwen';
 import { runTiktok } from './runners/tiktok';
 import { runGoogleDrive } from './runners/google-drive';
+import { runFptAi } from './runners/fpt-ai';
+import { runViettelAi } from './runners/viettel-ai';
+import { runGoogleTts } from './runners/google-tts';
+import { runElevenLabs } from './runners/elevenlabs';
 
 const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promise<any>> = {
   'custom-http': runCustomHttp,
@@ -30,6 +34,10 @@ const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promis
   'facebook': runFacebook,
   'tiktok': runTiktok,
   'google-drive': runGoogleDrive,
+  'fpt-ai': runFptAi,
+  'viettel-ai': runViettelAi,
+  'google-tts': runGoogleTts,
+  'elevenlabs': runElevenLabs,
   
   // Batch 1A Generic HTTP Runners
   'telegram-bot': (creds, action, input) => runGenericHttp('telegram-bot', creds, action, input),

@@ -179,6 +179,11 @@ export async function POST(
         }
       }
     }
+
+    if (plainSecret && signatureValid === 0) {
+      status = 'failed';
+      errorMessage = 'Invalid Webhook Signature';
+    }
   } catch (error: any) {
     status = 'failed';
     errorMessage = error.message || 'Lỗi xử lý request webhook';
@@ -264,6 +269,10 @@ export async function POST(
     } catch (err) {
       console.error('[Hero Care] Webhook routing error:', err);
     }
+  }
+
+  if (status === 'failed' && errorMessage === 'Invalid Webhook Signature') {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   return Response.json({ success: status === 'success', received: true });

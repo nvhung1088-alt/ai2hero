@@ -852,10 +852,10 @@ export default function ConnectHubAppsClient({
                     )}
 
                     {field.helpText && (
-                      <p className="text-[9px] text-gray-500 font-semibold flex items-center gap-1 mt-0.5">
-                        <HelpCircle className="h-3 w-3 text-gray-600" />
-                        {field.helpText}
-                      </p>
+                      <div className="text-[10px] text-gray-400 font-medium flex items-start gap-1.5 mt-1.5 leading-snug">
+                        <HelpCircle className="h-3 w-3 text-gray-600 shrink-0 mt-0.5" />
+                        <span dangerouslySetInnerHTML={{ __html: field.helpText }} className="[&>a]:text-indigo-400 [&>a]:underline [&>a]:font-semibold hover:[&>a]:text-indigo-300" />
+                      </div>
                     )}
                   </div>
                 );

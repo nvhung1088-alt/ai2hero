@@ -1,0 +1,1 @@
+﻿const { Pool } = require('pg'); require('dotenv').config({ path: '.env.local' }); const pool = new Pool({ connectionString: process.env.DATABASE_URL }); async function run() { const res = await pool.query('SELECT id, "llm_model", "translate_engine", "source_url" FROM hero_dub_tasks ORDER BY id DESC LIMIT 5'); console.log(res.rows); await pool.end(); } run();

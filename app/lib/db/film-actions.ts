@@ -313,48 +313,64 @@ export async function saveWatchHistoryAction(data: {
 /**
  * Mở khóa tập phim bằng Token
  */
-export async function unlockEpisodeAction(seriesId: number, episodeId: number, tokenPrice: number) {
+export async function unlockEpisodeAction(seriesId: number, episodeId: number) {
   const user = await getUser();
   if (!user) throw new Error('Unauthorized');
 
   try {
-    // 1. Kiểm tra xem tập phim này đã mở khóa chưa
-    const existingTx = await db.query.filmTransactions.findFirst({
-      where: and(
-        eq(filmTransactions.userId, user.id),
-        eq(filmTransactions.episodeId, episodeId)
-      ),
+    return await db.transaction(async (tx) => {
+      // 1. Kiểm tra xem tập phim này đã mở khóa chưa
+      const existingTx = await tx.query.filmTransactions.findFirst({
+        where: and(
+          eq(filmTransactions.userId, user.id),
+          eq(filmTransactions.episodeId, episodeId)
+        ),
+      });
+
+      if (existingTx) {
+        return { success: true, message: 'Đã mở khóa từ trước.' };
+      }
+
+      // 2. Lấy thông tin tập phim và team đăng phim
+      const episode = await tx.query.filmEpisodes.findFirst({
+        where: eq(filmEpisodes.id, episodeId),
+      });
+
+      if (!episode) throw new Error('Episode not found');
+
+      const tokenPrice = episode.tokenPrice || 0;
+      const creatorTeamId = episode.teamId;
+
+      // 3. Xử lý trừ token nếu phim tính phí
+      if (!episode.isFree && tokenPrice > 0) {
+        const userData = await tx.select({ balance: users.balance }).from(users).where(eq(users.id, user.id)).limit(1);
+        const currentBalance = userData[0]?.balance || 0;
+        
+        if (currentBalance < tokenPrice) {
+          throw new Error('Số dư token không đủ. Vui lòng nạp thêm.');
+        }
+
+        await tx.update(users)
+          .set({ balance: currentBalance - tokenPrice })
+          .where(eq(users.id, user.id));
+      }
+
+      // 4. Thực hiện ghi log giao dịch chia sẻ doanh thu 70/30
+      const creatorAmount = Math.floor(tokenPrice * 0.7);
+      const platformAmount = tokenPrice - creatorAmount;
+
+      await tx.insert(filmTransactions).values({
+        userId: user.id,
+        seriesId,
+        episodeId,
+        creatorTeamId,
+        tokenAmount: tokenPrice,
+        creatorAmount,
+        platformAmount,
+      });
+
+      return { success: true, message: 'Mở khóa thành công tập phim!' };
     });
-
-    if (existingTx) {
-      return { success: true, message: 'Đã mở khóa từ trước.' };
-    }
-
-    // 2. Lấy thông tin tập phim và team đăng phim
-    const episode = await db.query.filmEpisodes.findFirst({
-      where: eq(filmEpisodes.id, episodeId),
-    });
-
-    if (!episode) throw new Error('Episode not found');
-
-    const creatorTeamId = episode.teamId;
-
-    // 3. Thực hiện ghi log giao dịch chia sẻ doanh thu 70/30
-    // Token Wallet thực tế sẽ làm sau, ở đây ta chỉ ghi nhận nhật ký giao dịch
-    const creatorAmount = Math.floor(tokenPrice * 0.7);
-    const platformAmount = tokenPrice - creatorAmount;
-
-    await db.insert(filmTransactions).values({
-      userId: user.id,
-      seriesId,
-      episodeId,
-      creatorTeamId,
-      tokenAmount: tokenPrice,
-      creatorAmount,
-      platformAmount,
-    });
-
-    return { success: true, message: 'Mở khóa thành công tập phim!' };
   } catch (error: any) {
     console.error('Error in unlockEpisodeAction:', error);
     return { success: false, error: error.message || 'Lỗi hệ thống' };

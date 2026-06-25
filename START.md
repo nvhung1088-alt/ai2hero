@@ -114,7 +114,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Trộn nhạc nền tự động (Background Mix - Ducking 15%) giúp giữ âm thanh nguyên bản khi lồng tiếng AI.
   - `[x]` Cập nhật giao diện Dashboard, hỗ trợ toggle kích hoạt lồng tiếng, chọn engine và giọng đọc phù hợp.
   - `[x]` Xây dựng trang Lịch sử hoạt động (Activity History) với tính năng phân trang, auto-refresh và quản lý tiến độ.
-  - `[ ]` [Phase 5] Bổ sung công nghệ TTS cao cấp: Tích hợp ElevenLabs API (Cảm xúc điện ảnh) và XTTSv2/CosyVoice (Zero-shot Voice Cloning giữ giọng gốc).
+  - `[x]` [Phase 5] Bổ sung công nghệ TTS cao cấp: Tích hợp ElevenLabs API (Cảm xúc điện ảnh), Google Cloud TTS, FPT AI, Viettel AI vào Connect Hub thành công.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
 - [x] **Nâng cấp Lịch sử Hoạt động HeroDub**: Tích hợp lưu log tiến trình chi tiết theo giờ/thao tác và hiển thị inline timeline trực quan dưới video.
@@ -122,11 +122,21 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - [x] **Fix lỗi Worker HeroDub**: Đã cập nhật file `herodub_worker.py` (sửa lỗi thiếu `ffmpeg_exe`, import datetime, và fix lỗi intervalMinutes scan quá nhanh).
 - [x] **Deploy Production**: Đã commit và push tất cả thay đổi lên Vercel.
 
+- **2026-06-25 (deploy - Multi-TTS & Security Updates)**:
+  - 🚀 **Hoàn thiện TTS**: Đã thêm 4 API FPT, Viettel, Google, ElevenLabs với setup guide hoàn chỉnh hiển thị UI.
+  - 🚀 **Worker & Security**: Push mã vá lỗi subprocess progress jumping và vá bảo mật webhook/film. Mọi mã nguồn đã sẵn sàng Production.
+
+- **2026-06-25 (connect-hub - Multi-TTS Providers Integration)**:
+  - 🚀 **Tích hợp FPT AI & Viettel AI**: Cấu hình definitions và runners cho 2 nhà cung cấp TTS Tiếng Việt tốt nhất hiện nay, hỗ trợ tùy chỉnh tốc độ và tự động polling fetch audio file buffer an toàn.
+  - 🚀 **Tích hợp Google TTS & ElevenLabs**: Tích hợp bộ API TTS toàn cầu cao cấp, hỗ trợ 8 giọng đọc ElevenLabs phổ biến và wave-net của Google.
+  - 🚀 **Hub Capability Standard**: Đưa thuộc tính `group: 'tts'` vào toàn bộ 4 chuẩn đầu ra + OpenAI cũ. Đăng ký toàn bộ 4 Hub mới vào registry.
+
 - **2026-06-25 (hero-dub - Security Hardening & Dedupe Fix)**:
   - 🚀 **Vá lỗ hổng IDOR**: Thêm kiểm tra quyền sở hữu `taskId` với `teamId` của token worker trước khi sinh R2 presigned URL trong `getPresignedUploadUrlAction`. Ngăn chặn nguy cơ cross-team file overwrite.
-  - 🚀 **Sửa bug Dedupe Key**: Bổ sung bộ lọc status active (`pending`, `assigned`, v.v.) vào logic check trùng lặp URL. Giờ đây người dùng có thể tạo lại tác vụ dịch với cùng URL nguồn một cách dễ dàng sau khi tác vụ cũ đã hoàn thành hoặc thất bại.
+  - 🚀 **Sửa bug Dedupe Key & 500 Internal Error**: Đã phân tích Audit report và áp dụng chiến lược **Dedupe Key Release**. Gán `dedupeKey = null` khi task hoàn thành (completed) hoặc lỗi (failed) trong `completeTaskAction` và `updateTaskProgressAction` để giải phóng unique constraint. Phục hồi lại dedupeKey nguyên bản khi gọi hàm `retryDubTaskAction`. Phương pháp này giải quyết triệt để lỗi 500 crash DB khi user tạo task trùng lặp, mà không cần sửa đổi schema migration.
   - 🚀 **Fix Bug Scoping Python Worker**: Khắc phục triệt để lỗi scoping Python worker (`cannot access local variable 'time'`) do khai báo `import time` cục bộ trong các block rẽ nhánh của hàm `process_task`. Đã cập nhật cho cả worker chạy local hiện tại và file template `/uploads/herodub_worker.py` trên server.
-  - 🚀 **Verification**: Đã chạy compile check bằng `npx tsc --noEmit` thành công 100%.
+  - 🚀 **Verification & Deployment**: Đã kiểm tra lỗi compile bằng TypeScript (`tsc --noEmit`) thành công 100%. Commit và đẩy code bản vá lên Vercel (`main`).
+  - 🚀 **STT/TTS Auto-Correction**: Đã nâng cấp `herodub_worker.py` (local & server template) với cơ chế tự động sửa lỗi: Whisper tự fallback sang CPU khi OOM, bắt lỗi file mất tiếng, tự gọt/trim chống ảo giác lệch timestamp (Exceeding & Overlap); TTS tự động bỏ qua text rỗng, Retry 3 lần Edge-TTS, và hủy task nếu tỷ lệ lỗi TTS vượt quá 30%. Hạn chế tối đa các lỗi ngầm (silent failures) tạo ra video không tiếng.
 
 - **2026-06-25 (hero-dub - Activity History & Realtime Logs)**:
   - 🚀 **Nâng cấp Lịch sử & Logs**: Tích hợp trường `logs` kiểu `jsonb` trong database và Drizzle schema để lưu vết toàn bộ các công đoạn xử lý (Khởi tạo, Worker nhận, Tải video, Nhận dạng Whisper, Dịch thuật AI, Lồng tiếng TTS, Burn & Mix, Tải lên R2, Hoàn thành hoặc Thất bại) kèm theo mốc thời gian thực chính xác.

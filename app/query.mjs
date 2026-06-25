@@ -1,0 +1,1 @@
+﻿import postgres from 'postgres'; import dotenv from 'dotenv'; dotenv.config({ path: '.env.local' }); const sql = postgres(process.env.DATABASE_URL); async function run() { const res = await sqlSELECT id, llm_model, translate_engine, source_url FROM hero_dub_tasks ORDER BY id DESC LIMIT 5; console.log(res); await sql.end(); } run();

@@ -42,6 +42,7 @@ export const openaiConnector: ConnectorDefinition = {
       slug: 'text_to_speech',
       name: 'Text to Speech (TTS)',
       description: 'Chuyển văn bản thành giọng nói AI',
+      group: 'tts',
       inputSchema: [
         {
           name: 'model',
@@ -61,7 +62,8 @@ export const openaiConnector: ConnectorDefinition = {
           label: 'Giọng đọc',
           type: 'select',
           required: true,
-          options: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']
+          options: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'],
+          helpText: 'Bạn có thể nghe <a href="https://platform.openai.com/docs/guides/text-to-speech/voice-options" target="_blank" style="color:blue; text-decoration:underline;">Mẫu giọng đọc tại đây</a>.'
         }
       ]
     }

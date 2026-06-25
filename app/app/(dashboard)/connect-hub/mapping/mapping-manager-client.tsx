@@ -630,7 +630,7 @@ export default function MappingManagerClient({ connectedApps, teamId }: MappingM
                             onChange={(e) => setTestInput({...testInput, [param.name]: e.target.value})}
                           />
                         )}
-                        {param.helpText && <p className="text-xs text-gray-500 mt-1">{param.helpText}</p>}
+                        {param.helpText && <p className="text-xs text-gray-500 mt-1 [&>a]:text-indigo-500 [&>a]:underline" dangerouslySetInnerHTML={{ __html: param.helpText }}></p>}
                       </div>
                     ))}
                   </div>
