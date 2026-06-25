@@ -931,8 +931,8 @@ def scan_single_config(config, token):
         if ext in VIDEO_EXTENSIONS:
             full_path = os.path.join(folder_path, file)
             file_stat = os.stat(full_path)
-              cache_key = f'{file_stat.st_size}_{file_stat.st_mtime}'
-              if scan_cache.get(full_path) != cache_key:
+            cache_key = f'{file_stat.st_size}_{file_stat.st_mtime}'
+            if scan_cache.get(full_path) != cache_key:
                 # Kiem tra xem file co dang duoc tai ve hay dang bi khoa boi tien trinh khac khong
                 is_locked = False
                 try:
