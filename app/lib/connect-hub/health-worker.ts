@@ -1,7 +1,7 @@
 import { db } from '../db/drizzle';
 import { connectHubConnections } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { getConnectorDefinition } from './connectors/registry';
+import { getConnectorBySlug } from './connectors/registry';
 
 /**
  * Health Worker: Tự động chạy quét các API Connection lỗi
@@ -27,8 +27,8 @@ export async function runAutoHealingCheck(teamId?: number) {
           .set({ status: 'healing' })
           .where(eq(connectHubConnections.id, conn.id));
 
-        const definition = getConnectorDefinition(conn.appSlug);
-        if (!definition) {
+        const connectorDef = getConnectorBySlug(conn.connectorSlug);
+        if (!connectorDef) {
            await db.update(connectHubConnections)
              .set({ status: 'error' })
              .where(eq(connectHubConnections.id, conn.id));

@@ -504,8 +504,9 @@ export default function HeroFilmWatchClient({
         if (res.success) {
           alert('✅ Đã xóa phim thành công!');
           router.push('/film');
-        } else {
-          alert('❌ ' + (res.error || 'Có lỗi xảy ra khi xóa'));
+        }
+        if (!res.success) {
+          alert('❌ ' + ((res as any).error || 'Có lỗi xảy ra khi xóa'));
         }
       } catch (err) {
         alert('❌ Lỗi hệ thống khi xóa phim');
@@ -547,8 +548,10 @@ export default function HeroFilmWatchClient({
       if (res.success) {
         setLocalUnlockedIds(prev => [...prev, episode.id]);
         setUserBalance(prev => prev - episode.tokenPrice);
-      } else {
-        alert(res.error || 'Mở khóa thất bại');
+      }
+      if (!res.success) {
+        alert((res as any).error || 'Mở khóa thất bại');
+        return;
       }
     } catch (e) {
       console.error(e);
@@ -580,8 +583,10 @@ export default function HeroFilmWatchClient({
         alert('Cảm ơn bạn đã phản hồi! Báo cáo lỗi đã được gửi đến ban quản trị.');
         setShowReportModal(false);
         setReportDescription('');
-      } else {
-        alert(res.error || 'Lỗi gửi báo cáo');
+      }
+      if (!res.success) {
+        alert((res as any).error || 'Lỗi gửi báo cáo');
+        return;
       }
     } catch (err) {
       console.error(err);
@@ -606,8 +611,10 @@ export default function HeroFilmWatchClient({
       if (res.success && res.comment) {
         setCommentsList(prev => [res.comment, ...prev]);
         setCommentInput('');
-      } else {
-        alert(res.error || 'Gửi bình luận thất bại');
+      }
+      if (!res.success) {
+        alert((res as any).error || 'Gửi bình luận thất bại');
+        return;
       }
     } catch (err) {
       console.error(err);

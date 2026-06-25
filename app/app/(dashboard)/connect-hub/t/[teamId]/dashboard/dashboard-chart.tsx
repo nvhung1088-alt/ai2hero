@@ -135,7 +135,7 @@ export default function DashboardChart({ data }: { data: ChartDataPoint[] }) {
                 strokeWidth={3}
                 fillOpacity={1} 
                 fill="url(#colorCost)" 
-                activeDot={{ r: 6, fill: '#8b5cf6', stroke: '#fff', strokeWidth: 2, boxShadow: '0 0 10px #8b5cf6' }}
+                activeDot={{ r: 6, fill: '#8b5cf6', stroke: '#fff', strokeWidth: 2 }}
               />
               <Area 
                 yAxisId="right"
