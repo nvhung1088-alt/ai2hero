@@ -252,6 +252,7 @@ export async function retryDubTaskAction(taskId: number, teamId: number) {
         workerId: null,
         retryCount: task.retryCount + 1,
         updatedAt: new Date(),
+        dedupeKey: `${task.teamId}:${task.sourceUrl}:${task.targetLang}`,
       })
       .where(eq(dubTasks.id, taskId));
 
@@ -510,6 +511,7 @@ export async function updateTaskProgressAction(
     }
     if (data.status === 'failed') {
       updateData.completedAt = new Date();
+      updateData.dedupeKey = null;
     }
 
     // Lấy task hiện tại để kiểm tra thay đổi status
@@ -667,6 +669,7 @@ export async function completeTaskAction(
         actualCost: data.actualCost || 0,
         completedAt: new Date(),
         updatedAt: new Date(),
+        dedupeKey: null,
       })
       .where(and(eq(dubTasks.id, taskId), eq(dubTasks.workerId, workerId)));
 
