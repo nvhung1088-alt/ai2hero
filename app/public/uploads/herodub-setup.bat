@@ -36,7 +36,7 @@ echo [OK] Tai script thanh cong!
 
 :: Tai va Cai dat Rubberband de toi uu hoa am thanh long tieng (Tranh giat cuc, click/pop)
 if not exist "rubberband.exe" (
-    echo [INFO] Dang tai Rubberband (Cong cu toi uu am thanh)...
+    echo [INFO] Dang tai Rubberband ^(Cong cu toi uu am thanh^)...
     curl -L -o rubberband.zip "https://breakfastquay.com/files/releases/rubberband-4.0.0-gpl-executable-windows.zip"
     if exist "rubberband.zip" (
         echo [INFO] Dang giai nen Rubberband...
@@ -50,7 +50,7 @@ if not exist "rubberband.exe" (
         del /q rubberband.zip
         if exist "rubberband-4.0.0-gpl-executable-windows" rmdir /s /q rubberband-4.0.0-gpl-executable-windows
     ) else (
-        echo [WARNING] Khong the tai Rubberband. Worker se fallback dung FFmpeg atempo (am thanh co the khong muot ma bang).
+        echo [WARNING] Khong the tai Rubberband. Worker se fallback dung FFmpeg atempo ^(am thanh co the khong muot ma bang^).
     )
 )
 
