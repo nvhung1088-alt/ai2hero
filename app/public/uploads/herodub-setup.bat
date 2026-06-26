@@ -35,7 +35,11 @@ if not exist herodub_worker.py (
 echo [OK] Tai script thanh cong!
 
 :: Tai va Cai dat Rubberband de toi uu hoa am thanh long tieng (Tranh giat cuc, click/pop)
-if not exist "rubberband.exe" (
+set NEED_RUBBERBAND=0
+if not exist "rubberband.exe" set NEED_RUBBERBAND=1
+if not exist "sndfile.dll" set NEED_RUBBERBAND=1
+
+if "!NEED_RUBBERBAND!"=="1" (
     echo [INFO] Dang tai Rubberband ^(Cong cu toi uu am thanh^)...
     curl -L -o rubberband.zip "https://breakfastquay.com/files/releases/rubberband-4.0.0-gpl-executable-windows.zip"
     if exist "rubberband.zip" (
@@ -43,7 +47,8 @@ if not exist "rubberband.exe" (
         powershell -Command "Expand-Archive -Path rubberband.zip -DestinationPath . -Force"
         if exist "rubberband-4.0.0-gpl-executable-windows\rubberband.exe" (
             move /y "rubberband-4.0.0-gpl-executable-windows\rubberband.exe" . >nul
-            echo [OK] Cai dat Rubberband thanh cong!
+            move /y "rubberband-4.0.0-gpl-executable-windows\*.dll" . >nul
+            echo [OK] Cai dat Rubberband va cac thu vien DLL lien quan thanh cong!
         ) else (
             echo [WARNING] Khong tim thay rubberband.exe trong file zip.
         )
