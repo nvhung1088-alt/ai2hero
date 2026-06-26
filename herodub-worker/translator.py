@@ -46,12 +46,19 @@ def run_pyvideotrans(pyvideotrans_dir, video_path, task_data, progress_callback)
         "--name", os.path.abspath(video_path),
         "--source_language_code", task_data.get('sourceLang', 'zh-cn'), # zh-cn
         "--target_language_code", task_data.get('targetLang', 'vi'), # vi
-        "--voice_role", "No", # TẮT DUBBING (Phase 1)
+        "--voice_role", task_data.get('ttsVoice') if task_data.get('ttsEnabled', False) else "No",
+        "--voice_rate", f"+{int((float(task_data.get('ttsSpeed', 1.0)) - 1.0) * 100)}%" if task_data.get('ttsSpeed') else "+0%",
         "--recogn_type", asr_type,
         "--translate_type", trans_type,
         "--subtitle_type", sub_type,
         "--model_name", "small", # Dùng model small cho nhanh và nhẹ local
     ]
+
+    # Truyền âm lượng nếu có
+    if task_data.get('bgVolume') is not None:
+        cmd.extend(["--video_volume", str(task_data.get('bgVolume'))])
+    if task_data.get('ttsVolume') is not None:
+        cmd.extend(["--audio_volume", str(task_data.get('ttsVolume'))])
 
     print(f"[Translator] Đang chạy pyVideoTrans CLI...")
     print(f"[Translator] Lệnh: {' '.join(cmd)}")
