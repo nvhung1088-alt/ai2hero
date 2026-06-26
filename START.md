@@ -122,6 +122,11 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - [x] **Fix lỗi Worker HeroDub**: Đã cập nhật file `herodub_worker.py` (sửa lỗi thiếu `ffmpeg_exe`, import datetime, và fix lỗi intervalMinutes scan quá nhanh).
 - [x] **Deploy Production**: Đã commit và push tất cả thay đổi lên Vercel.
 
+- **2026-06-26 (hero-dub - Local Dev Fixes & Audio Previews)**:
+  - 🚀 **Sửa lỗi Infinite Loop CookieSync**: Vá lỗi gọi Server Action `setActiveTeamCookie` liên tục gây sập Next.js (TimeoutNegativeWarning / AggregateError).
+  - 🚀 **Lọc AI Dịch Thuật**: Tinh chỉnh logic `page.tsx` loại bỏ AI TTS (Lồng tiếng) khỏi danh sách AI Dịch Thuật (chỉ lấy `aiCapability?.includes('text')` và filter model).
+  - 🚀 **Audio Preview Nâng cao**: Tự động sinh file audio mẫu xướng tên cho 6 giọng Viettel và 2 giọng FPT (giọng tạm) đặt vào `public/audio/samples/`. Mở khoá chức năng tuỳ chỉnh Tốc Độ (Speed) cho toàn bộ AI Engine khi nghe thử.
+
 - **2026-06-25 (deploy - Multi-TTS & Security Updates)**:
   - 🚀 **Hoàn thiện TTS**: Đã thêm 4 API FPT, Viettel, Google, ElevenLabs với setup guide hoàn chỉnh hiển thị UI.
   - 🚀 **Worker & Security**: Push mã vá lỗi subprocess progress jumping và vá bảo mật webhook/film. Mọi mã nguồn đã sẵn sàng Production.

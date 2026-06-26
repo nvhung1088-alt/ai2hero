@@ -55,12 +55,30 @@ export default async function HeroDubDashboardPage({
   const activeSlugs = activeConnections.map(c => c.appSlug);
   
   const connectedAiApps = ALL_CONNECTORS
-    .filter(c => activeSlugs.includes(c.slug) && c.category === 'ai' && c.aiModels && c.aiModels.length > 0)
+    .filter(c => activeSlugs.includes(c.slug) && c.category === 'ai' && c.aiCapability?.includes('text') && c.aiModels && c.aiModels.length > 0)
     .map(c => ({
       slug: c.slug,
       name: c.name,
-      models: c.aiModels || []
+      models: c.aiModels?.filter(m => m.type === 'text') || []
     }));
+
+  const connectedAiTtsApps = ALL_CONNECTORS
+    .filter(c => activeSlugs.includes(c.slug) && c.category === 'ai' && c.aiCapability?.includes('tts'))
+    .map(c => {
+      let voices: string[] = [];
+      const ttsAction = (c.actions || []).find(a => a.slug === 'text_to_speech' || a.group === 'tts');
+      if (ttsAction && ttsAction.inputSchema) {
+        const voiceInput = ttsAction.inputSchema.find(i => i.name === 'voice');
+        if (voiceInput && voiceInput.options) {
+          voices = voiceInput.options;
+        }
+      }
+      return {
+        slug: c.slug,
+        name: c.name,
+        voices
+      };
+    });
 
   return (
     <DashboardClient
@@ -68,6 +86,7 @@ export default async function HeroDubDashboardPage({
       userId={user.id}
       teamName={team.name}
       connectedAiApps={connectedAiApps}
+      connectedAiTtsApps={connectedAiTtsApps}
     />
   );
 }

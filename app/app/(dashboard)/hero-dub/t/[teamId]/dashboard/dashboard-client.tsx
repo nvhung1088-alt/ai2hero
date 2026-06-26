@@ -51,9 +51,10 @@ interface DashboardClientProps {
   userId: number;
   teamName: string;
   connectedAiApps?: { slug: string; name: string; models: any[] }[];
+  connectedAiTtsApps?: { slug: string; name: string; voices: string[] }[];
 }
 
-export default function DashboardClient({ teamId, userId, teamName, connectedAiApps }: DashboardClientProps) {
+export default function DashboardClient({ teamId, userId, teamName, connectedAiApps, connectedAiTtsApps }: DashboardClientProps) {
   const [tasks, setTasks] = useState<any[]>([]);
   const [workers, setWorkers] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -83,26 +84,29 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     setTtsEngine(engine);
     if (engine === 'edge-tts') {
       setTtsVoice('vi-VN-HoaiMyNeural');
-    } else {
+    } else if (engine === 'connect-hub') {
       setTtsVoice('nova');
+    } else {
+      const app = connectedAiTtsApps?.find(a => a.slug === engine);
+      if (app && app.voices && app.voices.length > 0) {
+        setTtsVoice(app.voices[0]);
+      } else {
+        setTtsVoice('');
+      }
     }
   };
 
   const handlePreviewVoice = () => {
-    let url = `/audio/samples/${ttsVoice}.mp3`;
-    if (ttsEngine !== 'edge-tts') {
-      url = `/audio/samples/vi-VN-HoaiMyNeural.mp3`; 
-      showToast("Đang phát mẫu âm thanh (Fallback).", "success");
-    } else {
-      showToast(`Đang phát mẫu âm thanh (Tốc độ ${ttsSpeed}x)...`, "success");
-    }
+    const url = `/audio/samples/${ttsVoice}.mp3`;
+    showToast(`Đang phát mẫu: ${ttsVoice} (Tốc độ ${ttsSpeed}x)...`, "success");
+    
     const audio = new Audio(url);
     const speed = parseFloat(ttsSpeed);
     if (!isNaN(speed) && speed > 0) {
-      audio.playbackRate = speed;
+      audio.playbackRate = speed; // Trình duyệt tự tăng tốc độ audio tĩnh
     }
     audio.play().catch(e => {
-       showToast("Không tìm thấy mẫu âm thanh cho giọng này.", "error");
+       showToast(`Chưa có file mẫu: /audio/samples/${ttsVoice}.mp3`, "error");
     });
   };
   
@@ -1178,6 +1182,9 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                     >
                       <option value="edge-tts">Edge-TTS (Miễn phí, rất tự nhiên)</option>
                       <option value="connect-hub">Connect Hub OpenAI (Yêu cầu kết nối OpenAI)</option>
+                      {connectedAiTtsApps?.map(app => (
+                        <option key={app.slug} value={app.slug}>{app.name}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -1216,7 +1223,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                             <option value="zh-CN-YunxiNeural">Yunxi (Nam Trung - Ấm áp)</option>
                           </optgroup>
                         </>
-                      ) : (
+                      ) : ttsEngine === 'connect-hub' ? (
                         <>
                           <option value="nova">Nova (Nữ - Mặc định)</option>
                           <option value="alloy">Alloy (Trung tính)</option>
@@ -1225,16 +1232,22 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                           <option value="onyx">Onyx (Nam trầm)</option>
                           <option value="shimmer">Shimmer (Nữ trong trẻo)</option>
                         </>
+                      ) : (
+                        <>
+                          {connectedAiTtsApps?.find(a => a.slug === ttsEngine)?.voices?.map(voice => (
+                            <option key={voice} value={voice}>{voice}</option>
+                          ))}
+                        </>
                       )}
                     </select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-extrabold text-gray-500 uppercase">Tốc độ đọc (Edge-TTS)</label>
+                    <label className="text-[9px] font-extrabold text-gray-500 uppercase">Tốc độ đọc</label>
                     <select
                       value={ttsSpeed}
                       onChange={(e) => setTtsSpeed(e.target.value)}
-                      disabled={creatingTask || ttsEngine !== 'edge-tts'}
+                      disabled={creatingTask}
                       className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer disabled:opacity-50"
                     >
                       <option value="0.8">0.8x (Chậm)</option>
