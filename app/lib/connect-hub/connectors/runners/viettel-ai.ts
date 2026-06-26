@@ -36,17 +36,22 @@ export async function runViettelAi(
       throw new Error(`Lỗi Viettel AI: ${response.status} - ${errText}`);
     }
 
-    const data = await response.json();
-    if (!data || !data.file_url) {
-      throw new Error('Không nhận được file_url từ Viettel AI.');
-    }
+    const contentType = response.headers.get('content-type') || '';
+    let audioBuffer: ArrayBuffer;
 
-    const fileRes = await fetch(data.file_url);
-    if (!fileRes.ok) {
-      throw new Error(`Lỗi tải audio từ Viettel AI: ${fileRes.status}`);
+    if (contentType.includes('application/json')) {
+      const data = await response.json();
+      if (!data || !data.file_url) {
+        throw new Error('Không nhận được file_url từ Viettel AI.');
+      }
+      const fileRes = await fetch(data.file_url);
+      if (!fileRes.ok) {
+        throw new Error(`Lỗi tải audio từ Viettel AI: ${fileRes.status}`);
+      }
+      audioBuffer = await fileRes.arrayBuffer();
+    } else {
+      audioBuffer = await response.arrayBuffer();
     }
-
-    const audioBuffer = await fileRes.arrayBuffer();
 
     return {
       audio: Buffer.from(audioBuffer).toString('base64'),

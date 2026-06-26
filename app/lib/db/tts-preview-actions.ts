@@ -46,15 +46,22 @@ export async function generateLivePreviewAudioAction(teamId: number, engineSlug:
         })
       });
       if (!res.ok) throw new Error(`Lỗi API Viettel: ${res.status}`);
-      const data = await res.json();
-      if (data && data.file_url) {
-         // Kéo audio từ file_url
-         const fileRes = await fetch(data.file_url);
-         const arrayBuffer = await fileRes.arrayBuffer();
-         base64Audio = Buffer.from(arrayBuffer).toString('base64');
+      const contentType = res.headers.get('content-type') || '';
+      let arrayBuffer: ArrayBuffer;
+
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data && data.file_url) {
+           const fileRes = await fetch(data.file_url);
+           if (!fileRes.ok) throw new Error(`Lỗi tải audio: ${fileRes.status}`);
+           arrayBuffer = await fileRes.arrayBuffer();
+        } else {
+           throw new Error("Không lấy được URL audio từ Viettel");
+        }
       } else {
-         throw new Error("Không lấy được URL audio từ Viettel");
+        arrayBuffer = await res.arrayBuffer();
       }
+      base64Audio = Buffer.from(arrayBuffer).toString('base64');
     } 
     else if (engineSlug === 'fpt-ai') {
       const apiKey = credentials.apiKey;
