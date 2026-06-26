@@ -54,11 +54,31 @@ def run_pyvideotrans(pyvideotrans_dir, video_path, task_data, progress_callback)
         "--model_name", "small", # Dùng model small cho nhanh và nhẹ local
     ]
 
-    # Truyền âm lượng nếu có
-    if task_data.get('bgVolume') is not None:
-        cmd.extend(["--video_volume", str(task_data.get('bgVolume'))])
-    if task_data.get('ttsVolume') is not None:
-        cmd.extend(["--audio_volume", str(task_data.get('ttsVolume'))])
+    # Cập nhật âm lượng trực tiếp vào set.ini của pyVideoTrans
+    ini_path = os.path.join(pyvideotrans_dir, "set.ini")
+    if os.path.exists(ini_path):
+        try:
+            with open(ini_path, 'r', encoding='utf-8') as f:
+                ini_content = f.read()
+            
+            bg_vol = str(task_data.get('bgVolume', '1.0'))
+            tts_vol = str(task_data.get('ttsVolume', '1.0'))
+            
+            if 'video_volume=' in ini_content:
+                ini_content = re.sub(r'video_volume=.*', f'video_volume={bg_vol}', ini_content)
+            else:
+                ini_content += f'\nvideo_volume={bg_vol}\n'
+                
+            if 'audio_volume=' in ini_content:
+                ini_content = re.sub(r'audio_volume=.*', f'audio_volume={tts_vol}', ini_content)
+            else:
+                ini_content += f'audio_volume={tts_vol}\n'
+                
+            with open(ini_path, 'w', encoding='utf-8') as f:
+                f.write(ini_content)
+            print(f"[Translator] Đã cập nhật set.ini: video_volume={bg_vol}, audio_volume={tts_vol}")
+        except Exception as e:
+            print(f"[Translator] Lỗi ghi set.ini: {e}")
 
     print(f"[Translator] Đang chạy pyVideoTrans CLI...")
     print(f"[Translator] Lệnh: {' '.join(cmd)}")
