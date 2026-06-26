@@ -422,8 +422,6 @@ def process_task(token, task):
                 s_end = segment.end
                 s_text = segment.text.strip()
                 
-                print(Fore.CYAN + f"    [{s_start:.2f}s -> {s_end:.2f}s] {s_text}")
-                
                 if duration_sec > 0 and len(extracted_segments) % 5 == 0:
                     current_prog = int(30 + (s_end / duration_sec) * 30)
                     current_prog = min(59, current_prog)
