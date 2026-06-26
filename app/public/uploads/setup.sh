@@ -36,7 +36,7 @@ fi
 # Install Dependencies
 echo "[INFO] Dang tai cac thu vien AI. Chu y: Thu vien tach nhac nen (PyTorch & Demucs) co the nang khoang 200-300MB, tien trinh tai se duoc hien thi ben duoi..."
 source venv/bin/activate
-pip install requests colorama faster-whisper googletrans==4.0.0-rc1 ffmpeg-python imageio-ffmpeg edge-tts demucs soundfile
+pip install requests colorama faster-whisper ffmpeg-python imageio-ffmpeg edge-tts demucs soundfile
 
 # Cai dat Rubberband neu co package manager (giup am thanh luyen giong khong bi giat cuc)
 if command -v brew &> /dev/null; then

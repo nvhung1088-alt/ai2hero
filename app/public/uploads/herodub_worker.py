@@ -16,11 +16,10 @@ init(autoreset=True)
 # ---------------------------------------------------------
 try:
     import faster_whisper
-    import googletrans
     import edge_tts
 except ImportError:
-    print(Fore.YELLOW + "[-] Dang cai dat cac thu vien con thieu (Whisper, GoogleTrans, Edge-TTS)...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "legacy-cgi", "faster-whisper", "googletrans==4.0.0-rc1", "edge-tts"], check=True)
+    print(Fore.YELLOW + "[-] Dang cai dat cac thu vien con thieu (Whisper, Edge-TTS)...")
+    subprocess.run([sys.executable, "-m", "pip", "install", "legacy-cgi", "faster-whisper", "edge-tts"], check=True)
     print(Fore.GREEN + "[-] Cai dat thanh cong. Vui long chay lai lenh khoi dong Worker!")
     sys.exit(0)
 
@@ -108,6 +107,28 @@ def get_audio_duration(ffmpeg_exe, file_path):
     except Exception as e:
         print(f"Loi doc duration file {file_path}: {str(e)}")
     return 0.0
+
+def google_translate(text, dest='vi'):
+    try:
+        url = "https://translate.googleapis.com/translate_a/single"
+        params = {
+            "client": "gtx",
+            "sl": "auto",
+            "tl": dest,
+            "dt": "t",
+            "q": text
+        }
+        r = requests.get(url, params=params, timeout=15)
+        if r.status_code == 200:
+            data = r.json()
+            res = ""
+            for item in data[0]:
+                if item[0]:
+                    res += item[0]
+            return res.strip()
+    except Exception as e:
+        print(f"    [!] Loi goi Google Translate API qua HTTP requests: {str(e)}")
+    return text
 
 def merge_tts_segments(ffmpeg_exe, tts_dir, segments, workspace):
     """Ghep cac file TTS thanh 1 audio track dong bo chinh xac tuyet doi voi subtitle timing"""
@@ -478,8 +499,6 @@ def process_task(token, task):
                         data = res.json()
                         if data.get("success") and data.get("translatedTexts"):
                             translated_array = data.get("translatedTexts")
-                            from googletrans import Translator
-                            translator = None
                             import re
                             
                             for j, seg in enumerate(batch_segs):
@@ -495,10 +514,8 @@ def process_task(token, task):
                                         is_failed = True
                                 
                                 if is_failed:
-                                    if translator is None:
-                                        translator = Translator()
                                     try:
-                                        fixed_translated = translator.translate(seg['text'], dest='vi').text
+                                        fixed_translated = google_translate(seg['text'], dest='vi')
                                         print(Fore.YELLOW + f"  [Sua loi LLM bang Google] {seg['text']} -> {fixed_translated}")
                                         translated = fixed_translated
                                     except:
@@ -515,63 +532,52 @@ def process_task(token, task):
                             print(Fore.RED + f"  [Loi AI] {data.get('error')}")
                             # fallback Google Translate cho batch nay
                             print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
-                            from googletrans import Translator
-                            translator = Translator()
                             for seg in batch_segs:
-                                translated = translator.translate(seg['text'], dest='vi').text
+                                translated = google_translate(seg['text'], dest='vi')
                                 translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                                 print(Fore.WHITE + f"  [Google] {translated}")
                     else:
                         print(Fore.RED + f"  [Loi HTTP] {res.status_code}")
                         print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
-                        from googletrans import Translator
-                        translator = Translator()
                         for seg in batch_segs:
                             translated = ""
                             for attempt in range(3):
                                 try:
-                                    translated = translator.translate(seg['text'], dest='vi').text
+                                    translated = google_translate(seg['text'], dest='vi')
                                     break
                                 except Exception as e:
                                     if attempt == 2: raise e
                                     time.sleep(2)
-                                    translator = Translator()
                             translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                             print(Fore.WHITE + f"  [Google] {translated}")
                 except Exception as api_err:
                     print(Fore.RED + f"  [Loi Mang] {str(api_err)}")
                     print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
-                    from googletrans import Translator
-                    translator = Translator()
                     for seg in batch_segs:
                         translated = ""
                         for attempt in range(3):
                             try:
-                                translated = translator.translate(seg['text'], dest='vi').text
+                                translated = google_translate(seg['text'], dest='vi')
                                 break
                             except Exception as e:
                                 if attempt == 2: raise e
                                 time.sleep(2)
-                                translator = Translator()
                         translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                         print(Fore.WHITE + f"  [Google] {translated}")
         else:
             print(Fore.CYAN + "  -> Su dung Google Translate (Mien phi)")
-            from googletrans import Translator
-            translator = Translator()
             
             for seg in extracted_segments:
                 translated = ""
                 for attempt in range(3):
                     try:
-                        translated = translator.translate(seg['text'], dest='vi').text
+                        translated = google_translate(seg['text'], dest='vi')
                         break
                     except Exception as e:
                         if attempt == 2:
                             raise e
                         print(Fore.YELLOW + f"  [!] Google Translate Timeout. Dang thu lai sau 2s...")
                         time.sleep(2)
-                        translator = Translator() # Reconnect
                 
                 translated_segments.append({
                     "start": seg['start'],
