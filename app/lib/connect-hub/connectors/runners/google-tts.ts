@@ -12,11 +12,27 @@ export async function runGoogleTts(
 
     const voiceName = input.voice || 'vi-VN-Wavenet-A';
     const languageCode = voiceName.substring(0, 5); // vd: 'vi-VN'
+    
+    // Đọc tham số speed từ input (mặc định 1.0)
+    let speakingRate = 1.0;
+    if (input.speed !== undefined && input.speed !== null) {
+      try {
+        const parsedSpeed = parseFloat(input.speed);
+        if (!isNaN(parsedSpeed) && parsedSpeed >= 0.25 && parsedSpeed <= 4.0) {
+          speakingRate = parsedSpeed;
+        }
+      } catch (e) {
+        // Fallback về 1.0
+      }
+    }
 
     const body = {
       input: { text: text },
       voice: { languageCode: languageCode, name: voiceName },
-      audioConfig: { audioEncoding: 'MP3' }
+      audioConfig: { 
+        audioEncoding: 'MP3',
+        speakingRate: speakingRate
+      }
     };
 
     const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
