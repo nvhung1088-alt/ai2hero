@@ -45,6 +45,7 @@ import {
   PlayCircle
 } from 'lucide-react';
 import Link from 'next/link';
+import { generateLivePreviewAudioAction } from '@/lib/db/tts-preview-actions';
 
 interface DashboardClientProps {
   teamId: number;
@@ -96,18 +97,76 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     }
   };
 
-  const handlePreviewVoice = () => {
-    const url = `/audio/samples/${ttsVoice}.mp3`;
-    showToast(`Đang phát mẫu: ${ttsVoice} (Tốc độ ${ttsSpeed}x)...`, "success");
-    
-    const audio = new Audio(url);
-    const speed = parseFloat(ttsSpeed);
-    if (!isNaN(speed) && speed > 0) {
-      audio.playbackRate = speed; // Trình duyệt tự tăng tốc độ audio tĩnh
+  const handlePreviewVoice = async () => {
+    try {
+      const cacheKey = `preview-audio-${ttsEngine}-${ttsVoice}`;
+      const urlStatic = `/audio/samples/${ttsVoice}.mp3`;
+
+      const playAudio = (src: string) => {
+        const audio = new Audio(src);
+        const speed = parseFloat(ttsSpeed);
+        if (!isNaN(speed) && speed > 0) {
+          audio.playbackRate = speed;
+        }
+        audio.play().catch(e => {
+          showToast(`Không thể phát âm thanh: ${e.message}`, "error");
+        });
+      };
+
+      // 1. Check Browser Cache
+      if ('caches' in window) {
+        const cache = await caches.open('ai2hero-audio-cache');
+        const cachedRes = await cache.match(cacheKey);
+        if (cachedRes) {
+          showToast(`Đang phát mẫu (Local Cache): ${ttsVoice}...`, "success");
+          const blob = await cachedRes.blob();
+          playAudio(URL.createObjectURL(blob));
+          return;
+        }
+      }
+
+      // 2. Check Static File
+      const staticRes = await fetch(urlStatic, { method: 'HEAD' });
+      if (staticRes.ok) {
+        if ('caches' in window) {
+          const cache = await caches.open('ai2hero-audio-cache');
+          const resToCache = await fetch(urlStatic);
+          cache.put(cacheKey, resToCache.clone());
+        }
+        showToast(`Đang phát mẫu (Static): ${ttsVoice}...`, "success");
+        playAudio(urlStatic);
+        return;
+      }
+
+      // 3. Gọi Live Generate
+      showToast(`Đang kết nối Live Server để lấy âm thanh (${ttsEngine})...`, "warning");
+      const res = await generateLivePreviewAudioAction(Number(teamId), ttsEngine, ttsVoice);
+      if (!res.success) {
+        showToast(res.error || 'Chưa hỗ trợ hoặc lỗi Server', "error");
+        return;
+      }
+
+      const base64 = res.base64Audio;
+      const dataUrl = `data:audio/mp3;base64,${base64}`;
+
+      // Lưu Cache Vĩnh viễn
+      if ('caches' in window) {
+        try {
+          const fetchRes = await fetch(dataUrl);
+          const cache = await caches.open('ai2hero-audio-cache');
+          cache.put(cacheKey, fetchRes.clone());
+        } catch (e) {
+          console.error("Lỗi cache data URI", e);
+        }
+      }
+
+      showToast(`Đã tải Live thành công, đang phát...`, "success");
+      playAudio(dataUrl);
+
+    } catch (err: any) {
+      console.error(err);
+      showToast(`Lỗi nghe thử: ${err.message}`, "error");
     }
-    audio.play().catch(e => {
-       showToast(`Chưa có file mẫu: /audio/samples/${ttsVoice}.mp3`, "error");
-    });
   };
   
   const [selectedAiAppSlug, setSelectedAiAppSlug] = useState<string>('');
