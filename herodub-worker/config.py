@@ -34,6 +34,7 @@ def clear_session():
 # Tự động tìm thư mục pyVideoTrans ở thư mục cha nếu có
 def detect_pyvideotrans_dir():
     possible_paths = [
+        os.path.abspath("../scratch/pyvideotrans"),
         os.path.abspath("../pyvideotrans"),
         os.path.abspath("./pyvideotrans"),
         "C:/pyvideotrans",
