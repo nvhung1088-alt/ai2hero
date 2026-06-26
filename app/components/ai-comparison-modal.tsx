@@ -22,10 +22,11 @@ const TEXT_MODELS = [
 ];
 
 const TTS_MODELS = [
-  { name: 'Viettel AI', vendor: 'Viettel', price: '380.000đ / 1 Triệu ký tự', voices: '6 Giọng Tự nhiên', speed: 'Nhanh', quality: 'Chuẩn vùng miền' },
-  { name: 'FPT AI', vendor: 'FPT', price: 'Free / Nhỏ', voices: 'Nhiều giọng', speed: 'Nhanh', quality: 'Chuẩn vùng miền' },
-  { name: 'ElevenLabs', vendor: 'ElevenLabs', price: '$0.30 / 1000 Char', voices: '120+ Giọng Cảm xúc', speed: 'TB', quality: 'Xuất sắc thế giới' },
-  { name: 'Google Cloud TTS', vendor: 'Google', price: '$16.00 / 1M Char', voices: 'Neural2, Wavenet, Studio', speed: 'Rất Nhanh', quality: 'Khá tốt' },
+  { name: 'ElevenLabs', vendor: 'ElevenLabs', price: '~$200.00 / 1 Triệu ký tự ($0.20/1K)', voices: '120+ Giọng Cảm xúc', speed: 'Trung bình', quality: 'Siêu thực, Xuất sắc' },
+  { name: 'OpenAI TTS', vendor: 'OpenAI', price: '$15.00 / 1 Triệu ký tự', voices: '6 Giọng Tự nhiên', speed: 'Nhanh', quality: 'Ấm áp, Tự nhiên' },
+  { name: 'Viettel AI', vendor: 'Viettel', price: '300.000đ / 1 Triệu ký tự (~$12.00)', voices: '6 Giọng Vùng miền VN', speed: 'Rất Nhanh', quality: 'Chuẩn giọng Việt' },
+  { name: 'FPT AI', vendor: 'FPT', price: '100.000đ / 1 Triệu ký tự (~$4.00)', voices: 'Nhiều giọng nam/nữ', speed: 'Nhanh', quality: 'Ngữ điệu tự nhiên' },
+  { name: 'Google Cloud TTS', vendor: 'Google', price: 'Standard $4.00 / Wavenet $16.00 / 1M', voices: 'Wavenet, Neural2...', speed: 'Siêu Tốc', quality: 'Rõ ràng, Tốt' },
 ];
 
 const MEDIA_MODELS = [

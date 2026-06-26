@@ -28,6 +28,124 @@ import { redactResponsePreview } from './utils/log-redactor';
  * ✅ Ghi usage log (phân biệt test/thật)
  */
 
+/**
+ * Tính toán số lượng tokens (hoặc characters) và ước tính chi phí sử dụng (USD)
+ */
+function calculateUsageAndCost(
+  appSlug: string,
+  actionSlug: string,
+  input: Record<string, any>,
+  executionResult?: { success: boolean; data?: any }
+): { tokensUsed: number; costUsd: number; modelName: string | null } {
+  let tokensUsed = 0;
+  let costUsd = 0;
+  let modelName: string | null = null;
+
+  if (input && input.model) {
+    modelName = input.model;
+  } else if (executionResult?.data?.model) {
+    modelName = executionResult.data.model;
+  }
+
+  const modelLower = (modelName || '').toLowerCase();
+
+  // 1. AI Text (LLM)
+  if (actionSlug === 'chat_completion') {
+    const usage = executionResult?.data?.usage;
+    let promptTokens = 0;
+    let completionTokens = 0;
+
+    if (usage) {
+      promptTokens = usage.prompt_tokens || 0;
+      completionTokens = usage.completion_tokens || 0;
+      tokensUsed = usage.total_tokens || (promptTokens + completionTokens);
+    } else {
+      // Ước lượng nếu không có usage data (ví dụ streaming hoặc response không chuẩn)
+      const promptText = typeof input.prompt === 'string' 
+        ? input.prompt 
+        : JSON.stringify(input.messages || '');
+      promptTokens = Math.ceil(promptText.length / 4);
+      completionTokens = 150; // Ước lượng completions
+      tokensUsed = promptTokens + completionTokens;
+    }
+
+    let inputPrice = 0.50; // Mặc định gpt-3.5-turbo ($0.50/1M)
+    let outputPrice = 1.50; // ($1.50/1M)
+
+    if (modelLower.includes('gpt-4o-mini')) {
+      inputPrice = 0.15;
+      outputPrice = 0.60;
+    } else if (modelLower.includes('gpt-4o')) {
+      inputPrice = 5.00;
+      outputPrice = 15.00;
+    } else if (modelLower.includes('claude-3-5') || modelLower.includes('claude-3.5')) {
+      inputPrice = 3.00;
+      outputPrice = 15.00;
+    } else if (modelLower.includes('gemini-1.5-flash')) {
+      inputPrice = 0.075;
+      outputPrice = 0.30;
+    } else if (modelLower.includes('gemini-1.5-pro')) {
+      inputPrice = 3.50;
+      outputPrice = 10.50;
+    } else if (modelLower.includes('deepseek-chat') || modelLower.includes('deepseek-coder') || modelLower.includes('deepseek')) {
+      inputPrice = 0.14;
+      outputPrice = 0.28;
+    }
+
+    costUsd = (promptTokens / 1_000_000) * inputPrice + (completionTokens / 1_000_000) * outputPrice;
+  }
+  // 2. AI Voice (TTS)
+  else if (actionSlug === 'text_to_speech') {
+    const text = input?.text || '';
+    tokensUsed = text.length;
+
+    let pricePerMillion = 4.0; // default Google Standard
+
+    if (appSlug === 'elevenlabs') {
+      pricePerMillion = 200.0;
+    } else if (appSlug === 'openai') {
+      pricePerMillion = 15.0;
+    } else if (appSlug === 'google' || appSlug === 'google-tts') {
+      const voiceName = (input?.voice || '').toLowerCase();
+      if (voiceName.includes('wavenet') || voiceName.includes('neural2') || voiceName.includes('studio')) {
+        pricePerMillion = 16.0;
+      } else {
+        pricePerMillion = 4.0;
+      }
+    } else if (appSlug === 'viettel' || appSlug === 'viettel-ai') {
+      pricePerMillion = 12.0;
+    } else if (appSlug === 'fpt' || appSlug === 'fpt-ai') {
+      pricePerMillion = 4.0;
+    }
+
+    costUsd = (tokensUsed / 1_000_000) * pricePerMillion;
+  }
+  // 3. AI Image
+  else if (actionSlug === 'generate_image') {
+    tokensUsed = 1;
+    let pricePerImage = 0.040; // Dall-e-3
+
+    if (modelLower.includes('dall-e-2')) {
+      pricePerImage = 0.020;
+    } else if (appSlug === 'chiasegpu') {
+      pricePerImage = 0.030;
+    }
+    costUsd = pricePerImage * (input?.n || 1);
+  }
+  // 4. AI Video
+  else if (actionSlug === 'generate_video') {
+    tokensUsed = 1;
+    let pricePerVideo = 0.30;
+
+    if (modelLower.includes('runway') || appSlug === 'runway') {
+      pricePerVideo = 0.40;
+    }
+    costUsd = pricePerVideo;
+  }
+
+  return { tokensUsed, costUsd, modelName };
+}
+
 export async function runConnectorAction(params: {
   teamId: number;
   connectionId: number;
@@ -146,6 +264,14 @@ export async function runConnectorAction(params: {
 
     const durationMs = Date.now() - startTime;
 
+    // Tính toán Token và Chi phí
+    const { tokensUsed, costUsd, modelName: logModelName } = calculateUsageAndCost(
+      connection.appSlug,
+      actionSlug,
+      input,
+      executionResult
+    );
+
     // 6. Ghi Usage Log
     try {
       await db.insert(connectHubUsageLogs).values({
@@ -157,6 +283,9 @@ export async function runConnectorAction(params: {
         status: executionResult.success ? 'success' : 'error',
         durationMs,
         errorMessage: executionResult.error ? redactResponsePreview(executionResult.error) : null,
+        tokensUsed,
+        costUsd,
+        modelName: logModelName,
         createdAt: new Date(),
         isTest: isTest ? 1 : 0
       });
@@ -206,6 +335,9 @@ export async function runConnectorAction(params: {
         status: 'error',
         durationMs,
         errorMessage: redactResponsePreview(errMessage),
+        tokensUsed: 0,
+        costUsd: 0,
+        modelName: input?.model || null,
         createdAt: new Date(),
         isTest: isTest ? 1 : 0
       });
@@ -356,6 +488,13 @@ export async function streamConnectorAction(params: {
       }
 
       // Ghi log chung (vì stream response không dễ parse body json)
+      const { tokensUsed: streamTokens, costUsd: streamCost, modelName: streamModel } = calculateUsageAndCost(
+        connection.appSlug,
+        actionSlug,
+        input,
+        { success: true }
+      );
+
       db.insert(connectHubUsageLogs).values({
         connectionId: connection.id,
         teamId,
@@ -364,6 +503,9 @@ export async function streamConnectorAction(params: {
         actionName: actionSlug,
         status: 'success',
         durationMs: Date.now() - startTime,
+        tokensUsed: streamTokens,
+        costUsd: streamCost,
+        modelName: streamModel,
         createdAt: new Date(),
         isTest: isTest ? 1 : 0
       }).catch(console.error);

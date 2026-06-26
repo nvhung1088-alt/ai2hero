@@ -117,10 +117,16 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` [Phase 5] Bổ sung công nghệ TTS cao cấp: Tích hợp ElevenLabs API (Cảm xúc điện ảnh), Google Cloud TTS, FPT AI, Viettel AI vào Connect Hub thành công.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
-- [x] **Nâng cấp Lịch sử Hoạt động HeroDub**: Tích hợp lưu log tiến trình chi tiết theo giờ/thao tác và hiển thị inline timeline trực quan dưới video.
-- [x] **Hoàn thành Trang Lịch sử hoạt động HeroDub**: Đã code xong `history-client.tsx`, tích hợp phân trang, bộ lọc trạng thái và auto-refresh.
-- [x] **Fix lỗi Worker HeroDub**: Đã cập nhật file `herodub_worker.py` (sửa lỗi thiếu `ffmpeg_exe`, import datetime, và fix lỗi intervalMinutes scan quá nhanh).
-- [x] **Deploy Production**: Đã commit và push tất cả thay đổi lên Vercel.
+- [x] **Đồng bộ hóa & Sửa lỗi Bảng giá so sánh AI Matrix**: Cập nhật giá và thêm model Gemini Flash, DeepSeek V3.
+- [x] **Tự động Tính toán & Cập nhật Chi phí sử dụng API**: Viết helper tính cost và tokens, cập nhật logging trong `connector-service.ts`.
+
+- **2026-06-26 (sentry - Local Error Fix)**:
+  - 🚀 **Vá lỗi Spam Console 400 Bad Request**: Đã gỡ bỏ fallback DSN giả lập (`examplePublicKey`) trong các file cấu hình Sentry (`sentry.client.config.ts`, `sentry.edge.config.ts`, `sentry.server.config.ts`). Sentry giờ đây sẽ tự động vô hiệu hoá sạch sẽ trên môi trường local nếu không cung cấp biến môi trường thật.
+
+- **2026-06-26 (connect-hub - Pricing & Cost Analytics Audit)**:
+  - 🚀 **Tích hợp Tự động Tính toán Chi phí & Tokens API**: Xây dựng helper `calculateUsageAndCost` tự động hóa việc tính toán token và giá USD per 1M tokens/chars cho các model AI Text (LLM), AI Voice (TTS - Viettel, FPT, ElevenLabs, Google), AI Image (Dall-E), và AI Video (Luma, Runway). Cập nhật ghi log (success, error, stream) để cập nhật trường `tokensUsed` và `costUsd` trong database.
+  - 🚀 **Đồng bộ hóa Bảng giá AI Matrix**: Sửa lỗi định giá TTS Viettel AI (từ $2 lên $12), FPT AI (từ Free lên $4), ElevenLabs (lên $200). Đưa Gemini 1.5 Flash và DeepSeek V3/R1 vào bảng Matrix để đồng bộ 100% giữa trang `/connect-hub/t/[teamId]/ai-matrix` và modal so sánh `<AiComparisonModal />`.
+  - 🚀 **Kiểm định biên dịch**: Biên dịch TypeScript sạch 100% không lỗi (`pnpm tsc --noEmit`).
 
 - **2026-06-26 (hero-dub - Local Dev Fixes & Audio Previews)**:
   - 🚀 **Tích hợp Rubberband chất lượng cao vào Worker**: Cập nhật script cài đặt 1-click `herodub-setup.bat` tự động tải/giải nén Rubberband trên Windows và `setup.sh` tự động cài đặt trên macOS/Linux. Nâng cấp `herodub_worker.py` tự động phát hiện và co giãn âm thanh bằng Rubberband (với FFmpeg atempo fallback) giúp giải quyết triệt để lỗi giật cục/méo âm thanh khi lồng tiếng.
