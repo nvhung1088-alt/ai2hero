@@ -520,12 +520,19 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
             ...taskBranding,
           });
 
-          if (!res.error && !res.isDuplicate) {
+          if (res.error) {
+            showToast(`Lỗi ở video "${fileName}": ${res.error}`, 'error');
+          } else if (res.isDuplicate) {
+            showToast(`Video "${fileName}" đang trong hàng đợi xử lý!`, 'warning');
+          } else {
             successCount++;
           }
         }
-        showToast(`Đã thêm ${successCount}/${paths.length} video vào hàng đợi!`, 'success');
-        setLocalFilePaths('');
+        
+        if (successCount > 0) {
+          showToast(`Đã thêm ${successCount}/${paths.length} video vào hàng đợi!`, 'success');
+          setLocalFilePaths('');
+        }
         refreshData();
       } else {
         showToast('Vui lòng nhập đường dẫn video.', 'warning');
