@@ -87,3 +87,5 @@ app/app/cleanup.ts
 test_rate.mp3
 
 .vercel
+
+!public/audio/samples/*.mp3
