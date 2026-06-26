@@ -224,6 +224,7 @@ export function AiComparisonModal({ isOpen, onClose, initialTab = 'text' }: AiCo
           
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
