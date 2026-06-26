@@ -6,6 +6,15 @@ def download_video(url, output_dir):
     Tải video từ URL (Douyin, Bilibili, YouTube) về output_dir.
     Trả về đường dẫn file mp4 tải về và tiêu đề video.
     """
+    # Phát hiện đường dẫn tệp tin cục bộ trên Windows hoặc Unix
+    is_local = os.path.exists(url) or (len(url) > 2 and url[1] == ':') or url.startswith('/')
+    if is_local:
+        if not os.path.exists(url):
+            raise FileNotFoundError(f"Không tìm thấy file local: {url}")
+        title = os.path.splitext(os.path.basename(url))[0]
+        print(f"[Downloader] File local, bỏ qua tải: {url}")
+        return url, title
+
     os.makedirs(output_dir, exist_ok=True)
     
     # Cấu hình yt-dlp tải chất lượng tốt nhất có định dạng mp4/m4a, lưu tên theo id video

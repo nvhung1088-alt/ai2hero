@@ -66,36 +66,41 @@ def run_pyvideotrans(pyvideotrans_dir, video_path, task_data, progress_callback)
 
     # Cập nhật cấu hình nâng cao trực tiếp vào set.ini của pyVideoTrans
     ini_path = os.path.join(pyvideotrans_dir, "set.ini")
-    if os.path.exists(ini_path):
-        try:
+    try:
+        if os.path.exists(ini_path):
             with open(ini_path, 'r', encoding='utf-8') as f:
                 ini_content = f.read()
+        else:
+            ini_content = ""
+        
+        bg_vol = str(task_data.get('bgVolume') or '1.0')
+        tts_vol = str(task_data.get('ttsVolume') or '1.0')
+        
+        try:
+            speed_val = float(task_data.get('ttsSpeed') or 1.0)
+        except ValueError:
+            speed_val = 1.0
+        v_rate = f"+{int((speed_val - 1.0) * 100)}%"
+        
+        # Hàm thay thế hoặc append cấu hình (Bug 3)
+        def update_ini_val(content, key, val):
+            pattern = rf'^{re.escape(key)}=.*'
+            if re.search(pattern, content, flags=re.MULTILINE):
+                return re.sub(pattern, f'{key}={val}', content, flags=re.MULTILINE)
+            # Nếu không tìm thấy và content không kết thúc bằng newline, thêm newline trước khi append
+            prefix = "" if not content or content.endswith('\n') else "\n"
+            return content + f'{prefix}{key}={val}\n'
             
-            bg_vol = str(task_data.get('bgVolume') or '1.0')
-            tts_vol = str(task_data.get('ttsVolume') or '1.0')
+        ini_content = update_ini_val(ini_content, 'video_volume', bg_vol)
+        ini_content = update_ini_val(ini_content, 'audio_volume', tts_vol)
+        ini_content = update_ini_val(ini_content, 'voice_rate', v_rate)
+        ini_content = update_ini_val(ini_content, 'tts_type', tts_type_val)
             
-            try:
-                speed_val = float(task_data.get('ttsSpeed') or 1.0)
-            except ValueError:
-                speed_val = 1.0
-            v_rate = f"+{int((speed_val - 1.0) * 100)}%"
-            
-            # Hàm thay thế hoặc append cấu hình
-            def update_ini_val(content, key, val):
-                if f'{key}=' in content:
-                    return re.sub(rf'{key}=.*', f'{key}={val}', content)
-                return content + f'\n{key}={val}\n'
-                
-            ini_content = update_ini_val(ini_content, 'video_volume', bg_vol)
-            ini_content = update_ini_val(ini_content, 'audio_volume', tts_vol)
-            ini_content = update_ini_val(ini_content, 'voice_rate', v_rate)
-            ini_content = update_ini_val(ini_content, 'tts_type', tts_type_val)
-                
-            with open(ini_path, 'w', encoding='utf-8') as f:
-                f.write(ini_content)
-            print(f"[Translator] Đã cập nhật set.ini: video_volume={bg_vol}, audio_volume={tts_vol}, voice_rate={v_rate}, tts_type={tts_type_val}")
-        except Exception as e:
-            print(f"[Translator] Lỗi ghi set.ini: {e}")
+        with open(ini_path, 'w', encoding='utf-8') as f:
+            f.write(ini_content)
+        print(f"[Translator] Đã cập nhật set.ini: video_volume={bg_vol}, audio_volume={tts_vol}, voice_rate={v_rate}, tts_type={tts_type_val}")
+    except Exception as e:
+        print(f"[Translator] Lỗi ghi set.ini: {e}")
 
     print(f"[Translator] Đang chạy pyVideoTrans CLI...")
     print(f"[Translator] Lệnh: {' '.join(cmd)}")
