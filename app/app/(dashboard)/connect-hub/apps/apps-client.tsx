@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ConnectorDefinition, AuthField } from '@/lib/connect-hub/connectors/types';
 import { createConnectionAction, getConnectorHealthStats, fetchPancakePagesDirectlyAction, pingConnectionPreviewAction, getConnectorDetailAction } from '@/lib/db/connect-hub-actions';
+import { AiComparisonModal, ComparisonTab } from '@/components/ai-comparison-modal';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 import {
   Search,
@@ -190,6 +191,7 @@ export default function ConnectHubAppsClient({
   const [activeAiSubCategory, setActiveAiSubCategory] = useState<'all' | 'text' | 'code' | 'video' | 'tts' | 'image'>('all');
   const [filterReady, setFilterReady] = useState(false);
   const [selectedApp, setSelectedApp] = useState<ConnectorDefinition | null>(null);
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
   
   // Form State
   const [connectionName, setConnectionName] = useState('');
@@ -526,7 +528,8 @@ export default function ConnectHubAppsClient({
 
       {/* Sub-Filters cho AI */}
       {activeCategory === 'ai' && (
-        <div className="flex flex-wrap gap-2 pb-5 pt-1 animate-fade-in border-b border-white/5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 pt-1 animate-fade-in border-b border-white/5">
+          <div className="flex flex-wrap gap-2">
           {[
             { id: 'all', label: 'Tất cả AI' },
             { id: 'text', label: '📝 AI Text' },
@@ -547,6 +550,13 @@ export default function ConnectHubAppsClient({
               {sub.label}
             </button>
           ))}
+          </div>
+          <button
+            onClick={() => setShowComparisonModal(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600/20 to-indigo-600/20 text-purple-300 hover:from-purple-500/30 hover:to-indigo-500/30 border border-purple-500/30 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0"
+          >
+            📊 So sánh các Mô hình AI
+          </button>
         </div>
       )}
 
@@ -959,6 +969,12 @@ export default function ConnectHubAppsClient({
         </div>,
         document.body
       )}
+      {/* Modal Bảng so sánh AI */}
+      <AiComparisonModal
+        isOpen={showComparisonModal}
+        onClose={() => setShowComparisonModal(false)}
+        initialTab={activeAiSubCategory === 'tts' ? 'voice' : activeAiSubCategory === 'video' || activeAiSubCategory === 'image' ? 'media' : 'text'}
+      />
     </div>
   );
 }

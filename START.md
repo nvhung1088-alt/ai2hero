@@ -126,6 +126,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🚀 **Sửa lỗi Infinite Loop CookieSync**: Vá lỗi gọi Server Action `setActiveTeamCookie` liên tục gây sập Next.js (TimeoutNegativeWarning / AggregateError).
   - 🚀 **Lọc AI Dịch Thuật**: Tinh chỉnh logic `page.tsx` loại bỏ AI TTS (Lồng tiếng) khỏi danh sách AI Dịch Thuật (chỉ lấy `aiCapability?.includes('text')` và filter model).
   - 🚀 **Audio Preview Nâng cao**: Tự động sinh file audio mẫu xướng tên cho 6 giọng Viettel và 2 giọng FPT (giọng tạm) đặt vào `public/audio/samples/`. Mở khoá chức năng tuỳ chỉnh Tốc Độ (Speed) cho toàn bộ AI Engine khi nghe thử.
+  - 🚀 **Bảng So Sánh AI Thông Minh**: Xây dựng `<AiComparisonModal />` hiển thị dưới dạng UI Glassmorphism cực đẹp. Phân luồng Tab (Text / Voice / Media) thông minh giúp đối chiếu chính xác Giá cả, Tốc độ, Context Window của GPT-4o, Claude 3.5, Gemini, DeepSeek, Viettel AI.
 
 - **2026-06-25 (deploy - Multi-TTS & Security Updates)**:
   - 🚀 **Hoàn thiện TTS**: Đã thêm 4 API FPT, Viettel, Google, ElevenLabs với setup guide hoàn chỉnh hiển thị UI.
