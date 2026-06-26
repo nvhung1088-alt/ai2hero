@@ -123,6 +123,9 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - [x] **Deploy Production**: Đã commit và push tất cả thay đổi lên Vercel.
 
 - **2026-06-26 (hero-dub - Local Dev Fixes & Audio Previews)**:
+  - 🚀 **Tích hợp Rubberband chất lượng cao vào Worker**: Cập nhật script cài đặt 1-click `herodub-setup.bat` tự động tải/giải nén Rubberband trên Windows và `setup.sh` tự động cài đặt trên macOS/Linux. Nâng cấp `herodub_worker.py` tự động phát hiện và co giãn âm thanh bằng Rubberband (với FFmpeg atempo fallback) giúp giải quyết triệt để lỗi giật cục/méo âm thanh khi lồng tiếng.
+  - 🚀 **Sửa lỗi đồng bộ tốc độ lồng tiếng Google TTS**: Bổ sung tham số `speakingRate` truyền trực tiếp vào `audioConfig` của Google Cloud API giúp giọng nói thay đổi tốc độ (Speed) chính xác theo thiết lập của người dùng.
+  - 🚀 **Sửa 3 Lỗi Nghiêm Trọng HeroDub Worker**: Phát hiện và bypass `yt-dlp` đối với đường dẫn file local máy tính (`downloader.py`). Tự động khởi tạo file cấu hình `set.ini` nếu chưa tồn tại, đồng thời sửa regex so khớp multiline với cờ `re.MULTILINE` và anchor `^` để tránh lỗi đè key cấu hình (`translator.py`).
   - 🚀 **Sửa lỗi Infinite Loop CookieSync**: Vá lỗi gọi Server Action `setActiveTeamCookie` liên tục gây sập Next.js (TimeoutNegativeWarning / AggregateError).
   - 🚀 **Lọc AI Dịch Thuật**: Tinh chỉnh logic `page.tsx` loại bỏ AI TTS (Lồng tiếng) khỏi danh sách AI Dịch Thuật (chỉ lấy `aiCapability?.includes('text')` và filter model).
   - 🚀 **Audio Preview Nâng cao**: Tự động sinh file audio mẫu xướng tên cho 6 giọng Viettel và 2 giọng FPT (giọng tạm) đặt vào `public/audio/samples/`. Mở khoá chức năng tuỳ chỉnh Tốc Độ (Speed) cho toàn bộ AI Engine khi nghe thử.

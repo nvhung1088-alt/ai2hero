@@ -34,6 +34,26 @@ if not exist herodub_worker.py (
 )
 echo [OK] Tai script thanh cong!
 
+:: Tai va Cai dat Rubberband de toi uu hoa am thanh long tieng (Tranh giat cuc, click/pop)
+if not exist "rubberband.exe" (
+    echo [INFO] Dang tai Rubberband (Cong cu toi uu am thanh)...
+    curl -L -o rubberband.zip "https://breakfastquay.com/files/releases/rubberband-4.0.0-gpl-executable-windows.zip"
+    if exist "rubberband.zip" (
+        echo [INFO] Dang giai nen Rubberband...
+        powershell -Command "Expand-Archive -Path rubberband.zip -DestinationPath . -Force"
+        if exist "rubberband-4.0.0-gpl-executable-windows\rubberband.exe" (
+            move /y "rubberband-4.0.0-gpl-executable-windows\rubberband.exe" . >nul
+            echo [OK] Cai dat Rubberband thanh cong!
+        ) else (
+            echo [WARNING] Khong tim thay rubberband.exe trong file zip.
+        )
+        del /q rubberband.zip
+        if exist "rubberband-4.0.0-gpl-executable-windows" rmdir /s /q rubberband-4.0.0-gpl-executable-windows
+    ) else (
+        echo [WARNING] Khong the tai Rubberband. Worker se fallback dung FFmpeg atempo (am thanh co the khong muot ma bang).
+    )
+)
+
 :: Cai dat thu vien Python can thiet
 echo [INFO] Kiem tra va cai dat thu vien...
 pip install -q requests colorama

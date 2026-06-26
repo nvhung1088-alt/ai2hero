@@ -759,12 +759,40 @@ def process_task(token, task):
                                 if speed_ratio > 1.15:
                                     clamped_ratio = min(2.0, speed_ratio)
                                     print(Fore.YELLOW + f"      [Speed Alignment] Dieu chinh toc do: {duration_tts:.2f}s -> {duration_slot:.2f}s (Ratio: {clamped_ratio:.2f})")
-                                    subprocess.run([
-                                        ffmpeg_exe, "-y", "-i", temp_wav, 
-                                        "-filter:a", f"atempo={clamped_ratio}", 
-                                        "-ar", "16000", "-ac", "1", 
-                                        output_wav
-                                    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                    
+                                    # Kiem tra xem co cong cu rubberband trong PATH hoac thu muc hien tai khong
+                                    rubberband_exe = None
+                                    import shutil
+                                    if shutil.which("rubberband"):
+                                        rubberband_exe = "rubberband"
+                                    elif shutil.which("rubberband.exe"):
+                                        rubberband_exe = "rubberband.exe"
+                                    else:
+                                        local_rb = os.path.abspath("rubberband.exe")
+                                        if os.path.exists(local_rb):
+                                            rubberband_exe = local_rb
+                                            
+                                    if rubberband_exe:
+                                        print(Fore.GREEN + f"      [Speed Alignment] Su dung Rubberband de co gian am thanh chat luong cao...")
+                                        rb_res = subprocess.run([
+                                            rubberband_exe, "-T", str(clamped_ratio), temp_wav, output_wav
+                                        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                        if rb_res.returncode != 0 or not os.path.exists(output_wav):
+                                            print(Fore.RED + f"      [!] Rubberband loi (code {rb_res.returncode}), fallback sang FFmpeg atempo...")
+                                            subprocess.run([
+                                                ffmpeg_exe, "-y", "-i", temp_wav, 
+                                                "-filter:a", f"atempo={clamped_ratio}", 
+                                                "-ar", "16000", "-ac", "1", 
+                                                output_wav
+                                            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                    else:
+                                        # FFmpeg atempo fallback
+                                        subprocess.run([
+                                            ffmpeg_exe, "-y", "-i", temp_wav, 
+                                            "-filter:a", f"atempo={clamped_ratio}", 
+                                            "-ar", "16000", "-ac", "1", 
+                                            output_wav
+                                        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                                 else:
                                     os.rename(temp_wav, output_wav)
                             else:
