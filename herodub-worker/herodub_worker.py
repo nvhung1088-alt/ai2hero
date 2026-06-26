@@ -398,21 +398,49 @@ def process_task(token, task):
                     else:
                         raise Exception(f"Loi FFMPEG khi trich xuat am thanh: {err_str[-150:]}")
 
+            asr_engine = task.get("asrEngine", "faster-whisper")
+            stt_preset = "balanced"
+            if ":" in asr_engine:
+                parts = asr_engine.split(":")
+                if len(parts) > 1:
+                    stt_preset = parts[1]
+
+            STT_PRESETS = {
+                "fast":     {"model_size": "base",  "beam_size": 2, "vad_params": {"min_silence_duration_ms": 500}},
+                "balanced": {"model_size": "small", "beam_size": 3, "vad_params": {"min_silence_duration_ms": 500}},
+                "quality":  {"model_size": "small", "beam_size": 5, "vad_params": None},
+            }
+            preset = STT_PRESETS.get(stt_preset, STT_PRESETS["balanced"])
+            model_size = preset["model_size"]
+            beam_size = preset["beam_size"]
+            vad_params = preset["vad_params"]
+
+            print(Fore.CYAN + f"[-] Che do STT: {stt_preset.upper()} (Model: {model_size}, Beam: {beam_size}, VAD params: {vad_params})")
+            if model_size == "base":
+                print(Fore.YELLOW + "  [!] Dang tai model Whisper 'base' neu chua co tren o dia (~150MB). Vui long cho...")
+
             from faster_whisper import WhisperModel
             try:
-                model = WhisperModel("small", device="auto", compute_type="int8")
+                model = WhisperModel(model_size, device="auto", compute_type="int8")
             except Exception as model_err:
-                print(Fore.YELLOW + f"  [!] Loi nap model Whisper GPU: {model_err}. Dang thu fallback sang CPU...")
-                model = WhisperModel("small", device="cpu", compute_type="int8")
+                print(Fore.YELLOW + f"  [!] Loi nap model Whisper GPU ({model_size}): {model_err}. Dang thu fallback sang CPU...")
+                model = WhisperModel(model_size, device="cpu", compute_type="int8")
             
             asr_start_time = time.time()
             
+            transcribe_kwargs = {
+                "beam_size": beam_size,
+                "vad_filter": True
+            }
+            if vad_params:
+                transcribe_kwargs["vad_parameters"] = vad_params
+
             try:
-                segments, info = model.transcribe(audio_path, beam_size=5, vad_filter=True)
+                segments, info = model.transcribe(audio_path, **transcribe_kwargs)
             except Exception as trans_err:
-                print(Fore.YELLOW + f"  [!] Loi chay Whisper GPU: {trans_err}. Dang thu fallback sang CPU...")
-                model = WhisperModel("small", device="cpu", compute_type="int8")
-                segments, info = model.transcribe(audio_path, beam_size=5, vad_filter=True)
+                print(Fore.YELLOW + f"  [!] Loi chay Whisper GPU ({model_size}): {trans_err}. Dang thu fallback sang CPU...")
+                model = WhisperModel(model_size, device="cpu", compute_type="int8")
+                segments, info = model.transcribe(audio_path, **transcribe_kwargs)
             
             extracted_segments = []
             prev_end = 0.0

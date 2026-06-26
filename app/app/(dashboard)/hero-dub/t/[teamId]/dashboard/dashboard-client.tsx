@@ -66,6 +66,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   const [sourceLang, setSourceLang] = useState('zh');
   const [targetLang, setTargetLang] = useState('vi');
   const [asrEngine, setAsrEngine] = useState('faster-whisper');
+  const [sttPreset, setSttPreset] = useState<'fast' | 'balanced' | 'quality'>('balanced');
   const [subtitleMode, setSubtitleMode] = useState('burn_subtitle');
 
   // TTS State
@@ -182,7 +183,16 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
           const s = JSON.parse(saved);
           if (s.sourceLang) setSourceLang(s.sourceLang);
           if (s.targetLang) setTargetLang(s.targetLang);
-          if (s.asrEngine) setAsrEngine(s.asrEngine);
+          if (s.asrEngine) {
+            if (s.asrEngine.includes(':')) {
+              const [engine, preset] = s.asrEngine.split(':');
+              setAsrEngine(engine);
+              setSttPreset(preset as any);
+            } else {
+              setAsrEngine(s.asrEngine);
+            }
+          }
+          if (s.sttPreset) setSttPreset(s.sttPreset);
           if (s.subtitleMode) setSubtitleMode(s.subtitleMode);
           if (s.ttsEnabled !== undefined) setTtsEnabled(s.ttsEnabled);
           if (s.ttsEngine) setTtsEngine(s.ttsEngine);
@@ -222,13 +232,13 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   useEffect(() => {
     if (hasLoadedSettings) {
       const settings = {
-        sourceLang, targetLang, asrEngine, subtitleMode, ttsEnabled, ttsEngine,
+        sourceLang, targetLang, asrEngine, sttPreset, subtitleMode, ttsEnabled, ttsEngine,
         ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder,
         selectedAiAppSlug, selectedAiModel
       };
       localStorage.setItem('heroDubSettings', JSON.stringify(settings));
     }
-  }, [sourceLang, targetLang, asrEngine, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, hasLoadedSettings]);
+  }, [sourceLang, targetLang, asrEngine, sttPreset, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, hasLoadedSettings]);
 
   const [creatingTask, setCreatingTask] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -507,7 +517,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
             sourceThumbnailUrl: undefined,
             sourceLang,
             targetLang,
-            asrEngine,
+            asrEngine: asrEngine === 'faster-whisper' ? `faster-whisper:${sttPreset}` : asrEngine,
             subtitleMode,
             llmModel: selectedAiAppSlug && selectedAiModel ? `${selectedAiAppSlug}|${selectedAiModel}` : undefined,
             ttsEnabled,
@@ -607,7 +617,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
         intervalMinutes: scanInterval,
         sourceLang,
         targetLang,
-        asrEngine,
+        asrEngine: asrEngine === 'faster-whisper' ? `faster-whisper:${sttPreset}` : asrEngine,
         subtitleMode,
         ttsEnabled,
         ttsEngine,
@@ -659,7 +669,16 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     setScanInterval(p.intervalMinutes);
     setSourceLang(p.sourceLang);
     setTargetLang(p.targetLang);
-    setAsrEngine(p.asrEngine);
+    if (p.asrEngine) {
+      if (p.asrEngine.includes(':')) {
+        const [engine, preset] = p.asrEngine.split(':');
+        setAsrEngine(engine);
+        setSttPreset(preset as any);
+      } else {
+        setAsrEngine(p.asrEngine);
+        setSttPreset('balanced');
+      }
+    }
     setSubtitleMode(p.subtitleMode);
     setTtsEnabled(p.ttsEnabled);
     if (p.ttsEngine) setTtsEngine(p.ttsEngine);
@@ -1153,6 +1172,61 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                 <option value="faster-whisper">Faster-Whisper (Local)</option>
                 <option value="bcut">Bilibili BCut ASR (Free Online)</option>
               </select>
+              
+              {asrEngine === 'faster-whisper' && (
+                <div className="space-y-1.5 pt-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <label className="text-[9px] font-bold text-gray-400 uppercase flex items-center justify-between">
+                    <span>Tốc độ & Chất lượng STT</span>
+                    <span className="text-[8px] text-amber-500/80 normal-case">Faster-Whisper presets</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5 bg-black/25 p-1 rounded-xl border border-white/5">
+                    <button
+                      type="button"
+                      disabled={creatingTask}
+                      onClick={() => setSttPreset('fast')}
+                      className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                        sttPreset === 'fast'
+                          ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                          : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-[11px]">⚡ Nhanh</span>
+                      <span className="text-[7.5px] text-gray-500 mt-0.5">Base (Beam 2)</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={creatingTask}
+                      onClick={() => setSttPreset('balanced')}
+                      className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                        sttPreset === 'balanced'
+                          ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                          : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-[11px]">⚖️ Ổn định</span>
+                      <span className="text-[7.5px] text-gray-500 mt-0.5">Small (Beam 3)</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={creatingTask}
+                      onClick={() => setSttPreset('quality')}
+                      className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                        sttPreset === 'quality'
+                          ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                          : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-[11px]">💎 Chất lượng</span>
+                      <span className="text-[7.5px] text-gray-500 mt-0.5">Small (Beam 5)</span>
+                    </button>
+                  </div>
+                  <p className="text-[8.5px] text-gray-500 leading-relaxed px-1">
+                    {sttPreset === 'fast' && '⚡ Nhanh: Nhanh gấp ~3.5 lần, độ chính xác ~95-97%. Phù hợp âm rõ.'}
+                    {sttPreset === 'balanced' && '⚖️ Ổn định: Nhanh gấp ~1.5 lần, độ chính xác ~98-99%. Mặc định.'}
+                    {sttPreset === 'quality' && '💎 Chất lượng: Độ chính xác ~100%, tốn tài nguyên nhất (Baseline).'}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -1561,7 +1635,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                       </td>
                       <td className="py-3 pr-3 text-[10px] font-bold text-gray-400">
                         <div className="flex flex-col">
-                          <span>ASR: {task.asrEngine}</span>
+                          <span>ASR: {task.asrEngine?.includes(':') ? task.asrEngine.split(':').map((s: string, i: number) => i === 0 ? s : `(${s})`).join(' ') : task.asrEngine}</span>
                           <span className="text-gray-500">Dịch: {task.translateEngine}</span>
                         </div>
                       </td>
