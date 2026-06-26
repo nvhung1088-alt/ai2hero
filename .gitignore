@@ -19,7 +19,6 @@ workspace/
 build/
 dist/
 __pycache__/
-*.mp3
 *.mp4
 *.wav
 *.spec
@@ -48,4 +47,3 @@ test_rate.mp3
 
 .vercel
 !app/public/uploads/herodub_worker.py
-!app/public/audio/samples/*.mp3

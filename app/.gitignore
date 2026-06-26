@@ -59,7 +59,6 @@ workspace/
 build/
 dist/
 __pycache__/
-*.mp3
 *.mp4
 *.wav
 *.spec
@@ -88,4 +87,3 @@ test_rate.mp3
 
 .vercel
 
-!public/audio/samples/*.mp3

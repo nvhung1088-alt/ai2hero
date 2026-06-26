@@ -9,7 +9,6 @@ test_workspace/
 test_workspace2/
 workspace/
 __pycache__/
-*.mp3
 *.mp4
 *.wav
 *.spec
@@ -36,4 +35,3 @@ test_workflow.py
 test_workflow_2.py
 test_rate.mp3
 
-!public/audio/samples/*.mp3
