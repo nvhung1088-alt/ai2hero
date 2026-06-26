@@ -36,6 +36,17 @@ def run_pyvideotrans(pyvideotrans_dir, video_path, task_data, progress_callback)
     trans_type = map_translate_engine(task_data.get('translateEngine'))
     sub_type = '1' if task_data.get('subtitleMode') == 'burn_subtitle' else '0' # 1 = Hard embed, 0 = No embed (chỉ srt)
     
+    # Xử lý an toàn các tham số TTS
+    tts_enabled = task_data.get('ttsEnabled', False)
+    tts_voice = task_data.get('ttsVoice')
+    voice_role = tts_voice if (tts_enabled and tts_voice) else "No"
+    
+    # Map ttsEngine sang tts_type của pyVideoTrans
+    # 0 = edge-tts, 1 = openai, 2 = elevenlabs
+    engine_map = {'edge-tts': '0', 'openai': '1', 'openai-tts': '1', 'elevenlabs': '2'}
+    tts_engine_name = task_data.get('ttsEngine', 'edge-tts')
+    tts_type_val = engine_map.get(tts_engine_name, '0')
+
     # CMD command
     # Sử dụng python chạy cli.py của pyVideoTrans
     python_exe = sys.executable
@@ -46,42 +57,43 @@ def run_pyvideotrans(pyvideotrans_dir, video_path, task_data, progress_callback)
         "--name", os.path.abspath(video_path),
         "--source_language_code", task_data.get('sourceLang', 'zh-cn'), # zh-cn
         "--target_language_code", task_data.get('targetLang', 'vi'), # vi
-        "--voice_role", task_data.get('ttsVoice') if task_data.get('ttsEnabled', False) else "No",
+        "--voice_role", voice_role,
         "--recogn_type", asr_type,
         "--translate_type", trans_type,
         "--subtitle_type", sub_type,
         "--model_name", "small", # Dùng model small cho nhanh và nhẹ local
     ]
 
-    # Cập nhật âm lượng trực tiếp vào set.ini của pyVideoTrans
+    # Cập nhật cấu hình nâng cao trực tiếp vào set.ini của pyVideoTrans
     ini_path = os.path.join(pyvideotrans_dir, "set.ini")
     if os.path.exists(ini_path):
         try:
             with open(ini_path, 'r', encoding='utf-8') as f:
                 ini_content = f.read()
             
-            bg_vol = str(task_data.get('bgVolume', '1.0'))
-            tts_vol = str(task_data.get('ttsVolume', '1.0'))
-            v_rate = f"+{int((float(task_data.get('ttsSpeed', 1.0)) - 1.0) * 100)}%" if task_data.get('ttsSpeed') else "+0%"
+            bg_vol = str(task_data.get('bgVolume') or '1.0')
+            tts_vol = str(task_data.get('ttsVolume') or '1.0')
             
-            if 'video_volume=' in ini_content:
-                ini_content = re.sub(r'video_volume=.*', f'video_volume={bg_vol}', ini_content)
-            else:
-                ini_content += f'\nvideo_volume={bg_vol}\n'
+            try:
+                speed_val = float(task_data.get('ttsSpeed') or 1.0)
+            except ValueError:
+                speed_val = 1.0
+            v_rate = f"+{int((speed_val - 1.0) * 100)}%"
+            
+            # Hàm thay thế hoặc append cấu hình
+            def update_ini_val(content, key, val):
+                if f'{key}=' in content:
+                    return re.sub(rf'{key}=.*', f'{key}={val}', content)
+                return content + f'\n{key}={val}\n'
                 
-            if 'audio_volume=' in ini_content:
-                ini_content = re.sub(r'audio_volume=.*', f'audio_volume={tts_vol}', ini_content)
-            else:
-                ini_content += f'audio_volume={tts_vol}\n'
-                
-            if 'voice_rate=' in ini_content:
-                ini_content = re.sub(r'voice_rate=.*', f'voice_rate={v_rate}', ini_content)
-            else:
-                ini_content += f'voice_rate={v_rate}\n'
+            ini_content = update_ini_val(ini_content, 'video_volume', bg_vol)
+            ini_content = update_ini_val(ini_content, 'audio_volume', tts_vol)
+            ini_content = update_ini_val(ini_content, 'voice_rate', v_rate)
+            ini_content = update_ini_val(ini_content, 'tts_type', tts_type_val)
                 
             with open(ini_path, 'w', encoding='utf-8') as f:
                 f.write(ini_content)
-            print(f"[Translator] Đã cập nhật set.ini: video_volume={bg_vol}, audio_volume={tts_vol}, voice_rate={v_rate}")
+            print(f"[Translator] Đã cập nhật set.ini: video_volume={bg_vol}, audio_volume={tts_vol}, voice_rate={v_rate}, tts_type={tts_type_val}")
         except Exception as e:
             print(f"[Translator] Lỗi ghi set.ini: {e}")
 
