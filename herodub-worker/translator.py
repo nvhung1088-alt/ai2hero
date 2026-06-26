@@ -47,7 +47,6 @@ def run_pyvideotrans(pyvideotrans_dir, video_path, task_data, progress_callback)
         "--source_language_code", task_data.get('sourceLang', 'zh-cn'), # zh-cn
         "--target_language_code", task_data.get('targetLang', 'vi'), # vi
         "--voice_role", task_data.get('ttsVoice') if task_data.get('ttsEnabled', False) else "No",
-        "--voice_rate", f"+{int((float(task_data.get('ttsSpeed', 1.0)) - 1.0) * 100)}%" if task_data.get('ttsSpeed') else "+0%",
         "--recogn_type", asr_type,
         "--translate_type", trans_type,
         "--subtitle_type", sub_type,
@@ -63,6 +62,7 @@ def run_pyvideotrans(pyvideotrans_dir, video_path, task_data, progress_callback)
             
             bg_vol = str(task_data.get('bgVolume', '1.0'))
             tts_vol = str(task_data.get('ttsVolume', '1.0'))
+            v_rate = f"+{int((float(task_data.get('ttsSpeed', 1.0)) - 1.0) * 100)}%" if task_data.get('ttsSpeed') else "+0%"
             
             if 'video_volume=' in ini_content:
                 ini_content = re.sub(r'video_volume=.*', f'video_volume={bg_vol}', ini_content)
@@ -74,9 +74,14 @@ def run_pyvideotrans(pyvideotrans_dir, video_path, task_data, progress_callback)
             else:
                 ini_content += f'audio_volume={tts_vol}\n'
                 
+            if 'voice_rate=' in ini_content:
+                ini_content = re.sub(r'voice_rate=.*', f'voice_rate={v_rate}', ini_content)
+            else:
+                ini_content += f'voice_rate={v_rate}\n'
+                
             with open(ini_path, 'w', encoding='utf-8') as f:
                 f.write(ini_content)
-            print(f"[Translator] Đã cập nhật set.ini: video_volume={bg_vol}, audio_volume={tts_vol}")
+            print(f"[Translator] Đã cập nhật set.ini: video_volume={bg_vol}, audio_volume={tts_vol}, voice_rate={v_rate}")
         except Exception as e:
             print(f"[Translator] Lỗi ghi set.ini: {e}")
 
