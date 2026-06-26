@@ -649,6 +649,94 @@ def process_task(token, task):
             total_segs = len(translated_segments)
             failed_tts_count = 0
             
+            # --- PHAN BATCH EDGE-TTS DE TRANH SPAM WEBSOCKET & TIMEOUT ---
+            if tts_engine == "edge-tts":
+                batch_items = []
+                for i, seg in enumerate(translated_segments):
+                    if not seg['text'].strip():
+                        continue
+                    output_file = os.path.join(tts_dir, f"seg_{i:04d}.mp3")
+                    if not os.path.exists(output_file) or os.path.getsize(output_file) < 100:
+                        batch_items.append({
+                            "index": i,
+                            "text": seg['text'],
+                            "output_file": output_file
+                        })
+                
+                if batch_items:
+                    print(Fore.CYAN + f"  [-] Phat hien {len(batch_items)} phan doan can sinh Edge-TTS. Dang tai hang loat (Batch)...")
+                    batch_json_path = os.path.join(workspace, "tts_batch.json")
+                    with open(batch_json_path, "w", encoding="utf-8") as f:
+                        json.dump(batch_items, f, ensure_ascii=False, indent=4)
+                        
+                    batch_script_path = os.path.join(workspace, "run_edge_tts_batch.py")
+                    script_content = """# -*- coding: utf-8 -*-
+import asyncio
+import json
+import os
+import sys
+import edge_tts
+
+async def download_seg(sem, voice, text, rate, output_file, index):
+    async with sem:
+        for attempt in range(4):
+            try:
+                communicate = edge_tts.Communicate(text, voice, rate=rate)
+                await communicate.save(output_file)
+                if os.path.exists(output_file) and os.path.getsize(output_file) > 100:
+                    print(f"SUCCESS:{index}")
+                    return True
+            except Exception as e:
+                print(f"ERROR:{index} - {str(e)} - Attempt {attempt+1}")
+                if attempt < 3:
+                    await asyncio.sleep(1.5 + attempt * 1.5)
+        print(f"FAILED:{index}")
+        return False
+
+async def main():
+    json_path = sys.argv[1]
+    voice = sys.argv[2]
+    rate = sys.argv[3]
+    concurrency = 6
+    with open(json_path, "r", encoding="utf-8") as f:
+        batch = json.load(f)
+    if not batch:
+        print("BATCH_DONE:0/0")
+        return
+    sem = asyncio.Semaphore(concurrency)
+    tasks = []
+    for item in batch:
+        tasks.append(download_seg(sem, voice, item["text"], rate, item["output_file"], item["index"]))
+    results = await asyncio.gather(*tasks)
+    success_count = sum(1 for r in results if r)
+    print(f"BATCH_DONE:{success_count}/{len(batch)}")
+
+if __name__ == '__main__':
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    asyncio.run(main())
+"""
+                    with open(batch_script_path, "w", encoding="utf-8") as f:
+                        f.write(script_content)
+                        
+                    cmd = [sys.executable, batch_script_path, batch_json_path, tts_voice, rate_str]
+                    timeout_val = max(120, len(batch_items) * 10)
+                    try:
+                        print(Fore.CYAN + "  -> Dang tai cac phan doan song song qua Edge-TTS batch engine...")
+                        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='ignore', timeout=timeout_val)
+                        if result.returncode != 0:
+                            print(Fore.RED + f"  [!] Edge-TTS batch engine gap loi (code {result.returncode}). Stderr: {result.stderr}")
+                        else:
+                            lines = result.stdout.strip().split('\n')
+                            done_line = [l for l in lines if l.startswith("BATCH_DONE:")]
+                            if done_line:
+                                print(Fore.GREEN + f"  [+] Edge-TTS batch engine hoan thanh: {done_line[0]}")
+                    except subprocess.TimeoutExpired:
+                        print(Fore.RED + "  [!] Edge-TTS batch download bi timeout!")
+                    except Exception as batch_err:
+                        print(Fore.RED + f"  [!] Loi thuc thi batch download: {str(batch_err)}")
+            # --- KET THUC PHAN BATCH EDGE-TTS ---
+            
             for i, seg in enumerate(translated_segments):
                 if not seg['text'].strip():
                     continue

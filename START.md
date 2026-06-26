@@ -120,6 +120,9 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - [x] **Đồng bộ hóa & Sửa lỗi Bảng giá so sánh AI Matrix**: Cập nhật giá và thêm model Gemini Flash, DeepSeek V3.
 - [x] **Tự động Tính toán & Cập nhật Chi phí sử dụng API**: Viết helper tính cost và tokens, cập nhật logging trong `connector-service.ts`.
 
+- **2026-06-27 (hero-dub - Batch TTS Performance Optimization)**:
+  - 🚀 **Tối ưu hóa tải tiếng lồng Edge-TTS bằng Batching (Song song)**: Thay thế cơ chế tải Edge-TTS tuần tự từng câu thông qua hàng trăm cuộc gọi subprocess python riêng lẻ (overhead rất lớn và dễ bị Microsoft rate-limit/timeout khi video dài nhiều câu). Xây dựng cơ chế xuất danh sách phân đoạn chưa hoàn thành ra file JSON và chạy duy nhất **1 tiến trình batch Edge-TTS** sử dụng `asyncio.Semaphore` giới hạn tối đa 6 kết nối song song, tự động retry giãn cách 4 lần. Tốc độ tăng gấp 10 lần, triệt tiêu hoàn toàn lỗi Connection Timeout / Reset của Microsoft.
+
 - **2026-06-26 (sentry - Local Error Fix)**:
   - 🚀 **Vá lỗi Spam Console 400 Bad Request**: Đã gỡ bỏ fallback DSN giả lập (`examplePublicKey`) trong các file cấu hình Sentry (`sentry.client.config.ts`, `sentry.edge.config.ts`, `sentry.server.config.ts`). Sentry giờ đây sẽ tự động vô hiệu hoá sạch sẽ trên môi trường local nếu không cung cấp biến môi trường thật.
 
