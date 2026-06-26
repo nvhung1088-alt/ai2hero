@@ -22,7 +22,7 @@ const TEXT_MODELS = [
 ];
 
 const TTS_MODELS = [
-  { name: 'Viettel AI', vendor: 'Viettel', price: '25.000đ / 100K ký tự', voices: '6 Giọng Tự nhiên', speed: 'Nhanh', quality: 'Chuẩn vùng miền' },
+  { name: 'Viettel AI', vendor: 'Viettel', price: '380.000đ / 1 Triệu ký tự', voices: '6 Giọng Tự nhiên', speed: 'Nhanh', quality: 'Chuẩn vùng miền' },
   { name: 'FPT AI', vendor: 'FPT', price: 'Free / Nhỏ', voices: 'Nhiều giọng', speed: 'Nhanh', quality: 'Chuẩn vùng miền' },
   { name: 'ElevenLabs', vendor: 'ElevenLabs', price: '$0.30 / 1000 Char', voices: '120+ Giọng Cảm xúc', speed: 'TB', quality: 'Xuất sắc thế giới' },
   { name: 'Google Cloud TTS', vendor: 'Google', price: '$16.00 / 1M Char', voices: 'Neural2, Wavenet, Studio', speed: 'Rất Nhanh', quality: 'Khá tốt' },
