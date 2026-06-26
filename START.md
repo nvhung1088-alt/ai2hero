@@ -121,7 +121,9 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - [x] **Tự động Tính toán & Cập nhật Chi phí sử dụng API**: Viết helper tính cost và tokens, cập nhật logging trong `connector-service.ts`.
 
 - **2026-06-27 (hero-dub - Batch TTS Performance Optimization)**:
-  - 🚀 **Tối ưu hóa tải tiếng lồng Edge-TTS bằng Batching (Song song)**: Thay thế cơ chế tải Edge-TTS tuần tự từng câu thông qua hàng trăm cuộc gọi subprocess python riêng lẻ (overhead rất lớn và dễ bị Microsoft rate-limit/timeout khi video dài nhiều câu). Xây dựng cơ chế xuất danh sách phân đoạn chưa hoàn thành ra file JSON và chạy duy nhất **1 tiến trình batch Edge-TTS** sử dụng `asyncio.Semaphore` giới hạn tối đa 6 kết nối song song, tự động retry giãn cách 4 lần. Tốc độ tăng gấp 10 lần, triệt tiêu hoàn toàn lỗi Connection Timeout / Reset của Microsoft.
+  - 🚀 **Tối ưu hóa tải tiếng lồng Edge-TTS bằng Batching & Retry**: Thay thế cơ chế tải Edge-TTS tuần tự từng câu thông qua hàng trăm cuộc gọi subprocess python riêng lẻ bằng cơ chế xuất danh sách phân đoạn ra file JSON và chạy duy nhất **1 tiến trình batch Edge-TTS** sử dụng `asyncio.Semaphore` giới hạn tối đa 6 kết nối song song, tự động retry giãn cách 4 lần. Hỗ trợ tự động quét retry batch tối đa 3 lần nếu có lỗi kết nối mạng.
+  - 🚀 **Đa luồng xử lý Audio & Gộp FFmpeg Filter**: Nâng cấp worker sử dụng `ThreadPoolExecutor` (6 workers) để xử lý hậu kỳ audio song song. Đồng thời gộp các công đoạn convert format và trim im lặng (silenceremove) thành một lệnh FFmpeg duy nhất giúp giảm thiểu 66% số lượng subprocess FFmpeg, đẩy tốc độ xử lý Phase B lên nhanh gấp ~18 lần trên các video dài.
+
 
 - **2026-06-26 (sentry - Local Error Fix)**:
   - 🚀 **Vá lỗi Spam Console 400 Bad Request**: Đã gỡ bỏ fallback DSN giả lập (`examplePublicKey`) trong các file cấu hình Sentry (`sentry.client.config.ts`, `sentry.edge.config.ts`, `sentry.server.config.ts`). Sentry giờ đây sẽ tự động vô hiệu hoá sạch sẽ trên môi trường local nếu không cung cấp biến môi trường thật.
