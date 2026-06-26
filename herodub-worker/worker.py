@@ -213,14 +213,27 @@ def process_task(task):
             on_translation_progress
         )
         
-        # Bước 3: Lấy presigned upload URLs
-        update_task_progress(task_id, 'uploading', 85)
-        video_upload_url, video_public_url = get_presigned_url(task_id, 'video')
-        srt_upload_url, srt_public_url = get_presigned_url(task_id, 'srt')
+        # Bước 3 & 4: Lưu file kết quả ra Local Desktop (KHÔNG UPLOAD)
+        update_task_progress(task_id, 'uploading', 85) # Vẫn giữ event để báo đang lưu file
         
-        # Bước 4: Upload file
-        upload_file_to_presigned_url(result_video, video_upload_url, 'video/mp4')
-        upload_file_to_presigned_url(result_srt, srt_upload_url, 'text/plain')
+        EXPORT_DIR = os.path.join(os.path.expanduser("~"), "Desktop", "Ai2Hero-Exports")
+        os.makedirs(EXPORT_DIR, exist_ok=True)
+        
+        # Tạo tên file mới
+        final_video_name = f"HeroDub_Task{task_id}.mp4"
+        final_srt_name = f"HeroDub_Task{task_id}.srt"
+        
+        video_public_url = os.path.join(EXPORT_DIR, final_video_name)
+        srt_public_url = os.path.join(EXPORT_DIR, final_srt_name)
+        
+        # Copy file từ thư mục tạm ra thư mục xuất
+        shutil.copy2(result_video, video_public_url)
+        if result_srt and os.path.exists(result_srt):
+            shutil.copy2(result_srt, srt_public_url)
+        else:
+            srt_public_url = ""
+            
+        print(f"[+] Đã lưu video kết quả tại: {video_public_url}")
         
         # Bước 5: Báo hoàn thành
         complete_task(task_id, video_public_url, srt_public_url)
