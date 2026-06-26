@@ -27,7 +27,7 @@ export async function generateLivePreviewAudioAction(teamId: number, engineSlug:
     let base64Audio = '';
 
     if (engineSlug === 'viettel-ai') {
-      const token = credentials.token;
+      const token = credentials.apiKey;
       if (!token) throw new Error("Thiếu token Viettel AI");
 
       const res = await fetch("https://viettelai.vn/tts/speech_synthesis", {
