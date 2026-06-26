@@ -17,14 +17,15 @@ export async function runViettelAi(
       text: text,
       voice: voice,
       speed: parseFloat(speed),
-      tts_return_option: 2 // Yêu cầu trả file audio trực tiếp
+      tts_return_option: 2,
+      token: token,
+      without_filter: false
     };
 
     const response = await fetch('https://viettelai.vn/tts/speech_synthesis', {
       method: 'POST',
       headers: {
         'accept': '*/*',
-        'token': token,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
@@ -35,11 +36,21 @@ export async function runViettelAi(
       throw new Error(`Lỗi Viettel AI: ${response.status} - ${errText}`);
     }
 
-    const audioBuffer = await response.arrayBuffer();
+    const data = await response.json();
+    if (!data || !data.file_url) {
+      throw new Error('Không nhận được file_url từ Viettel AI.');
+    }
+
+    const fileRes = await fetch(data.file_url);
+    if (!fileRes.ok) {
+      throw new Error(`Lỗi tải audio từ Viettel AI: ${fileRes.status}`);
+    }
+
+    const audioBuffer = await fileRes.arrayBuffer();
 
     return {
       audio: Buffer.from(audioBuffer).toString('base64'),
-      format: 'wav'
+      format: 'mp3'
     };
   }
 
