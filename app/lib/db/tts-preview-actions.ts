@@ -3,7 +3,7 @@
 import { db } from './drizzle';
 import { connectHubConnections } from './schema';
 import { eq, and } from 'drizzle-orm';
-import { decryptField } from '../sim-crypto';
+import { runConnectorAction } from '../connect-hub/connector-service';
 
 export async function generateLivePreviewAudioAction(teamId: number, engineSlug: string, voiceId: string) {
   try {
@@ -21,102 +21,28 @@ export async function generateLivePreviewAudioAction(teamId: number, engineSlug:
       return { success: false, error: 'Chưa cấu hình API (hoặc API Key không chính xác) cho dịch vụ này.' };
     }
 
-    const credentialsStr = decryptField(connections[0].encryptedCredentials) || '{}';
-    const credentials = JSON.parse(credentialsStr);
+    const connectionId = connections[0].id;
 
-    let base64Audio = '';
+    const res = await runConnectorAction({
+      teamId,
+      connectionId,
+      actionSlug: 'text_to_speech',
+      input: {
+        text: text,
+        voice: voiceId,
+        speed: 1.0
+      },
+      callerModule: 'hero-dub-preview',
+      isTest: true
+    });
 
-    if (engineSlug === 'viettel-ai') {
-      const token = credentials.apiKey;
-      if (!token) throw new Error("Thiếu token Viettel AI");
-
-      const res = await fetch("https://viettelai.vn/tts/speech_synthesis", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "accept": "*/*"
-        },
-        body: JSON.stringify({
-          text: text,
-          voice: voiceId,
-          speed: 1.0,
-          tts_return_option: 2, // 2 = Trả về file_url
-          token: token,
-          without_filter: false
-        })
-      });
-      if (!res.ok) throw new Error(`Lỗi API Viettel: ${res.status}`);
-      const contentType = res.headers.get('content-type') || '';
-      let arrayBuffer: ArrayBuffer;
-
-      if (contentType.includes('application/json')) {
-        const data = await res.json();
-        if (data && data.file_url) {
-           const fileRes = await fetch(data.file_url);
-           if (!fileRes.ok) throw new Error(`Lỗi tải audio: ${fileRes.status}`);
-           arrayBuffer = await fileRes.arrayBuffer();
-        } else {
-           throw new Error("Không lấy được URL audio từ Viettel");
-        }
-      } else {
-        arrayBuffer = await res.arrayBuffer();
-      }
-      base64Audio = Buffer.from(arrayBuffer).toString('base64');
-    } 
-    else if (engineSlug === 'fpt-ai') {
-      const apiKey = credentials.apiKey;
-      if (!apiKey) throw new Error("Thiếu API Key FPT AI");
-
-      const res = await fetch("https://api.fpt.ai/hmi/tts/v5", {
-        method: "POST",
-        headers: {
-          "api-key": apiKey,
-          "voice": voiceId,
-          "speed": "",
-          "format": "mp3"
-        },
-        body: text
-      });
-      if (!res.ok) throw new Error(`Lỗi API FPT: ${res.status}`);
-      const data = await res.json();
-      if (data && data.async === false && data.audiourl) {
-         const fileRes = await fetch(data.audiourl);
-         const arrayBuffer = await fileRes.arrayBuffer();
-         base64Audio = Buffer.from(arrayBuffer).toString('base64');
-      } else {
-         throw new Error("Không lấy được URL audio từ FPT");
-      }
-    }
-    else if (engineSlug === 'elevenlabs') {
-      const apiKey = credentials.apiKey;
-      if (!apiKey) throw new Error("Thiếu API Key ElevenLabs");
-
-      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-        method: "POST",
-        headers: {
-          "xi-api-key": apiKey,
-          "Content-Type": "application/json",
-          "Accept": "audio/mpeg"
-        },
-        body: JSON.stringify({
-          text: text,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75
-          }
-        })
-      });
-      if (!res.ok) throw new Error(`Lỗi API ElevenLabs: ${res.status}`);
-      const arrayBuffer = await res.arrayBuffer();
-      base64Audio = Buffer.from(arrayBuffer).toString('base64');
-    }
-    else {
-      return { success: false, error: 'Chưa hỗ trợ sinh mẫu live cho ' + engineSlug };
+    if (!res.success) {
+       return { success: false, error: res.error || 'Lỗi sinh âm thanh từ Connect Hub' };
     }
 
+    const base64Audio = res.data?.audio;
     if (!base64Audio) {
-       return { success: false, error: 'Không thể xử lý luồng Audio' };
+       return { success: false, error: 'Không lấy được dữ liệu Audio' };
     }
 
     return { success: true, base64Audio };
