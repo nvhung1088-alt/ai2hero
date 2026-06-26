@@ -31,9 +31,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'taskId and text are required' }, { status: 400 });
     }
 
-    // 1. Get task to verify team ownership
+    // 1. Get task to verify team ownership and get TTS engine
     const [task] = await db
-      .select({ id: dubTasks.id })
+      .select({ id: dubTasks.id, ttsEngine: dubTasks.ttsEngine })
       .from(dubTasks)
       .where(and(eq(dubTasks.id, taskId), eq(dubTasks.teamId, auth.teamId)))
       .limit(1);
@@ -42,30 +42,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Task not found or access denied' }, { status: 404 });
     }
 
-    // 2. Fetch the OpenAI connection for this team (since Connect Hub TTS currently uses OpenAI)
+    const engineSlug = task.ttsEngine || 'openai';
+
+    // 2. Fetch the connection for this team based on task's ttsEngine
     const [connection] = await db
       .select()
       .from(connectHubConnections)
       .where(
         and(
           eq(connectHubConnections.teamId, auth.teamId),
-          eq(connectHubConnections.appSlug, 'openai'),
+          eq(connectHubConnections.appSlug, engineSlug),
           eq(connectHubConnections.status, 'connected')
         )
       )
       .limit(1);
 
     if (!connection) {
-      return NextResponse.json({ error: 'OpenAI connection not found or disconnected in Connect Hub' }, { status: 400 });
+      return NextResponse.json({ error: `${engineSlug} connection not found or disconnected in Connect Hub` }, { status: 400 });
     }
 
     // 3. Decrypt credentials
     const decryptedJson = decryptField(connection.encryptedCredentials) || '{}';
     const credentials = JSON.parse(decryptedJson);
 
-    // 4. Call Connect Hub Engine
-    const result = await executeAction('openai', credentials, 'text_to_speech', {
-      model: 'tts-1', // Default model
+    // 4. Call Connect Hub Engine dynamically
+    const result = await executeAction(engineSlug as any, credentials, 'text_to_speech', {
+      model: 'tts-1', // Default model for OpenAI, ignored by others
       text,
       voice: voice || 'nova'
     });
