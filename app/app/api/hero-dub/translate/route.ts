@@ -124,23 +124,26 @@ export async function POST(request: Request) {
     const credentials = JSON.parse(decryptedJson);
 
     // 4. Call Connect Hub Engine với System Role + User Message
-    const jsonInput = JSON.stringify(texts);
+    const inputObj: Record<string, string> = {};
+    texts.forEach((t: string, i: number) => { inputObj[i.toString()] = t; });
+    const jsonInput = JSON.stringify(inputObj);
 
     const systemMessage = `Bạn là một dịch giả phụ đề phim chuyên nghiệp. Nhiệm vụ duy nhất của bạn là dịch phụ đề từ tiếng Trung Quốc sang tiếng Việt tự nhiên, mượt mà, đúng ngữ cảnh.
 
 QUY TẮC BẮT BUỘC:
-1. Bạn LUÔN LUÔN trả về một JSON array gồm các chuỗi tiếng Việt.
-2. Số lượng phần tử trong mảng output PHẢI BẰNG ĐÚNG số lượng phần tử input.
-3. KHÔNG được thêm giải thích, ghi chú, markdown, hay bất kỳ text nào ngoài mảng JSON.
-4. KHÔNG BAO GIỜ trả về tiếng Trung. Mọi output đều phải là tiếng Việt.
-5. TỰ ĐỘNG PHÂN TÍCH NGỮ CẢNH: Dựa vào nội dung của toàn bộ mảng đầu vào, hãy tự suy luận đây là thể loại video gì (Khoa học, Giang hồ, Nấu ăn...) để tự động chọn ĐẠI TỪ NHÂN XƯNG (Ví dụ: Chúng tôi/Mày-Tao/Anh-Em) và TỪ LÓNG phù hợp nhất.
-6. Giữ nguyên số liệu, tên riêng (phiên âm nếu cần).
+1. Bạn LUÔN LUÔN trả về một JSON Object (key-value), tuyệt đối không được gộp câu.
+2. Key giữ nguyên như input (0, 1, 2...), Value là chuỗi tiếng Việt đã dịch.
+3. Số lượng key trong output PHẢI BẰNG ĐÚNG số lượng key trong input. KHÔNG ĐƯỢC GỘP 2 KEY LÀM 1.
+4. KHÔNG được thêm giải thích, ghi chú, markdown, hay bất kỳ text nào ngoài đối tượng JSON.
+5. KHÔNG BAO GIỜ trả về tiếng Trung. Mọi output đều phải là tiếng Việt.
+6. TỰ ĐỘNG PHÂN TÍCH NGỮ CẢNH: Dựa vào nội dung của toàn bộ các câu, hãy tự suy luận đây là thể loại video gì (Khoa học, Giang hồ, Nấu ăn...) để tự động chọn ĐẠI TỪ NHÂN XƯNG (Ví dụ: Chúng tôi/Mày-Tao/Anh-Em) và TỪ LÓNG phù hợp nhất.
+7. Giữ nguyên số liệu, tên riêng (phiên âm nếu cần).
 
 VÍ DỤ:
-Input: ["我是狼王","我不能输"]
-Output: ["Tôi là Sói Vương","Tôi không được thua"]`;
+Input: {"0":"我是狼王","1":"我不能输"}
+Output: {"0":"Tôi là Sói Vương","1":"Tôi không được thua"}`;
 
-    const userMessage = `Dịch mảng phụ đề sau sang tiếng Việt:\n${jsonInput}`;
+    const userMessage = `Dịch đối tượng JSON phụ đề sau sang tiếng Việt:\n${jsonInput}`;
 
     const result = await executeAction(appSlug, credentials, 'chat_completion', {
       model: modelName,
@@ -177,19 +180,23 @@ Output: ["Tôi là Sói Vương","Tôi không được thua"]`;
       
       const parsed = JSON.parse(cleanOutput);
       
-      if (!Array.isArray(parsed)) {
-        throw new Error("Output is not an array");
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        throw new Error("Output is not a JSON object");
       }
 
-      // Kiểm tra mỗi phần tử phải là string
-      translatedTexts = parsed.map((item: any, idx: number) => {
-        if (typeof item === 'string') return item;
-        // Nếu AI trả về object thay vì string, cố gắng lấy content
-        if (item && typeof item === 'object' && item.message && item.message.content) {
-          return item.message.content;
+      // Trích xuất lại thành mảng theo thứ tự index
+      for (let i = 0; i < texts.length; i++) {
+        const key = i.toString();
+        if (parsed[key]) {
+           let val = parsed[key];
+           if (typeof val === 'object' && val.message && val.message.content) {
+              val = val.message.content;
+           }
+           translatedTexts.push(typeof val === 'string' ? val : texts[i]);
+        } else {
+           translatedTexts.push(texts[i]); // Fallback
         }
-        return texts[idx]; // fallback về text gốc
-      });
+      }
       
       // Fallback if AI returned wrong size
       if (translatedTexts.length !== texts.length) {
