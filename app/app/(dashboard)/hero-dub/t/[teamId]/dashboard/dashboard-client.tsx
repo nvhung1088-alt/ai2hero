@@ -67,6 +67,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   const [targetLang, setTargetLang] = useState('vi');
   const [asrEngine, setAsrEngine] = useState('faster-whisper');
   const [sttPreset, setSttPreset] = useState<'fast' | 'balanced' | 'quality'>('balanced');
+  const [noiseLevel, setNoiseLevel] = useState<'clean' | 'normal' | 'noisy'>('normal');
   const [subtitleMode, setSubtitleMode] = useState('burn_subtitle');
 
   // TTS State
@@ -185,14 +186,16 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
           if (s.targetLang) setTargetLang(s.targetLang);
           if (s.asrEngine) {
             if (s.asrEngine.includes(':')) {
-              const [engine, preset] = s.asrEngine.split(':');
-              setAsrEngine(engine);
-              setSttPreset(preset as any);
+              const parts = s.asrEngine.split(':');
+              setAsrEngine(parts[0]);
+              setSttPreset(parts[1] as any);
+              if (parts[2]) setNoiseLevel(parts[2] as any);
             } else {
               setAsrEngine(s.asrEngine);
             }
           }
           if (s.sttPreset) setSttPreset(s.sttPreset);
+          if (s.noiseLevel) setNoiseLevel(s.noiseLevel);
           if (s.subtitleMode) setSubtitleMode(s.subtitleMode);
           if (s.ttsEnabled !== undefined) setTtsEnabled(s.ttsEnabled);
           if (s.ttsEngine) setTtsEngine(s.ttsEngine);
@@ -232,13 +235,13 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   useEffect(() => {
     if (hasLoadedSettings) {
       const settings = {
-        sourceLang, targetLang, asrEngine, sttPreset, subtitleMode, ttsEnabled, ttsEngine,
+        sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, subtitleMode, ttsEnabled, ttsEngine,
         ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder,
         selectedAiAppSlug, selectedAiModel
       };
       localStorage.setItem('heroDubSettings', JSON.stringify(settings));
     }
-  }, [sourceLang, targetLang, asrEngine, sttPreset, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, hasLoadedSettings]);
+  }, [sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, hasLoadedSettings]);
 
   const [creatingTask, setCreatingTask] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -517,7 +520,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
             sourceThumbnailUrl: undefined,
             sourceLang,
             targetLang,
-            asrEngine: asrEngine === 'faster-whisper' ? `faster-whisper:${sttPreset}` : asrEngine,
+            asrEngine: asrEngine === 'faster-whisper' ? `faster-whisper:${sttPreset}:${noiseLevel}` : asrEngine,
             subtitleMode,
             llmModel: selectedAiAppSlug && selectedAiModel ? `${selectedAiAppSlug}|${selectedAiModel}` : undefined,
             ttsEnabled,
@@ -617,7 +620,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
         intervalMinutes: scanInterval,
         sourceLang,
         targetLang,
-        asrEngine: asrEngine === 'faster-whisper' ? `faster-whisper:${sttPreset}` : asrEngine,
+        asrEngine: asrEngine === 'faster-whisper' ? `faster-whisper:${sttPreset}:${noiseLevel}` : asrEngine,
         subtitleMode,
         ttsEnabled,
         ttsEngine,
@@ -671,12 +674,14 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     setTargetLang(p.targetLang);
     if (p.asrEngine) {
       if (p.asrEngine.includes(':')) {
-        const [engine, preset] = p.asrEngine.split(':');
-        setAsrEngine(engine);
-        setSttPreset(preset as any);
+        const parts = p.asrEngine.split(':');
+        setAsrEngine(parts[0]);
+        setSttPreset(parts[1] as any);
+        setNoiseLevel((parts[2] || 'normal') as any);
       } else {
         setAsrEngine(p.asrEngine);
         setSttPreset('balanced');
+        setNoiseLevel('normal');
       }
     }
     setSubtitleMode(p.subtitleMode);
@@ -1224,6 +1229,58 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                     {sttPreset === 'fast' && '⚡ Nhanh: Nhanh gấp ~3.5 lần, độ chính xác ~95-97%. Phù hợp âm rõ.'}
                     {sttPreset === 'balanced' && '⚖️ Ổn định: Nhanh gấp ~1.5 lần, độ chính xác ~98-99%. Mặc định.'}
                     {sttPreset === 'quality' && '💎 Chất lượng: Độ chính xác ~100%, tốn tài nguyên nhất (Baseline).'}
+                  </p>
+                  
+                  {/* Noise level selector */}
+                  <label className="text-[9px] font-bold text-gray-400 uppercase flex items-center justify-between pt-2">
+                    <span>Mức độ Tạp âm & Nhạc nền</span>
+                    <span className="text-[8px] text-amber-500/80 normal-case">VAD noise filters</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5 bg-black/25 p-1 rounded-xl border border-white/5">
+                    <button
+                      type="button"
+                      disabled={creatingTask}
+                      onClick={() => setNoiseLevel('clean')}
+                      className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                        noiseLevel === 'clean'
+                          ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                          : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-[11px]">🎤 Ít tạp âm</span>
+                      <span className="text-[7.5px] text-gray-500 mt-0.5">Tốc độ: 100%</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={creatingTask}
+                      onClick={() => setNoiseLevel('normal')}
+                      className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                        noiseLevel === 'normal'
+                          ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                          : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-[11px]">🎬 Bình thường</span>
+                      <span className="text-[7.5px] text-gray-500 mt-0.5">Tốc độ: ~90-95%</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={creatingTask}
+                      onClick={() => setNoiseLevel('noisy')}
+                      className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                        noiseLevel === 'noisy'
+                          ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                          : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-[11px]">💥 Nhiều tạp âm</span>
+                      <span className="text-[7.5px] text-gray-500 mt-0.5">Tốc độ: ~75-85%</span>
+                    </button>
+                  </div>
+                  <p className="text-[8.5px] text-gray-500 leading-relaxed px-1">
+                    {noiseLevel === 'clean' && '🎤 Ít tạp âm: Thích hợp cho podcast, hội thảo, phỏng vấn, âm thanh sạch. Tốc độ giữ nguyên 100%.'}
+                    {noiseLevel === 'normal' && '🎬 Bình thường: Thích hợp cho vlog, video review, giáo trình. Tốc độ giảm nhẹ còn ~90-95%.'}
+                    {noiseLevel === 'noisy' && '💥 Nhiều tạp âm: Thích hợp cho phim ảnh, video nhạc nền to, tiếng súng đạn cháy nổ. Tốc độ giảm còn ~75-85% do cần quét sâu hơn.'}
                   </p>
                 </div>
               )}
