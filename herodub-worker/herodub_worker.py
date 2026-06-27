@@ -780,11 +780,14 @@ async def download_seg(sem, voice, text, rate, output_file, index):
         for attempt in range(4):
             try:
                 communicate = edge_tts.Communicate(text, voice, rate=rate)
-                await communicate.save(output_file)
+                await asyncio.wait_for(communicate.save(output_file), timeout=30.0)
                 if os.path.exists(output_file) and os.path.getsize(output_file) > 100:
                     print(f"SUCCESS:{index}")
                     sys.stdout.flush()
                     return True
+            except asyncio.TimeoutError:
+                print(f"ERROR:{index} - Timeout - Attempt {attempt+1}")
+                sys.stdout.flush()
             except Exception as e:
                 print(f"ERROR:{index} - {str(e)} - Attempt {attempt+1}")
                 sys.stdout.flush()
