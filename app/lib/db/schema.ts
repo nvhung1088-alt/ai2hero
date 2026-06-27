@@ -2392,6 +2392,7 @@ export const dubTasks = pgTable('dub_tasks', {
   // === Status ===
   status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'assigned' | 'downloading' | 'transcribing' | 'translating' | 'tts' | 'burning' | 'uploading' | 'completed' | 'failed'
   progress: integer('progress').notNull().default(0),
+  priority: integer('priority').notNull().default(0), // 0: normal, 1: high
   error: text('error'),
   retryCount: integer('retry_count').notNull().default(0),
   workerId: integer('worker_id').references(() => dubWorkers.id, { onDelete: 'set null' }),
