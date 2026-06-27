@@ -9,6 +9,7 @@ import {
   deleteDubTaskAction,
   deleteDubWorkerAction,
   getDubProjectsAction,
+  updateAndRetryDubTaskAction,
 } from '@/lib/db/hero-dub-actions';
 import {
   getDubScanConfigsAction,
@@ -273,6 +274,9 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   }
   const [scanProjects, setScanProjects] = useState<AutoScanProject[]>([]);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const [translateEngine, setTranslateEngine] = useState('google-free');
+  const [qualityPreset, setQualityPreset] = useState('balanced');
   const [scanFolderPath, setScanFolderPath] = useState('');
   const [scanInterval, setScanInterval] = useState(60);
 
@@ -477,6 +481,44 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     }
   };
 
+  const handleEditTask = (task: any) => {
+    setEditingTaskId(task.id);
+    setTaskTitle(task.sourceTitle || '');
+    setSourceLang(task.sourceLang);
+    setTargetLang(task.targetLang);
+    
+    // Parse STT engine and preset
+    if (task.asrEngine.includes(':')) {
+      const parts = task.asrEngine.split(':');
+      setAsrEngine(parts[0]);
+      if (parts[1]) setSttPreset(parts[1]);
+      if (parts[2]) setNoiseLevel(parts[2]);
+    } else {
+      setAsrEngine(task.asrEngine);
+    }
+
+    setTranslateEngine(task.translateEngine === 'connect-hub' ? 'google' : task.translateEngine);
+    if (task.llmModel) {
+      setTranslateEngine('connect-hub');
+      const parts = task.llmModel.split('|');
+      setSelectedAiAppSlug(parts[0]);
+      setSelectedAiModel(parts[1]);
+    }
+
+    setSubtitleMode(task.subtitleMode || 'burn_subtitle');
+    setQualityPreset(task.qualityPreset || 'balanced');
+    setTtsEnabled(task.ttsEnabled);
+    if (task.ttsEngine) setTtsEngine(task.ttsEngine);
+    if (task.ttsVoice) setTtsVoice(task.ttsVoice);
+    if (task.ttsSpeed) setTtsSpeed(task.ttsSpeed);
+    if (task.bgVolume) setBgVolume(task.bgVolume);
+    if (task.ttsVolume) setTtsVolume(task.ttsVolume);
+
+    setUploadMode('file');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast('Đã tải thông số tác vụ để chỉnh sửa.', 'info');
+  };
+
   const handleCreateTask = async (e: React.FormEvent) => {
     if (uploadMode === 'file') {
       if (!localFilePaths.trim()) {
@@ -500,7 +542,32 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     };
 
     try {
-      if (localFilePaths.trim() !== '') {
+      if (editingTaskId) {
+        // --- CHẾ ĐỘ SỬA (EDIT MODE) ---
+        setUploadProgressMsg(`Đang cập nhật tác vụ #${editingTaskId}...`);
+        const res = await updateAndRetryDubTaskAction(editingTaskId, teamId, {
+          asrEngine: asrEngine === 'faster-whisper' ? `faster-whisper:${sttPreset}:${noiseLevel}` : asrEngine,
+          translateEngine: translateEngine,
+          llmModel: selectedAiAppSlug && selectedAiModel ? `${selectedAiAppSlug}|${selectedAiModel}` : undefined,
+          subtitleMode,
+          qualityPreset,
+          ttsEnabled,
+          ttsEngine: ttsEnabled ? ttsEngine : undefined,
+          ttsVoice: ttsEnabled ? ttsVoice : undefined,
+          ttsSpeed: ttsEnabled ? ttsSpeed : undefined,
+          bgVolume: ttsEnabled ? bgVolume : undefined,
+          ttsVolume: ttsEnabled ? ttsVolume : undefined,
+        });
+
+        if (res.error) {
+          showToast(`Lỗi: ${res.error}`, 'error');
+        } else {
+          showToast(`Đã cập nhật và yêu cầu chạy lại tác vụ #${editingTaskId}!`, 'success');
+          setEditingTaskId(null);
+          refreshData();
+        }
+      } else if (localFilePaths.trim() !== '') {
+        // --- CHẾ ĐỘ TẠO MỚI (CREATE MODE) ---
         const paths = localFilePaths.split('\n').filter(p => p.trim() !== '');
         let successCount = 0;
         for (let i = 0; i < paths.length; i++) {
@@ -547,7 +614,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
           setLocalFilePaths('');
         }
         refreshData();
-      } else {
+      } else if (!editingTaskId) {
         showToast('Vui lòng nhập đường dẫn video.', 'warning');
       }
     } catch (err) {
@@ -984,10 +1051,16 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Side: Creation Form */}
-        <div className="lg:col-span-1 bg-gray-900/40 border border-white/5 p-5 rounded-2xl shadow-sm backdrop-blur-xl h-fit space-y-4">
-          <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+        <div className="lg:col-span-1 bg-gray-900/40 border border-white/5 p-5 rounded-2xl shadow-sm backdrop-blur-xl h-fit space-y-4 relative overflow-hidden">
+          {editingTaskId && (
+            <div className="absolute top-0 left-0 w-full bg-blue-500/20 text-blue-300 text-[10px] py-1 px-4 flex justify-between items-center z-10 font-bold">
+              <span>Đang sửa cấu hình Tác vụ #{editingTaskId}</span>
+              <button type="button" onClick={() => setEditingTaskId(null)} className="hover:text-white underline">Hủy sửa</button>
+            </div>
+          )}
+          <h2 className={`text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2 ${editingTaskId ? 'mt-4' : ''}`}>
             <Languages className="h-4 w-4 text-amber-400" />
-            Tạo tác vụ dịch phụ đề
+            {editingTaskId ? 'Cập Nhật Tác Vụ Dịch' : 'Tạo tác vụ dịch phụ đề'}
           </h2>
 
           <form onSubmit={handleCreateTask} className="space-y-4">
@@ -1000,7 +1073,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                 <button
                   type="button"
                   onClick={() => { setUploadMode('file'); setEditingProjectId(null); }}
-                  className={`flex-1 text-[11px] py-1.5 rounded-lg font-bold transition-all ${uploadMode === 'file' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                  className={`flex-1 text-[11px] py-1.5 rounded-lg font-bold transition-all ${uploadMode === 'file' && !editingTaskId ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
                 >
                   File Từng Video
                 </button>
@@ -1573,23 +1646,34 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                 Lưu cấu hình Dự Án Quét
               </button>
             ) : uploadMode === 'file' ? (
-              <button
-                type="submit"
-                disabled={creatingTask}
-                className="w-full flex items-center justify-center gap-1.5 px-3 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-xs font-black tracking-wide shadow-lg shadow-orange-500/10 transition-all cursor-pointer"
-              >
-                {creatingTask ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Đang tạo tác vụ...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4" />
-                    Bắt đầu dịch thuật
-                  </>
+              <div className="flex gap-2 w-full">
+                {editingTaskId && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingTaskId(null)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer"
+                  >
+                    Hủy Sửa
+                  </button>
                 )}
-              </button>
+                <button
+                  type="submit"
+                  disabled={creatingTask || (!editingTaskId && !localFilePaths.trim())}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-3 bg-gradient-to-r hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-xs font-black tracking-wide shadow-lg transition-all cursor-pointer ${editingTaskId ? 'from-blue-500 to-indigo-500 shadow-blue-500/10 flex-[2]' : 'from-amber-500 to-orange-500 shadow-orange-500/10 w-full'}`}
+                >
+                  {creatingTask ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      {editingTaskId ? 'Cập Nhật & Chạy Lại' : 'Bắt đầu dịch thuật'}
+                    </>
+                  )}
+                </button>
+              </div>
             ) : null}
           </form>
         </div>
@@ -1761,9 +1845,16 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                             </button>
                           ) : null}
                           <button
+                            onClick={() => handleEditTask(task)}
+                            className="p-1.5 bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/10 hover:border-amber-500/25 text-amber-500/80 hover:text-amber-400 rounded-lg cursor-pointer transition-all"
+                            title="Sửa cấu hình (Đổi giọng, Âm lượng...)"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </button>
+                          <button
                             onClick={() => handleRetryTask(task.id)}
                             className="p-1.5 bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/10 hover:border-blue-500/25 text-blue-500/80 hover:text-blue-400 rounded-lg cursor-pointer transition-all"
-                            title="Chạy lại tác vụ"
+                            title="Chạy lại tác vụ (Không sửa cấu hình)"
                           >
                             <RotateCcw className="h-3.5 w-3.5" />
                           </button>

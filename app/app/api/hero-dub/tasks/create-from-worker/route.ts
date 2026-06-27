@@ -56,7 +56,7 @@ export async function POST(request: Request) {
         outputFolder: config.outputFolder,
       });
 
-      if (result.success && !result.isDuplicate) {
+      if (result?.success && !result.isDuplicate) {
         successCount++;
       }
     }

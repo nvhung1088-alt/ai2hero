@@ -386,11 +386,13 @@ def process_task(token, task):
     
     try:
         import json
+        stt_was_run = False
         if os.path.exists(extracted_segments_file):
             print(Fore.GREEN + "[-] Phat hien du lieu STT cu, bo qua STT va chay tiep...")
             with open(extracted_segments_file, "r", encoding="utf-8") as f:
                 extracted_segments = json.load(f)
         else:
+            stt_was_run = True
             audio_path = os.path.join(workspace, "audio.wav")
             if not os.path.exists(audio_path):
                 print(Fore.CYAN + "[-] Dang trich xuat am thanh (WAV 16kHz) tu Video de tranh loi ASR...")
@@ -550,7 +552,19 @@ def process_task(token, task):
     print(Fore.CYAN + "[-] Dang dich phu de sang Tieng Viet...")
     requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "translating", "progress": 60}, headers=headers)
     
-    translated_segments_file = os.path.join(workspace, "translated_segments.json")
+    translate_engine = task.get("translateEngine", "google")
+    cache_suffix = translate_engine
+    if translate_engine == "connect-hub" and task.get("llmModel"):
+        safe_model = task.get("llmModel").replace("|", "_").replace(":", "_").replace("/", "_")
+        cache_suffix = f"{translate_engine}_{safe_model}"
+    translated_segments_file = os.path.join(workspace, f"translated_segments_{cache_suffix}.json")
+    
+    if stt_was_run and os.path.exists(translated_segments_file):
+        try:
+            os.remove(translated_segments_file)
+            print(Fore.YELLOW + "[-] STT vua chay lai, xoa ban dich cu.")
+        except:
+            pass
     
     translate_start_time = time.time()
     try:
@@ -562,7 +576,9 @@ def process_task(token, task):
         else:
             translated_segments = []
         
-        if task.get("translateEngine") == "connect-hub":
+        if len(translated_segments) > 0:
+            pass # Da co cache, khong can dich nua
+        elif task.get("translateEngine") == "connect-hub":
             print(Fore.CYAN + "  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 50 cau/lan)")
             BATCH_SIZE = 50
             for i in range(0, len(extracted_segments), BATCH_SIZE):
@@ -663,6 +679,7 @@ def process_task(token, task):
                 })
                 print(Fore.WHITE + f"  [Google] {translated}")
 
+        if len(translated_segments) > 0 and not os.path.exists(translated_segments_file):
             with open(translated_segments_file, "w", encoding="utf-8") as f:
                 json.dump(translated_segments, f, ensure_ascii=False, indent=2)
 
@@ -718,7 +735,8 @@ def process_task(token, task):
             rate_percent = int(round((tts_speed - 1) * 100))
             rate_str = f"+{rate_percent}%" if rate_percent >= 0 else f"{rate_percent}%"
             
-            tts_dir = os.path.join(workspace, "tts_segments")
+            safe_tts_voice = tts_voice.replace(":", "_").replace("/", "_")
+            tts_dir = os.path.join(workspace, f"tts_segments_{tts_engine}_{safe_tts_voice}_{rate_percent}")
             os.makedirs(tts_dir, exist_ok=True)
             
             print(Fore.CYAN + f"  -> Engine: {tts_engine} | Voice: {tts_voice} | Speed: {tts_speed}x ({rate_str})")

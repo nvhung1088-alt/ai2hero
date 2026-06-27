@@ -269,6 +269,57 @@ export async function retryDubTaskAction(taskId: number, teamId: number) {
   }
 }
 
+export async function updateAndRetryDubTaskAction(taskId: number, teamId: number, data: any) {
+  try {
+    const [task] = await db
+      .select()
+      .from(dubTasks)
+      .where(and(eq(dubTasks.id, taskId), eq(dubTasks.teamId, teamId)))
+      .limit(1);
+
+    if (!task) {
+      return { error: 'Không tìm thấy tác vụ' };
+    }
+
+    const updateData: any = {
+      status: 'pending',
+      progress: 0,
+      error: null,
+      workerId: null,
+      retryCount: task.retryCount + 1,
+      updatedAt: new Date(),
+    };
+
+    if (data.asrEngine !== undefined) updateData.asrEngine = data.asrEngine;
+    if (data.translateEngine !== undefined) updateData.translateEngine = data.translateEngine;
+    if (data.llmModel !== undefined) updateData.llmModel = data.llmModel;
+    if (data.subtitleMode !== undefined) updateData.subtitleMode = data.subtitleMode;
+    if (data.qualityPreset !== undefined) updateData.qualityPreset = data.qualityPreset;
+    if (data.ttsEnabled !== undefined) updateData.ttsEnabled = data.ttsEnabled;
+    if (data.ttsEngine !== undefined) updateData.ttsEngine = data.ttsEngine;
+    if (data.ttsVoice !== undefined) updateData.ttsVoice = data.ttsVoice;
+    if (data.ttsSpeed !== undefined) updateData.ttsSpeed = data.ttsSpeed;
+    if (data.bgVolume !== undefined) updateData.bgVolume = data.bgVolume;
+    if (data.ttsVolume !== undefined) updateData.ttsVolume = data.ttsVolume;
+
+    await db
+      .update(dubTasks)
+      .set(updateData)
+      .where(eq(dubTasks.id, taskId));
+
+    await appendTaskLog(
+      taskId,
+      'retry',
+      `🔄 Thử lại tác vụ (Cập nhật cấu hình): Người dùng cập nhật cài đặt và chạy lại.`
+    );
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] updateAndRetryDubTaskAction error:', error);
+    return { error: 'Lỗi cập nhật và chạy lại tác vụ: ' + error.message };
+  }
+}
+
 export async function deleteDubTaskAction(taskId: number, teamId: number) {
   try {
     await db
