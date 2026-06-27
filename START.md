@@ -116,10 +116,15 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Xây dựng trang Lịch sử hoạt động (Activity History) với tính năng phân trang, auto-refresh và quản lý tiến độ.
   - `[x]` [Phase 5] Bổ sung công nghệ TTS cao cấp: Tích hợp ElevenLabs API (Cảm xúc điện ảnh), Google Cloud TTS, FPT AI, Viettel AI vào Connect Hub thành công.
   - `[x]` Tích hợp 3 Chế độ Tốc độ STT (⚡ Nhanh / ⚖️ Ổn định / 💎 Chất lượng) trên Dashboard UI và Worker cục bộ.
+  - `[x]` Tích hợp 3 Chế độ Tạp âm & Nhạc nền (🎤 Ít tạp âm / 🎬 Bình thường / 💥 Nhiều tạp âm) trên Dashboard UI và Worker cục bộ.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
 - [x] **Đồng bộ hóa & Sửa lỗi Bảng giá so sánh AI Matrix**: Cập nhật giá và thêm model Gemini Flash, DeepSeek V3.
 - [x] **Tự động Tính toán & Cập nhật Chi phí sử dụng API**: Viết helper tính cost và tokens, cập nhật logging trong `connector-service.ts`.
+
+- **2026-06-27 (hero-dub - STT Noise Levels)**:
+  - 🚀 **Tích hợp 3 Chế độ Tạp âm & Nhạc nền**: Thêm giao diện toggle 3 chế độ (🎤 Ít tạp âm / 🎬 Bình thường / 💥 Nhiều tạp âm) vào Dashboard UI kèm mô tả hướng dẫn chi tiết và ghi chú tác động tốc độ. Tự động lưu cấu hình lựa chọn vào settings cache (localStorage) và gửi kèm task metadata bằng cách encode vào trường `asrEngine`.
+  - 🚀 **Cấu hình VAD Whisper Động theo mức độ tạp âm**: Nâng cấp `herodub_worker.py` để parse preset tạp âm từ `asrEngine` và ánh xạ sang cấu hình VAD tương ứng. Chế độ Nhiều tạp âm (`noisy`) hạ ngưỡng VAD xuống `0.2`, nới rộng `speech_pad_ms` lên `500` và ép tắt `condition_on_previous_text=False` để chống ảo giác đơ và nhận dạng triệt để giọng nói bị lẫn nhạc nền to/tiếng cháy nổ trong phim điện ảnh.
 
 - **2026-06-27 (hero-dub - STT Speed Presets)**:
   - 🚀 **Tích hợp 3 Chế độ Tốc độ STT**: Thêm giao diện toggle 3 chế độ (⚡ Nhanh / ⚖️ Ổn định / 💎 Chất lượng) vào Dashboard UI. Tự động lưu cấu hình lựa chọn vào settings cache (localStorage) và gửi kèm task metadata bằng cách encode vào trường `asrEngine`.
