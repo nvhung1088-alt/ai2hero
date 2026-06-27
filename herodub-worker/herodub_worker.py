@@ -406,9 +406,9 @@ def process_task(token, task):
                     stt_preset = parts[1]
 
             STT_PRESETS = {
-                "fast":     {"model_size": "base",  "beam_size": 2, "vad_params": {"threshold": 0.3, "min_silence_duration_ms": 500, "speech_pad_ms": 400}},
-                "balanced": {"model_size": "small", "beam_size": 3, "vad_params": {"threshold": 0.3, "min_silence_duration_ms": 500, "speech_pad_ms": 400}},
-                "quality":  {"model_size": "small", "beam_size": 5, "vad_params": {"threshold": 0.2, "min_silence_duration_ms": 1000, "speech_pad_ms": 400}},
+                "fast":     {"model_size": "base",  "beam_size": 2, "vad_params": {"min_silence_duration_ms": 500}},
+                "balanced": {"model_size": "small", "beam_size": 3, "vad_params": {"min_silence_duration_ms": 500}},
+                "quality":  {"model_size": "small", "beam_size": 5, "vad_params": None},
             }
             preset = STT_PRESETS.get(stt_preset, STT_PRESETS["balanced"])
             model_size = preset["model_size"]
@@ -430,8 +430,7 @@ def process_task(token, task):
             
             transcribe_kwargs = {
                 "beam_size": beam_size,
-                "vad_filter": True,
-                "condition_on_previous_text": False
+                "vad_filter": True
             }
             if vad_params:
                 transcribe_kwargs["vad_parameters"] = vad_params
