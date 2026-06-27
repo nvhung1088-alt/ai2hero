@@ -170,11 +170,11 @@ Output: {"0":"Tôi là Sói Vương","1":"Tôi không được thua"}`;
       // Loại bỏ markdown code block nếu có
       cleanOutput = cleanOutput.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-      // Nếu vẫn có text thừa bao quanh mảng, dùng regex trích xuất
-      if (!cleanOutput.startsWith('[')) {
-        const arrayMatch = cleanOutput.match(/\[[\s\S]*\]/);
-        if (arrayMatch) {
-          cleanOutput = arrayMatch[0];
+      // Nếu vẫn có text thừa bao quanh mảng/object, dùng regex trích xuất
+      if (!cleanOutput.startsWith('{')) {
+        const objMatch = cleanOutput.match(/\{[\s\S]*\}/);
+        if (objMatch) {
+          cleanOutput = objMatch[0];
         }
       }
       

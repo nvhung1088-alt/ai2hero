@@ -569,8 +569,8 @@ def process_task(token, task):
         if len(translated_segments) > 0:
             pass # Da co cache, khong can dich nua
         elif task.get("translateEngine") == "connect-hub":
-            print(Fore.CYAN + "  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 50 cau/lan)")
-            BATCH_SIZE = 50
+            print(Fore.CYAN + "  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 30 cau/lan)")
+            BATCH_SIZE = 30
             for i in range(0, len(extracted_segments), BATCH_SIZE):
                 batch_segs = extracted_segments[i:i+BATCH_SIZE]
                 texts = [seg['text'] for seg in batch_segs]
