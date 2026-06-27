@@ -714,12 +714,15 @@ async def download_seg(sem, voice, text, rate, output_file, index):
                 await communicate.save(output_file)
                 if os.path.exists(output_file) and os.path.getsize(output_file) > 100:
                     print(f"SUCCESS:{index}")
+                    sys.stdout.flush()
                     return True
             except Exception as e:
                 print(f"ERROR:{index} - {str(e)} - Attempt {attempt+1}")
+                sys.stdout.flush()
                 if attempt < 3:
                     await asyncio.sleep(1.5 + attempt * 1.5)
         print(f"FAILED:{index}")
+        sys.stdout.flush()
         return False
 
 async def main():
@@ -731,6 +734,7 @@ async def main():
         batch = json.load(f)
     if not batch:
         print("BATCH_DONE:0/0")
+        sys.stdout.flush()
         return
     sem = asyncio.Semaphore(concurrency)
     tasks = []
@@ -739,6 +743,7 @@ async def main():
     results = await asyncio.gather(*tasks)
     success_count = sum(1 for r in results if r)
     print(f"BATCH_DONE:{success_count}/{len(batch)}")
+    sys.stdout.flush()
 
 if __name__ == '__main__':
     if sys.platform == 'win32':
@@ -748,20 +753,34 @@ if __name__ == '__main__':
                     with open(batch_script_path, "w", encoding="utf-8") as f:
                         f.write(script_content)
                         
-                    cmd = [sys.executable, batch_script_path, batch_json_path, tts_voice, rate_str]
+                    cmd = [sys.executable, "-u", batch_script_path, batch_json_path, tts_voice, rate_str]
                     timeout_val = max(120, len(batch_items) * 10)
                     try:
                         print(Fore.CYAN + "  -> Dang tai cac phan doan song song qua Edge-TTS batch engine...")
-                        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='ignore', timeout=timeout_val)
-                        if result.returncode != 0:
-                            print(Fore.RED + f"  [!] Edge-TTS batch engine gap loi (code {result.returncode}). Stderr: {result.stderr}")
-                        else:
-                            lines = result.stdout.strip().split('\n')
-                            done_line = [l for l in lines if l.startswith("BATCH_DONE:")]
-                            if done_line:
-                                print(Fore.GREEN + f"  [+] Edge-TTS batch engine hoan thanh: {done_line[0]}")
-                    except subprocess.TimeoutExpired:
-                        print(Fore.RED + "  [!] Edge-TTS batch download bi timeout!")
+                        import subprocess
+                        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='ignore')
+                        
+                        success_count = 0
+                        total_batch = len(batch_items)
+                        
+                        while True:
+                            line = process.stdout.readline()
+                            if not line and process.poll() is not None:
+                                break
+                            if line:
+                                line = line.strip()
+                                if line.startswith("SUCCESS:"):
+                                    success_count += 1
+                                    if success_count % 10 == 0 or success_count == total_batch:
+                                        print(Fore.GREEN + f"    [Progress] Da tai {success_count}/{total_batch} phan doan Edge-TTS.")
+                                elif line.startswith("FAILED:"):
+                                    print(Fore.RED + f"    [!] Khong the tai phan doan: {line}")
+                                elif line.startswith("BATCH_DONE:"):
+                                    print(Fore.GREEN + f"  [+] Edge-TTS batch engine hoan thanh: {line}")
+                        
+                        rc = process.poll()
+                        if rc != 0:
+                            print(Fore.RED + f"  [!] Edge-TTS batch engine gap loi (code {rc}).")
                     except Exception as batch_err:
                         print(Fore.RED + f"  [!] Loi thuc thi batch download: {str(batch_err)}")
             # --- KET THUC PHAN BATCH EDGE-TTS ---
@@ -828,7 +847,8 @@ if __name__ == '__main__':
                     temp_wav_trimmed = os.path.join(tts_dir, f"seg_{i:04d}_temp_trimmed.wav")
                     try:
                         # 1. Trim & Convert sang WAV 16kHz mono (Gop filter chain de giam subprocess)
-                        trim_filter = "silenceremove=start_periods=1:start_duration=0.02:start_threshold=-40dB,areverse,silenceremove=start_periods=1:start_duration=0.02:start_threshold=-40dB,areverse"
+                        # Sửa lỗi âm thanh bị "giật" bằng cách giảm ngưỡng cắt (-55dB) và thêm fade-in/out 20ms để làm mượt
+                        trim_filter = "silenceremove=start_periods=1:start_duration=0.01:start_threshold=-55dB,afade=t=in:st=0:d=0.02,areverse,silenceremove=start_periods=1:start_duration=0.01:start_threshold=-55dB,afade=t=in:st=0:d=0.02,areverse"
                         subprocess.run([
                             ffmpeg_exe, "-y", "-i", output_file,
                             "-af", trim_filter,

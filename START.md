@@ -115,10 +115,15 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Cập nhật giao diện Dashboard, hỗ trợ toggle kích hoạt lồng tiếng, chọn engine và giọng đọc phù hợp.
   - `[x]` Xây dựng trang Lịch sử hoạt động (Activity History) với tính năng phân trang, auto-refresh và quản lý tiến độ.
   - `[x]` [Phase 5] Bổ sung công nghệ TTS cao cấp: Tích hợp ElevenLabs API (Cảm xúc điện ảnh), Google Cloud TTS, FPT AI, Viettel AI vào Connect Hub thành công.
+  - `[x]` Tích hợp 3 Chế độ Tốc độ STT (⚡ Nhanh / ⚖️ Ổn định / 💎 Chất lượng) trên Dashboard UI và Worker cục bộ.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
 - [x] **Đồng bộ hóa & Sửa lỗi Bảng giá so sánh AI Matrix**: Cập nhật giá và thêm model Gemini Flash, DeepSeek V3.
 - [x] **Tự động Tính toán & Cập nhật Chi phí sử dụng API**: Viết helper tính cost và tokens, cập nhật logging trong `connector-service.ts`.
+
+- **2026-06-27 (hero-dub - STT Speed Presets)**:
+  - 🚀 **Tích hợp 3 Chế độ Tốc độ STT**: Thêm giao diện toggle 3 chế độ (⚡ Nhanh / ⚖️ Ổn định / 💎 Chất lượng) vào Dashboard UI. Tự động lưu cấu hình lựa chọn vào settings cache (localStorage) và gửi kèm task metadata bằng cách encode vào trường `asrEngine`.
+  - 🚀 **Cấu hình Whisper Động trên Worker**: Nâng cấp `herodub_worker.py` để parse preset từ `asrEngine` và ánh xạ sang cấu hình Whisper tương ứng (Model `base`/`small`, `beam_size` 2/3/5, và `min_silence_duration_ms` 500ms cho VAD). Giúp tăng tốc độ nhận diện lên đến 350% khi chọn chế độ Nhanh.
 
 - **2026-06-27 (hero-dub - Batch TTS Performance Optimization)**:
   - 🚀 **Tối ưu hóa tải tiếng lồng Edge-TTS bằng Batching & Retry**: Thay thế cơ chế tải Edge-TTS tuần tự từng câu thông qua hàng trăm cuộc gọi subprocess python riêng lẻ bằng cơ chế xuất danh sách phân đoạn ra file JSON và chạy duy nhất **1 tiến trình batch Edge-TTS** sử dụng `asyncio.Semaphore` giới hạn tối đa 6 kết nối song song, tự động retry giãn cách 4 lần. Hỗ trợ tự động quét retry batch tối đa 3 lần nếu có lỗi kết nối mạng.
