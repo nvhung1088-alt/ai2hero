@@ -38,6 +38,7 @@ const AVAILABLE_APPS = [
   { id: 'hero-video-maker', name: 'HeroVideoMaker' },
   { id: 'hero-film', name: 'HeroFilm' },
   { id: 'hero-dub', name: 'HeroDub' },
+  { id: 'hero-coccoc', name: 'Hero CocCoc Video' },
 ];
 
 export default function AdminSettingsPage() {

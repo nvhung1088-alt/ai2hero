@@ -1,5 +1,10 @@
 # AI2HERO — CHANGELOG
 
+## 2026-06-27 — Hoàn thiện Hero Cốc Cốc MVP: Giao diện Task Queue & Worker yt-dlp
+- **Real Downloader Worker (V2)**: Nâng cấp script Python Worker giả lập lên bản thật sử dụng lõi `yt-dlp`. Cho phép tải ngầm video dài hơn 2h, tự động tạo thư mục dự án và hỗ trợ mượn Cookie phiên đăng nhập trình duyệt (Chrome) để tải các video yêu cầu quyền riêng tư.
+- **Quản lý Task Queue thời gian thực**: Thiết kế lại giao diện dự án (Split-pane) tích hợp `<ProjectTasksManager />`. Hệ thống hiển thị 50 tác vụ gần nhất, cập nhật tiến độ tự động mỗi 3 giây, hỗ trợ dừng/tải lại tác vụ trực tiếp trên giao diện.
+- **Force Scan & Open Folder**: Cập nhật logic Server Action cho phép kích hoạt "Quét Ngay" bằng cách ghi đè timestamp 1970-01-01 để Worker bỏ qua giới hạn thời gian. Tích hợp tính năng gọi Shell `start` mở tự động thư mục tải video trên máy local.
+- **QA & Security**: Kiểm tra tĩnh Type-checking (`tsc --noEmit`) đạt 100% không lỗi. 
 ## 2026-06-25 — Hoàn thiện Tích hợp 4 hệ thống TTS (ElevenLabs, Google, Viettel, FPT) & Tối ưu HeroDub Worker Real-time
 - **Tích hợp TTS**: Hoàn thiện toàn bộ 4 connector (FPT, Viettel, Google, ElevenLabs) trong `definitions/` và `runners/`. Đã đăng ký thành công vào `registry.ts` và `engine.ts`. Các runner trả về Base64 chuẩn và tích hợp `helpText` cùng `setupGuide` chi tiết cho UI Connect Hub.
 - **Tối ưu HeroDub Worker**: Nâng cấp Parser (Regex) bắt tiến độ thực từ `pyVideoTrans` (Subprocess stdout), áp dụng trọng số linh hoạt (Transcribing: 30-60%, Translating: 60-80%, Burning: 80-95%) và chặn hiện tượng "nhảy lùi" (giật progress bar) trên UI mượt mà. Cấu hình int8 cho Whisper model giảm tải RAM.
