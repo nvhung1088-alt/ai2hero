@@ -10,7 +10,6 @@ import {
   deleteDubWorkerAction,
   getDubProjectsAction,
   updateAndRetryDubTaskAction,
-  prioritizeDubTaskAction
 } from '@/lib/db/hero-dub-actions';
 import {
   getDubScanConfigsAction,
@@ -768,26 +767,14 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   const handleRetryTask = async (taskId: number) => {
     try {
       const res = await retryDubTaskAction(taskId, teamId);
-      if (res.error) showToast(res.error, "error");
-      else {
-        showToast("Đã xếp hàng chờ chạy lại!", "success");
+      if (res.success) {
+        showToast('Đã xếp hàng chạy lại tác vụ.', 'success');
         refreshData();
+      } else {
+        showToast(res.error || 'Lỗi chạy lại tác vụ.', 'error');
       }
-    } catch (e: any) {
-      showToast("Lỗi: " + e.message, "error");
-    }
-  };
-
-  const handlePrioritizeTask = async (taskId: number) => {
-    try {
-      const res = await prioritizeDubTaskAction(taskId, teamId);
-      if (res.error) showToast(res.error, "error");
-      else {
-        showToast("⚡ Đã ưu tiên tác vụ này lên đầu hàng đợi!", "success");
-        refreshData();
-      }
-    } catch (e: any) {
-      showToast("Lỗi: " + e.message, "error");
+    } catch (err) {
+      showToast('Lỗi hệ thống.', 'error');
     }
   };
 
@@ -1568,7 +1555,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                       <label className="text-[9px] font-extrabold text-gray-500 uppercase">Âm lượng Giọng AI</label>
                       <select
                         value={ttsVolume}
-                        onChange={(e) => setTTSVolume(e.target.value)}
+                        onChange={(e) => setTtsVolume(e.target.value)}
                         className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
                       >
                         <option value="0.5">Bé (0.5)</option>

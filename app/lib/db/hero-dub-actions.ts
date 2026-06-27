@@ -320,40 +320,6 @@ export async function updateAndRetryDubTaskAction(taskId: number, teamId: number
   }
 }
 
-export async function prioritizeDubTaskAction(taskId: number, teamId: number) {
-  try {
-    const [task] = await db
-      .select()
-      .from(dubTasks)
-      .where(and(eq(dubTasks.id, taskId), eq(dubTasks.teamId, teamId)))
-      .limit(1);
-
-    if (!task) {
-      return { error: 'Không tìm thấy tác vụ' };
-    }
-
-    await db
-      .update(dubTasks)
-      .set({
-        priority: 1,
-        status: 'pending', // Đảm bảo trạng thái là chờ xử lý để worker pick up
-        updatedAt: new Date(),
-      } as any)
-      .where(eq(dubTasks.id, taskId));
-
-    await appendTaskLog(
-      taskId,
-      'retry',
-      `⚡ Chạy ưu tiên: Người dùng đã ghim tác vụ này lên đầu hàng đợi.`
-    );
-
-    return { success: true };
-  } catch (error: any) {
-    console.error('[hero-dub-actions] prioritizeDubTaskAction error:', error);
-    return { error: 'Lỗi ưu tiên tác vụ: ' + error.message };
-  }
-}
-
 export async function deleteDubTaskAction(taskId: number, teamId: number) {
   try {
     await db
@@ -528,7 +494,7 @@ export async function pollPendingTaskAction(workerId: number, teamId: number) {
       .select()
       .from(dubTasks)
       .where(and(eq(dubTasks.status, 'pending'), eq(dubTasks.teamId, teamId)))
-      .orderBy(desc((dubTasks as any).priority), asc(dubTasks.createdAt))
+      .orderBy(dubTasks.createdAt)
       .limit(1);
 
     if (!task) {
