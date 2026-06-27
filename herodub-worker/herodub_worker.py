@@ -400,22 +400,37 @@ def process_task(token, task):
 
             asr_engine = task.get("asrEngine", "faster-whisper")
             stt_preset = "balanced"
+            noise_level = "normal"
             if ":" in asr_engine:
                 parts = asr_engine.split(":")
                 if len(parts) > 1:
                     stt_preset = parts[1]
+                if len(parts) > 2:
+                    noise_level = parts[2]
 
             STT_PRESETS = {
                 "fast":     {"model_size": "base",  "beam_size": 2, "vad_params": {"min_silence_duration_ms": 500}},
                 "balanced": {"model_size": "small", "beam_size": 3, "vad_params": {"min_silence_duration_ms": 500}},
-                "quality":  {"model_size": "small", "beam_size": 5, "vad_params": None},
+                "quality":  {"model_size": "small", "beam_size": 5, "vad_params": {"min_silence_duration_ms": 1000}},
             }
             preset = STT_PRESETS.get(stt_preset, STT_PRESETS["balanced"])
             model_size = preset["model_size"]
             beam_size = preset["beam_size"]
-            vad_params = preset["vad_params"]
+            
+            # Map noise level to VAD threshold, speech_pad_ms, and condition_on_previous_text
+            NOISE_PROFILES = {
+                "clean":  {"threshold": 0.5,  "speech_pad_ms": 200, "condition_on_previous_text": True},
+                "normal": {"threshold": 0.35, "speech_pad_ms": 300, "condition_on_previous_text": False},
+                "noisy":  {"threshold": 0.2,  "speech_pad_ms": 500, "condition_on_previous_text": False},
+            }
+            profile = NOISE_PROFILES.get(noise_level, NOISE_PROFILES["normal"])
+            
+            # Combine preset's default vad_params with noise profile settings
+            vad_params = preset["vad_params"].copy() if preset["vad_params"] is not None else {}
+            vad_params["threshold"] = profile["threshold"]
+            vad_params["speech_pad_ms"] = profile["speech_pad_ms"]
 
-            print(Fore.CYAN + f"[-] Che do STT: {stt_preset.upper()} (Model: {model_size}, Beam: {beam_size}, VAD params: {vad_params})")
+            print(Fore.CYAN + f"[-] Che do STT: {stt_preset.upper()} | Tap am: {noise_level.upper()} (Model: {model_size}, Beam: {beam_size}, VAD: {vad_params}, PrevTextCond: {profile['condition_on_previous_text']})")
             if model_size == "base":
                 print(Fore.YELLOW + "  [!] Dang tai model Whisper 'base' neu chua co tren o dia (~150MB). Vui long cho...")
 
@@ -430,7 +445,8 @@ def process_task(token, task):
             
             transcribe_kwargs = {
                 "beam_size": beam_size,
-                "vad_filter": True
+                "vad_filter": True,
+                "condition_on_previous_text": profile["condition_on_previous_text"]
             }
             if vad_params:
                 transcribe_kwargs["vad_parameters"] = vad_params
