@@ -1274,13 +1274,13 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                       }`}
                     >
                       <span className="text-[11px]">💥 Nhiều tạp âm</span>
-                      <span className="text-[7.5px] text-gray-500 mt-0.5">Tốc độ: ~75-85%</span>
+                      <span className="text-[7.5px] text-gray-500 mt-0.5">Tốc độ: ~60-80% (AI tách nền)</span>
                     </button>
                   </div>
                   <p className="text-[8.5px] text-gray-500 leading-relaxed px-1">
                     {noiseLevel === 'clean' && '🎤 Ít tạp âm: Thích hợp cho podcast, hội thảo, phỏng vấn, âm thanh sạch. Tốc độ giữ nguyên 100%.'}
                     {noiseLevel === 'normal' && '🎬 Bình thường: Thích hợp cho vlog, video review, giáo trình. Tốc độ giảm nhẹ còn ~90-95%.'}
-                    {noiseLevel === 'noisy' && '💥 Nhiều tạp âm: Thích hợp cho phim ảnh, video nhạc nền to, tiếng súng đạn cháy nổ. Tốc độ giảm còn ~75-85% do cần quét sâu hơn.'}
+                    {noiseLevel === 'noisy' && '💥 Nhiều tạp âm: Sử dụng AI Demucs tách riêng giọng nói khỏi nhạc nền trước khi nhận dạng. Phù hợp phim ảnh, video nhạc nền to, cháy nổ. Tốc độ: ~60-80% (thêm bước tách nền).'}
                   </p>
                 </div>
               )}

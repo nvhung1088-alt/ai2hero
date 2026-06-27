@@ -122,8 +122,10 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - [x] **Đồng bộ hóa & Sửa lỗi Bảng giá so sánh AI Matrix**: Cập nhật giá và thêm model Gemini Flash, DeepSeek V3.
 - [x] **Tự động Tính toán & Cập nhật Chi phí sử dụng API**: Viết helper tính cost và tokens, cập nhật logging trong `connector-service.ts`.
 
-- **2026-06-27 (hero-dub - STT Noise Levels)**:
-  - 🚀 **Tích hợp 3 Chế độ Tạp âm & Nhạc nền**: Thêm giao diện toggle 3 chế độ (🎤 Ít tạp âm / 🎬 Bình thường / 💥 Nhiều tạp âm) vào Dashboard UI kèm mô tả hướng dẫn chi tiết và ghi chú tác động tốc độ. Tự động lưu cấu hình lựa chọn vào settings cache (localStorage) và gửi kèm task metadata bằng cách encode vào trường `asrEngine`.
+- **2026-06-27 (hero-dub - STT Noise Levels & AI Vocal Isolation)**:
+  - 🚀 **Tích hợp AI Vocal Isolation (Demucs) vào chế độ Nhiều Tạp Âm**: Nâng cấp `herodub_worker.py` (cả bản local và template uploads) để tự động gọi AI Demucs tách riêng giọng nói (vocals) khỏi nhạc nền trước khi chạy Whisper STT. Giọng nói tách ra được resample sang 16kHz Mono thông qua FFmpeg. Giúp giải quyết triệt để lỗi bỏ sót phụ đề (Task #72) trên các phim điện ảnh nhạc to/cháy nổ lớn.
+  - 🚀 **Khắc phục lỗi Cache Collision STT**: Thay đổi cơ chế cache từ `extracted_segments.json` chung thành `extracted_segments_{safe_engine}_{source_lang}.json` để tránh lỗi lưu đè và tái sử dụng phụ đề lỗi khi người dùng thay đổi chế độ nhận dạng trên cùng một file video.
+  - 🚀 **Cập nhật UI Dashboard**: Thay đổi nhãn mô tả và ước tính tốc độ xử lý của nút "Nhiều tạp âm" thành `~60-80% (AI tách nền)` để người dùng nắm rõ.
   - 🚀 **Cấu hình VAD Whisper Động theo mức độ tạp âm**: Nâng cấp `herodub_worker.py` để parse preset tạp âm từ `asrEngine` và ánh xạ sang cấu hình VAD tương ứng. Chế độ Nhiều tạp âm (`noisy`) hạ ngưỡng VAD xuống `0.2`, nới rộng `speech_pad_ms` lên `500` và ép tắt `condition_on_previous_text=False` để chống ảo giác đơ và nhận dạng triệt để giọng nói bị lẫn nhạc nền to/tiếng cháy nổ trong phim điện ảnh.
 
 - **2026-06-27 (hero-dub - STT Speed Presets)**:

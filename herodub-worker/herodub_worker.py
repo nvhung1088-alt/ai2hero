@@ -199,13 +199,12 @@ def extract_vocals_demucs(workspace, audio_path, ffmpeg_exe):
         demucs_out = os.path.join(abs_workspace, "demucs_out")
         os.makedirs(demucs_out, exist_ok=True)
         
-        # Demucs version 4 (htdemucs) sinh ra file theo ten file input
-        # Neu input la audio.wav -> output la: <demucs_out>/htdemucs/audio/no_vocals.wav
+        vocals_path = os.path.join(demucs_out, "htdemucs", "audio", "vocals.wav")
         instrumental_path = os.path.join(demucs_out, "htdemucs", "audio", "no_vocals.wav")
         
-        if os.path.exists(instrumental_path) and os.path.getsize(instrumental_path) > 100:
-            print(Fore.GREEN + "    [✓] Nhac nen da duoc tach tu truoc.")
-            return instrumental_path
+        if os.path.exists(instrumental_path) and os.path.exists(vocals_path) and os.path.getsize(instrumental_path) > 100:
+            print(Fore.GREEN + "    [✓] Giong noi va nhac nen da duoc tach tu truoc.")
+            return {"vocals": vocals_path, "instrumental": instrumental_path}
             
         print(Fore.YELLOW + "    -> Dang chay Demucs tren CPU (Se mat tu 1-3 phut)...")
         # Ghi code monkey-patch ra file tam de tranh loi parsing ky tu xuong dong cua Windows Shell
@@ -245,10 +244,10 @@ def extract_vocals_demucs(workspace, audio_path, ffmpeg_exe):
                 
         duration = time.time() - start_time
         
-        if result.returncode == 0 and os.path.exists(instrumental_path):
-            print(Fore.GREEN + f"    [✓] Tach nhac nen (Vocal Isolation) thanh cong!")
+        if result.returncode == 0 and os.path.exists(instrumental_path) and os.path.exists(vocals_path):
+            print(Fore.GREEN + f"    [✓] Tach nhac nen va giong noi (Vocal Isolation) thanh cong!")
             print(Fore.YELLOW + Style.BRIGHT + f"\n[!] THOI GIAN TACH NHAC NEN (DEMUCS): {duration:.2f} giay.\n")
-            return instrumental_path
+            return {"vocals": vocals_path, "instrumental": instrumental_path}
         else:
             print(Fore.RED + f"    [!] Loi demucs (Return code {result.returncode})")
     except FileNotFoundError:
@@ -361,6 +360,7 @@ def process_task(token, task):
 
     # 1. TRANSCRIBING
     duration_sec = 0
+    ffmpeg_exe = "ffmpeg"
     try:
         import imageio_ffmpeg
         ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
@@ -371,7 +371,18 @@ def process_task(token, task):
     print(Fore.CYAN + "[-] Dang nhan dang giong noi (Whisper AI) - Se mat vai phut tuy do dai video...")
     requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "transcribing", "progress": 30, "durationSec": int(duration_sec)}, headers=headers)
     
-    extracted_segments_file = os.path.join(workspace, "extracted_segments.json")
+    asr_engine = task.get("asrEngine", "faster-whisper")
+    stt_preset = "balanced"
+    noise_level = "normal"
+    if ":" in asr_engine:
+        parts = asr_engine.split(":")
+        if len(parts) > 1:
+            stt_preset = parts[1]
+        if len(parts) > 2:
+            noise_level = parts[2]
+
+    safe_engine = asr_engine.replace(":", "_").replace("/", "_")
+    extracted_segments_file = os.path.join(workspace, f"extracted_segments_{safe_engine}_{source_lang}.json")
     
     try:
         import json
@@ -398,16 +409,6 @@ def process_task(token, task):
                     else:
                         raise Exception(f"Loi FFMPEG khi trich xuat am thanh: {err_str[-150:]}")
 
-            asr_engine = task.get("asrEngine", "faster-whisper")
-            stt_preset = "balanced"
-            noise_level = "normal"
-            if ":" in asr_engine:
-                parts = asr_engine.split(":")
-                if len(parts) > 1:
-                    stt_preset = parts[1]
-                if len(parts) > 2:
-                    noise_level = parts[2]
-
             STT_PRESETS = {
                 "fast":     {"model_size": "base",  "beam_size": 2, "vad_params": {"min_silence_duration_ms": 500}},
                 "balanced": {"model_size": "small", "beam_size": 3, "vad_params": {"min_silence_duration_ms": 500}},
@@ -431,6 +432,40 @@ def process_task(token, task):
             vad_params["speech_pad_ms"] = profile["speech_pad_ms"]
 
             print(Fore.CYAN + f"[-] Che do STT: {stt_preset.upper()} | Tap am: {noise_level.upper()} (Model: {model_size}, Beam: {beam_size}, VAD: {vad_params}, PrevTextCond: {profile['condition_on_previous_text']})")
+            
+            whisper_input_audio = audio_path
+            if noise_level == "noisy":
+                print(Fore.CYAN + "[-] Dang chay Demucs AI de tach giong noi khoi nhac nen (Vocal Isolation)...")
+                try:
+                    requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "transcribing", "progress": 25}, headers=headers)
+                except:
+                    pass
+                
+                try:
+                    demucs_res = extract_vocals_demucs(workspace, audio_path, ffmpeg_exe)
+                    if demucs_res and isinstance(demucs_res, dict) and demucs_res.get("vocals"):
+                        vocals_path = demucs_res["vocals"]
+                        vocals_16k = os.path.join(workspace, "vocals_16k.wav")
+                        print(Fore.CYAN + "[-] Dang resample giong noi da tach sang 16kHz Mono...")
+                        resample_cmd = [
+                            ffmpeg_exe, "-y", "-i", vocals_path,
+                            "-vn", "-acodec", "pcm_s16le",
+                            "-ar", "16000", "-ac", "1",
+                            vocals_16k
+                        ]
+                        res = subprocess.run(resample_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        if res.returncode == 0 and os.path.exists(vocals_16k):
+                            whisper_input_audio = vocals_16k
+                            vad_params["threshold"] = 0.35
+                            vad_params["speech_pad_ms"] = 300
+                            print(Fore.GREEN + "  [✓] Su dung file giong noi da loc sach tap am de chay STT.")
+                        else:
+                            print(Fore.YELLOW + "  [!] Resample that bai, fallback dung audio goc.")
+                    else:
+                        print(Fore.YELLOW + "  [!] Demucs that bai hoac chua duoc cai, fallback dung audio goc.")
+                except Exception as demucs_err:
+                    print(Fore.YELLOW + f"  [!] Gap loi khi chay Demucs: {str(demucs_err)}. Fallback dung audio goc.")
+
             if model_size == "base":
                 print(Fore.YELLOW + "  [!] Dang tai model Whisper 'base' neu chua co tren o dia (~150MB). Vui long cho...")
 
@@ -452,11 +487,11 @@ def process_task(token, task):
                 transcribe_kwargs["vad_parameters"] = vad_params
 
             try:
-                segments, info = model.transcribe(audio_path, **transcribe_kwargs)
+                segments, info = model.transcribe(whisper_input_audio, **transcribe_kwargs)
             except Exception as trans_err:
                 print(Fore.YELLOW + f"  [!] Loi chay Whisper GPU ({model_size}): {trans_err}. Dang thu fallback sang CPU...")
                 model = WhisperModel(model_size, device="cpu", compute_type="int8")
-                segments, info = model.transcribe(audio_path, **transcribe_kwargs)
+                segments, info = model.transcribe(whisper_input_audio, **transcribe_kwargs)
             
             extracted_segments = []
             prev_end = 0.0
