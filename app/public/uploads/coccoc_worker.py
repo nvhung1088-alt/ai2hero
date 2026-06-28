@@ -10,7 +10,7 @@ CONFIG_FILE = "worker_config.json"
 
 print("==============================================")
 print("   HERO COCCOC LOCAL WORKER (REAL YT-DLP)")
-print("   Version: 2.2 (Python-based)")
+print("   Version: 2.3 (Python-based)")
 print("==============================================")
 
 access_token = None
@@ -101,16 +101,13 @@ def process_download_task(task):
                 file_size = d.get('total_bytes_estimate')
             print(f"[OK] Tai hoan tat: {downloaded_file}")
             
-    ydl_opts = {
+    cookie_file_path = os.path.join(target_folder, "cookies.txt")
+    base_ydl_opts = {
         'outtmpl': os.path.join(target_folder, f'%(title)s [%(id)s].%(ext)s'),
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
         'progress_hooks': [my_hook],
         'quiet': False,
         'no_warnings': True,
-        # CHÚ Ý VỀ COOKIES:
-        # Lệnh dưới đây yêu cầu yt-dlp tự mượn phiên đăng nhập của Google Chrome (nếu máy có Chrome).
-        # Nó giúp vượt qua các trang web yêu cầu đăng nhập.
-        'cookiesfrombrowser': ('chrome',), 
     }
     
     try:
@@ -120,17 +117,39 @@ def process_download_task(task):
                 info_dict = ydl.extract_info(video_url, download=True)
                 return info_dict
                 
-        try:
-            info_dict = do_download(ydl_opts)
-        except Exception as e:
-            if "cookie" in str(e).lower() or "locked" in str(e).lower():
-                print(f"  [WARNING] Khong doc duoc Cookie Chrome do trinh duyet dang mo. Dang thu lai khong dung Cookie...")
-                fallback_opts = dict(ydl_opts)
-                if 'cookiesfrombrowser' in fallback_opts:
-                    del fallback_opts['cookiesfrombrowser']
-                info_dict = do_download(fallback_opts)
-            else:
-                raise e
+        # Thu tu uu tien: 1. File cookies.txt -> 2. Edge -> 3. Chrome -> 4. No Cookie
+        opts_to_try = []
+        if os.path.exists(cookie_file_path):
+            opts_to_try.append({**base_ydl_opts, 'cookiefile': cookie_file_path})
+        opts_to_try.append({**base_ydl_opts, 'cookiesfrombrowser': ('edge',)})
+        opts_to_try.append({**base_ydl_opts, 'cookiesfrombrowser': ('chrome',)})
+        opts_to_try.append(base_ydl_opts)
+        
+        info_dict = None
+        last_error = None
+        
+        for idx, opts in enumerate(opts_to_try):
+            try:
+                if 'cookiefile' in opts:
+                    print("      [+] Dang su dung file cookies.txt...")
+                elif 'cookiesfrombrowser' in opts:
+                    browser = opts['cookiesfrombrowser'][0]
+                    print(f"      [+] Dang muon cookie tu {browser}...")
+                else:
+                    print("      [+] Dang thu tai khong dung cookie...")
+                    
+                info_dict = do_download(opts)
+                break # Thanh cong
+            except Exception as e:
+                last_error = e
+                err_msg = str(e).lower()
+                if "cookie" in err_msg or "locked" in err_msg or "412" in err_msg or "precondition" in err_msg:
+                    continue # Thu cach tiep theo
+                else:
+                    raise e # Loi khac (vi du 404), throw luon
+        
+        if not info_dict:
+            raise last_error
 
         duration = info_dict.get('duration', 0)
         title = info_dict.get('title', 'Video')
@@ -172,37 +191,47 @@ def process_scan_projects():
                         video_urls.append(source_val)
                     else:
                         print(f"  -> Quet nguon: {source_val}")
-                        ydl_opts = {
-                            'extract_flat': True,
-                            'quiet': True,
-                            'playlistend': max_videos,
-                            'cookiesfrombrowser': ('chrome',),
-                        }
-                        
                         query = source_val
                         if source_type == "search_keyword" and " || " in source_val:
                             parts = source_val.split(" || ")
                             channel_url = parts[0].strip()
                             keyword = parts[1].strip()
-                            # ytsearch format
                             query = f"ytsearch{max_videos}:{channel_url} {keyword}"
 
                         try:
+                            cookie_file_path = "C:\\Users\\ADMIN\\Downloads\\CocCoc-Downloads\\cookies.txt"
+                            if proj.get("downloadFolder"):
+                                cookie_file_path = os.path.join(proj.get("downloadFolder"), "cookies.txt")
+                                
+                            base_scan_opts = {
+                                'extract_flat': True,
+                                'quiet': True,
+                                'playlistend': max_videos,
+                            }
+                            
+                            opts_to_try = []
+                            if os.path.exists(cookie_file_path):
+                                opts_to_try.append({**base_scan_opts, 'cookiefile': cookie_file_path})
+                            opts_to_try.append({**base_scan_opts, 'cookiesfrombrowser': ('edge',)})
+                            opts_to_try.append({**base_scan_opts, 'cookiesfrombrowser': ('chrome',)})
+                            opts_to_try.append(base_scan_opts)
+
                             def do_extract(opts):
                                 with yt_dlp.YoutubeDL(opts) as ydl:
                                     return ydl.extract_info(query, download=False)
-                            try:
-                                info = do_extract(ydl_opts)
-                            except Exception as e:
-                                if "cookie" in str(e).lower() or "locked" in str(e).lower():
-                                    print(f"  [WARNING] Khong doc duoc Cookie Chrome. Dang thu quet ma khong dung Cookie...")
-                                    fallback_opts = dict(ydl_opts)
-                                    if 'cookiesfrombrowser' in fallback_opts:
-                                        del fallback_opts['cookiesfrombrowser']
-                                    info = do_extract(fallback_opts)
-                                else:
-                                    raise e
-                                    
+                            
+                            info = None
+                            for idx, opts in enumerate(opts_to_try):
+                                try:
+                                    info = do_extract(opts)
+                                    break
+                                except Exception as e:
+                                    err_msg = str(e).lower()
+                                    if "cookie" in err_msg or "locked" in err_msg or "412" in err_msg:
+                                        continue
+                                    else:
+                                        raise e
+                                        
                             if info and 'entries' in info:
                                 for entry in info['entries']:
                                     if entry and entry.get('url'):
