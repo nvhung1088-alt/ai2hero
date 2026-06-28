@@ -10,7 +10,7 @@ CONFIG_FILE = "worker_config.json"
 
 print("==============================================")
 print("   HERO COCCOC LOCAL WORKER (REAL YT-DLP)")
-print("   Version: 2.1 (Python-based)")
+print("   Version: 2.2 (Python-based)")
 print("==============================================")
 
 access_token = None
@@ -114,21 +114,36 @@ def process_download_task(task):
     }
     
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            print(f"      -> Dang boc tach thong tin luong stream...")
-            info_dict = ydl.extract_info(video_url, download=True)
-            duration = info_dict.get('duration', 0)
-            title = info_dict.get('title', 'Video')
-            
-            if file_size == 0 and os.path.exists(downloaded_file):
-                file_size = os.path.getsize(downloaded_file)
+        def do_download(opts):
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                print(f"      -> Dang boc tach thong tin luong stream...")
+                info_dict = ydl.extract_info(video_url, download=True)
+                return info_dict
                 
-            update_task_status(
-                task_id, "completed", 
-                [{"time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "action": "Hoàn tất", "message": f"Đã tải xong: {title}"}],
-                {"downloadedPath": downloaded_file, "fileSize": file_size, "duration": duration, "quality": "1080p/Auto"}
-            )
-            print(f"[OK] Task #{task_id} ket thuc. Size: {file_size/(1024*1024):.2f}MB, Duration: {duration}s")
+        try:
+            info_dict = do_download(ydl_opts)
+        except Exception as e:
+            if "cookie" in str(e).lower() or "locked" in str(e).lower():
+                print(f"  [WARNING] Khong doc duoc Cookie Chrome do trinh duyet dang mo. Dang thu lai khong dung Cookie...")
+                fallback_opts = dict(ydl_opts)
+                if 'cookiesfrombrowser' in fallback_opts:
+                    del fallback_opts['cookiesfrombrowser']
+                info_dict = do_download(fallback_opts)
+            else:
+                raise e
+
+        duration = info_dict.get('duration', 0)
+        title = info_dict.get('title', 'Video')
+        
+        if file_size == 0 and os.path.exists(downloaded_file):
+            file_size = os.path.getsize(downloaded_file)
+            
+        update_task_status(
+            task_id, "completed", 
+            [{"time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "action": "Hoàn tất", "message": f"Đã tải xong: {title}"}],
+            {"downloadedPath": downloaded_file, "fileSize": file_size, "duration": duration, "quality": "1080p/Auto"}
+        )
+        print(f"[OK] Task #{task_id} ket thuc. Size: {file_size/(1024*1024):.2f}MB, Duration: {duration}s")
             
     except Exception as e:
         print(f"[ERROR] Task #{task_id} that bai: {str(e)}")
@@ -173,16 +188,29 @@ def process_scan_projects():
                             query = f"ytsearch{max_videos}:{channel_url} {keyword}"
 
                         try:
-                            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                                info = ydl.extract_info(query, download=False)
-                                if info and 'entries' in info:
-                                    for entry in info['entries']:
-                                        if entry and entry.get('url'):
-                                            video_urls.append(entry.get('url'))
-                                        elif entry and entry.get('webpage_url'):
-                                            video_urls.append(entry.get('webpage_url'))
-                                elif info and info.get('webpage_url'):
-                                    video_urls.append(info.get('webpage_url'))
+                            def do_extract(opts):
+                                with yt_dlp.YoutubeDL(opts) as ydl:
+                                    return ydl.extract_info(query, download=False)
+                            try:
+                                info = do_extract(ydl_opts)
+                            except Exception as e:
+                                if "cookie" in str(e).lower() or "locked" in str(e).lower():
+                                    print(f"  [WARNING] Khong doc duoc Cookie Chrome. Dang thu quet ma khong dung Cookie...")
+                                    fallback_opts = dict(ydl_opts)
+                                    if 'cookiesfrombrowser' in fallback_opts:
+                                        del fallback_opts['cookiesfrombrowser']
+                                    info = do_extract(fallback_opts)
+                                else:
+                                    raise e
+                                    
+                            if info and 'entries' in info:
+                                for entry in info['entries']:
+                                    if entry and entry.get('url'):
+                                        video_urls.append(entry.get('url'))
+                                    elif entry and entry.get('webpage_url'):
+                                        video_urls.append(entry.get('webpage_url'))
+                            elif info and info.get('webpage_url'):
+                                video_urls.append(info.get('webpage_url'))
                         except Exception as e:
                             print(f"  [ERROR] Loi khi quet nguon: {e}")
                 
