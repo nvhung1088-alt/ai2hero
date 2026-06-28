@@ -10,7 +10,7 @@ CONFIG_FILE = "worker_config.json"
 
 print("==============================================")
 print("   HERO COCCOC LOCAL WORKER (REAL YT-DLP)")
-print("   Version: 2.4 (Python-based)")
+print("   Version: 2.5 (Python-based)")
 print("==============================================")
 
 access_token = None
@@ -18,6 +18,7 @@ worker_id = None
 team_id = None
 
 # Đọc cấu hình
+auto_kill_browser = False
 if os.path.exists(CONFIG_FILE):
     try:
         with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
@@ -25,9 +26,24 @@ if os.path.exists(CONFIG_FILE):
             access_token = config.get("accessToken")
             worker_id = config.get("workerId")
             team_id = config.get("teamId")
+            auto_kill_browser = config.get("autoKillBrowser")
             print(f"[INFO] Phat hien cau hinh cu: Worker #{worker_id} (Team #{team_id})")
     except Exception:
         pass
+
+if auto_kill_browser is None:
+    print("\n[?] Tinh nang nang cao: Neu trinh duyet (Edge/Chrome) bi khoa khong the lay Cookie, Worker co the TU DONG EP DONG trinh duyet do.")
+    ans = input("    Ban co cho phep Worker Tu dong ep dong trinh duyet khong? (y/n): ")
+    auto_kill_browser = True if ans.strip().lower() == 'y' else False
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                c = json.load(f)
+            c["autoKillBrowser"] = auto_kill_browser
+            with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+                json.dump(c, f, indent=2)
+        except Exception:
+            pass
 
 if not access_token:
     try:
@@ -155,7 +171,20 @@ def process_download_task(task):
             except Exception as e:
                 last_error = e
                 err_msg = str(e).lower()
-                if "cookie" in err_msg or "locked" in err_msg or "412" in err_msg or "precondition" in err_msg:
+                if "cookie" in err_msg or "locked" in err_msg or "412" in err_msg or "precondition" in err_msg or "permission" in err_msg:
+                    if 'cookiesfrombrowser' in opts and auto_kill_browser:
+                        browser = opts['cookiesfrombrowser'][0]
+                        print(f"      [!] Phat hien khoa DB! Dang ep dong trinh duyet {browser}...")
+                        if browser == "edge": os.system("taskkill /f /im msedge.exe >nul 2>&1")
+                        elif browser == "chrome": os.system("taskkill /f /im chrome.exe >nul 2>&1")
+                        elif browser == "brave": os.system("taskkill /f /im brave.exe >nul 2>&1")
+                        elif browser == "firefox": os.system("taskkill /f /im firefox.exe >nul 2>&1")
+                        time.sleep(2)
+                        try:
+                            info_dict = do_download(opts)
+                            break
+                        except Exception as e2:
+                            last_error = e2
                     continue # Thu cach tiep theo
                 else:
                     raise e # Loi khac (vi du 404), throw luon
@@ -247,7 +276,20 @@ def process_scan_projects():
                                     break
                                 except Exception as e:
                                     err_msg = str(e).lower()
-                                    if "cookie" in err_msg or "locked" in err_msg or "412" in err_msg:
+                                    if "cookie" in err_msg or "locked" in err_msg or "412" in err_msg or "precondition" in err_msg or "permission" in err_msg:
+                                        if 'cookiesfrombrowser' in opts and auto_kill_browser:
+                                            browser = opts['cookiesfrombrowser'][0]
+                                            print(f"      [!] Phat hien khoa DB! Dang ep dong trinh duyet {browser} de quet...")
+                                            if browser == "edge": os.system("taskkill /f /im msedge.exe >nul 2>&1")
+                                            elif browser == "chrome": os.system("taskkill /f /im chrome.exe >nul 2>&1")
+                                            elif browser == "brave": os.system("taskkill /f /im brave.exe >nul 2>&1")
+                                            elif browser == "firefox": os.system("taskkill /f /im firefox.exe >nul 2>&1")
+                                            time.sleep(2)
+                                            try:
+                                                info = do_extract(opts)
+                                                break
+                                            except:
+                                                pass
                                         continue
                                     else:
                                         raise e
