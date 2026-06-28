@@ -135,7 +135,7 @@ export async function createDubTaskAction(data: {
         ttsVolume: data.ttsVolume,
         outputFolder: data.outputFolder,
         status: 'pending',
-        progress: 0,
+        progress: '0',
         dedupeKey,
         projectId: data.projectId,
         brandingEnabled: data.brandingEnabled,

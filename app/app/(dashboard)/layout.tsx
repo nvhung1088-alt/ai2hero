@@ -97,7 +97,7 @@ function Header() {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isDashboardOrSim = pathname.startsWith('/dashboard') || pathname.startsWith('/sim') || pathname.startsWith('/herovideodownload') || pathname.startsWith('/connect-hub') || pathname.startsWith('/hero-report') || pathname.startsWith('/hero-care') || pathname.startsWith('/heroweb') || pathname.startsWith('/hero-social') || pathname.startsWith('/hero-video-maker') || pathname.startsWith('/hero-film') || pathname.startsWith('/hero-dub');
+  const isDashboardOrSim = pathname.startsWith('/dashboard') || pathname.startsWith('/sim') || pathname.startsWith('/herovideodownload') || pathname.startsWith('/hero-downloader') || pathname.startsWith('/connect-hub') || pathname.startsWith('/hero-report') || pathname.startsWith('/hero-care') || pathname.startsWith('/heroweb') || pathname.startsWith('/hero-social') || pathname.startsWith('/hero-video-maker') || pathname.startsWith('/hero-film') || pathname.startsWith('/hero-dub');
 
   return (
     <section className="flex flex-col min-h-screen">

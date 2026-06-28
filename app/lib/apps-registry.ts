@@ -291,6 +291,29 @@ export const APPS: AppDefinition[] = [
       'Giao diện trực quan dễ sử dụng cho mọi biên dịch viên'
     ],
     targetUsers: 'Các nhóm dịch phim Trung Quốc, các nhà sáng tạo nội dung re-up, các kênh phim ngắn.'
+  },
+  {
+    id: 'hero-downloader',
+    name: 'Hero Downloader',
+    description: 'Dự án quét tải video qua worker cục bộ với cookie trình duyệt.',
+    icon: 'DownloadCloud',
+    path: '/hero-downloader/dashboard',
+    status: 'beta',
+    tier: 'pro',
+    category: 'management',
+    color: 'from-teal-500 to-cyan-500',
+    slogan: 'Tải hàng loạt video từ bất kỳ nguồn nào',
+    longDesc: 'Dự án MVP cho phép quét và tải video thông qua worker trực tiếp trên máy tính của bạn, tận dụng cookie từ Chrome Extension để định danh.',
+    features: [
+      'Quản lý dự án tải video trực quan',
+      'Worker chạy trên máy cục bộ',
+      'Đồng bộ cookie qua Extension Chrome'
+    ],
+    benefits: [
+      'Không giới hạn tốc độ và số lượng',
+      'Tránh bị chặn do sử dụng cookie thật'
+    ],
+    targetUsers: 'Content Creators, Video Editors, Data Miners.'
   }
 ];
 
