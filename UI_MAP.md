@@ -75,16 +75,6 @@ graph TB
         HD_GUIDE["/hero-dub/t/[teamId]/guide — Hướng dẫn Worker"]
     end
 
-    subgraph MVP10["🎬 MVP10: HeroCocCoc"]
-        direction TB
-        HCC_LAYOUT["HeroCocCoc Layout<br>(sidebar + IDOR check)"]
-        HCC_DASHBOARD["/hero-coccoc/t/[teamId]/dashboard — Tổng quan & Profiles"]
-        HCC_PROJECTS["/hero-coccoc/t/[teamId]/projects — Dự án quét tải"]
-        HCC_QUICK["/hero-coccoc/t/[teamId]/quick-download — Tải nhanh"]
-        HCC_HISTORY["/hero-coccoc/t/[teamId]/history — Lịch sử hoạt động"]
-        HCC_GUIDE["/hero-coccoc/t/[teamId]/guide — Hướng dẫn Worker"]
-    end
-
     AUTH --> S_LAYOUT
     AUTH --> M_LAYOUT
     AUTH --> W_LAYOUT
@@ -581,15 +571,6 @@ flowchart TD
 | `/hero-dub/t/[teamId]/dashboard` | Creator (Workspace) | Quản lý tác vụ dịch, xem video kết quả, kết nối worker local | ✅ Beta |
 | `/hero-dub/t/[teamId]/guide` | Creator (Workspace) | Tài liệu hướng dẫn cài đặt local worker & pyVideoTrans | ✅ Beta |
 
-### MVP10: HeroCocCoc — Tự động cào và tải video qua Cốc Cốc
-| Route | Đối tượng | Chức năng | Trạng thái |
-|---|---|---|---|
-| `/hero-coccoc/t/[teamId]/dashboard` | Creator (Workspace) | Quản lý KPIs, trạng thái worker, quản lý các Profile Cốc Cốc local | ✅ Beta |
-| `/hero-coccoc/t/[teamId]/projects` | Creator (Workspace) | Quản lý dự án quét tải, cấu hình chu kỳ quét, bộ lọc, giới hạn, dynamic sources | ✅ Beta |
-| `/hero-coccoc/t/[teamId]/quick-download` | Creator (Workspace) | Tải nhanh danh sách video tức thì bằng dán links | ✅ Beta |
-| `/hero-coccoc/t/[teamId]/history` | Creator (Workspace) | Xem lịch sử tải, xem log timeline chẩn đoán chi tiết của từng task | ✅ Beta |
-| `/hero-coccoc/t/[teamId]/guide` | Creator (Workspace) | Hướng dẫn cài đặt Cốc Cốc Local Worker, CMD 1-click installer | ✅ Beta |
-
 ### 🧩 Chrome Extensions & Edge Worker Node Routes
 | MVP / Extension | Thư mục nguồn | API Routes | Trạng thái |
 |---|---|---|---|
@@ -611,13 +592,6 @@ flowchart TD
 - `POST /api/hero-dub/tasks`: Gửi heartbeat cập nhật trạng thái online của worker.
 - `POST /api/hero-dub/presign`: Worker yêu cầu presigned URL của R2 để tải video/srt lên.
 - `PUT /api/hero-dub/local-upload`: Fallback upload local khi dev offline không có R2.
-
-**Các API Routes của Cốc Cốc Worker (`appId: hero-coccoc`):**
-- `POST /api/hero-coccoc/workers`: Đăng ký và liên kết worker sử dụng code 6 chữ số.
-- `GET /api/hero-coccoc/tasks`: Worker poll lấy tác vụ pending (ưu tiên tải nhanh).
-- `PATCH /api/hero-coccoc/tasks`: Worker cập nhật trạng thái tác vụ (`scanning`, `downloading`, `completed`, `failed`).
-- `GET /api/hero-coccoc/scan-configs`: Worker lấy các dự án cần quét cào.
-- `POST /api/hero-coccoc/tasks/create-from-worker`: Worker gửi danh sách video URLs cào được để tạo tác vụ tải pending.
 
 ---
 

@@ -1,5 +1,5 @@
 # AI2HERO — START
-> Cap nhat: 2026-06-23
+> Cap nhat: 2026-06-28
 
 ## TRANG THAI
 Mode:         Build
@@ -118,28 +118,9 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp 3 Chế độ Tốc độ STT (⚡ Nhanh / ⚖️ Ổn định / 💎 Chất lượng) trên Dashboard UI và Worker cục bộ.
   - `[x]` Tích hợp 3 Chế độ Tạp âm & Nhạc nền (🎤 Ít tạp âm / 🎬 Bình thường / 💥 Nhiều tạp âm) trên Dashboard UI và Worker cục bộ.
 
-### 10. Hero CocCoc Video (MVP Mới - Cào & Tải video tự động)
-- **Status:** `Beta`
-- **Mô tả:** Tự động cào và tải video hàng loạt sử dụng lõi trình duyệt Cốc Cốc và Savior Extension.
-- **Tiến độ tích hợp:**
-  - `[x]` Thiết kế schema database (`coccoc_workers`, `coccoc_profiles`, `coccoc_projects`, `coccoc_sources`, `coccoc_tasks`).
-  - `[x]` Đăng ký app `hero-coccoc` vào registry (`apps-registry.ts`), layouts, và admin settings.
-  - `[x]` Chạy thành công database migrations (`drizzle-kit push`) cho các bảng mới.
-  - `[x]` Viết Server Actions CRUD (`hero-coccoc-actions.ts`) quản lý tasks, projects, profiles, workers và auth pairing token.
-  - `[x]` Cấu hình 4 API Routes cho worker local tại `app/api/hero-coccoc/` (workers, tasks, scan-configs, create-from-worker).
-  - `[x]` Thiết kế layout workspace dynamic và Sidebar riêng của Hero CocCoc Video.
-  - `[x]` Xây dựng các trang UI Obsidian Glassmorphism: Dashboard quản lý profile, Projects (form wizard), Quick Download (tải nhanh), History (lịch sử & logs) và Guide (CMD 1-click installer).
-
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
 - [x] **Đồng bộ hóa & Sửa lỗi Bảng giá so sánh AI Matrix**: Cập nhật giá và thêm model Gemini Flash, DeepSeek V3.
 - [x] **Tự động Tính toán & Cập nhật Chi phí sử dụng API**: Viết helper tính cost và tokens, cập nhật logging trong `connector-service.ts`.
-
-- **2026-06-27 (hero-coccoc - MVP Completed)**:
-  - 🚀 **Database & Schema**: Tạo 5 bảng PostgreSQL mới lưu thông tin Worker, Profiles Cốc Cốc, Projects, Sources, Tasks và Types.
-  - 🚀 **Server Actions**: Hoàn thiện toàn bộ logic CRUD và pairing code 6 chữ số kèm JWT verification cho Worker. Tích hợp tính năng "Force Scan" & "Mở Thư Mục Local".
-  - 🚀 **API Routes**: Hoàn thiện 4 API endpoints cho phép Worker cục bộ poll nhiệm vụ, đồng bộ project cào quét và báo cáo logs thời gian thực.
-  - 🚀 **Real Downloader Worker (V2)**: Lập trình thành công kịch bản Python Worker sử dụng `yt-dlp` chạy ngầm. Tự động mượn phiên đăng nhập Cookie Chrome, tải video siêu tốc 1080p, báo cáo dung lượng và tiến trình tải mượt mà.
-  - 🚀 **Obsidian Glassmorphism UI**: Thiết kế Sidebar riêng biệt. Tái cấu trúc layout Split-pane cho giao diện Projects, tích hợp `<ProjectTasksManager />` hiển thị 50 luồng tải mới nhất, tự động refresh mỗi 3 giây.
 
 - **2026-06-27 (hero-dub - STT Noise Levels & AI Vocal Isolation)**:
   - 🚀 **Tích hợp AI Vocal Isolation (Demucs) vào chế độ Nhiều Tạp Âm**: Nâng cấp `herodub_worker.py` (cả bản local và template uploads) để tự động gọi AI Demucs tách riêng giọng nói (vocals) khỏi nhạc nền trước khi chạy Whisper STT. Giọng nói tách ra được resample sang 16kHz Mono thông qua FFmpeg. Giúp giải quyết triệt để lỗi bỏ sót phụ đề (Task #72) trên các phim điện ảnh nhạc to/cháy nổ lớn.
@@ -1786,3 +1767,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - `WORKFLOW_AI2HERO_PLAN.md` - Workflow lệnh `ai2hero plan`
 - `WORKFLOW_AI2HERO_CODE.md` - Workflow lệnh `ai2hero code`
 - **2026-06-24**: Fix loi Connect Hub model khi tao task tu Thu muc theo doi (Auto Scan). Chinh sua logic UI de tranh bi trung video cu khi load lai component.
+
+## TIEN DO
+
+- **2026-06-28**: Sửa lỗi Backend getProjectTasksAction (TypeError Drizzle), sửa Worker quét vô tận (Cập nhật failed -> pending), sửa lỗi UI hiển thị Date serialization và Crash Progress component, hoàn thiện mở thư mục Local.

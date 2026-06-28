@@ -291,32 +291,6 @@ export const APPS: AppDefinition[] = [
       'Giao diện trực quan dễ sử dụng cho mọi biên dịch viên'
     ],
     targetUsers: 'Các nhóm dịch phim Trung Quốc, các nhà sáng tạo nội dung re-up, các kênh phim ngắn.'
-  },
-  {
-    id: 'hero-coccoc',
-    name: 'Hero CocCoc Video',
-    description: 'Tự động cào & tải video từ mọi nền tảng qua trình duyệt Cốc Cốc.',
-    icon: 'Download',
-    path: '/hero-coccoc/dashboard',
-    status: 'beta',
-    tier: 'free',
-    category: 'ai',
-    color: 'from-emerald-500 to-teal-500',
-    slogan: 'Cào video tự động, tải hàng loạt',
-    longDesc: 'Tận dụng Cốc Cốc Savior tải video từ TikTok, YouTube, Facebook, Douyin. Quản lý dự án tải theo lịch, tải theo kênh/từ khóa, tải nhanh 1 link.',
-    features: [
-      'Quản lý nhiều Profile Cốc Cốc',
-      'Dự án tải tự động theo lịch (60p/12h/24h)',
-      'Tải theo kênh, từ khóa tìm kiếm, hoặc link trực tiếp',
-      'Cài đặt chất lượng, thời lượng, giới hạn số lượng',
-      'Worker cài 1 lệnh CMD, chạy nền trên máy tính'
-    ],
-    benefits: [
-      'Tận dụng Cốc Cốc Savior bypass mọi anti-download',
-      'Zero-cost: tải về máy local, không tốn server storage',
-      'Tự động cào + tải hàng loạt video không cần ngồi canh'
-    ],
-    targetUsers: 'Content Creator, Nhà sản xuất video, Người làm TikTok/YouTube.'
   }
 ];
 
