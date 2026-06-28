@@ -10,7 +10,7 @@ CONFIG_FILE = "worker_config.json"
 
 print("==============================================")
 print("   HERO COCCOC LOCAL WORKER (REAL YT-DLP)")
-print("   Version: 2.3 (Python-based)")
+print("   Version: 2.4 (Python-based)")
 print("==============================================")
 
 access_token = None
@@ -117,10 +117,18 @@ def process_download_task(task):
                 info_dict = ydl.extract_info(video_url, download=True)
                 return info_dict
                 
-        # Thu tu uu tien: 1. File cookies.txt -> 2. Edge -> 3. Chrome -> 4. No Cookie
+        # Thu tu uu tien: 1. File cookies.txt -> 2. Configured Browser -> 3. Edge -> 4. Chrome -> 5. No Cookie
         opts_to_try = []
         if os.path.exists(cookie_file_path):
             opts_to_try.append({**base_ydl_opts, 'cookiefile': cookie_file_path})
+            
+        profile_config = task.get("project", {}).get("profileConfig") if task.get("project") and isinstance(task.get("project"), dict) else None
+        if profile_config:
+            b_type = profile_config.get("userDataPath", "")
+            b_profile = profile_config.get("profileDir", "Default")
+            if b_type:
+                opts_to_try.append({**base_ydl_opts, 'cookiesfrombrowser': (b_type, b_profile)})
+                
         opts_to_try.append({**base_ydl_opts, 'cookiesfrombrowser': ('edge',)})
         opts_to_try.append({**base_ydl_opts, 'cookiesfrombrowser': ('chrome',)})
         opts_to_try.append(base_ydl_opts)
@@ -134,7 +142,11 @@ def process_download_task(task):
                     print("      [+] Dang su dung file cookies.txt...")
                 elif 'cookiesfrombrowser' in opts:
                     browser = opts['cookiesfrombrowser'][0]
-                    print(f"      [+] Dang muon cookie tu {browser}...")
+                    prof_dir = opts['cookiesfrombrowser'][1] if len(opts['cookiesfrombrowser']) > 1 else None
+                    if prof_dir:
+                        print(f"      [+] Dang muon cookie tu {browser} (Profile: {prof_dir})...")
+                    else:
+                        print(f"      [+] Dang muon cookie tu {browser}...")
                 else:
                     print("      [+] Dang thu tai khong dung cookie...")
                     
@@ -212,6 +224,14 @@ def process_scan_projects():
                             opts_to_try = []
                             if os.path.exists(cookie_file_path):
                                 opts_to_try.append({**base_scan_opts, 'cookiefile': cookie_file_path})
+                                
+                            profile_config = proj.get("profileConfig")
+                            if profile_config:
+                                b_type = profile_config.get("userDataPath", "")
+                                b_profile = profile_config.get("profileDir", "Default")
+                                if b_type:
+                                    opts_to_try.append({**base_scan_opts, 'cookiesfrombrowser': (b_type, b_profile)})
+                                    
                             opts_to_try.append({**base_scan_opts, 'cookiesfrombrowser': ('edge',)})
                             opts_to_try.append({**base_scan_opts, 'cookiesfrombrowser': ('chrome',)})
                             opts_to_try.append(base_scan_opts)

@@ -74,7 +74,7 @@ export default function DashboardClient({
   // State for Add Profile Modal
   const [showAddProfile, setShowAddProfile] = useState(false);
   const [profileName, setProfileName] = useState('');
-  const [userDataPath, setUserDataPath] = useState('C:\\Users\\ADMIN\\AppData\\Local\\CocCoc\\Browser\\User Data');
+  const [userDataPath, setUserDataPath] = useState('edge');
   const [profileDir, setProfileDir] = useState('Default');
   const [submitting, setSubmitting] = useState(false);
 
@@ -174,10 +174,10 @@ export default function DashboardClient({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/5 pb-5">
         <div>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-            🚀 Hero Cốc Cốc Dashboard
+            🚀 Hero Worker Dashboard
           </h1>
           <p className="text-xs text-gray-400 font-medium mt-1">
-            Hệ thống tự động hóa cào và tải video hàng loạt sử dụng lõi trình duyệt Cốc Cốc.
+            Hệ thống tự động hóa cào và tải video hàng loạt sử dụng trình duyệt để lấy cookie.
           </p>
         </div>
         <button
@@ -275,7 +275,7 @@ export default function DashboardClient({
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-black uppercase tracking-wider text-gray-400 flex items-center gap-2">
               <User className="h-4 w-4 text-emerald-400" />
-              Cấu hình Profiles Cốc Cốc
+              Cấu hình Trình duyệt lấy Cookie
             </h2>
             <button
               onClick={() => setShowAddProfile(true)}
@@ -289,8 +289,8 @@ export default function DashboardClient({
           {profiles.length === 0 ? (
             <div className="bg-white/[0.01] border border-dashed border-white/5 rounded-2xl p-8 text-center text-gray-500 space-y-3">
               <Laptop className="h-8 w-8 mx-auto text-gray-600" />
-              <p className="text-xs font-medium">Chưa cấu hình Profile Cốc Cốc nào trong dự án.</p>
-              <p className="text-[10px] text-gray-600">Bạn cần khai báo Profile trình duyệt để Worker biết đường dẫn mở Cốc Cốc.</p>
+              <p className="text-xs font-medium">Chưa cấu hình Trình duyệt lấy Cookie nào trong dự án.</p>
+              <p className="text-[10px] text-gray-600">Bạn cần khai báo Profile trình duyệt để Worker biết đường dẫn sao chép phiên đăng nhập.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -304,8 +304,8 @@ export default function DashboardClient({
                       </span>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] text-gray-500 uppercase font-bold">Thư mục chứa dữ liệu (User Data)</p>
-                      <p className="text-[11px] text-gray-400 font-mono break-all line-clamp-2 bg-black/20 p-2 rounded-lg border border-white/5">
+                      <p className="text-[10px] text-gray-500 uppercase font-bold">Loại Trình Duyệt</p>
+                      <p className="text-[11px] text-emerald-400 font-mono break-all line-clamp-2 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20 capitalize font-bold">
                         {prof.userDataPath}
                       </p>
                     </div>
@@ -375,9 +375,9 @@ export default function DashboardClient({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-gray-900 border border-white/10 rounded-2xl p-6 w-full max-w-lg space-y-5">
             <div>
-              <h3 className="text-base font-black">Khai báo Profile Cốc Cốc</h3>
+              <h3 className="text-base font-black">Khai báo Trình duyệt lấy Cookie</h3>
               <p className="text-xs text-gray-400 mt-1">
-                Khai báo thông số trình duyệt Cốc Cốc trên máy cục bộ của bạn.
+                Khai báo trình duyệt trên máy cục bộ của bạn để Worker sử dụng phiên đăng nhập tải video mượt mà.
               </p>
             </div>
 
@@ -395,17 +395,23 @@ export default function DashboardClient({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-400">Đường dẫn User Data (Local)</label>
-                <input
-                  type="text"
+                <label className="text-xs font-bold text-gray-400">Trình duyệt lấy Cookie</label>
+                <select
                   required
-                  placeholder="Đường dẫn đến thư mục User Data của Cốc Cốc"
                   value={userDataPath}
                   onChange={(e) => setUserDataPath(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 outline-none font-mono"
-                />
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 outline-none"
+                >
+                  <option value="edge">Microsoft Edge (Khuyên dùng - ít bị khoá)</option>
+                  <option value="chrome">Google Chrome</option>
+                  <option value="firefox">Mozilla Firefox</option>
+                  <option value="brave">Brave Browser</option>
+                  <option value="opera">Opera</option>
+                  <option value="vivaldi">Vivaldi</option>
+                  <option value="safari">Safari</option>
+                </select>
                 <p className="text-[10px] text-gray-500 italic mt-1 leading-relaxed">
-                  * Mặc định trên Windows: <code className="bg-black/30 px-1 py-0.5 rounded select-all font-mono">C:\Users\Tên-User\AppData\Local\CocCoc\Browser\User Data</code>
+                  * Worker sẽ cố gắng mượn phiên đăng nhập của trình duyệt này.
                 </p>
               </div>
 
@@ -420,7 +426,7 @@ export default function DashboardClient({
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 outline-none font-mono"
                 />
                 <p className="text-[10px] text-gray-500 italic mt-1 leading-relaxed">
-                  * Trình duyệt Cốc Cốc lưu thư mục profile đầu tiên là <code className="bg-black/30 px-1 py-0.5 rounded font-mono">Default</code>. Các profile tạo thêm sẽ là <code className="bg-black/30 px-1 py-0.5 rounded font-mono">Profile 1</code>, <code className="bg-black/30 px-1 py-0.5 rounded font-mono">Profile 2</code>.
+                  * Trình duyệt lưu thư mục profile đầu tiên là <code className="bg-black/30 px-1 py-0.5 rounded font-mono">Default</code>. Các profile tạo thêm sẽ là <code className="bg-black/30 px-1 py-0.5 rounded font-mono">Profile 1</code>, <code className="bg-black/30 px-1 py-0.5 rounded font-mono">Profile 2</code>...
                 </p>
               </div>
 
