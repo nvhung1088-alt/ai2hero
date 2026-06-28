@@ -10,7 +10,7 @@ CONFIG_FILE = "worker_config.json"
 
 print("==============================================")
 print("   HERO COCCOC LOCAL WORKER (REAL YT-DLP)")
-print("   Version: 2.5 (Python-based)")
+print("   Version: 2.6 (Python-based)")
 print("==============================================")
 
 access_token = None
@@ -171,7 +171,7 @@ def process_download_task(task):
             except Exception as e:
                 last_error = e
                 err_msg = str(e).lower()
-                if "cookie" in err_msg or "locked" in err_msg or "412" in err_msg or "precondition" in err_msg or "permission" in err_msg:
+                if "cookie" in err_msg or "locked" in err_msg or "412" in err_msg or "precondition" in err_msg or "permission" in err_msg or "dpapi" in err_msg or "decrypt" in err_msg:
                     if 'cookiesfrombrowser' in opts and auto_kill_browser:
                         browser = opts['cookiesfrombrowser'][0]
                         print(f"      [!] Phat hien khoa DB! Dang ep dong trinh duyet {browser}...")
@@ -276,7 +276,7 @@ def process_scan_projects():
                                     break
                                 except Exception as e:
                                     err_msg = str(e).lower()
-                                    if "cookie" in err_msg or "locked" in err_msg or "412" in err_msg or "precondition" in err_msg or "permission" in err_msg:
+                                    if "cookie" in err_msg or "locked" in err_msg or "412" in err_msg or "precondition" in err_msg or "permission" in err_msg or "dpapi" in err_msg or "decrypt" in err_msg:
                                         if 'cookiesfrombrowser' in opts and auto_kill_browser:
                                             browser = opts['cookiesfrombrowser'][0]
                                             print(f"      [!] Phat hien khoa DB! Dang ep dong trinh duyet {browser} de quet...")
