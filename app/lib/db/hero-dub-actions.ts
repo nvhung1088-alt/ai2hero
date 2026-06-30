@@ -1,9 +1,9 @@
 'use server';
 
 import { db } from './drizzle';
-import { dubTasks, dubWorkers, teams, users, extensionLinkCodes, connectHubConnections, dubProjects } from './schema';
+import { dubTasks, dubWorkers, teams, users, extensionLinkCodes, connectHubConnections, dubProjects, dubScanConfigs } from './schema';
 import { decryptField } from '../sim-crypto';
-import { eq, and, desc, sql, isNull, gt, inArray } from 'drizzle-orm';
+import { eq, and, desc, sql, isNull, gt, inArray, or } from 'drizzle-orm';
 import { SignJWT, jwtVerify } from 'jose';
 import { createHash, randomBytes } from 'crypto';
 import { getPresignedUploadUrl } from '@/lib/storage/r2';
@@ -71,6 +71,7 @@ export async function createDubTaskAction(data: {
   ttsVolume?: string;
   outputFolder?: string;
   projectId?: number;
+  scanConfigId?: number;
   brandingEnabled?: boolean;
   logoUrl?: string;
   logoPosition?: string;
@@ -138,6 +139,7 @@ export async function createDubTaskAction(data: {
         progress: '0',
         dedupeKey,
         projectId: data.projectId,
+        scanConfigId: data.scanConfigId,
         brandingEnabled: data.brandingEnabled,
         logoUrl: data.logoUrl,
         logoPosition: data.logoPosition,
@@ -181,7 +183,14 @@ export async function getDubTasksAction(
       .select()
       .from(dubTasks)
       .where(and(...conditions))
-      .orderBy(desc(dubTasks.createdAt))
+      .orderBy(
+        sql`CASE 
+          WHEN ${dubTasks.status} IN ('assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading') THEN 1
+          WHEN ${dubTasks.status} = 'pending' THEN 2
+          ELSE 3
+        END`,
+        desc(dubTasks.createdAt)
+      )
       .limit(limit)
       .offset(offset);
 
@@ -514,13 +523,23 @@ export async function pollPendingTaskAction(workerId: number, teamId: number) {
 
     // 2. Nếu không có task dở dang, lấy task pending mới
     if (!task) {
-      const [pendingTask] = await db
-        .select()
+      const [pendingTaskResult] = await db
+        .select({ task: dubTasks })
         .from(dubTasks)
-        .where(and(eq(dubTasks.status, 'pending'), eq(dubTasks.teamId, teamId)))
+        .leftJoin(dubScanConfigs, eq(dubTasks.scanConfigId, dubScanConfigs.id))
+        .where(
+          and(
+            eq(dubTasks.status, 'pending'),
+            eq(dubTasks.teamId, teamId),
+            or(
+              isNull(dubTasks.scanConfigId),
+              eq(dubScanConfigs.isActive, true)
+            )
+          )
+        )
         .orderBy(dubTasks.createdAt)
         .limit(1);
-      task = pendingTask;
+      task = pendingTaskResult?.task;
     }
 
     if (!task) {

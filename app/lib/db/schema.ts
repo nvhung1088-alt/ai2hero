@@ -2384,6 +2384,7 @@ export const dubTasks = pgTable('dub_tasks', {
   
   // === Branding ===
   projectId: integer('project_id').references(() => dubProjects.id, { onDelete: 'set null' }),
+  scanConfigId: integer('scan_config_id').references(() => dubScanConfigs.id, { onDelete: 'set null' }),
   brandingEnabled: boolean('branding_enabled').notNull().default(false),
   logoUrl: text('logo_url'),
   logoPosition: varchar('logo_position', { length: 50 }).notNull().default('top-left'),

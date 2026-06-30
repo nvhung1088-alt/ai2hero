@@ -55,6 +55,7 @@ export async function POST(request: Request) {
         bgVolume: config.bgVolume,
         ttsVolume: config.ttsVolume,
         outputFolder: config.outputFolder,
+        scanConfigId: config.id,
       });
 
       console.log(`[create-from-worker] filePath=${filePath} result=`, JSON.stringify(result));
