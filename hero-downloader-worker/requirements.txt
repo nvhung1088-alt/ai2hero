@@ -1,0 +1,5 @@
+requests==2.31.0
+yt-dlp>=2025.01.01
+colorama==0.4.6
+flask==3.0.0
+flask-cors==4.0.0

@@ -43,7 +43,10 @@ import {
   Edit,
   Zap,
   Pause,
-  PlayCircle
+  PlayCircle,
+  BookOpen,
+  Shield,
+  MessageCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { generateLivePreviewAudioAction } from '@/lib/db/tts-preview-actions';
@@ -1973,6 +1976,28 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
           </div>
         </div>
       )}
+
+      {/* Footer Section */}
+      <footer className="mt-16 pt-8 pb-4 relative border-t border-white/5">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"></div>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-medium text-gray-400">
+          <div className="flex items-center gap-2">
+            <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent font-black">AI2Hero</span>
+            <span className="text-gray-600">© {new Date().getFullYear()} Bản quyền thuộc về AI2Hero Platform.</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link href={`/hero-dub/t/${teamId}/guide`} className="hover:text-amber-400 transition-colors flex items-center gap-1">
+              <BookOpen className="w-3.5 h-3.5" /> Hướng dẫn
+            </Link>
+            <Link href={`/dashboard/t/${teamId}`} className="hover:text-orange-400 transition-colors flex items-center gap-1">
+              <Shield className="w-3.5 h-3.5" /> Workspace
+            </Link>
+            <a href="https://t.me/ai2hero" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors flex items-center gap-1">
+              <MessageCircle className="w-3.5 h-3.5" /> Hỗ trợ
+            </a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

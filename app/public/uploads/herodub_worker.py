@@ -329,24 +329,11 @@ def process_task(token, task):
 
     local_input = os.path.join(workspace, "input.mp4")
     if not os.path.exists(local_input):
-        if source_url.startswith("http://") or source_url.startswith("https://"):
-            print(Fore.CYAN + "[-] Dang tai video tu Mang ve may...")
-            try:
-                res = requests.get(source_url, stream=True)
-                res.raise_for_status()
-                with open(local_input, 'wb') as f:
-                    for chunk in res.iter_content(chunk_size=8192):
-                        f.write(chunk)
-            except Exception as e:
-                print(Fore.RED + f"[-] Loi: Khong the tai file tu {source_url}: {str(e)}")
-                requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Loi Download: {str(e)}"}, headers=headers)
-                return
-        else:
-            if not os.path.exists(source_url):
-                print(Fore.RED + f"[-] Loi: Khong tim thay file {source_url} tren may tinh!")
-                requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Khong tim thay file tren o cung: {source_url}"}, headers=headers)
-                return
-            shutil.copy2(source_url, local_input)
+        if not os.path.exists(source_url):
+            print(Fore.RED + f"[-] Loi: Khong tim thay file {source_url} tren may tinh!")
+            requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Khong tim thay file tren o cung: {source_url}"}, headers=headers)
+            return
+        shutil.copy2(source_url, local_input)
 
     # 1. TRANSCRIBING
     duration_sec = 0

@@ -490,12 +490,38 @@ export async function verifyDubWorkerToken(bearerToken: string) {
 
 export async function pollPendingTaskAction(workerId: number, teamId: number) {
   try {
-    const [task] = await db
+    // 1. Ưu tiên tìm task đang làm dở của worker này
+    let [task] = await db
       .select()
       .from(dubTasks)
-      .where(and(eq(dubTasks.status, 'pending'), eq(dubTasks.teamId, teamId)))
-      .orderBy(dubTasks.createdAt)
+      .where(
+        and(
+          eq(dubTasks.teamId, teamId),
+          eq(dubTasks.workerId, workerId),
+          inArray(dubTasks.status, [
+            'assigned',
+            'downloading',
+            'transcribing',
+            'translating',
+            'tts',
+            'burning',
+            'uploading',
+          ])
+        )
+      )
+      .orderBy(dubTasks.updatedAt)
       .limit(1);
+
+    // 2. Nếu không có task dở dang, lấy task pending mới
+    if (!task) {
+      const [pendingTask] = await db
+        .select()
+        .from(dubTasks)
+        .where(and(eq(dubTasks.status, 'pending'), eq(dubTasks.teamId, teamId)))
+        .orderBy(dubTasks.createdAt)
+        .limit(1);
+      task = pendingTask;
+    }
 
     if (!task) {
       return { success: true, task: null };
@@ -504,9 +530,9 @@ export async function pollPendingTaskAction(workerId: number, teamId: number) {
     const [updatedTask] = await db
       .update(dubTasks)
       .set({
-        status: 'assigned',
+        status: task.status === 'pending' ? 'assigned' : task.status,
         workerId,
-        startedAt: new Date(),
+        startedAt: task.startedAt || new Date(),
         updatedAt: new Date(),
       })
       .where(eq(dubTasks.id, task.id))

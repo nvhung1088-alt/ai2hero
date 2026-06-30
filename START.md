@@ -118,9 +118,28 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp 3 Chế độ Tốc độ STT (⚡ Nhanh / ⚖️ Ổn định / 💎 Chất lượng) trên Dashboard UI và Worker cục bộ.
   - `[x]` Tích hợp 3 Chế độ Tạp âm & Nhạc nền (🎤 Ít tạp âm / 🎬 Bình thường / 💥 Nhiều tạp âm) trên Dashboard UI và Worker cục bộ.
 
+### 10. Hero Downloader (MVP Mới - Trình tải & Cào video Bilibili)
+- **Status:** `Beta`
+- **Mô tả:** Trình cào danh sách video từ kênh Bilibili, tự động đồng bộ hàng đợi tải về máy local worker. Tích hợp cơ chế bypass chặn bot (HTTP 412) bằng cách đồng bộ Cookie Netscape từ Dashboard Web UI.
+- **Tiến độ tích hợp:**
+  - `[x]` Thiết kế & cập nhật schema database (`downloader_projects`, `downloader_videos`, `downloader_settings`, `downloader_cookies`).
+  - `[x]` Đăng ký app `hero-downloader` vào registry (`apps-registry.ts`), layouts, và admin settings.
+  - `[x]` Viết Server Actions quản lý cookie, cấu hình download và hàng đợi video.
+  - `[x]` Xây dựng API Routes trao đổi nhiệm vụ `/tasks` và cập nhật tiến độ `/update` cho local worker.
+  - `[x]` Phát triển Python Local Worker chạy nền (`worker.py`, `scanner.py`, `downloader.py` sử dụng `yt-dlp`).
+  - `[x]` Tích hợp cơ chế truyền Cookie Netscape tự động từ database của Web UI xuống Worker qua file tạm để bypass lỗi chặn `HTTP 412` của Bilibili.
+  - `[x]` Sửa lỗi đồng bộ Migration trên Supabase Cloud bằng port 5432 (Session mode) thay vì Pooler port 6543 bị block DDL.
+
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- [x] **Sửa lỗi Bilibili Download & Tắt Docker database**: Di chuyển database local Docker sang Supabase Cloud, hoàn thiện cơ chế bypass HTTP 412 bằng cookie sync cho Bilibili downloader.
 - [x] **Đồng bộ hóa & Sửa lỗi Bảng giá so sánh AI Matrix**: Cập nhật giá và thêm model Gemini Flash, DeepSeek V3.
 - [x] **Tự động Tính toán & Cập nhật Chi phí sử dụng API**: Viết helper tính cost và tokens, cập nhật logging trong `connector-service.ts`.
+
+- **2026-06-30 (hero-dub - Local Worker Optimization & Dashboard UI)**:
+  - 🚀 **Bảo mật & Tối ưu Worker**: Xóa hoàn toàn tính năng tự động tải video từ mạng (HTTP/HTTPS) bằng `requests` bên trong `herodub_worker.py` (cả bản local và template). Chuyển Worker về trạng thái thuần tuý xử lý local file thông qua `shutil.copy2`, giúp loại trừ rủi ro bảo mật và giảm tải băng thông.
+  - 🚀 **Tích hợp Dashboard Footer**: Xây dựng chân trang (Footer) phong cách Glassmorphism cho trang quản trị `dashboard-client.tsx`, hiển thị liên kết Hướng dẫn, Workspace và Hỗ trợ (Telegram).
+  - 🚀 **Tính năng Resume Task Tự động**: Cập nhật hàm `pollPendingTaskAction` để khi worker bị tắt đột ngột (mất điện, đóng tab), lúc bật lại worker sẽ tự động kiểm tra và ưu tiên gọi lại các task đang dịch dở (trạng thái `transcribing`, `translating`, `tts`...) của chính worker đó thay vì lấy task mới. Script python vốn dĩ đã có cơ chế lưu Cache từng phần (JSON / WAV) nên video sẽ được xử lý tiếp tục ngay lập tức, tiết kiệm tối đa tài nguyên và thời gian.
+
 
 - **2026-06-27 (hero-dub - STT Noise Levels & AI Vocal Isolation)**:
   - 🚀 **Tích hợp AI Vocal Isolation (Demucs) vào chế độ Nhiều Tạp Âm**: Nâng cấp `herodub_worker.py` (cả bản local và template uploads) để tự động gọi AI Demucs tách riêng giọng nói (vocals) khỏi nhạc nền trước khi chạy Whisper STT. Giọng nói tách ra được resample sang 16kHz Mono thông qua FFmpeg. Giúp giải quyết triệt để lỗi bỏ sót phụ đề (Task #72) trên các phim điện ảnh nhạc to/cháy nổ lớn.

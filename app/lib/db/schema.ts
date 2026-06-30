@@ -5,6 +5,7 @@ import {
   text,
   timestamp,
   integer,
+  bigint,
   jsonb,
   index,
   uniqueIndex,
@@ -2456,5 +2457,83 @@ export type DubTask = typeof dubTasks.$inferSelect;
 export type NewDubTask = typeof dubTasks.$inferInsert;
 
 
+// ============================================================
+// DOWNLOADER HERO MODULE TABLES
+// ============================================================
 
+export const downloaderProjects = pgTable('downloader_projects', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  platform: varchar('platform', { length: 50 }).notNull(), // tiktok, douyin, custom
+  sourceUrl: text('source_url').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('active'), // active, paused, completed
+  totalVideos: integer('total_videos').notNull().default(0),
+  downloadedVideos: integer('downloaded_videos').notNull().default(0),
+  lastScanAt: timestamp('last_scan_at'),
+  settings: jsonb('settings'), // Lưu cookieIds, localFolder, maxScanVideos, ...
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const downloaderVideos = pgTable('downloader_videos', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id').notNull().references(() => downloaderProjects.id, { onDelete: 'cascade' }),
+  videoUrl: text('video_url').notNull(),
+  title: varchar('title', { length: 500 }),
+  author: varchar('author', { length: 255 }),
+  thumbnailUrl: text('thumbnail_url'),
+  duration: integer('duration'), // seconds
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // pending, downloading, downloaded, failed
+  progress: integer('progress').notNull().default(0), // percentage
+  sizeBytes: bigint('size_bytes', { mode: "number" }),
+  actualSizeBytes: bigint('actual_size_bytes', { mode: "number" }),
+  downloadSpeed: varchar('download_speed', { length: 50 }),
+  localPath: text('local_path'),
+  error: text('error'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const downloaderCookies = pgTable('downloader_cookies', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  cookieData: text('cookie_data').notNull(), // Netscape format or JSON
+  status: varchar('status', { length: 20 }).notNull().default('active'), // active, expired, invalid
+  lastCheckedAt: timestamp('last_checked_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const downloaderSettings = pgTable('downloader_settings', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  maxConcurrentDownloads: integer('max_concurrent_downloads').notNull().default(3),
+  maxConcurrentScans: integer('max_concurrent_scans').notNull().default(2),
+  defaultDownloadPath: text('default_download_path'),
+  autoStartWorker: integer('auto_start_worker').notNull().default(1), // 0: false, 1: true
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Relations
+export const downloaderProjectsRelations = relations(downloaderProjects, ({ one, many }) => ({
+  team: one(teams, { fields: [downloaderProjects.teamId], references: [teams.id] }),
+  user: one(users, { fields: [downloaderProjects.userId], references: [users.id] }),
+  videos: many(downloaderVideos),
+}));
+
+export const downloaderVideosRelations = relations(downloaderVideos, ({ one }) => ({
+  project: one(downloaderProjects, { fields: [downloaderVideos.projectId], references: [downloaderProjects.id] }),
+}));
+
+export const downloaderCookiesRelations = relations(downloaderCookies, ({ one }) => ({
+  team: one(teams, { fields: [downloaderCookies.teamId], references: [teams.id] }),
+}));
+
+export const downloaderSettingsRelations = relations(downloaderSettings, ({ one }) => ({
+  team: one(teams, { fields: [downloaderSettings.teamId], references: [teams.id] }),
+}));
 
