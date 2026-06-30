@@ -65,6 +65,9 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   const [workers, setWorkers] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [taskPage, setTaskPage] = useState(1);
+  const [taskTotalCount, setTaskTotalCount] = useState(0);
+  const TASKS_PER_PAGE = 20;
 
   // Form State
   const [taskTitle, setTaskTitle] = useState('');
@@ -328,11 +331,12 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   const [previewSrtUrl, setPreviewSrtUrl] = useState<string | null>(null);
 
   // Fetch Tasks and Workers
-  const refreshData = useCallback(async (showLoading = false) => {
+  const refreshData = useCallback(async (showLoading = false, page = taskPage) => {
     if (showLoading) setLoading(true);
     try {
+      const offset = (page - 1) * TASKS_PER_PAGE;
       const [tasksRes, workersRes, projectsRes, scanConfigsRes] = await Promise.all([
-        getDubTasksAction(teamId, { limit: 50 }),
+        getDubTasksAction(teamId, { limit: TASKS_PER_PAGE, offset }),
         getDubWorkersAction(teamId),
         getDubProjectsAction(teamId),
         getDubScanConfigsAction(teamId),
@@ -340,6 +344,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
 
       if (tasksRes.success && tasksRes.tasks) {
         setTasks(tasksRes.tasks);
+        setTaskTotalCount(tasksRes.totalCount || 0);
       }
       if (workersRes.success && workersRes.workers) {
         setWorkers(workersRes.workers);
@@ -378,7 +383,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [teamId]);
+  }, [teamId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial load and polling
   useEffect(() => {
@@ -1689,7 +1694,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
         <div className="lg:col-span-2 bg-gray-900/40 border border-white/5 p-5 rounded-2xl shadow-sm backdrop-blur-xl space-y-4">
           <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2">
             <Video className="h-4 w-4 text-orange-400" />
-            Hàng đợi tác vụ dịch thuật ({tasks.length})
+            Hàng đợi tác vụ dịch thuật ({taskTotalCount})
           </h2>
 
           {loading ? (
@@ -1878,6 +1883,63 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination Footer */}
+          {taskTotalCount > TASKS_PER_PAGE && (
+            <div className="flex items-center justify-between pt-3 border-t border-white/5">
+              <span className="text-[10px] text-gray-500 font-bold">
+                Trang {taskPage} / {Math.ceil(taskTotalCount / TASKS_PER_PAGE)} &nbsp;·&nbsp; {taskTotalCount} tác vụ
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => {
+                    const newPage = Math.max(1, taskPage - 1);
+                    setTaskPage(newPage);
+                    refreshData(true, newPage);
+                  }}
+                  disabled={taskPage === 1}
+                  className="px-3 py-1 rounded-lg text-[10px] font-black bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                >
+                  ← Trước
+                </button>
+                {Array.from({ length: Math.min(5, Math.ceil(taskTotalCount / TASKS_PER_PAGE)) }, (_, i) => {
+                  const totalPages = Math.ceil(taskTotalCount / TASKS_PER_PAGE);
+                  let startPage = Math.max(1, taskPage - 2);
+                  const endPage = Math.min(totalPages, startPage + 4);
+                  if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+                  const page = startPage + i;
+                  if (page > totalPages) return null;
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => {
+                        setTaskPage(page);
+                        refreshData(true, page);
+                      }}
+                      className={`w-7 h-7 rounded-lg text-[10px] font-black transition-all ${
+                        page === taskPage
+                          ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30'
+                          : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => {
+                    const newPage = Math.min(Math.ceil(taskTotalCount / TASKS_PER_PAGE), taskPage + 1);
+                    setTaskPage(newPage);
+                    refreshData(true, newPage);
+                  }}
+                  disabled={taskPage === Math.ceil(taskTotalCount / TASKS_PER_PAGE)}
+                  className="px-3 py-1 rounded-lg text-[10px] font-black bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                >
+                  Sau →
+                </button>
+              </div>
             </div>
           )}
         </div>
