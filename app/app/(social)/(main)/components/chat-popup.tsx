@@ -22,7 +22,11 @@ export function ChatPopup({ chat, currentUserId }: { chat: ChatPopupState, curre
   
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 4000);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchMessages();
+      }
+    }, 30000);
     return () => clearInterval(interval);
   }, [chat.conversationId]);
   

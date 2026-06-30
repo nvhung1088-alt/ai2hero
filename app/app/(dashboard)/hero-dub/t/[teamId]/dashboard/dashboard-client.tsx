@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { PollingBanner } from '@/components/polling-banner';
 import {
   createDubTaskAction,
   getDubTasksAction,
@@ -383,8 +384,10 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
   useEffect(() => {
     refreshData(true);
     const interval = setInterval(() => {
-      refreshData(false);
-    }, 4000); // Poll every 4 seconds
+      if (document.visibilityState === 'visible') {
+        refreshData(false);
+      }
+    }, 600000); // Poll every 10 minutes
 
     return () => clearInterval(interval);
   }, [refreshData]);
@@ -867,6 +870,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
+      <PollingBanner intervalMinutes={10} onRefresh={() => refreshData(true)} />
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-5">
         <div>

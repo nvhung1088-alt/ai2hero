@@ -17,6 +17,7 @@ import {
   Save,
   Clock
 } from 'lucide-react';
+import { PollingBanner } from '@/components/polling-banner';
 import { 
   createVideoStoryboard, 
   updateVideoStoryboard, 
@@ -80,8 +81,10 @@ export default function StoryboardClient({ project, initialStoryboards, scripts,
     if (!isAnyGenerating) return;
 
     const interval = setInterval(() => {
-      router.refresh();
-    }, 4000);
+      if (document.visibilityState === 'visible') {
+        router.refresh();
+      }
+    }, 600000);
 
     return () => clearInterval(interval);
   }, [storyboards]);
@@ -222,6 +225,9 @@ export default function StoryboardClient({ project, initialStoryboards, scripts,
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden h-full">
+      <div className="px-8 pt-4 shrink-0">
+        <PollingBanner intervalMinutes={10} onRefresh={() => router.refresh()} />
+      </div>
       {/* Top action bar */}
       <div className="h-16 border-b border-white/[0.05] flex items-center justify-between px-8 bg-black/20 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-4">

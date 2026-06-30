@@ -233,7 +233,7 @@ export default function DownloaderSettingsClient({
                             <button 
                               onClick={async () => {
                                 const res = await generateDownloaderPairCodeAction(teamId);
-                                if (res.success && res.code) {
+                                if (res.success && 'code' in res && res.code) {
                                   setPairCode(res.code);
                                   showToast('Đã sinh mã liên kết mới', 'success');
                                 } else {

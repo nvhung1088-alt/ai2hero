@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Play, Pause, FolderOpen, Settings, Search, CheckCircle2, Loader2, Download, AlertCircle, LayoutDashboard, Copy, Terminal, ChevronDown, ChevronUp, Square } from 'lucide-react';
 import { CreateProjectModal } from './create-project-modal';
 import { EditProjectModal } from './edit-project-modal';
+import { PollingBanner } from '@/components/polling-banner';
 import { Edit3 } from 'lucide-react';
 
 import { getDownloaderVideosAction, updateDownloaderVideoStatusAction, generateDownloaderPairCodeAction, updateDownloaderProjectAction, createDownloaderVideoAction, stopAllDownloaderVideosAction } from '@/lib/db/hero-downloader-actions';
@@ -39,9 +40,11 @@ export default function DownloaderDashboardClient({
     const hasDownloading = videos.some(v => v.status === 'downloading' || v.status === 'pending');
     if (!hasDownloading || !activeProjectId) return;
     const interval = setInterval(async () => {
-      const res = await getDownloaderVideosAction(teamId, activeProjectId);
-      if (res.success && res.videos) setVideos(res.videos);
-    }, 4000);
+      if (document.visibilityState === 'visible') {
+        const res = await getDownloaderVideosAction(teamId, activeProjectId);
+        if (res.success && res.videos) setVideos(res.videos);
+      }
+    }, 600000);
     return () => clearInterval(interval);
   }, [videos, activeProjectId, teamId]);
 
@@ -159,7 +162,15 @@ export default function DownloaderDashboardClient({
   };
 
   return (
-    <div className="flex h-full bg-gray-950 overflow-hidden text-sm">
+    <div className="flex h-full bg-gray-950 overflow-hidden text-sm flex-col">
+      <div className="px-4 pt-4 shrink-0">
+        <PollingBanner intervalMinutes={10} onRefresh={async () => {
+          if (!activeProjectId) return;
+          const res = await getDownloaderVideosAction(teamId, activeProjectId);
+          if (res.success && res.videos) setVideos(res.videos);
+        }} />
+      </div>
+      <div className="flex flex-1 overflow-hidden">
       {/* Cột trái: Danh sách dự án */}
       <div className="w-80 border-r border-white/5 flex flex-col bg-gray-900/20">
         <div className="p-4 border-b border-white/5 flex justify-between items-center">
@@ -562,6 +573,7 @@ export default function DownloaderDashboardClient({
           window.location.reload();
         }}
       />
+      </div>
     </div>
   );
 }

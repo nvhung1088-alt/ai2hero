@@ -77,7 +77,11 @@ export function SchedulerClient({
   // Poll schedules status when in Queue tab
   useEffect(() => {
     if (activeTab !== 'queue') return;
-    const interval = setInterval(refreshSchedules, 10000); // refresh every 10s
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshSchedules();
+      }
+    }, 600000); // refresh every 10m
     return () => clearInterval(interval);
   }, [activeTab]);
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { PollingBanner } from '@/components/polling-banner';
 import { getDubTasksAction, retryDubTaskAction, deleteDubTaskAction } from '@/lib/db/hero-dub-actions';
 import { History, Search, Loader2, Video, CheckCircle2, XCircle, Clock, PlayCircle, Trash2, RotateCcw, ExternalLink, Filter } from 'lucide-react';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
@@ -129,8 +130,10 @@ export default function HistoryClient({ teamId }: HistoryClientProps) {
     // Auto refresh every 10 seconds for the first page
     if (offset === 0) {
       const interval = setInterval(() => {
-        fetchTasks(false);
-      }, 10000);
+        if (document.visibilityState === 'visible') {
+          fetchTasks(false);
+        }
+      }, 3600000);
       return () => clearInterval(interval);
     }
   }, [fetchTasks, offset]);
@@ -197,6 +200,7 @@ export default function HistoryClient({ teamId }: HistoryClientProps) {
 
   return (
     <div className="p-4 lg:p-8 max-w-6xl mx-auto space-y-6 animate-fade-in">
+      <PollingBanner intervalMinutes={60} onRefresh={() => fetchTasks(true)} />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-xl font-black text-white flex items-center gap-2">

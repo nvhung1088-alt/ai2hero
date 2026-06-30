@@ -25,8 +25,10 @@ export function SocialRightbar({ user, activeTeamId, friends = [] }: SocialRight
   useEffect(() => {
     pingHeartbeatAction();
     const interval = setInterval(() => {
-      pingHeartbeatAction();
-      setNow(Date.now());
+      if (document.visibilityState === 'visible') {
+        pingHeartbeatAction();
+        setNow(Date.now());
+      }
     }, 60 * 1000);
     return () => clearInterval(interval);
   }, []);

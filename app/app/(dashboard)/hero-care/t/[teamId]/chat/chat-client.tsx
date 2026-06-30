@@ -139,11 +139,13 @@ export default function ChatClient({ teamId, inboxes }: ChatClientProps) {
   useEffect(() => {
     if (selectedInboxId === null) return;
     const timer = setInterval(async () => {
-      const res = await getConversationsAction(teamId, selectedInboxId!);
-      if (res.success && res.data) {
-        setConversations(res.data);
+      if (document.visibilityState === 'visible') {
+        const res = await getConversationsAction(teamId, selectedInboxId!);
+        if (res.success && res.data) {
+          setConversations(res.data);
+        }
       }
-    }, 10000);
+    }, 30000);
     return () => clearInterval(timer);
   }, [selectedInboxId, teamId]);
 
@@ -151,11 +153,13 @@ export default function ChatClient({ teamId, inboxes }: ChatClientProps) {
   useEffect(() => {
     if (selectedConvId === null) return;
     const timer = setInterval(async () => {
-      const res = await getMessagesAction(teamId, selectedConvId!);
-      if (res.success && res.data) {
-        setMessages(res.data);
+      if (document.visibilityState === 'visible') {
+        const res = await getMessagesAction(teamId, selectedConvId!);
+        if (res.success && res.data) {
+          setMessages(res.data);
+        }
       }
-    }, 4000);
+    }, 30000);
     return () => clearInterval(timer);
   }, [selectedConvId, teamId]);
 
