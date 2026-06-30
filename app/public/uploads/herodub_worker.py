@@ -620,8 +620,23 @@ def process_task(token, task):
                                     translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                                     print(Fore.WHITE + f"  [Google] {translated}")
                                 save_translation_progress()
-                    else:
-                        print(Fore.RED + f"  [Loi HTTP] {res.status_code}")
+                        else:
+                            print(Fore.RED + f"  [Loi HTTP] {res.status_code}")
+                            print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
+                            for seg in batch_segs:
+                                translated = ""
+                                for attempt in range(3):
+                                    try:
+                                        translated = google_translate(seg['text'], dest='vi')
+                                        break
+                                    except Exception as e:
+                                        if attempt == 2: raise e
+                                        time.sleep(2)
+                                translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
+                                print(Fore.WHITE + f"  [Google] {translated}")
+                            save_translation_progress()
+                    except Exception as api_err:
+                        print(Fore.RED + f"  [Loi Mang] {str(api_err)}")
                         print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
                         for seg in batch_segs:
                             translated = ""
@@ -635,21 +650,6 @@ def process_task(token, task):
                             translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                             print(Fore.WHITE + f"  [Google] {translated}")
                         save_translation_progress()
-                except Exception as api_err:
-                    print(Fore.RED + f"  [Loi Mang] {str(api_err)}")
-                    print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
-                    for seg in batch_segs:
-                        translated = ""
-                        for attempt in range(3):
-                            try:
-                                translated = google_translate(seg['text'], dest='vi')
-                                break
-                            except Exception as e:
-                                if attempt == 2: raise e
-                                time.sleep(2)
-                        translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
-                        print(Fore.WHITE + f"  [Google] {translated}")
-                    save_translation_progress()
             else:
                 print(Fore.CYAN + "  -> Su dung Google Translate (Mien phi)")
                 
