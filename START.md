@@ -135,6 +135,11 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - [x] **Đồng bộ hóa & Sửa lỗi Bảng giá so sánh AI Matrix**: Cập nhật giá và thêm model Gemini Flash, DeepSeek V3.
 - [x] **Tự động Tính toán & Cập nhật Chi phí sử dụng API**: Viết helper tính cost và tokens, cập nhật logging trong `connector-service.ts`.
 
+- **2026-07-01 (hero-dub - Project Pause/Resume & Custom Task Sorting)**:
+  - 🚀 **Tính năng tạm dừng dự án dịch**: Bổ sung cột `scanConfigId` liên kết các task với scan config tương ứng. Khi tạm dừng dự án quét thư mục (`isActive = false`), Worker sẽ tự động bỏ qua (không nhận) các task pending thuộc dự án đó. Các task đang xử lý dở dang vẫn được cho phép chạy tiếp tục đến khi hoàn thành để tránh lỗi kẹt luồng/rác file.
+  - 🚀 **Sắp xếp hàng đợi dịch thuật thông minh**: Tối ưu hóa truy vấn hiển thị Hàng đợi tác vụ dịch thuật trên Dashboard. Sử dụng biểu thức SQL `CASE WHEN` sắp xếp ưu tiên: Task đang xử lý ở trên cùng -> Task đang chờ ở giữa -> Task hoàn thành/thất bại ở dưới cùng. Mỗi nhóm được sắp xếp phụ theo thời gian tạo mới nhất lên trước.
+  - 🚀 **Sửa lỗi biên dịch (Compilation Fixes)**: Sửa lỗi import `./lib/db` thành `./lib/db/drizzle` trong `check_db.ts` và `test_db.ts`, đồng thời sửa lỗi cú pháp dùng dấu backslash thay cho backticks trong câu lệnh Drizzle `sql` giúp Next.js build biên dịch thành công 100%.
+
 - **2026-06-30 (hero-dub - Local Worker Optimization & Dashboard UI)**:
   - 🚀 **Bảo mật & Tối ưu Worker**: Xóa hoàn toàn tính năng tự động tải video từ mạng (HTTP/HTTPS) bằng `requests` bên trong `herodub_worker.py` (cả bản local và template). Chuyển Worker về trạng thái thuần tuý xử lý local file thông qua `shutil.copy2`, giúp loại trừ rủi ro bảo mật và giảm tải băng thông.
   - 🚀 **Tích hợp Dashboard Footer**: Xây dựng chân trang (Footer) phong cách Glassmorphism cho trang quản trị `dashboard-client.tsx`, hiển thị liên kết Hướng dẫn, Workspace và Hỗ trợ (Telegram).
