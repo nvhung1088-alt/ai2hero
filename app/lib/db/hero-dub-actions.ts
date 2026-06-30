@@ -247,7 +247,7 @@ export async function retryDubTaskAction(taskId: number, teamId: number) {
       .update(dubTasks)
       .set({
         status: 'pending',
-        progress: 0,
+        progress: '0',
         error: null,
         workerId: null,
         retryCount: task.retryCount + 1,
@@ -283,7 +283,7 @@ export async function updateAndRetryDubTaskAction(taskId: number, teamId: number
 
     const updateData: any = {
       status: 'pending',
-      progress: 0,
+      progress: '0',
       error: null,
       workerId: null,
       retryCount: task.retryCount + 1,
@@ -573,7 +573,7 @@ export async function updateTaskProgressAction(
   try {
     const updateData: any = {
       status: data.status,
-      progress: data.progress,
+      progress: String(data.progress),
       updatedAt: new Date(),
     };
 
@@ -739,7 +739,7 @@ export async function completeTaskAction(
       .update(dubTasks)
       .set({
         status: 'completed',
-        progress: 100,
+        progress: '100',
         resultVideoUrl: data.resultVideoUrl,
         resultSrtUrl: data.resultSrtUrl,
         resultPreview: data.preview || null,

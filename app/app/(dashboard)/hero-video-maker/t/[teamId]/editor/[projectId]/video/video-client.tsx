@@ -14,8 +14,7 @@ import {
   Download,
   ExternalLink,
   Edit3,
-  FileAudio,
-  ArrowRight
+  FileAudio
 } from 'lucide-react';
 import { PollingBanner } from '@/components/polling-banner';
 import { 

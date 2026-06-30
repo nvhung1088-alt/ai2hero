@@ -225,7 +225,7 @@ export async function updateDownloaderVideoAction(id: number, teamId: number, da
     const [video] = await db
       .update(downloaderVideos)
       .set(updateData)
-      .where(and(eq(downloaderVideos.id, id), eq(downloaderVideos.teamId, teamId)))
+      .where(eq(downloaderVideos.id, id))
       .returning();
       
     // Update downloaded count if completed
@@ -255,12 +255,12 @@ export async function deleteDownloaderVideoAction(id: number, teamId: number) {
     const [video] = await db
       .select({ projectId: downloaderVideos.projectId })
       .from(downloaderVideos)
-      .where(and(eq(downloaderVideos.id, id), eq(downloaderVideos.teamId, teamId)))
+      .where(eq(downloaderVideos.id, id))
       .limit(1);
 
     await db
       .delete(downloaderVideos)
-      .where(and(eq(downloaderVideos.id, id), eq(downloaderVideos.teamId, teamId)));
+      .where(eq(downloaderVideos.id, id));
       
     // Update counts
     if (video) {
@@ -441,8 +441,8 @@ export async function updateDownloaderSettingsAction(teamId: number, data: {
 
 export async function stopAllDownloaderVideosAction(teamId: number, projectId: number) {
   try {
-    const session = await getSession();
-    if (!session?.user) {
+    const user = await getUser();
+    if (!user) {
       return { error: 'Unauthorized' };
     }
 
