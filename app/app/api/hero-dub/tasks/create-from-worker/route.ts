@@ -34,6 +34,7 @@ export async function POST(request: Request) {
     }
 
     let successCount = 0;
+    const errors: string[] = [];
     
     for (const filePath of videoPaths) {
       const result = await createDubTaskAction({
@@ -56,8 +57,14 @@ export async function POST(request: Request) {
         outputFolder: config.outputFolder,
       });
 
+      console.log(`[create-from-worker] filePath=${filePath} result=`, JSON.stringify(result));
+
       if (result?.success && !result.isDuplicate) {
         successCount++;
+      } else if (result?.error) {
+        errors.push(`${path.basename(filePath)}: ${result.error}`);
+      } else if (result?.isDuplicate) {
+        // skip silently - already exists
       }
     }
 
@@ -68,7 +75,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       success: true, 
       count: successCount,
-      message: `Đã nộp ${successCount} video mới thành công.` 
+      message: `Đã nộp ${successCount} video mới thành công.`,
+      errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error: any) {
     console.error('[API Create Task from Worker] Error:', error);
