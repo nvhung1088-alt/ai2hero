@@ -547,65 +547,79 @@ def process_task(token, task):
     try:
         import json
         if os.path.exists(translated_segments_file):
-            print(Fore.GREEN + "[-] Phat hien du lieu Dich thuat cu, bo qua Dich thuat va chay tiep...")
+            print(Fore.GREEN + "[-] Phat hien du lieu Dich thuat cu, chay tiep tu phan chua dich...")
             with open(translated_segments_file, "r", encoding="utf-8") as f:
                 translated_segments = json.load(f)
         else:
             translated_segments = []
         
-        if len(translated_segments) > 0:
-            pass # Da co cache, khong can dich nua
-        elif task.get("translateEngine") == "connect-hub":
-            print(Fore.CYAN + "  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 30 cau/lan)")
-            BATCH_SIZE = 30
-            for i in range(0, len(extracted_segments), BATCH_SIZE):
-                batch_segs = extracted_segments[i:i+BATCH_SIZE]
-                texts = [seg['text'] for seg in batch_segs]
+        translated_count = len(translated_segments)
+        
+        if translated_count >= len(extracted_segments):
+            print(Fore.GREEN + "  [✓] Da dich xong toan bo video tu truoc.")
+        else:
+            if translated_count > 0:
+                print(Fore.CYAN + f"  -> Da dich {translated_count}/{len(extracted_segments)} cau. Dang dich tiep...")
                 
-                try:
-                    payload = {"taskId": task_id, "texts": texts}
-                    res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=90)
-                    if res.status_code == 200:
-                        data = res.json()
-                        if data.get("success") and data.get("translatedTexts"):
-                            translated_array = data.get("translatedTexts")
-                            import re
-                            
-                            for j, seg in enumerate(batch_segs):
-                                translated = translated_array[j] if j < len(translated_array) else seg['text']
+            segments_to_translate = extracted_segments[translated_count:]
+            
+            def save_translation_progress():
+                with open(translated_segments_file, "w", encoding="utf-8") as f:
+                    json.dump(translated_segments, f, ensure_ascii=False, indent=2)
+            
+            if task.get("translateEngine") == "connect-hub":
+                print(Fore.CYAN + "  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 30 cau/lan)")
+                BATCH_SIZE = 30
+                for i in range(0, len(segments_to_translate), BATCH_SIZE):
+                    batch_segs = segments_to_translate[i:i+BATCH_SIZE]
+                    texts = [seg['text'] for seg in batch_segs]
+                    
+                    try:
+                        payload = {"taskId": task_id, "texts": texts}
+                        res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=90)
+                        if res.status_code == 200:
+                            data = res.json()
+                            if data.get("success") and data.get("translatedTexts"):
+                                translated_array = data.get("translatedTexts")
+                                import re
                                 
-                                # Co che nhan dien loi (Self-Correction): Kiem tra neu LLM luoi bieng hoac tra ve tieng Trung
-                                is_failed = False
-                                if translated.strip() == seg['text'].strip():
-                                    is_failed = True
-                                else:
-                                    ch_chars = len(re.findall(r'[\u4e00-\u9fff]', translated))
-                                    if ch_chars > 2 or (ch_chars > 0 and ch_chars > len(translated) * 0.15):
-                                        is_failed = True
-                                
-                                if is_failed:
-                                    try:
-                                        fixed_translated = google_translate(seg['text'], dest='vi')
-                                        print(Fore.YELLOW + f"  [Sua loi LLM bang Google] {seg['text']} -> {fixed_translated}")
-                                        translated = fixed_translated
-                                    except:
-                                        print(Fore.WHITE + f"  [Connect Hub] {translated}")
-                                else:
-                                    print(Fore.WHITE + f"  [Connect Hub] {translated}")
+                                for j, seg in enumerate(batch_segs):
+                                    translated = translated_array[j] if j < len(translated_array) else seg['text']
                                     
-                                translated_segments.append({
-                                    "start": seg['start'],
-                                    "end": seg['end'],
-                                    "text": translated
-                                })
-                        else:
-                            print(Fore.RED + f"  [Loi AI] {data.get('error')}")
-                            # fallback Google Translate cho batch nay
-                            print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
-                            for seg in batch_segs:
-                                translated = google_translate(seg['text'], dest='vi')
-                                translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
-                                print(Fore.WHITE + f"  [Google] {translated}")
+                                    # Co che nhan dien loi (Self-Correction): Kiem tra neu LLM luoi bieng hoac tra ve tieng Trung
+                                    is_failed = False
+                                    if translated.strip() == seg['text'].strip():
+                                        is_failed = True
+                                    else:
+                                        ch_chars = len(re.findall(r'[\u4e00-\u9fff]', translated))
+                                        if ch_chars > 2 or (ch_chars > 0 and ch_chars > len(translated) * 0.15):
+                                            is_failed = True
+                                    
+                                    if is_failed:
+                                        try:
+                                            fixed_translated = google_translate(seg['text'], dest='vi')
+                                            print(Fore.YELLOW + f"  [Sua loi LLM bang Google] {seg['text']} -> {fixed_translated}")
+                                            translated = fixed_translated
+                                        except:
+                                            print(Fore.WHITE + f"  [Connect Hub] {translated}")
+                                    else:
+                                        print(Fore.WHITE + f"  [Connect Hub] {translated}")
+                                        
+                                    translated_segments.append({
+                                        "start": seg['start'],
+                                        "end": seg['end'],
+                                        "text": translated
+                                    })
+                                save_translation_progress()
+                            else:
+                                print(Fore.RED + f"  [Loi AI] {data.get('error')}")
+                                # fallback Google Translate cho batch nay
+                                print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
+                                for seg in batch_segs:
+                                    translated = google_translate(seg['text'], dest='vi')
+                                    translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
+                                    print(Fore.WHITE + f"  [Google] {translated}")
+                                save_translation_progress()
                     else:
                         print(Fore.RED + f"  [Loi HTTP] {res.status_code}")
                         print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
@@ -620,6 +634,7 @@ def process_task(token, task):
                                     time.sleep(2)
                             translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                             print(Fore.WHITE + f"  [Google] {translated}")
+                        save_translation_progress()
                 except Exception as api_err:
                     print(Fore.RED + f"  [Loi Mang] {str(api_err)}")
                     print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
@@ -634,31 +649,29 @@ def process_task(token, task):
                                 time.sleep(2)
                         translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                         print(Fore.WHITE + f"  [Google] {translated}")
-        else:
-            print(Fore.CYAN + "  -> Su dung Google Translate (Mien phi)")
-            
-            for seg in extracted_segments:
-                translated = ""
-                for attempt in range(3):
-                    try:
-                        translated = google_translate(seg['text'], dest='vi')
-                        break
-                    except Exception as e:
-                        if attempt == 2:
-                            raise e
-                        print(Fore.YELLOW + f"  [!] Google Translate Timeout. Dang thu lai sau 2s...")
-                        time.sleep(2)
+                    save_translation_progress()
+            else:
+                print(Fore.CYAN + "  -> Su dung Google Translate (Mien phi)")
                 
-                translated_segments.append({
-                    "start": seg['start'],
-                    "end": seg['end'],
-                    "text": translated
-                })
-                print(Fore.WHITE + f"  [Google] {translated}")
-
-        if len(translated_segments) > 0 and not os.path.exists(translated_segments_file):
-            with open(translated_segments_file, "w", encoding="utf-8") as f:
-                json.dump(translated_segments, f, ensure_ascii=False, indent=2)
+                for seg in segments_to_translate:
+                    translated = ""
+                    for attempt in range(3):
+                        try:
+                            translated = google_translate(seg['text'], dest='vi')
+                            break
+                        except Exception as e:
+                            if attempt == 2:
+                                raise e
+                            print(Fore.YELLOW + f"  [!] Google Translate Timeout. Dang thu lai sau 2s...")
+                            time.sleep(2)
+                    
+                    translated_segments.append({
+                        "start": seg['start'],
+                        "end": seg['end'],
+                        "text": translated
+                    })
+                    print(Fore.WHITE + f"  [Google] {translated}")
+                    save_translation_progress()
 
         vi_srt_path = os.path.join(workspace, "vi.srt")
         with open(vi_srt_path, "w", encoding="utf-8") as f:
