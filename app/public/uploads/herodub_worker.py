@@ -1351,6 +1351,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
                 body = self.rfile.read(content_length)
                 import json
                 data = json.loads(body)
+                data.pop('lastScanAt', None) # Force scan immediately
                 if GLOBAL_TOKEN:
                     scan_single_config(data, GLOBAL_TOKEN)
                 self.send_response(200)
