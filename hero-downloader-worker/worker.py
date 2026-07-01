@@ -20,7 +20,7 @@ active_scans = set()
 
 init(autoreset=True)
 
-API_BASE_URL = "http://localhost:3000/api/hero-downloader/worker"
+API_BASE_URL = "http://localhost:3001/api/hero-downloader/worker"
 
 def print_banner():
     print(Fore.CYAN + Style.BRIGHT + "="*60)
