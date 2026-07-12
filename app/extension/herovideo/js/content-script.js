@@ -650,7 +650,7 @@
         const currentScrollHeight = document.documentElement.scrollHeight;
         if (currentScrollHeight === lastScrollHeight) {
             sameHeightCount++;
-            if (sameHeightCount >= 10) { // Quá 15 giây không thay đổi chiều cao trang
+            if (sameHeightCount >= 30) { // Quá 45 giây không thay đổi chiều cao trang
                 console.log("[AI2Hero Crawler] Đã cuộn hết trang hoặc bị nghẽn. Tự động hoàn thành.");
                 stopAutoCrawl();
                 return;

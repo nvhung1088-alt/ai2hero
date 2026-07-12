@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
         sourceUrls,
         maxScanVideos,
         recentUrls: recent.map(r => r.videoUrl),
-        recentIds,
+        recentIds: p.lastScanAt === null ? [] : recentIds,
       });
     }
 
