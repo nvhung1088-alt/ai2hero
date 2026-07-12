@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { downloaderProjects, downloaderVideos, downloaderSettings, downloaderCookies } from '@/lib/db/schema';
-import { eq, and, isNull, lt, asc, desc, inArray, notInArray } from 'drizzle-orm';
+import { eq, and, isNull, lt, asc, desc, inArray, notInArray, or, notLike, isNotNull } from 'drizzle-orm';
 import { jwtVerify } from 'jose';
 
 const authSecret = process.env.AUTH_SECRET;
@@ -56,8 +56,20 @@ export async function GET(request: Request) {
     const maxConcurrentDownloads = settings?.maxConcurrentDownloads || 3;
     const maxScanVideos = settings?.maxConcurrentScans || 5;
 
-    // Lấy công việc Scan (Dự án có status='active' và (lastScanAt is null or > 1 giờ trước))
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+function getScanIntervalMs(intervalStr: string): number {
+  if (!intervalStr) return 60 * 60 * 1000; // default 1 hour
+  const s = intervalStr.toLowerCase();
+  if (s.includes('1 giờ')) return 1 * 60 * 60 * 1000;
+  if (s.includes('6 giờ')) return 6 * 60 * 60 * 1000;
+  if (s.includes('12 giờ')) return 12 * 60 * 60 * 1000;
+  if (s.includes('24 giờ') || s.includes('1 ngày')) return 24 * 60 * 60 * 1000;
+  if (s.includes('2 ngày')) return 2 * 24 * 60 * 60 * 1000;
+  if (s.includes('7 ngày')) return 7 * 24 * 60 * 60 * 1000;
+  if (s.includes('không quét')) return 999 * 365 * 24 * 60 * 60 * 1000; // effectively never
+  return 60 * 60 * 1000;
+}
+
+    // Lấy công việc Scan (Dự án có status='active')
     const scanTasksQuery = await db
       .select()
       .from(downloaderProjects)
@@ -71,7 +83,20 @@ export async function GET(request: Request) {
 
     // Lọc thủ công project cần quét và gán maxScanVideos
     const pendingScansList = scanTasksQuery
-      .filter(p => !p.lastScanAt || new Date(p.lastScanAt) < oneHourAgo)
+      .filter(p => {
+        // Douyin projects MUST be scanned by the Chrome Extension.
+        if (p.platform === 'douyin') {
+          return false;
+        }
+
+        const settings = p.settings as any || {};
+        const scanInterval = settings.scanInterval || 'Mỗi 1 giờ';
+        const intervalMs = getScanIntervalMs(scanInterval);
+
+        const lastScan = p.lastScanAt ? new Date(p.lastScanAt).getTime() : 0;
+        const needsScan = (Date.now() - lastScan) >= intervalMs;
+        return needsScan;
+      })
       .map(p => ({ 
         ...p, 
         maxScanVideos: (p.settings as any)?.maxScanVideos || maxScanVideos,
@@ -88,6 +113,8 @@ export async function GET(request: Request) {
       pendingScansList[i].recentUrls = recent.map(r => r.videoUrl);
     }
 
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+
     // Fetch force_pending videos (bypass concurrency limits)
     const forcePendingVideos = await db
       .select({
@@ -96,13 +123,22 @@ export async function GET(request: Request) {
         videoUrl: downloaderVideos.videoUrl,
         title: downloaderVideos.title,
         status: downloaderVideos.status,
+        author: downloaderVideos.author,
+        platform: downloaderProjects.platform,
+        directMp4Url: downloaderVideos.directMp4Url,
+        thumbnailUrl: downloaderVideos.thumbnailUrl,
       })
       .from(downloaderVideos)
       .innerJoin(downloaderProjects, eq(downloaderVideos.projectId, downloaderProjects.id))
       .where(
         and(
           eq(downloaderProjects.teamId, teamId),
-          eq(downloaderVideos.status, 'force_pending')
+          eq(downloaderVideos.status, 'force_pending'),
+          or(
+            notLike(downloaderVideos.videoUrl, '%douyin.com%'),
+            isNotNull(downloaderVideos.directMp4Url),
+            lt(downloaderVideos.updatedAt, twoMinutesAgo)
+          )
         )
       )
       .orderBy(asc(downloaderVideos.createdAt));
@@ -115,19 +151,26 @@ export async function GET(request: Request) {
         videoUrl: downloaderVideos.videoUrl,
         title: downloaderVideos.title,
         status: downloaderVideos.status,
+        author: downloaderVideos.author,
+        platform: downloaderProjects.platform,
+        directMp4Url: downloaderVideos.directMp4Url,
+        thumbnailUrl: downloaderVideos.thumbnailUrl,
       })
       .from(downloaderVideos)
       .innerJoin(downloaderProjects, eq(downloaderVideos.projectId, downloaderProjects.id))
       .where(
         and(
           eq(downloaderProjects.teamId, teamId),
-          eq(downloaderVideos.status, 'pending')
+          eq(downloaderVideos.status, 'pending'),
+          or(
+            notLike(downloaderVideos.videoUrl, '%douyin.com%'),
+            isNotNull(downloaderVideos.directMp4Url),
+            lt(downloaderVideos.updatedAt, twoMinutesAgo)
+          )
         )
       )
       .orderBy(asc(downloaderVideos.createdAt))
       .limit(maxConcurrentDownloads * 2);
-
-    const pendingVideos = [...forcePendingVideos, ...normalPendingVideos];
 
     // Fetch paused videos (no limit needed as we only need to signal cancels to the worker)
     const pausedVideos = await db
@@ -137,6 +180,10 @@ export async function GET(request: Request) {
         videoUrl: downloaderVideos.videoUrl,
         title: downloaderVideos.title,
         status: downloaderVideos.status,
+        author: downloaderVideos.author,
+        platform: downloaderProjects.platform,
+        directMp4Url: downloaderVideos.directMp4Url,
+        thumbnailUrl: downloaderVideos.thumbnailUrl,
       })
       .from(downloaderVideos)
       .innerJoin(downloaderProjects, eq(downloaderVideos.projectId, downloaderProjects.id))
@@ -147,7 +194,36 @@ export async function GET(request: Request) {
         )
       );
 
-    const downloadTasks = [...pendingVideos, ...pausedVideos];
+    const rawTasks = [...forcePendingVideos, ...normalPendingVideos, ...pausedVideos];
+    
+    // Filter rawTasks for Douyin: only send to worker if it's paused (to cancel) or already resolved
+    const filteredTasks = rawTasks.filter(v => {
+      const isDouyin = v.platform === 'douyin' || v.videoUrl?.includes('douyin.com');
+      if (isDouyin) {
+        if (v.status === 'paused') return true;
+        const hasResolvedUrl = !!v.directMp4Url || v.videoUrl?.includes('zjcdn.com') || v.videoUrl?.includes('video_mp4');
+        return hasResolvedUrl;
+      }
+      return true;
+    });
+
+    const downloadTasks = filteredTasks.map(v => {
+      let finalUrl = v.videoUrl;
+      const isDouyin = v.platform === 'douyin' || v.videoUrl?.includes('douyin.com');
+      if (isDouyin) {
+        finalUrl = v.directMp4Url || v.videoUrl;
+      } else if (v.author && v.author.startsWith('http')) {
+        finalUrl = v.author;
+      }
+      return {
+        id: v.id,
+        projectId: v.projectId,
+        videoUrl: finalUrl,
+        title: v.title,
+        status: v.status,
+        thumbnailUrl: v.thumbnailUrl,
+      };
+    });
 
     // Fetch all active cookies for the team to pass to worker
     const cookies = await db

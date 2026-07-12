@@ -27,7 +27,7 @@ const LINK_CODE_EXPIRY_MINUTES = 5;
 export async function generateLinkCode(
   teamId: number,
   userId: number
-): Promise<{ success: boolean; code?: string; expiresAt?: Date; error?: string }> {
+): Promise<{ success: boolean; code?: string; expiresAt?: string; error?: string }> {
   try {
     // Mã 6 ký tự ngẫu nhiên (uppercase alphanumeric, bỏ O/0/I/1 để tránh nhầm)
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -44,7 +44,7 @@ export async function generateLinkCode(
       expiresAt,
     });
 
-    return { success: true, code, expiresAt };
+    return { success: true, code, expiresAt: expiresAt.toISOString() };
   } catch (err: any) {
     console.error('[extension-actions] generateLinkCode error:', err);
     return { success: false, error: err.message || 'Lỗi sinh mã liên kết' };

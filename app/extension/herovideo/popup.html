@@ -54,6 +54,29 @@
   <!-- APP VIEW (Cat Catch gốc) -->
   <div id="ai2hero-app-view" class="hero-app-container">
     <div id="ai2hero-app-account"></div>
+    
+    <!-- DOUYIN CAPTURE PANEL -->
+    <div id="douyin-panel" class="hero-douyin-panel" style="display: none;">
+        <div class="hero-douyin-header">
+            <span class="hero-douyin-icon">🎬</span>
+            <span>Đã bắt <strong id="douyin-count">0</strong> video Douyin (không logo)</span>
+        </div>
+        <div class="hero-douyin-actions" style="margin-bottom: 8px;">
+            <button id="btn-douyin-local" class="hero-btn primary" disabled>
+                ⬇️ Tải Local
+            </button>
+            <button id="btn-douyin-queue" class="hero-btn secondary" disabled>
+                ☁️ Lên Server
+            </button>
+        </div>
+        <div class="hero-douyin-actions">
+            <button id="btn-douyin-crawl" class="hero-btn primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; color: white !important;" disabled>
+                🤖 Tự Động Cào (Auto-Scroll)
+            </button>
+        </div>
+        <div id="douyin-status" class="hero-douyin-status" style="display: none;"></div>
+    </div>
+
     <div class="Tabs">
     <div id="currentTab" class="TabButton flex Active" title="Current Page">
       <span data-i18n-outer="currentPage"></span>

@@ -2,7 +2,7 @@
 
 import { db } from './drizzle';
 import { downloaderProjects, downloaderVideos, downloaderCookies, downloaderSettings, teams, users } from './schema';
-import { eq, and, desc, sql, isNull, gt, inArray } from 'drizzle-orm';
+import { eq, and, desc, sql, isNull, gt, inArray, or, like } from 'drizzle-orm';
 import { getUser } from './queries';
 import { generateLinkCode } from './extension-actions';
 
@@ -117,6 +117,53 @@ export async function deleteDownloaderProjectAction(id: number, teamId: number) 
   } catch (error: any) {
     console.error('[hero-downloader-actions] deleteDownloaderProjectAction error:', error);
     return { error: 'Failed to delete project: ' + error.message };
+  }
+}export async function forceScanDownloaderProjectAction(id: number, teamId: number) {
+  try {
+    const [project] = await db
+      .update(downloaderProjects)
+      .set({
+        status: 'active',
+        lastScanAt: null,
+        updatedAt: new Date()
+      })
+      .where(and(eq(downloaderProjects.id, id), eq(downloaderProjects.teamId, teamId)))
+      .returning();
+    return { success: true, project };
+  } catch (error: any) {
+    console.error('[hero-downloader-actions] forceScanDownloaderProjectAction error:', error);
+    return { error: 'Failed to force scan: ' + error.message };
+  }
+}
+
+export async function clearDownloaderVideosAction(projectId: number, teamId: number) {
+  try {
+    // 1. Check if project belongs to team
+    const [project] = await db
+      .select({ id: downloaderProjects.id })
+      .from(downloaderProjects)
+      .where(and(eq(downloaderProjects.id, projectId), eq(downloaderProjects.teamId, teamId)))
+      .limit(1);
+
+    if (!project) {
+      return { error: 'Project not found' };
+    }
+
+    // 2. Delete videos
+    await db
+      .delete(downloaderVideos)
+      .where(eq(downloaderVideos.projectId, projectId));
+
+    // 3. Reset counts in project
+    await db
+      .update(downloaderProjects)
+      .set({ totalVideos: 0, downloadedVideos: 0, lastScanAt: null })
+      .where(eq(downloaderProjects.id, projectId));
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-downloader-actions] clearDownloaderVideosAction error:', error);
+    return { error: 'Failed to clear videos: ' + error.message };
   }
 }
 
@@ -482,5 +529,136 @@ export async function stopAllDownloaderVideosAction(teamId: number, projectId: n
   } catch (error: any) {
     console.error('[hero-downloader-actions] stopAllDownloaderVideosAction error:', error);
     return { error: 'Failed to stop videos: ' + error.message };
+  }
+}
+
+export async function resolveVideoDirectUrlAction(videoId: number, teamId: number, directMp4Url: string) {
+  try {
+    const [video] = await db
+      .select()
+      .from(downloaderVideos)
+      .where(eq(downloaderVideos.id, videoId))
+      .limit(1);
+
+    if (!video) {
+      return { error: 'Video not found' };
+    }
+
+    const [project] = await db
+      .select()
+      .from(downloaderProjects)
+      .where(
+        and(
+          eq(downloaderProjects.id, video.projectId),
+          eq(downloaderProjects.teamId, teamId)
+        )
+      )
+      .limit(1);
+
+    if (!project) {
+      return { error: 'Unauthorized project' };
+    }
+
+    const [updatedVideo] = await db
+      .update(downloaderVideos)
+      .set({
+        directMp4Url,
+        extractStatus: 'resolved',
+        updatedAt: new Date()
+      })
+      .where(eq(downloaderVideos.id, videoId))
+      .returning();
+
+    return { success: true, video: updatedVideo };
+  } catch (error: any) {
+    console.error('[hero-downloader-actions] resolveVideoDirectUrlAction error:', error);
+    return { error: 'Failed to resolve video direct URL: ' + error.message };
+  }
+}
+
+export async function getPendingExtractVideosAction(teamId: number, limit: number = 5) {
+  try {
+    const pendingVideos = await db
+      .select({
+        id: downloaderVideos.id,
+        videoUrl: downloaderVideos.videoUrl,
+        projectId: downloaderVideos.projectId
+      })
+      .from(downloaderVideos)
+      .innerJoin(downloaderProjects, eq(downloaderVideos.projectId, downloaderProjects.id))
+      .where(
+        and(
+          eq(downloaderProjects.teamId, teamId),
+          like(downloaderVideos.videoUrl, '%douyin.com%'),
+          inArray(downloaderVideos.status, ['pending', 'force_pending']),
+          isNull(downloaderVideos.directMp4Url),
+          or(
+            isNull(downloaderVideos.extractStatus),
+            eq(downloaderVideos.extractStatus, 'failed')
+          )
+        )
+      )
+      .limit(limit);
+
+    // Update their status to 'extracting'
+    if (pendingVideos.length > 0) {
+      const videoIds = pendingVideos.map(v => v.id);
+      await db
+        .update(downloaderVideos)
+        .set({
+          extractStatus: 'extracting',
+          updatedAt: new Date()
+        })
+        .where(inArray(downloaderVideos.id, videoIds));
+    }
+
+    return { success: true, tasks: pendingVideos };
+  } catch (error: any) {
+    console.error('[hero-downloader-actions] getPendingExtractVideosAction error:', error);
+    return { error: 'Failed to get pending extract videos: ' + error.message };
+  }
+}
+
+export async function markExtractFailedAction(videoId: number, teamId: number, error: string) {
+  try {
+    const [video] = await db
+      .select()
+      .from(downloaderVideos)
+      .where(eq(downloaderVideos.id, videoId))
+      .limit(1);
+
+    if (!video) {
+      return { error: 'Video not found' };
+    }
+
+    const [project] = await db
+      .select()
+      .from(downloaderProjects)
+      .where(
+        and(
+          eq(downloaderProjects.id, video.projectId),
+          eq(downloaderProjects.teamId, teamId)
+        )
+      )
+      .limit(1);
+
+    if (!project) {
+      return { error: 'Unauthorized project' };
+    }
+
+    const [updatedVideo] = await db
+      .update(downloaderVideos)
+      .set({
+        extractStatus: 'failed',
+        error: error,
+        updatedAt: new Date()
+      })
+      .where(eq(downloaderVideos.id, videoId))
+      .returning();
+
+    return { success: true, video: updatedVideo };
+  } catch (error: any) {
+    console.error('[hero-downloader-actions] markExtractFailedAction error:', error);
+    return { error: 'Failed to mark extract failed: ' + error.message };
   }
 }

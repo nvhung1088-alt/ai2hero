@@ -1,6 +1,7 @@
 import os
 import tempfile
 import threading
+import requests
 import yt_dlp
 from colorama import Fore
 
@@ -38,9 +39,103 @@ def _format_speed(bytes_per_sec: float) -> str:
         return f"{bytes_per_sec / 1024 / 1024:.1f} MB/s"
     return f"{bytes_per_sec / 1024:.0f} KB/s"
 
-def download_video(video, update_callback, cookie_data: str = None):
+def _download_thumbnail(thumbnail_url: str, base_filepath: str):
+    """Tải ảnh thumbnail về cùng thư mục với video."""
+    if not thumbnail_url:
+        return
+    try:
+        ext = thumbnail_url.split('?')[0].split('.')[-1]
+        if ext.lower() not in ['jpg', 'jpeg', 'png', 'webp']:
+            ext = 'jpg'
+        thumb_path = os.path.splitext(base_filepath)[0] + f".{ext}"
+        
+        # Nếu file đã tồn tại thì bỏ qua
+        if os.path.exists(thumb_path):
+            return
+            
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        }
+        res = requests.get(thumbnail_url, headers=headers, stream=True, timeout=10)
+        res.raise_for_status()
+        with open(thumb_path, 'wb') as f:
+            for chunk in res.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print(Fore.CYAN + f"[*] Da tai xong thumbnail: {os.path.basename(thumb_path)}")
+    except Exception as e:
+        print(Fore.YELLOW + f"[!] Khong the tai thumbnail: {e}")
+
+def download_direct_mp4(video, url, update_callback):
+    """Tải trực tiếp file MP4 từ CDN link bằng requests (không cần yt-dlp)."""
     video_id = video.get('id')
-    url = video.get('videoUrl')
+    title = video.get('title') or "douyin"
+    safe_title = "".join([c for c in title if c.isalnum() or c in [' ', '_', '-']]).strip()
+    safe_title = safe_title.replace(' ', '_')
+    downloads_dir = os.path.abspath(os.path.join(os.getcwd(), "downloads"))
+    os.makedirs(downloads_dir, exist_ok=True)
+    
+    filepath = os.path.join(downloads_dir, f"{video_id}_{safe_title}.mp4")
+    print(Fore.GREEN + f"[-] Dang tai direct MP4 video ID {video_id}...")
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.douyin.com'
+    }
+    cancel_event = threading.Event()
+    with _lock:
+        active_downloads[video_id] = {"cancel": cancel_event}
+
+    try:
+        # Download thumbnail parallelly or before starting
+        thumbnail_url = video.get('thumbnailUrl')
+        if thumbnail_url:
+            threading.Thread(target=_download_thumbnail, args=(thumbnail_url, filepath), daemon=True).start()
+
+        response = requests.get(url, headers=headers, stream=True, timeout=30)
+        response.raise_for_status()
+        total_bytes = int(response.headers.get('content-length', 0))
+        
+        update_callback(video_id, status='downloading', progress=0, speed='', size_bytes=total_bytes)
+        
+        downloaded = 0
+        last_progress = 0
+        with open(filepath, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=65536):
+                if active_downloads.get(video_id, {}).get("cancel", threading.Event()).is_set():
+                    raise Exception("Bị huỷ bởi người dùng")
+
+                f.write(chunk)
+                downloaded += len(chunk)
+                pct = int(downloaded / total_bytes * 100) if total_bytes else 0
+                
+                if pct >= last_progress + 3 or pct >= 100:
+                    update_callback(video_id, status='downloading', progress=pct, speed='', size_bytes=total_bytes)
+                    last_progress = pct
+                    import sys
+                    sys.stdout.write(f"\r[Video {video_id}] Downloading: {pct}% ")
+                    sys.stdout.flush()
+                    
+        import sys
+        sys.stdout.write("\n")
+        update_callback(video_id, status='completed', progress=100, local_path=filepath, speed='', actual_size_bytes=downloaded)
+        print(Fore.GREEN + f"[OK] Tai xong video ID {video_id} (Direct)")
+        return True
+    except Exception as e:
+        print(Fore.RED + f"[X] Direct download failed for video ID {video_id}: {e}")
+        update_callback(video_id, status='failed', error=str(e))
+        if os.path.exists(filepath):
+            try: os.remove(filepath)
+            except: pass
+        return False
+    finally:
+        with _lock:
+            if video_id in active_downloads:
+                del active_downloads[video_id]
+
+def download_video(video, update_callback, cookie_data: str = None):
+    print(f"[DEBUG Worker] video object received: {video}")
+    video_id = video.get('id')
+    url = video.get('directMp4Url') or video.get('videoUrl')
     
     # Sửa lỗi hồi tố: Chuẩn hóa url Douyin đã lỡ lưu dạng modal_id vào DB
     if url and "douyin.com" in url and "modal_id=" in url:
@@ -49,6 +144,9 @@ def download_video(video, update_callback, cookie_data: str = None):
         qs = urllib.parse.parse_qs(parsed.query)
         if "modal_id" in qs:
             url = f"https://www.douyin.com/video/{qs['modal_id'][0]}"
+
+    if url and ('douyinvod.com' in url or 'zjcdn.com' in url or '.mp4' in url.lower() or 'video_mp4' in url.lower() or 'play_addr' in url):
+        return download_direct_mp4(video, url, update_callback)
 
     print(Fore.GREEN + f"[-] Dang tai video ID {video_id} - URL: {url}")
 
@@ -60,6 +158,19 @@ def download_video(video, update_callback, cookie_data: str = None):
     cancel_event = threading.Event()
     with _lock:
         active_downloads[video_id] = {"cancel": cancel_event}
+
+    # Download thumbnail
+    thumbnail_url = video.get('thumbnailUrl')
+    if thumbnail_url:
+        # We don't know the exact base name with ext before yt-dlp finishes, but we can guess the prefix
+        # Actually yt-dlp might download the thumbnail itself if we pass writethumbnail=True
+        # But we do it manually to be safe for douyin/other platforms
+        base_path = os.path.join(downloads_dir, f"{video_id}_{safe_title if 'safe_title' in locals() else video_id}")
+        # Wait, safe_title is not defined here. Let's just create it.
+        v_title = video.get('title') or "video"
+        v_safe_title = "".join([c for c in v_title if c.isalnum() or c in [' ', '_', '-']]).strip().replace(' ', '_')
+        base_path = os.path.join(downloads_dir, f"{video_id}_{v_safe_title}")
+        threading.Thread(target=_download_thumbnail, args=(thumbnail_url, base_path), daemon=True).start()
 
     last_progress = [0]      # mutable để dùng trong closure
     last_speed_report = [0]  # throttle gửi speed

@@ -40,7 +40,7 @@ export default function PairingWidget({ teamId, userId }: PairingWidgetProps) {
       const res = await generateLinkCode(teamId, userId);
       if (res.success && res.code && res.expiresAt) {
         setCode(res.code);
-        setExpiresAt(res.expiresAt);
+        setExpiresAt(new Date(res.expiresAt));
         setTimeLeft(Math.max(0, Math.floor((new Date(res.expiresAt).getTime() - Date.now()) / 1000)));
         showToast('Đã sinh mã liên kết mới thành công!', 'success');
       } else {

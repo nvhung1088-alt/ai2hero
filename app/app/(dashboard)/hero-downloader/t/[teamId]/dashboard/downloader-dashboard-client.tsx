@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Play, Pause, FolderOpen, Settings, Search, CheckCircle2, Loader2, Download, AlertCircle, LayoutDashboard, Copy, Terminal, ChevronDown, ChevronUp, Square } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Play, Pause, FolderOpen, Settings, Search, CheckCircle2, Loader2, Download, AlertCircle, LayoutDashboard, Copy, Terminal, ChevronDown, ChevronUp, Square, Trash2, RefreshCw } from 'lucide-react';
 import { CreateProjectModal } from './create-project-modal';
 import { EditProjectModal } from './edit-project-modal';
 import { PollingBanner } from '@/components/polling-banner';
 import { Edit3 } from 'lucide-react';
 
-import { getDownloaderVideosAction, updateDownloaderVideoStatusAction, generateDownloaderPairCodeAction, updateDownloaderProjectAction, createDownloaderVideoAction, stopAllDownloaderVideosAction } from '@/lib/db/hero-downloader-actions';
+import { getDownloaderVideosAction, updateDownloaderVideoStatusAction, generateDownloaderPairCodeAction, updateDownloaderProjectAction, createDownloaderVideoAction, stopAllDownloaderVideosAction, clearDownloaderVideosAction, forceScanDownloaderProjectAction } from '@/lib/db/hero-downloader-actions';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 
 export default function DownloaderDashboardClient({ 
@@ -54,12 +54,14 @@ export default function DownloaderDashboardClient({
   }, [activeProjectId]);
 
 
+  const isFirstRender = useRef(true);
+
   // Fetch videos when active project changes
   useEffect(() => {
     if (!activeProjectId) return;
     
-    // Nếu active project hiện tại đang là project đầu tiên và chưa đổi, dùng initialVideos
-    if (activeProjectId === initialProjects[0]?.id && videos.length > 0 && !isLoadingVideos) {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
       return;
     }
 
@@ -158,6 +160,34 @@ export default function DownloaderDashboardClient({
       showToast('Lỗi: ' + res.error, 'error');
       // Revert status on error by refetching
       window.location.reload(); 
+    }
+  };
+  const handleForceScan = async () => {
+    if (!activeProjectId || !activeProject) return;
+    
+    showToast('Đang yêu cầu quét ngay lập tức...', 'success');
+    const res = await forceScanDownloaderProjectAction(activeProjectId, teamId);
+    if (res.success && res.project) {
+      showToast('Đã kích hoạt quét ngay! Trình duyệt extension hoặc worker sẽ chạy trong giây lát.', 'success');
+      setProjects(prev => prev.map(p => p.id === activeProjectId ? { ...p, status: 'active', lastScanAt: null } : p));
+    } else {
+      showToast('Lỗi khi kích hoạt quét ngay: ' + res.error, 'error');
+    }
+  };
+
+  const handleClearVideos = async () => {
+    if (!activeProject) return;
+    if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ video trong dự án này? Thao tác này không thể hoàn tác!')) return;
+    
+    const res = await clearDownloaderVideosAction(activeProject.id, teamId);
+    if (res.success) {
+      showToast('Đã xóa toàn bộ video', 'success');
+      const fetchRes = await getDownloaderVideosAction(teamId, activeProject.id);
+      if (fetchRes.success && fetchRes.videos) setVideos(fetchRes.videos);
+      else setVideos([]);
+      setCurrentPage(1);
+    } else {
+      showToast('Lỗi khi xóa video: ' + res.error, 'error');
     }
   };
 
@@ -383,9 +413,17 @@ export default function DownloaderDashboardClient({
                   <Square className="w-4 h-4 fill-current" />
                   <span className="text-xs">Dừng tải tất cả</span>
                 </button>
+                <button onClick={handleClearVideos} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 transition-colors font-medium">
+                  <Trash2 className="w-4 h-4" />
+                  <span className="text-xs">Xóa tất cả video</span>
+                </button>
+                <button onClick={handleForceScan} className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 rounded-lg text-teal-400 transition-colors font-medium">
+                  <RefreshCw className="w-4 h-4" />
+                  <span className="text-xs">Quét ngay</span>
+                </button>
                 <button onClick={handleToggleProjectStatus} className="flex items-center gap-1.5 px-4 py-1.5 bg-teal-500 hover:bg-teal-600 text-white rounded-lg shadow-[0_0_15px_rgba(20,184,166,0.3)] transition-all font-medium">
                   {activeProject.status === 'active' ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
-                  <span className="text-xs">{activeProject.status === 'active' ? 'Tạm dừng' : 'Quét Ngay'}</span>
+                  <span className="text-xs">{activeProject.status === 'active' ? 'Tạm dừng' : 'Chạy tự động'}</span>
                 </button>
               </div>
             </div>
@@ -405,9 +443,16 @@ export default function DownloaderDashboardClient({
                     </tr>
                   </thead>
                   <tbody>
-                    {videos.length === 0 ? (
+                    {isLoadingVideos ? (
                       <tr>
-                        <td colSpan={5} className="py-12 text-center text-gray-500">
+                        <td colSpan={6} className="py-12 text-center text-teal-500">
+                          <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin" />
+                          <p className="text-gray-400">Đang tải danh sách video...</p>
+                        </td>
+                      </tr>
+                    ) : videos.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-gray-500">
                           <Download className="w-8 h-8 mx-auto mb-3 opacity-20" />
                           <p>Chưa có video nào được tải về</p>
                         </td>
@@ -418,7 +463,7 @@ export default function DownloaderDashboardClient({
                           <td className="py-3 px-4 text-gray-500">{video.id}</td>
                           <td className="py-3 px-4">
                             <p className="text-gray-200 font-medium truncate max-w-[200px] lg:max-w-md" title={video.title}>{video.title}</p>
-                            <a href={video.videoUrl} target="_blank" rel="noreferrer" className="text-[11px] text-blue-400 hover:underline">{video.videoUrl}</a>
+                            <a href={video.videoUrl} target="_blank" rel="noreferrer" title={video.videoUrl} className="text-[11px] text-blue-400 hover:underline block truncate max-w-[200px] lg:max-w-md">{video.videoUrl}</a>
                           </td>
                           <td className="py-3 px-4 text-gray-400 text-xs">
                             {video.actualSizeBytes ? (
@@ -434,7 +479,7 @@ export default function DownloaderDashboardClient({
                             {video.duration ? <span className="text-gray-600 block text-[10px]">{video.duration}</span> : null}
                           </td>
                           <td className="py-3 px-4 text-gray-400 text-xs">
-                            {new Date(video.createdAt).toLocaleDateString()}
+                            {new Date(video.createdAt).toLocaleDateString('vi-VN')}
                           </td>
                           <td className="py-3 px-4">
                           {video.status === 'downloading' ? (

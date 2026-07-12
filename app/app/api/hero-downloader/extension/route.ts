@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { downloaderVideos, downloaderProjects } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
+import { verifyExtensionToken } from '@/lib/db/extension-actions';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,43 +10,128 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
+function extractBearerToken(request: NextRequest): string | null {
+  const auth = request.headers.get('Authorization');
+  if (!auth || !auth.startsWith('Bearer ')) return null;
+  return auth.slice(7).trim();
 }
 
-export async function POST(req: Request) {
+export async function OPTIONS() {
+  return new NextResponse(null, { headers: corsHeaders });
+}
+
+export async function POST(req: NextRequest) {
   try {
+    const token = extractBearerToken(req);
+    if (!token) {
+      return NextResponse.json({ success: false, error: 'Thiếu Bearer Token' }, { status: 401, headers: corsHeaders });
+    }
+
+    const auth = await verifyExtensionToken(token);
+    if (!auth.success || !auth.teamId || !auth.userId) {
+      return NextResponse.json({ success: false, error: auth.error || 'Token không hợp lệ' }, { status: 401, headers: corsHeaders });
+    }
+
     const data = await req.json();
-    const videos = data.videos;
+    const { videos, teamId, projectId } = data;
 
     if (!Array.isArray(videos) || videos.length === 0) {
       return NextResponse.json({ success: false, error: 'No videos provided' }, { headers: corsHeaders });
     }
 
-    let project = await db.query.downloaderProjects.findFirst({
-        where: (projects, { eq }) => eq(projects.platform, 'douyin'),
-        orderBy: (projects, { desc }) => [desc(projects.createdAt)]
-    });
+    if (!teamId) {
+      return NextResponse.json({ success: false, error: 'teamId is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    const parsedTeamId = typeof teamId === 'string' ? parseInt(teamId, 10) : teamId;
+
+    // Security: ensure the request is inserting to the user's authorized workspace
+    if (parsedTeamId !== auth.teamId) {
+      return NextResponse.json({ success: false, error: 'Access denied to this workspace' }, { status: 403, headers: corsHeaders });
+    }
+
+    let project = null;
+    if (projectId) {
+      const parsedProjectId = typeof projectId === 'string' ? parseInt(projectId, 10) : projectId;
+      project = await db.query.downloaderProjects.findFirst({
+          where: (projects, { eq, and }) => and(
+              eq(projects.id, parsedProjectId),
+              eq(projects.teamId, parsedTeamId)
+          )
+      });
+    }
 
     if (!project) {
-        project = await db.query.downloaderProjects.findFirst();
+      project = await db.query.downloaderProjects.findFirst({
+          where: (projects, { eq, and }) => and(
+              eq(projects.platform, 'douyin'),
+              eq(projects.teamId, parsedTeamId)
+          ),
+          orderBy: (projects, { desc }) => [desc(projects.createdAt)]
+      });
+    }
+
+    if (!project) {
+        // Auto-create Douyin project for this team
+        const [newProject] = await db.insert(downloaderProjects).values({
+            teamId: parsedTeamId,
+            userId: auth.userId, // Secured: mapped to the real user from JWT
+            name: 'Douyin Extension Sync',
+            platform: 'douyin',
+            sourceUrl: 'https://www.douyin.com',
+            status: 'active',
+        }).returning();
+
+        project = newProject;
+        
         if (!project) {
-            return NextResponse.json({ success: false, error: 'No project found' }, { headers: corsHeaders });
+            return NextResponse.json({ success: false, error: 'No project found or created' }, { headers: corsHeaders });
         }
     }
 
     let addedCount = 0;
+    
+    // Fetch existing videos to avoid duplicates
+    const existingVideos = await db.query.downloaderVideos.findMany({
+        where: (v, { eq }) => eq(v.projectId, project!.id),
+        columns: { videoUrl: true }
+    });
+    
+    const extractId = (url: string) => {
+      let match = url.match(/\/video\/(\d+)/);
+      if (match) return match[1];
+      match = url.match(/modal_id=(\d+)/);
+      if (match) return match[1];
+      return null;
+    };
+
+    const existingIds = new Set(
+      existingVideos
+        .map(v => extractId(v.videoUrl))
+        .filter(Boolean)
+    );
+
     for (const vid of videos) {
-      // Lưu video_id gốc vào author
+      const id = vid.video_id || extractId(vid.original_url || '');
+      if (id && existingIds.has(id)) {
+        continue; // Skip duplicate
+      }
+      
+      const normalizedPageUrl = `https://www.douyin.com/video/${id}`;
+
       await db.insert(downloaderVideos).values({
         projectId: project.id,
-        title: vid.title || `Douyin ${vid.video_id}`,
-        videoUrl: vid.direct_mp4_url, 
-        author: vid.original_url,     
+        title: vid.title || `Douyin ${id}`,
+        videoUrl: normalizedPageUrl, 
+        directMp4Url: vid.direct_mp4_url,
+        author: vid.author || null,     
         thumbnailUrl: vid.cover_url || null,
         status: 'pending',
         progress: 0,
       });
+      if (id) {
+        existingIds.add(id);
+      }
       addedCount++;
     }
 

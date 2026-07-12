@@ -477,3 +477,80 @@ input[type="checkbox"] {
   flex: 1 !important;
   text-align: center !important;
 }
+
+/* =========================================================================
+   DOUYIN PANEL STYLING
+   ========================================================================= */
+.hero-douyin-panel {
+  background: rgba(251, 146, 60, 0.08) !important; /* Muted orange */
+  border: 1px solid rgba(251, 146, 60, 0.25) !important;
+  border-radius: 12px !important;
+  margin: 10px 14px !important;
+  padding: 12px !important;
+  box-shadow: 0 4px 15px rgba(251, 146, 60, 0.1) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.hero-douyin-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  margin-bottom: 10px !important;
+}
+
+.hero-douyin-icon {
+  font-size: 16px !important;
+  animation: pulse 2s infinite !important;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.hero-douyin-actions {
+  display: flex !important;
+  gap: 8px !important;
+}
+
+.hero-douyin-actions .hero-btn {
+  flex: 1 !important;
+  font-size: 12px !important;
+  padding: 8px 6px !important;
+  border-radius: 8px !important;
+  min-width: unset !important;
+}
+
+.hero-douyin-status {
+  margin-top: 10px !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+}
+
+.hero-douyin-status.success {
+  color: #4ade80 !important; /* Green 400 */
+  border: 1px solid rgba(74, 222, 128, 0.2) !important;
+}
+
+.hero-douyin-status.error {
+  color: #f87171 !important; /* Red 400 */
+  border: 1px solid rgba(248, 113, 113, 0.2) !important;
+}
+
+/* ===== CHẾ ĐỘ DOUYIN: Ẩn các panel native của Extension gốc ===== */
+/* Khi body có class .is-douyin → ẩn Tabs và danh sách video gốc hoàn toàn */
+body.is-douyin .Tabs,
+body.is-douyin #mediaList,
+body.is-douyin #allMediaList,
+body.is-douyin #Tips,
+body.is-douyin #TipsFixed {
+  display: none !important;
+}

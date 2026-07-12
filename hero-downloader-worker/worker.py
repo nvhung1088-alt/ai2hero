@@ -20,7 +20,7 @@ active_scans = set()
 
 init(autoreset=True)
 
-API_BASE_URL = "http://localhost:3001/api/hero-downloader/worker"
+API_BASE_URL = "http://localhost:3000/api/hero-downloader/worker"
 
 def print_banner():
     print(Fore.CYAN + Style.BRIGHT + "="*60)
@@ -88,6 +88,8 @@ def run_worker_loop(token):
     _last_heartbeat = [0]  # Lưu thời gian in heartbeat gần nhất
     
     while True:
+        has_new_tasks = False
+        has_force = False
         try:
             active_ids_str = ",".join(map(str, active_downloads.keys()))
             url = f"{API_BASE_URL}/tasks?teamId={config.load_config().get('teamId')}&active={active_ids_str}"
@@ -105,9 +107,6 @@ def run_worker_loop(token):
                 _last_heartbeat[0] = now
             
             res = requests.get(url, headers={"Authorization": f"Bearer {token}"})
-            
-            has_new_tasks = False
-            has_force = False
             
             if res.status_code == 200:
                 data = res.json()
@@ -201,10 +200,8 @@ def run_worker_loop(token):
         time.sleep(poll_interval)
 
 if __name__ == '__main__':
-    # Bật HTTP API ẩn
-    import local_api
-    api_thread = threading.Thread(target=local_api.start_server)
-    api_thread.daemon = True
+    from local_api import start_server
+    api_thread = threading.Thread(target=start_server, daemon=True)
     api_thread.start()
     
     token = pair_device()

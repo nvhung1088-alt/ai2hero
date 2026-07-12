@@ -1188,3 +1188,161 @@ function base64ToHex(base64) {
     }
     return hexString;
 }
+
+// [AI2HERO] Douyin Video Panel Handler
+(function initDouyinPanel() {
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+        const tab = tabs[0];
+        if (!tab || !tab.url || !tab.url.includes('douyin.com')) return;
+        
+        // Thêm class is-douyin vào body NGAY LẬP TỨC → CSS ẩn các panel native trước khi chúng render
+        document.body.classList.add('is-douyin');
+
+        // Hiện panel Douyin và ẨN các tab video gốc của Extension (tránh hiện 4 stream câm gây rối)
+        $('#douyin-panel').show();
+        $('.Tabs').hide();
+        $('#mediaList').hide();
+        $('#allMediaList').hide();
+        $('#TipsFixed').hide();
+        
+        // Lấy danh sách video từ content script
+        chrome.tabs.sendMessage(tab.id, {action: 'GET_DOUYIN_VIDEOS'}, function(res) {
+            const videos = (!chrome.runtime.lastError && res?.videos?.length) ? res.videos : [];
+            $('#douyin-count').text(videos.length);
+            
+            if (!videos.length) {
+                showDouyinStatus('⚠️ Chưa bắt được video. Hãy bật video trên Douyin rồi mở lại Popup.', 'error');
+            }
+
+            // Check auth để enable nút phù hợp
+            chrome.storage.local.get(
+                ['herovideo_token', 'herovideo_workspace', 'herovideo_subfolder'],
+                function(auth) {
+                    const hasAuth = Boolean(auth.herovideo_token && auth.herovideo_workspace);
+                    const subfolder = auth.herovideo_subfolder || '';
+                    
+                    // Nút tải local — luôn active trên Douyin
+                    $('#btn-douyin-local').prop('disabled', false).on('click', function() {
+                        if (!videos.length) {
+                            showDouyinStatus('⚠️ Chưa bắt được video nào. Hãy bật 1 video trên Douyin rồi mở lại Popup.', 'error');
+                            return;
+                        }
+                        const $btn = $(this);
+                        $btn.prop('disabled', true).text('Đang tải...');
+                        let downloaded = 0;
+                        for (const v of videos) {
+                            const safeName = (v.title || v.video_id)
+                                .replace(/[<>:"/\\|?*]/g, '_').substring(0, 80).trim();
+                            const filename = subfolder 
+                                ? `${subfolder}/${v.video_id}_${safeName}.mp4`
+                                : `HeroVideo/${v.video_id}_${safeName}.mp4`;
+                            chrome.downloads.download({
+                                url: v.direct_mp4_url,
+                                filename: filename,
+                                saveAs: false
+                            }, () => {
+                                downloaded++;
+                                if (downloaded >= videos.length) {
+                                    showDouyinStatus('✅ Đã tải xong ' + downloaded + ' video về máy!', 'success');
+                                    $btn.text('⬇️ Tải lại');
+                                    $btn.prop('disabled', false);
+                                }
+                            });
+                        }
+                    });
+                    
+                    // Nút đồng bộ hàng đợi — chỉ active khi đã login
+                    if (hasAuth) {
+                        $('#btn-douyin-queue').prop('disabled', false).on('click', async function() {
+                            if (!videos.length) {
+                                showDouyinStatus('⚠️ Chưa bắt được video nào. Hãy bật 1 video trên Douyin rồi mở lại Popup.', 'error');
+                                return;
+                            }
+                            const $btn = $(this);
+                            $btn.prop('disabled', true).text('Đang gửi...');
+                            try {
+                                const apiBase = await resolveApiHost();
+                                console.log('[AI2Hero] Bắt đầu gửi API lên:', apiBase);
+                                const res = await fetch(`${apiBase}/api/hero-downloader/extension`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': 'Bearer ' + auth.herovideo_token
+                                    },
+                                    body: JSON.stringify({
+                                        teamId: auth.herovideo_workspace,
+                                        videos: videos
+                                    })
+                                });
+                                
+                                if (!res.ok) {
+                                    const text = await res.text();
+                                    throw new Error(`Lỗi HTTP ${res.status}: ${text}`);
+                                }
+
+                                const data = await res.json();
+                                if (data.success) {
+                                    showDouyinStatus('✅ Đã đồng bộ ' + data.count + ' video vào hàng đợi!', 'success');
+                                    chrome.tabs.sendMessage(tab.id, {action: 'CLEAR_DOUYIN_VIDEOS'});
+                                    $('#douyin-count').text(0);
+                                } else {
+                                    throw new Error(data.error || 'Đồng bộ thất bại (API báo false)');
+                                }
+                            } catch(e) {
+                                console.error('[AI2Hero] Lỗi gửi Server:', e);
+                                showDouyinStatus('❌ Lỗi: ' + e.message.substring(0, 80), 'error');
+                                $btn.prop('disabled', false).text('☁️ Thử lại');
+                            }
+                        });
+
+                        // Nút Tự động cào
+                        $('#btn-douyin-crawl').prop('disabled', false).on('click', async function() {
+                            const $btn = $(this);
+                            const apiBase = await resolveApiHost();
+                            $btn.prop('disabled', true).text('🤖 Đang khởi động...');
+                            chrome.tabs.sendMessage(tab.id, {
+                                action: 'START_AUTO_CRAWL',
+                                token: auth.herovideo_token,
+                                teamId: auth.herovideo_workspace,
+                                apiBase: apiBase
+                            }, function(response) {
+                                if (chrome.runtime.lastError || !response?.success) {
+                                    showDouyinStatus('❌ Lỗi kết nối robot. Hãy F5 lại trang Douyin.', 'error');
+                                    $btn.prop('disabled', false).text('🤖 Tự Động Cào (Auto-Scroll)');
+                                    return;
+                                }
+                                showDouyinStatus('🤖 Robot cào đã bắt đầu lướt! Hãy xem trên màn hình web Douyin.', 'success');
+                                setTimeout(() => window.close(), 1500);
+                            });
+                        });
+                    } else {
+                        $('#btn-douyin-queue').attr('title', 'Vui lòng đăng nhập để dùng Hàng đợi');
+                        $('#btn-douyin-crawl').attr('title', 'Vui lòng đăng nhập để dùng Robot cào');
+                    }
+                }
+            );
+        });
+    });
+    
+    function showDouyinStatus(msg, type) {
+        $('#douyin-status').text(msg).removeClass('success error').addClass(type).show();
+    }
+    
+    // Tìm API host từ tab Dashboard đang mở hoặc fallback production
+    async function resolveApiHost() {
+        return new Promise((resolve) => {
+            chrome.tabs.query({}, function(tabs) {
+                const dashboardTab = tabs.find(t => 
+                    t.url && (t.url.includes('ai2hero.com') || t.url.includes('localhost'))
+                    && (t.url.includes('/hero-downloader') || t.url.includes('/herovideodownload'))
+                );
+                if (dashboardTab) {
+                    const url = new URL(dashboardTab.url);
+                    resolve(url.origin);
+                } else {
+                    resolve('https://www.ai2hero.com'); // Fallback production
+                }
+            });
+        });
+    }
+})();

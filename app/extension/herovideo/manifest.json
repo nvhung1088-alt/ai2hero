@@ -78,6 +78,12 @@
       "all_frames": true
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["js/interceptor.js"],
+      "matches": ["*://*.douyin.com/*"]
+    }
+  ],
   "default_locale": "en",
   "version": "1.0.0",
   "incognito": "split"

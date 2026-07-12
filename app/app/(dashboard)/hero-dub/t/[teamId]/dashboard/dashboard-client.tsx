@@ -440,7 +440,7 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
       const res = await generateLinkCode(teamId, userId);
       if (res.success && res.code && res.expiresAt) {
         setPairingCode(res.code);
-        setPairingExpiresAt(res.expiresAt);
+        setPairingExpiresAt(new Date(res.expiresAt));
         setPairingTimeLeft(Math.max(0, Math.floor((new Date(res.expiresAt).getTime() - Date.now()) / 1000)));
         showToast('Sinh mã liên kết thành công!', 'success');
       } else {

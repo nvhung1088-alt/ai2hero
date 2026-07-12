@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Save, Plus, Trash2, FolderOpen, Chrome, Edit3 } from 'lucide-react';
-import { updateDownloaderProjectAction } from '@/lib/db/hero-downloader-actions';
+import { updateDownloaderProjectAction, deleteDownloaderProjectAction } from '@/lib/db/hero-downloader-actions';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 
 interface EditProjectModalProps {
@@ -24,6 +24,7 @@ export function EditProjectModal({ isOpen, onClose, teamId, cookies = [], projec
   const [quality, setQuality] = useState('Tốt nhất (No Watermark)');
   const [maxScanVideos, setMaxScanVideos] = useState(50);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (project) {
@@ -301,21 +302,44 @@ export function EditProjectModal({ isOpen, onClose, teamId, cookies = [], projec
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/5 bg-white/[0.02]">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-white/5 bg-white/[0.02]">
           <button 
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+            onClick={async () => {
+              if (!confirm('Bạn có chắc chắn muốn xóa dự án này và toàn bộ video bên trong? Hành động này không thể hoàn tác!')) return;
+              setIsDeleting(true);
+              const res = await deleteDownloaderProjectAction(project.id, teamId);
+              if (res.success) {
+                showToast('Đã xóa dự án', 'success');
+                onProjectUpdated?.(null); // passing null or triggering refresh
+                onClose();
+              } else {
+                showToast('Lỗi khi xóa dự án: ' + res.error, 'error');
+                setIsDeleting(false);
+              }
+            }}
+            disabled={isDeleting || isSaving}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
           >
-            Hủy bỏ
+            <Trash2 className="w-4 h-4" />
+            {isDeleting ? 'Đang xóa...' : 'Xóa dự án'}
           </button>
-          <button 
-            onClick={handleUpdate}
-            disabled={isSaving}
-            className="flex items-center gap-2 px-5 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg shadow-[0_0_15px_rgba(20,184,166,0.2)] transition-all font-medium text-sm disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
-          </button>
+
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+            >
+              Hủy bỏ
+            </button>
+            <button 
+              onClick={handleUpdate}
+              disabled={isSaving || isDeleting}
+              className="flex items-center gap-2 px-5 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg shadow-[0_0_15px_rgba(20,184,166,0.2)] transition-all font-medium text-sm disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </button>
+          </div>
         </div>
 
       </div>

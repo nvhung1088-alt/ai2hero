@@ -1036,3 +1036,371 @@ function isSpecialPage(url) {
 // chrome.storage.local.get(function (data) { console.log(data.MediaData) });
 // chrome.declarativeNetRequest.getSessionRules(function (rules) { console.log(rules); });
 // chrome.tabs.query({}, function (tabs) { for (let item of tabs) { console.log(item.id); } });
+
+// [AI2HERO] Inject Douyin Interceptor vào MAIN world để can thiệp fetch/XHR
+chrome.webNavigation.onCommitted.addListener((details) => {
+    if (details.frameId !== 0) return; // Chỉ main frame
+    if (details.url && details.url.includes("douyin.com")) {
+        chrome.scripting.executeScript({
+            target: { tabId: details.tabId },
+            world: "MAIN",
+            files: ["js/interceptor.js"]
+        }).catch(err => console.warn("[AI2Hero] Douyin inject failed:", err));
+    }
+});
+
+// --- [AI2HERO] EXTENSION-FIRST DOUYIN PIPELINE ---
+let isExtractingSyncing = false;
+const extractingTabs = new Map(); // tabId -> {videoId, timeout, apiBase, token}
+
+// Helper dynamically resolving API host from active tabs
+async function getApiBase() {
+    try {
+        const tabs = await chrome.tabs.query({});
+        for (const tab of tabs) {
+            if (tab.url) {
+                try {
+                    const url = new URL(tab.url);
+                    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+                        if (url.port === '3000') {
+                            return 'http://localhost:3000';
+                        }
+                    } else if (url.hostname.includes('ai2hero.com')) {
+                        return 'https://www.ai2hero.com';
+                    }
+                } catch(e) {}
+            }
+        }
+    } catch (err) {
+        console.error("Error querying tabs:", err);
+    }
+    return 'https://www.ai2hero.com';
+}
+
+setInterval(async () => {
+    if (isExtractingSyncing) return;
+    isExtractingSyncing = true;
+    
+    try {
+        const storage = await chrome.storage.local.get([
+            'herovideo_token', 'herovideo_workspace', 'herovideo_subfolder'
+        ]);
+        if (!storage.herovideo_token) {
+            isExtractingSyncing = false;
+            return;
+        }
+        
+        const apiBase = await getApiBase();
+        
+        // Poll Server
+        const res = await fetch(
+            `${apiBase}/api/hero-downloader/extension/pending-extract`,
+            { 
+                headers: { 
+                    'Authorization': 'Bearer ' + storage.herovideo_token 
+                } 
+            }
+        );
+        if (!res.ok) {
+            isExtractingSyncing = false;
+            return;
+        }
+        const data = await res.json();
+        if (data && data.success && data.tasks && data.tasks.length > 0) {
+            for (const task of data.tasks.slice(0, 3)) {
+                await openHiddenTabForExtract(task, storage, apiBase);
+            }
+        }
+    } catch(e) {
+        console.error("[AI2Hero] Polling failed:", e);
+    } finally {
+        isExtractingSyncing = false;
+    }
+}, 5000);
+
+async function openHiddenTabForExtract(task, storage, apiBase) {
+    const { id: videoId, videoUrl } = task;
+    
+    try {
+        // Mở tab ẩn (không active)
+        const tab = await chrome.tabs.create({
+            url: videoUrl,
+            active: true
+        });
+        
+        // Timeout 15 giây
+        const timeout = setTimeout(async () => {
+            try {
+                await fetch(`${apiBase}/api/hero-downloader/extension/resolve`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + storage.herovideo_token
+                    },
+                    body: JSON.stringify({ videoId, error: 'Tab timeout - interceptor không bắt được link' })
+                });
+            } catch(e) {}
+            try { chrome.tabs.remove(tab.id); } catch(e) {}
+            extractingTabs.delete(tab.id);
+        }, 15000);
+        
+        extractingTabs.set(tab.id, { videoId, timeout, apiBase, token: storage.herovideo_token });
+    } catch (err) {
+        console.error("[AI2Hero] Failed to create hidden tab:", err);
+    }
+}
+
+// Lắng nghe khi content-script bắt được video
+chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+    if (message.action !== 'DOUYIN_VIDEOS_CAPTURED') return;
+    
+    const tabId = sender.tab?.id;
+    if (!tabId) return;
+    
+    const extractInfo = extractingTabs.get(tabId);
+    if (!extractInfo) return;
+    
+    const { videoId, timeout, apiBase, token } = extractInfo;
+    clearTimeout(timeout);
+    extractingTabs.delete(tabId);
+    
+    // Đóng tab ẩn ngay lập tức để tiết kiệm RAM
+    try { chrome.tabs.remove(tabId); } catch(e) {}
+    
+    const captured = message.videos || [];
+    const bestVideo = captured[0]; // video mới nhất
+    
+    if (bestVideo && bestVideo.direct_mp4_url) {
+        fetch(`${apiBase}/api/hero-downloader/extension/resolve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ videoId, directMp4Url: bestVideo.direct_mp4_url })
+        })
+        .then(async (res) => {
+            if (res.ok) {
+                // Tự động tải nếu Worker không hoạt động
+                await checkWorkerAndDownload(videoId, bestVideo.direct_mp4_url, token, apiBase);
+            }
+        })
+        .catch(console.error);
+    } else {
+        fetch(`${apiBase}/api/hero-downloader/extension/resolve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ videoId, error: 'Không bắt được direct_mp4_url từ video' })
+        }).catch(console.error);
+    }
+});
+
+async function checkWorkerAndDownload(videoId, directMp4Url, token, apiBase) {
+    try {
+        // Chờ 15 giây để Worker nhận task và tải. Nếu video vẫn ở trạng thái pending/force_pending thì Extension tự tải
+        await new Promise(resolve => setTimeout(resolve, 15000));
+        
+        const statusRes = await fetch(`${apiBase}/api/hero-downloader/extension/check-status?videoId=${videoId}`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            if (statusData.status === 'pending' || statusData.status === 'force_pending') {
+                console.log(`[AI2Hero] Worker không phản hồi. Extension tự tải video ${videoId}...`);
+                const storage = await chrome.storage.local.get(['herovideo_subfolder']);
+                const subfolder = storage.herovideo_subfolder || 'HeroVideo';
+                chrome.downloads.download({
+                    url: directMp4Url,
+                    filename: `${subfolder}/${videoId}_douyin.mp4`,
+                    saveAs: false
+                });
+            }
+        }
+    } catch(e) {
+        console.error("[AI2Hero] checkWorkerAndDownload error:", e);
+    }
+}
+
+// === [AI2HERO] CHANNEL SCANNING PIPELINE ===
+let isScanningSyncing = false;
+const scanningTabs = new Map(); // tabId -> {projectId, timeout, apiBase, token}
+
+setInterval(async () => {
+    if (isScanningSyncing) return;
+    isScanningSyncing = true;
+    
+    try {
+        const storage = await chrome.storage.local.get([
+            'herovideo_token', 'herovideo_workspace'
+        ]);
+        if (!storage.herovideo_token) {
+            isScanningSyncing = false;
+            return;
+        }
+        
+        const apiBase = await getApiBase();
+        
+        // Poll Server for pending scan projects
+        const res = await fetch(
+            `${apiBase}/api/hero-downloader/extension/pending-scan`,
+            { 
+                headers: { 
+                    'Authorization': 'Bearer ' + storage.herovideo_token 
+                } 
+            }
+        );
+        if (!res.ok) {
+            isScanningSyncing = false;
+            return;
+        }
+        const data = await res.json();
+        if (data && data.success && data.projects && data.projects.length > 0) {
+            // Process only 1 project at a time to prevent opening too many tabs
+            const project = data.projects[0];
+            await openTabForChannelScan(project, storage, apiBase);
+        }
+    } catch(e) {
+        console.error("[AI2Hero] Channel polling failed:", e);
+    } finally {
+        isScanningSyncing = false;
+    }
+}, 10000);
+function cleanDouyinUserUrl(url) {
+    if (!url) return url;
+    if (url.includes('douyin.com/user/')) {
+        try {
+            const u = new URL(url);
+            // Giữ lại pathname sạch, xóa hoàn toàn các param như ?vid=... để tránh mở modal popup khóa scroll trang cá nhân
+            u.search = '';
+            u.hash = '';
+            return u.toString();
+        } catch (e) {
+            return url.split('?')[0];
+        }
+    }
+    return url;
+}
+
+async function openTabForChannelScan(project, storage, apiBase) {
+    const { id: projectId, sourceUrls, recentIds, maxScanVideos } = project;
+    if (!sourceUrls || sourceUrls.length === 0) return;
+    
+    // Check if already scanning this project
+    for (const info of scanningTabs.values()) {
+        if (info.projectId === projectId) return;
+    }
+    
+    try {
+        const cleanedUrls = sourceUrls.map(cleanDouyinUserUrl);
+        const firstUrl = cleanedUrls[0];
+        console.log(`[AI2Hero] Bat dau quet kenh cho project ${projectId}: ${firstUrl} (1/${cleanedUrls.length})`);
+        const tab = await chrome.tabs.create({
+            url: firstUrl,
+            active: true
+        });
+        
+        setupTabScan(tab.id, projectId, cleanedUrls, 0, storage, apiBase, recentIds, maxScanVideos);
+    } catch (err) {
+        console.error("[AI2Hero] Failed to create channel scan tab:", err);
+    }
+}
+
+function setupTabScan(tabId, projectId, sourceUrls, index, storage, apiBase, recentIds, maxScanVideos) {
+    // Clear old timeout if any
+    const existing = scanningTabs.get(tabId);
+    if (existing && existing.timeout) {
+        clearTimeout(existing.timeout);
+    }
+    
+    // Timeout 60 giây cho mỗi URL quét
+    const timeout = setTimeout(async () => {
+        console.warn(`[AI2Hero] Tab quet kenh bi timeout cho project ${projectId} o URL thu ${index + 1}`);
+        handleScanSegmentComplete(tabId);
+    }, 60000);
+    
+    scanningTabs.set(tabId, {
+        projectId,
+        timeout,
+        apiBase,
+        token: storage.herovideo_token,
+        sourceUrls,
+        currentIndex: index,
+        storage,
+        recentIds: recentIds || [],
+        maxScanVideos: maxScanVideos || 50
+    });
+    
+    // Lắng nghe khi tab tải xong
+    const listener = function(updatedTabId, info) {
+        if (updatedTabId !== tabId || info.status !== 'complete') return;
+        chrome.tabs.onUpdated.removeListener(listener);
+        
+        const state = scanningTabs.get(tabId);
+        if (!state || state.currentIndex !== index) return;
+        
+        console.log(`[AI2Hero] Tab loaded, gui START_AUTO_CRAWL cho project ${projectId} (URL ${index + 1}/${sourceUrls.length})...`);
+        chrome.tabs.sendMessage(tabId, {
+            action: 'START_AUTO_CRAWL',
+            token: storage.herovideo_token,
+            teamId: storage.herovideo_workspace,
+            apiBase: apiBase,
+            projectId: projectId,
+            recentIds: state.recentIds,
+            maxScanVideos: state.maxScanVideos
+        });
+    };
+    
+    chrome.tabs.onUpdated.addListener(listener);
+}
+
+async function handleScanSegmentComplete(tabId) {
+    const scanInfo = scanningTabs.get(tabId);
+    if (!scanInfo) return;
+    
+    const { projectId, timeout, apiBase, token, sourceUrls, currentIndex, storage, recentIds, maxScanVideos } = scanInfo;
+    clearTimeout(timeout);
+    
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < sourceUrls.length) {
+        const nextUrl = sourceUrls[nextIndex]; // sourceUrls are already cleaned in openTabForChannelScan
+        console.log(`[AI2Hero] URL thu ${currentIndex + 1} cua project ${projectId} quet xong. Chuyen sang URL thu ${nextIndex + 1}: ${nextUrl}`);
+        try {
+            await chrome.tabs.update(tabId, { url: nextUrl, active: true });
+            setupTabScan(tabId, projectId, sourceUrls, nextIndex, storage, apiBase, recentIds, maxScanVideos);
+        } catch (e) {
+            console.error(`[AI2Hero] Khong the update tab de quet URL tiep theo:`, e);
+            finalizeScan(tabId, projectId, token, apiBase);
+        }
+    } else {
+        finalizeScan(tabId, projectId, token, apiBase);
+    }
+}
+
+function finalizeScan(tabId, projectId, token, apiBase) {
+    scanningTabs.delete(tabId);
+    try { chrome.tabs.remove(tabId); } catch(e) {}
+    
+    console.log(`[AI2Hero] Tat ca URL da quet hoan tat cho project ${projectId}. Gui scan-complete len Server...`);
+    
+    fetch(`${apiBase}/api/hero-downloader/extension/scan-complete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ projectId })
+    }).catch(console.error);
+}
+
+// Lắng nghe tín hiệu hoàn thành quét kênh từ content-script
+chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+    if (message.action === 'DOUYIN_SCAN_COMPLETE') {
+        const tabId = sender.tab?.id;
+        if (tabId) {
+            handleScanSegmentComplete(tabId);
+        }
+    }
+});

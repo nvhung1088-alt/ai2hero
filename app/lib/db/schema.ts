@@ -2493,6 +2493,8 @@ export const downloaderVideos = pgTable('downloader_videos', {
   downloadSpeed: varchar('download_speed', { length: 50 }),
   localPath: text('local_path'),
   error: text('error'),
+  directMp4Url: text('direct_mp4_url'),
+  extractStatus: varchar('extract_status', { length: 20 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

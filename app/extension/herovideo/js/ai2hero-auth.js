@@ -40,14 +40,47 @@ $(document).ready(function() {
                     function() { $(this).css({background: 'rgba(249, 115, 22, 0.15)', color: '#fb923c'}); },
                     function() { $(this).css({background: 'transparent', color: '#a1a1aa'}); }
                 ).on('click', function() {
-                    chrome.storage.local.get(['herovideo_workspaces', 'herovideo_temp_auth'], function(res) {
+                    chrome.storage.local.get(['herovideo_workspaces', 'herovideo_temp_auth'], async function(res) {
                         if (res.herovideo_workspaces && res.herovideo_temp_auth) {
-                            tempToken = res.herovideo_temp_auth.tempToken;
-                            renderWorkspaces(res.herovideo_workspaces, res.herovideo_temp_auth.password);
                             $appView.hide();
                             $authView.show();
                             $loginForm.hide();
-                            $workspaceForm.show();
+                            $loading.show();
+
+                            try {
+                                const authRes = await fetch("http://localhost:3000/api/sim/extension/auth", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ email: res.herovideo_temp_auth.email, password: res.herovideo_temp_auth.password })
+                                });
+                                const authData = await authRes.json();
+                                
+                                if (authRes.ok && authData.tempToken && authData.workspaces) {
+                                    tempToken = authData.tempToken;
+                                    // Update storage with fresh token
+                                    chrome.storage.local.set({
+                                        'herovideo_workspaces': authData.workspaces,
+                                        'herovideo_temp_auth': { 
+                                            email: res.herovideo_temp_auth.email, 
+                                            password: res.herovideo_temp_auth.password, 
+                                            tempToken 
+                                        }
+                                    });
+                                    renderWorkspaces(authData.workspaces, res.herovideo_temp_auth.password);
+                                    $loading.hide();
+                                    $workspaceForm.show();
+                                } else {
+                                    // Token expired and re-auth failed (e.g. password changed)
+                                    $loading.hide();
+                                    $loginForm.show();
+                                }
+                            } catch (e) {
+                                // Fallback to old behavior if network offline
+                                tempToken = res.herovideo_temp_auth.tempToken;
+                                renderWorkspaces(res.herovideo_workspaces, res.herovideo_temp_auth.password);
+                                $loading.hide();
+                                $workspaceForm.show();
+                            }
                         }
                     });
                 });
@@ -89,7 +122,7 @@ $(document).ready(function() {
         $loading.show();
 
         try {
-            const res = await fetch("https://www.ai2hero.com/api/sim/extension/auth", {
+            const res = await fetch("http://localhost:3000/api/sim/extension/auth", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password })
@@ -138,7 +171,7 @@ $(document).ready(function() {
                 $loading.show();
 
                 try {
-                    const res = await fetch("https://www.ai2hero.com/api/sim/extension/auth/select-workspace", {
+                    const res = await fetch("http://localhost:3000/api/sim/extension/auth/select-workspace", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({

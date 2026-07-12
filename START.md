@@ -19,6 +19,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Loại bỏ hoàn toàn hardcode API địa chỉ `localhost:3000` của Extension khi xác thực và đồng bộ video sang Production URL `https://www.ai2hero.com`.
   - `[x]` Tích hợp nút 1-click **Mở thư mục** (Open Folder) thông minh trên Web App Dashboard, kết nối trực tiếp với API của Extension thông qua cơ chế Content-Script Bridge.
   - `[x]` Tích hợp tính năng **Dọn dẹp video lỗi** thủ công trên Dashboard: Tự động quét và loại bỏ các file video rỗng (< 500b), video trùng lặp (size + base name), video hỏng hoặc chỉ có âm thanh (không có khung hình) bằng DOM `<video>` ẩn chạy trên RAM.
+  - `[x]` Gộp extension **Hero Downloader Pro** (bắt link Douyin không logo) vào extension chính **Hero Video Assistant** thành bản Unified Extension hoàn chỉnh, hỗ trợ dual-mode (tải local hoặc đồng bộ hàng đợi), vá lỗi multi-tenancy và tích hợp robot **Auto-Scroll Crawler** tự động lướt và cào video hàng loạt gửi lên Server.
 ### 5. Hero Care (MVP Mới - Trợ lý CSKH AI đa kênh)
 - **Status:** `Beta`
 - **Mô tả:** Hộp thư hỗ trợ đa kênh (Zalo, Pancake, Telegram) tích hợp AI tự động trả lời thông minh dựa trên kịch bản FAQ và dữ liệu snapshot được đồng bộ liên tục.
@@ -118,9 +119,9 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp 3 Chế độ Tốc độ STT (⚡ Nhanh / ⚖️ Ổn định / 💎 Chất lượng) trên Dashboard UI và Worker cục bộ.
   - `[x]` Tích hợp 3 Chế độ Tạp âm & Nhạc nền (🎤 Ít tạp âm / 🎬 Bình thường / 💥 Nhiều tạp âm) trên Dashboard UI và Worker cục bộ.
 
-### 10. Hero Downloader (MVP Mới - Trình tải & Cào video Bilibili)
+### 10. Hero Downloader (MVP Mới - Trình tải & Cào video Bilibili / Douyin)
 - **Status:** `Beta`
-- **Mô tả:** Trình cào danh sách video từ kênh Bilibili, tự động đồng bộ hàng đợi tải về máy local worker. Tích hợp cơ chế bypass chặn bot (HTTP 412) bằng cách đồng bộ Cookie Netscape từ Dashboard Web UI.
+- **Mô tả:** Trình cào danh sách video từ kênh Bilibili & Douyin, tự động đồng bộ hàng đợi tải về máy local worker. Tích hợp cơ chế bypass chặn bot (HTTP 412) bằng cách đồng bộ Cookie Netscape từ Dashboard Web UI và robot tự động cào gửi lên Server.
 - **Tiến độ tích hợp:**
   - `[x]` Thiết kế & cập nhật schema database (`downloader_projects`, `downloader_videos`, `downloader_settings`, `downloader_cookies`).
   - `[x]` Đăng ký app `hero-downloader` vào registry (`apps-registry.ts`), layouts, và admin settings.
@@ -129,11 +130,26 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Phát triển Python Local Worker chạy nền (`worker.py`, `scanner.py`, `downloader.py` sử dụng `yt-dlp`).
   - `[x]` Tích hợp cơ chế truyền Cookie Netscape tự động từ database của Web UI xuống Worker qua file tạm để bypass lỗi chặn `HTTP 412` của Bilibili.
   - `[x]` Sửa lỗi đồng bộ Migration trên Supabase Cloud bằng port 5432 (Session mode) thay vì Pooler port 6543 bị block DDL.
+  - `[x]` Hợp nhất extension cào link Douyin không logo vào **Hero Video Assistant** và sửa lỗi bảo mật multi-tenancy trên API endpoint.
+  - `[x]` Tối ưu hóa lọc trùng Douyin 2 lớp bằng mã ID trích xuất từ link trang cá nhân và link Jingxuan (`modal_id`).
+  - `[x]` Tích hợp cơ chế dừng cào thông minh (Break-on-existing) khi gặp 5 video trùng liên tiếp và giới hạn số lượng video mới tối đa (`maxScanVideos`).
+  - `[x]` Khắc phục lỗi body scroll lock do popup video bằng cách tự động dọn sạch các tham số URL (`vid=...`) trước khi cào.
+  - `[x]` Sửa lỗi biên dịch TypeScript lỗi gán kiểu string cho Date trong PairingWidget của cả 3 module (`connect-hub`, `hero-dub`, `hero-video-maker`).
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
 - [x] **Sửa lỗi Bilibili Download & Tắt Docker database**: Di chuyển database local Docker sang Supabase Cloud, hoàn thiện cơ chế bypass HTTP 412 bằng cookie sync cho Bilibili downloader.
-- [x] **Đồng bộ hóa & Sửa lỗi Bảng giá so sánh AI Matrix**: Cập nhật giá và thêm model Gemini Flash, DeepSeek V3.
-- [x] **Tự động Tính toán & Cập nhật Chi phí sử dụng API**: Viết helper tính cost và tokens, cập nhật logging trong `connector-service.ts`.
+- [x] **Lọc trùng & Dừng cào thông minh Douyin**: Triển khai bóc tách ID tuyệt đối lọc trùng và thuật toán dừng cào sớm bảo vệ tài nguyên trên Extension Chrome + Server API.
+
+- **2026-07-12 (hero-downloader - Optimal Deduplication & Multi-channel Scan & Parameter Cleaning)**:
+  - 🚀 **Lọc trùng bằng Video ID**: Bỏ so sánh URL thô. Viết thuật toán trích xuất ID từ URL (`/video/` hoặc `modal_id=`) trên cả Backend và Extension. Giúp lọc trùng chính xác 100% kể cả khi URL bị đính kèm tracking parameters.
+  - 🚀 **Dừng cào thông minh (Break-on-existing)**: Extension tự động đối chiếu danh sách 200 ID mới nhất từ Server. Robot sẽ dừng cào ngay khi gặp 5 video trùng liên tiếp (đề phòng ghim) hoặc khi đạt giới hạn tối đa `maxScanVideos`, tránh lãng phí RAM.
+  - 🚀 **Bypass Body Scroll Lock**: Tự động dọn dẹp các tham số `vid=...` trong link kênh trước khi mở tab, ngăn chặn popup video xuất hiện khóa thuộc tính cuộn trang của Douyin.
+  - 🚀 **Sửa lỗi type Date**: Khắc phục triệt để lỗi biên dịch TS do convert Date sang String ở API `generateLinkCode` của 3 dự án (`connect-hub`, `hero-dub`, `hero-video-maker`).
+
+- **2026-07-01 (herovideo & hero-downloader - Unified Extension & Multi-Tenancy Fix)**:
+  - 🚀 **Unified Extension**: Gộp hai Chrome extension thành một bản Hero Video Assistant hợp nhất. Inject AJAX Interceptor ở MAIN world để bypass CSP của Douyin.com và trích xuất CDN mp4 không logo sạch.
+  - 🚀 **Bảo mật Multi-Tenancy**: Sửa API route `/api/hero-downloader/extension` để bắt buộc nhận `teamId` từ Extension, cô lập dữ liệu theo từng Workspace và tự tạo dự án Douyin mặc định cho Workspace nếu chưa có.
+  - 🚀 **Dọn dẹp mã nguồn**: Archive extension cũ `hero-downloader-extension` vào thư mục `_archive/`.
 
 - **2026-07-01 (hero-dub - Project Pause/Resume & Custom Task Sorting)**:
   - 🚀 **Tính năng tạm dừng dự án dịch**: Bổ sung cột `scanConfigId` liên kết các task với scan config tương ứng. Khi tạm dừng dự án quét thư mục (`isActive = false`), Worker sẽ tự động bỏ qua (không nhận) các task pending thuộc dự án đó. Các task đang xử lý dở dang vẫn được cho phép chạy tiếp tục đến khi hoàn thành để tránh lỗi kẹt luồng/rác file.
