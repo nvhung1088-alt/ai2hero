@@ -1055,26 +1055,37 @@ const extractingTabs = new Map(); // tabId -> {videoId, timeout, apiBase, token}
 
 // Helper dynamically resolving API host from active tabs
 async function getApiBase() {
-    try {
-        const tabs = await chrome.tabs.query({});
-        for (const tab of tabs) {
-            if (tab.url) {
-                try {
-                    const url = new URL(tab.url);
-                    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
-                        if (url.port === '3000') {
-                            return 'http://localhost:3000';
-                        }
-                    } else if (url.hostname.includes('ai2hero.com')) {
-                        return 'https://www.ai2hero.com';
-                    }
-                } catch(e) {}
+    return new Promise((resolve) => {
+        chrome.storage.local.get(['herovideo_api_base'], async function(result) {
+            if (result.herovideo_api_base) {
+                resolve(result.herovideo_api_base);
+                return;
             }
-        }
-    } catch (err) {
-        console.error("Error querying tabs:", err);
-    }
-    return 'https://www.ai2hero.com';
+            // Fallback: Tự động phát hiện qua tab đang mở
+            try {
+                const tabs = await chrome.tabs.query({});
+                for (const tab of tabs) {
+                    if (tab.url) {
+                        try {
+                            const url = new URL(tab.url);
+                            if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+                                if (url.port === '3000') {
+                                    resolve('http://localhost:3000');
+                                    return;
+                                }
+                            } else if (url.hostname.includes('ai2hero.com')) {
+                                resolve('https://www.ai2hero.com');
+                                return;
+                            }
+                        } catch(e) {}
+                    }
+                }
+            } catch (err) {
+                console.error("Error querying tabs:", err);
+            }
+            resolve('https://www.ai2hero.com');
+        });
+    });
 }
 
 setInterval(async () => {

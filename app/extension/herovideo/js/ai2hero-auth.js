@@ -8,6 +8,31 @@ $(document).ready(function() {
 
     let tempToken = "";
 
+    // Helper to get selected API base URL
+    function getApiBase() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['herovideo_api_base'], function(result) {
+                resolve(result.herovideo_api_base || 'https://www.ai2hero.com');
+            });
+        });
+    }
+
+    // Load saved API environment selection
+    chrome.storage.local.get(['herovideo_api_base'], function(result) {
+        if (result.herovideo_api_base) {
+            $('#hero-api-env').val(result.herovideo_api_base);
+        } else {
+            // Default to production
+            chrome.storage.local.set({ 'herovideo_api_base': 'https://www.ai2hero.com' });
+        }
+    });
+
+    // Save selected API environment
+    $('#hero-api-env').on('change', function() {
+        const val = $(this).val();
+        chrome.storage.local.set({ 'herovideo_api_base': val });
+    });
+
     function checkAuth() {
         chrome.storage.local.get(['herovideo_token', 'herovideo_workspace', 'herovideo_email', 'herovideo_ws_name'], function(result) {
             if (result.herovideo_token && result.herovideo_workspace) {
@@ -48,7 +73,8 @@ $(document).ready(function() {
                             $loading.show();
 
                             try {
-                                const authRes = await fetch("http://localhost:3000/api/sim/extension/auth", {
+                                const apiBase = await getApiBase();
+                                const authRes = await fetch(`${apiBase}/api/sim/extension/auth`, {
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({ email: res.herovideo_temp_auth.email, password: res.herovideo_temp_auth.password })
@@ -122,7 +148,8 @@ $(document).ready(function() {
         $loading.show();
 
         try {
-            const res = await fetch("http://localhost:3000/api/sim/extension/auth", {
+            const apiBase = await getApiBase();
+            const res = await fetch(`${apiBase}/api/sim/extension/auth`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password })
@@ -171,7 +198,8 @@ $(document).ready(function() {
                 $loading.show();
 
                 try {
-                    const res = await fetch("http://localhost:3000/api/sim/extension/auth/select-workspace", {
+                    const apiBase = await getApiBase();
+                    const res = await fetch(`${apiBase}/api/sim/extension/auth/select-workspace`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({

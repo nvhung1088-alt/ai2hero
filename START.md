@@ -142,6 +142,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 
 - **2026-07-12 (hero-downloader - Optimal Deduplication & Multi-channel Scan & Parameter Cleaning)**:
   - 🚀 **Lọc trùng bằng Video ID**: Bỏ so sánh URL thô. Viết thuật toán trích xuất ID từ URL (`/video/` hoặc `modal_id=`) trên cả Backend và Extension. Giúp lọc trùng chính xác 100% kể cả khi URL bị đính kèm tracking parameters.
+  - 🚀 **Cấu hình Máy chủ kết nối Extension**: Thêm tùy chọn dropdown trong màn hình Login của Extension, cho phép chọn giữa Localhost (Local Dev) và AI2Hero Cloud (Production). Tự động lưu cấu hình và định tuyến API gọi đến máy chủ được chọn.
   - 🚀 **Dừng cào thông minh (Break-on-existing)**: Extension tự động đối chiếu danh sách 200 ID mới nhất từ Server. Robot sẽ dừng cào ngay khi gặp 5 video trùng liên tiếp (đề phòng ghim) hoặc khi đạt giới hạn tối đa `maxScanVideos`, tránh lãng phí RAM.
   - 🚀 **Bypass Body Scroll Lock**: Tự động dọn dẹp các tham số `vid=...` trong link kênh trước khi mở tab, ngăn chặn popup video xuất hiện khóa thuộc tính cuộn trang của Douyin.
   - 🚀 **Sửa lỗi type Date**: Khắc phục triệt để lỗi biên dịch TS do convert Date sang String ở API `generateLinkCode` của 3 dự án (`connect-hub`, `hero-dub`, `hero-video-maker`).

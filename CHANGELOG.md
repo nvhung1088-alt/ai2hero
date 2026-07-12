@@ -2,6 +2,7 @@
 
 ## 2026-07-12 — Hoàn thiện Lọc Trùng Douyin & Quét Kênh Tuần Tự (Hero Downloader)
 - **Lọc trùng bằng Video ID**: Triển khai trích xuất ID độc lập từ link Douyin (`/video/` hoặc `modal_id=`) trên Backend Next.js (`extension/route.ts`) và Extension Chrome. Ngăn chặn triệt để lặp video khi link đính kèm tracking parameters của Douyin.
+- **Cấu hình Máy chủ kết nối Extension**: Thêm tùy chọn chọn môi trường kết nối (Local Development / AI2Hero Cloud) ngay trên giao diện Đăng nhập của Extension. Tự động lưu cấu hình và định tuyến API gọi đến máy chủ được chọn.
 - **Dừng cào thông minh (Break-on-existing)**: Extension tự động lấy danh sách 200 ID video mới nhất từ Server, tự động dừng cuộn trang và đồng bộ ngay lập tức khi phát hiện 5 video trùng liên tiếp hoặc khi đạt giới hạn `maxScanVideos`.
 - **Dọn dẹp tham số URL khóa scroll**: Tự động dọn sạch các tham số URL (`vid=...`) khỏi link kênh trước khi mở tab, tránh việc Douyin mở video popup khóa thuộc tính cuộn trang chính khiến robot cào bị treo.
 - **Khắc phục lỗi biên dịch TypeScript**: Sửa lỗi gán kiểu dữ liệu string cho Date trong PairingWidget tại cả 3 app lớn: `connect-hub`, `hero-dub`, và `hero-video-maker`. Đảm bảo Next.js build biên dịch thành công 100%.
