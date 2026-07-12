@@ -10,7 +10,13 @@ CORS(app)
 @app.route('/open', methods=['GET'])
 def open_path():
     path = request.args.get('path')
-    if not path or not os.path.exists(path):
+    if not path:
+        return jsonify({"error": "Path not provided"}), 400
+        
+    if path == 'downloads' and not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+        
+    if not os.path.exists(path):
         return jsonify({"error": "Path not found"}), 404
         
     try:

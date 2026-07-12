@@ -135,6 +135,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp cơ chế dừng cào thông minh (Break-on-existing) khi gặp 5 video trùng liên tiếp và giới hạn số lượng video mới tối đa (`maxScanVideos`).
   - `[x]` Khắc phục lỗi body scroll lock do popup video bằng cách tự động dọn sạch các tham số URL (`vid=...`) trước khi cào.
   - `[x]` Sửa lỗi biên dịch TypeScript lỗi gán kiểu string cho Date trong PairingWidget của cả 3 module (`connect-hub`, `hero-dub`, `hero-video-maker`).
+  - `[x]` Nâng cấp Python Local Worker (`worker.py`): Tự động phát hiện và hỗ trợ lựa chọn môi trường máy chủ kết nối động (AI2Hero Cloud / Localhost) trong quá trình pairing và lưu trữ trực tiếp vào cấu hình `config.json`.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
 - [x] **Sửa lỗi Bilibili Download & Tắt Docker database**: Di chuyển database local Docker sang Supabase Cloud, hoàn thiện cơ chế bypass HTTP 412 bằng cookie sync cho Bilibili downloader.

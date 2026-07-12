@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
         .filter(Boolean)
     );
 
+    const videosToInsert = [];
     for (const vid of videos) {
       const id = vid.video_id || extractId(vid.original_url || '');
       if (id && existingIds.has(id)) {
@@ -119,7 +120,7 @@ export async function POST(req: NextRequest) {
       
       const normalizedPageUrl = `https://www.douyin.com/video/${id}`;
 
-      await db.insert(downloaderVideos).values({
+      videosToInsert.push({
         projectId: project.id,
         title: vid.title || `Douyin ${id}`,
         videoUrl: normalizedPageUrl, 
@@ -133,6 +134,10 @@ export async function POST(req: NextRequest) {
         existingIds.add(id);
       }
       addedCount++;
+    }
+
+    if (videosToInsert.length > 0) {
+      await db.insert(downloaderVideos).values(videosToInsert);
     }
 
     const projectCount = await db.query.downloaderVideos.findMany({

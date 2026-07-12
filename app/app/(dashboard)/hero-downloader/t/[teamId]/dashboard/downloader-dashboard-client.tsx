@@ -99,7 +99,7 @@ export default function DownloaderDashboardClient({
 
   const handleOpenLocal = async (localPath: string) => {
     try {
-      const res = await fetch(`http://localhost:19998/open?path=${encodeURIComponent(localPath)}`);
+      const res = await fetch(`http://127.0.0.1:19998/open?path=${encodeURIComponent(localPath)}`);
       if (!res.ok) throw new Error('Worker not responding');
     } catch (e) {
       showToast('Không thể kết nối Worker. Đảm bảo Local Worker đang chạy!', 'error');

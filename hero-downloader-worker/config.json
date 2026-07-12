@@ -1,4 +1,5 @@
 {
-    "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJ0ZWFtSWQiOjcsInVzZXJJZCI6Niwicm9sZSI6ImRvd25sb2FkZXItd29ya2VyIiwiZGV2aWNlTmFtZSI6IkxvY2FsIFdvcmtlciIsInBsYXRmb3JtIjoid2luZG93cyIsImlhdCI6MTc4MjY0NjY1NSwiZXhwIjoxNzkwNDIyNjU1fQ.TTVJq1hc2ZUyyaOcxyw__dcWn2WHLZq8AxxJf_eqKvQ",
-    "teamName": "Test Team"
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJ0ZWFtSWQiOjMsInVzZXJJZCI6MSwicm9sZSI6ImRvd25sb2FkZXItd29ya2VyIiwiZGV2aWNlTmFtZSI6IkxvY2FsIFdvcmtlciIsInBsYXRmb3JtIjoid2luZG93cyIsImlhdCI6MTc4Mzg0OTM0MiwiZXhwIjoxNzkxNjI1MzQyfQ.j263Uk7rVSHXWdsxyT4hSGPmjoUbuee3S4DJHvG3vV8",
+    "teamName": "\u0110HTK",
+    "apiBase": "https://www.ai2hero.com/api/hero-downloader/worker"
 }

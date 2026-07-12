@@ -122,7 +122,8 @@ def download_direct_mp4(video, url, update_callback):
         return True
     except Exception as e:
         print(Fore.RED + f"[X] Direct download failed for video ID {video_id}: {e}")
-        update_callback(video_id, status='failed', error=str(e))
+        if not video.get('videoUrl'):
+            update_callback(video_id, status='failed', error=str(e))
         if os.path.exists(filepath):
             try: os.remove(filepath)
             except: pass
@@ -146,7 +147,17 @@ def download_video(video, update_callback, cookie_data: str = None):
             url = f"https://www.douyin.com/video/{qs['modal_id'][0]}"
 
     if url and ('douyinvod.com' in url or 'zjcdn.com' in url or '.mp4' in url.lower() or 'video_mp4' in url.lower() or 'play_addr' in url):
-        return download_direct_mp4(video, url, update_callback)
+        success = download_direct_mp4(video, url, update_callback)
+        if success:
+            return True
+        else:
+            print(Fore.YELLOW + f"[*] Direct download failed, falling back to yt-dlp with videoUrl...")
+            url = video.get('videoUrl')
+            if not url:
+                if video.get('videoUrl'): # It already checked above, but just in case
+                    pass 
+                else:
+                    return False
 
     print(Fore.GREEN + f"[-] Dang tai video ID {video_id} - URL: {url}")
 
