@@ -210,15 +210,14 @@ function getScanIntervalMs(intervalStr: string): number {
     const downloadTasks = filteredTasks.map(v => {
       let finalUrl = v.videoUrl;
       const isDouyin = v.platform === 'douyin' || v.videoUrl?.includes('douyin.com');
-      if (isDouyin) {
-        finalUrl = v.directMp4Url || v.videoUrl;
-      } else if (v.author && v.author.startsWith('http')) {
+      if (!isDouyin && v.author && v.author.startsWith('http')) {
         finalUrl = v.author;
       }
       return {
         id: v.id,
         projectId: v.projectId,
         videoUrl: finalUrl,
+        directMp4Url: v.directMp4Url,
         title: v.title,
         status: v.status,
         thumbnailUrl: v.thumbnailUrl,
