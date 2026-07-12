@@ -20,7 +20,7 @@ active_scans = set()
 
 init(autoreset=True)
 
-API_BASE_URL = "http://localhost:3000/api/hero-downloader/worker"
+API_BASE_URL = "https://www.ai2hero.com/api/hero-downloader/worker"
 
 def print_banner():
     print(Fore.CYAN + Style.BRIGHT + "="*60)
@@ -28,23 +28,37 @@ def print_banner():
     print(Fore.CYAN + Style.BRIGHT + "="*60)
 
 def pair_device():
+    global API_BASE_URL
     print_banner()
     cfg = config.load_config()
     if cfg.get("accessToken"):
+        api_base = cfg.get("apiBase", "https://www.ai2hero.com/api/hero-downloader/worker")
+        API_BASE_URL = api_base
         print(Fore.GREEN + f"[\u2713] Đã tìm thấy Token truy cập cho Team: {cfg.get('teamName')}")
+        print(Fore.CYAN + f"[*] Máy chủ kết nối: {api_base}")
         return cfg.get("accessToken")
         
     print(Fore.YELLOW + "Chưa có thông tin kết nối. Vui lòng kết nối thiết bị.")
+    print("Chọn máy chủ kết nối:")
+    print("  1. ☁️  AI2Hero Cloud (Production - Mặc định)")
+    print("  2. 💻  Localhost (Local Development)")
+    choice = input("Lựa chọn (1 hoặc 2): ").strip()
+    
+    api_base = "https://www.ai2hero.com/api/hero-downloader/worker"
+    if choice == "2":
+        api_base = "http://localhost:3000/api/hero-downloader/worker"
+        
+    API_BASE_URL = api_base
     while True:
         code = input(Fore.WHITE + "Nhập MÃ LIÊN KẾT (từ Dashboard Web UI): ").strip()
         if not code:
             continue
             
-        print(Fore.CYAN + f"\nĐang kết nối với Server ({API_BASE_URL})...")
+        print(Fore.CYAN + f"\nĐang kết nối với Server ({api_base})...")
         payload = {"code": code}
         
         try:
-            res = requests.post(f"{API_BASE_URL}/pair", json=payload)
+            res = requests.post(f"{api_base}/pair", json=payload)
             data = res.json()
             
             if res.status_code == 200 and data.get("success"):
@@ -52,7 +66,8 @@ def pair_device():
                 team_name = data.get("teamName")
                 config.save_config({
                     "accessToken": token,
-                    "teamName": team_name
+                    "teamName": team_name,
+                    "apiBase": api_base
                 })
                 print(Fore.GREEN + Style.BRIGHT + f"[\u2713] Ghép nối thành công với Workspace: {team_name}")
                 return token
