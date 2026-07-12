@@ -1,5 +1,12 @@
 # AI2HERO — CHANGELOG
 
+## 2026-07-12 — Hoàn thiện Lọc Trùng Douyin & Quét Kênh Tuần Tự (Hero Downloader)
+- **Lọc trùng bằng Video ID**: Triển khai trích xuất ID độc lập từ link Douyin (`/video/` hoặc `modal_id=`) trên Backend Next.js (`extension/route.ts`) và Extension Chrome. Ngăn chặn triệt để lặp video khi link đính kèm tracking parameters của Douyin.
+- **Dừng cào thông minh (Break-on-existing)**: Extension tự động lấy danh sách 200 ID video mới nhất từ Server, tự động dừng cuộn trang và đồng bộ ngay lập tức khi phát hiện 5 video trùng liên tiếp hoặc khi đạt giới hạn `maxScanVideos`.
+- **Dọn dẹp tham số URL khóa scroll**: Tự động dọn sạch các tham số URL (`vid=...`) khỏi link kênh trước khi mở tab, tránh việc Douyin mở video popup khóa thuộc tính cuộn trang chính khiến robot cào bị treo.
+- **Khắc phục lỗi biên dịch TypeScript**: Sửa lỗi gán kiểu dữ liệu string cho Date trong PairingWidget tại cả 3 app lớn: `connect-hub`, `hero-dub`, và `hero-video-maker`. Đảm bảo Next.js build biên dịch thành công 100%.
+- **Dọn dẹp DB thực tế**: Chạy script phân tích và xóa sạch 3 nhóm video trùng lặp cũ trên Database production, phục hồi dữ liệu ban đầu.
+
 ## 2026-06-27 — Hoàn thiện Hero Cốc Cốc MVP: Giao diện Task Queue & Worker yt-dlp
 - **Real Downloader Worker (V2)**: Nâng cấp script Python Worker giả lập lên bản thật sử dụng lõi `yt-dlp`. Cho phép tải ngầm video dài hơn 2h, tự động tạo thư mục dự án và hỗ trợ mượn Cookie phiên đăng nhập trình duyệt (Chrome) để tải các video yêu cầu quyền riêng tư.
 - **Quản lý Task Queue thời gian thực**: Thiết kế lại giao diện dự án (Split-pane) tích hợp `<ProjectTasksManager />`. Hệ thống hiển thị 50 tác vụ gần nhất, cập nhật tiến độ tự động mỗi 3 giây, hỗ trợ dừng/tải lại tác vụ trực tiếp trên giao diện.
