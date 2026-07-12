@@ -4,6 +4,8 @@ import { downloaderProjects, downloaderVideos, downloaderSettings, downloaderCoo
 import { eq, and, isNull, lt, asc, desc, inArray, notInArray, or, notLike, isNotNull } from 'drizzle-orm';
 import { jwtVerify } from 'jose';
 
+export const dynamic = 'force-dynamic';
+
 const authSecret = process.env.AUTH_SECRET;
 const key = new TextEncoder().encode(authSecret);
 
