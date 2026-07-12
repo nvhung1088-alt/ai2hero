@@ -199,15 +199,7 @@ function getScanIntervalMs(intervalStr: string): number {
     const rawTasks = [...forcePendingVideos, ...normalPendingVideos, ...pausedVideos];
     
     // Filter rawTasks for Douyin: only send to worker if it's paused (to cancel) or already resolved
-    const filteredTasks = rawTasks.filter(v => {
-      const isDouyin = v.platform === 'douyin' || v.videoUrl?.includes('douyin.com');
-      if (isDouyin) {
-        if (v.status === 'paused') return true;
-        const hasResolvedUrl = !!v.directMp4Url || v.videoUrl?.includes('zjcdn.com') || v.videoUrl?.includes('video_mp4');
-        return hasResolvedUrl;
-      }
-      return true;
-    });
+    const filteredTasks = rawTasks;
 
     const downloadTasks = filteredTasks.map(v => {
       let finalUrl = v.videoUrl;
