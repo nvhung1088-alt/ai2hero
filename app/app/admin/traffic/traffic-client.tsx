@@ -172,7 +172,7 @@ export function TrafficClientComponent({ user }: TrafficClientProps) {
           </div>
           <div className="mt-3">
             <div className="text-2xl font-black text-emerald-400">+{totalSavedPolls.toLocaleString()}</div>
-            <p className="text-xs text-gray-300 mt-1">Lượt API đã chặn khi tab bị ẩn</p>
+            <p className="text-xs text-gray-300 mt-1">Lượt API đã chặn (Tổng {totalPolls.toLocaleString()} poll)</p>
             <p className="text-[11px] text-gray-400 mt-1">
               Dừng 100% khi người dùng không nhìn màn hình.
             </p>
