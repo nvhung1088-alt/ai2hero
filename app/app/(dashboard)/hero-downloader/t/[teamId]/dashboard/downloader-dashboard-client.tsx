@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
-import { Plus, Play, Pause, FolderOpen, Settings, Search, CheckCircle2, Loader2, Download, AlertCircle, LayoutDashboard, Copy, Terminal, ChevronDown, ChevronUp, Square, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, Play, Pause, FolderOpen, Settings, Search, CheckCircle2, Loader2, Download, AlertCircle, LayoutDashboard, Copy, Terminal, ChevronDown, ChevronUp, Square, Trash2, RefreshCw, Image, Languages, Sparkles, Eye } from 'lucide-react';
 import { CreateProjectModal } from './create-project-modal';
 import { EditProjectModal } from './edit-project-modal';
 import { PollingBanner } from '@/components/polling-banner';
@@ -11,16 +11,20 @@ import { Edit3 } from 'lucide-react';
 import { getDownloaderVideosAction, updateDownloaderVideoStatusAction, generateDownloaderPairCodeAction, updateDownloaderProjectAction, createDownloaderVideoAction, stopAllDownloaderVideosAction, clearDownloaderVideosAction, forceScanDownloaderProjectAction } from '@/lib/db/hero-downloader-actions';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 
+const LANGUAGES = ['Tiếng Việt', 'English', '한국어', '日本語', 'ภาษาไทย', 'Bahasa Indonesia'];
+
 export default function DownloaderDashboardClient({ 
   teamId,
   initialProjects = [],
   initialVideos = [],
-  initialCookies = []
+  initialCookies = [],
+  aiConnections = []
 }: { 
   teamId: number;
   initialProjects?: any[];
   initialVideos?: any[];
   initialCookies?: any[];
+  aiConnections?: any[];
 }) {
   const [projects, setProjects] = useState<any[]>(initialProjects);
   const [videos, setVideos] = useState<any[]>(initialVideos);
@@ -33,6 +37,50 @@ export default function DownloaderDashboardClient({
   const [activeTab, setActiveTab] = useState<'windows' | 'mac'>('windows');
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Thumbnail Translation & AI Selection State
+  const [selectedLang, setSelectedLang] = useState('Tiếng Việt');
+  const [selectedAiConn, setSelectedAiConn] = useState(aiConnections.length > 0 ? `${aiConnections[0].id}:${aiConnections[0].defaultModel || 'gpt-4o-mini'}` : '');
+  const [translatingIds, setTranslatingIds] = useState<Set<number>>(new Set());
+  const [previewVideo, setPreviewVideo] = useState<any>(null);
+
+  const handleTranslateThumbnail = async (videoId: number) => {
+    if (!selectedAiConn) {
+      showToast('Vui lòng chọn AI model từ danh sách Connect Hub', 'error');
+      return;
+    }
+    const [connId, model] = selectedAiConn.split(':');
+    setTranslatingIds(prev => new Set(prev).add(videoId));
+    try {
+      const res = await fetch('/api/hero-downloader/thumbnail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId,
+          connectionId: parseInt(connId, 10),
+          model,
+          targetLang: selectedLang
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setVideos(prev => prev.map(v => 
+          v.id === videoId ? { ...v, translatedThumbnailUrl: data.translatedThumbnailUrl } : v
+        ));
+        showToast('Dịch & Redesign Thumbnail thành công!', 'success');
+      } else {
+        showToast('Lỗi dịch thumbnail: ' + (data.error || 'Không xác định'), 'error');
+      }
+    } catch (err: any) {
+      showToast('Lỗi kết nối: ' + err.message, 'error');
+    } finally {
+      setTranslatingIds(prev => {
+        const next = new Set(prev);
+        next.delete(videoId);
+        return next;
+      });
+    }
+  };
 
   const activeProject = projects.find(p => p.id === activeProjectId);
 
@@ -318,13 +366,13 @@ export default function DownloaderDashboardClient({
                     </div>
                     <div className="text-xs text-gray-400 leading-relaxed space-y-1.5">
                       <p>1. Copy toàn bộ câu lệnh bên dưới.</p>
-                      <p>2. Mở Start Menu trên Windows, gõ <strong>cmd</strong> và nhấn Enter để mở màn hình đen.</p>
-                      <p>3. Dán câu lệnh vừa copy vào và nhấn Enter. Hệ thống sẽ tự động chuyển đúng thư mục và khởi chạy cho bạn!</p>
+                      <p>2. Mở Start Menu trên Windows, gõ <strong>cmd</strong> và nhấn Enter để mở màn hình đen (Terminal/Command Prompt).</p>
+                      <p>3. Di chuyển đến thư mục chứa <strong>hero-downloader-worker</strong> trên máy bạn, dán câu lệnh và nhấn Enter để khởi chạy!</p>
                     </div>
                     <div className="bg-black/60 p-3 rounded-lg border border-white/10 font-mono text-xs text-gray-300 flex items-center justify-between gap-4 group">
-                      <p className="break-all text-teal-400/90">cd C:\Users\ADMIN\OneDrive\Desktop\Ai2Hero\hero-downloader-worker && pip install -r requirements.txt && python worker.py</p>
+                      <p className="break-all text-teal-400/90">cd hero-downloader-worker && pip install -r requirements.txt && python worker.py</p>
                       <button 
-                        onClick={() => { navigator.clipboard.writeText('cd C:\\Users\\ADMIN\\OneDrive\\Desktop\\Ai2Hero\\hero-downloader-worker && pip install -r requirements.txt && python worker.py'); showToast('Đã copy câu lệnh', 'success'); }} 
+                        onClick={() => { navigator.clipboard.writeText('cd hero-downloader-worker && pip install -r requirements.txt && python worker.py'); showToast('Đã copy câu lệnh', 'success'); }} 
                         className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors shrink-0" 
                         title="Copy lệnh"
                       >
@@ -338,7 +386,7 @@ export default function DownloaderDashboardClient({
                         <li>Mở tab mới, gõ <code className="bg-black/50 px-1 rounded text-teal-400">chrome://extensions/</code></li>
                         <li>Bật <strong>Developer mode</strong> (Góc trên bên phải)</li>
                         <li>Bấm <strong>Load unpacked</strong> (Góc trên bên trái)</li>
-                        <li>Chọn thư mục: <code className="bg-black/50 px-1 rounded text-teal-400">C:\Users\ADMIN\OneDrive\Desktop\Ai2Hero\hero-downloader-extension</code></li>
+                        <li>Chọn thư mục tiện ích: <code className="bg-black/50 px-1 rounded text-teal-400">hero-downloader-extension</code> (hoặc <code className="bg-black/50 px-1 rounded text-teal-400">hero-video-assistant</code>) trên máy bạn</li>
                         <li>Ghim Extension lên góc phải Chrome. Mở kênh Douyin bất kỳ, lướt chuột và bấm nút đồng bộ!</li>
                       </ol>
                     </div>
@@ -432,11 +480,51 @@ export default function DownloaderDashboardClient({
 
             {/* Video List */}
             <div className="flex-1 overflow-auto p-6">
+              {/* Toolbar Chọn Ngôn Ngữ & Chọn AI */}
+              <div className="flex items-center justify-between gap-4 mb-4 bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Languages className="w-4 h-4 text-purple-400" />
+                    <span className="text-xs text-gray-400 font-medium">Ngôn ngữ đích:</span>
+                    <select 
+                      value={selectedLang} 
+                      onChange={e => setSelectedLang(e.target.value)}
+                      className="bg-black/40 border border-white/10 text-gray-200 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-purple-500/50"
+                    >
+                      {LANGUAGES.map(l => <option key={l} value={l} className="bg-gray-900">{l}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs text-gray-400 font-medium">Cổng AI (Connect Hub):</span>
+                    <select 
+                      value={selectedAiConn} 
+                      onChange={e => setSelectedAiConn(e.target.value)}
+                      className="bg-black/40 border border-white/10 text-gray-200 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-500/50 min-w-[200px]"
+                    >
+                      {aiConnections.length === 0 ? (
+                        <option value="" className="bg-gray-900">-- Chưa có kết nối AI (mặc định system) --</option>
+                      ) : (
+                        aiConnections.map((c: any) => (
+                          <option key={c.id} value={`${c.id}:${c.defaultModel || 'gpt-4o-mini'}`} className="bg-gray-900">
+                            {c.name || c.appSlug} ({c.defaultModel || 'default'})
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                </div>
+                <div className="text-[11px] text-gray-500 hidden sm:block">
+                  Tự động dịch text trên ảnh & Redesign Thumbnail
+                </div>
+              </div>
+
               <div className="border border-white/5 rounded-xl bg-white/[0.01] overflow-hidden shadow-sm">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-white/5 text-gray-400 text-xs uppercase bg-black/20">
                       <th className="py-3 px-4 font-medium w-8">#</th>
+                      <th className="py-3 px-4 font-medium w-[90px]">Ảnh bìa</th>
                       <th className="py-3 px-4 font-medium">Video ID / Tiêu đề</th>
                       <th className="py-3 px-4 font-medium">Dung lượng</th>
                       <th className="py-3 px-4 font-medium">Ngày tải</th>
@@ -447,14 +535,14 @@ export default function DownloaderDashboardClient({
                   <tbody>
                     {isLoadingVideos ? (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-teal-500">
+                        <td colSpan={7} className="py-12 text-center text-teal-500">
                           <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin" />
                           <p className="text-gray-400">Đang tải danh sách video...</p>
                         </td>
                       </tr>
                     ) : videos.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-gray-500">
+                        <td colSpan={7} className="py-12 text-center text-gray-500">
                           <Download className="w-8 h-8 mx-auto mb-3 opacity-20" />
                           <p>Chưa có video nào được tải về</p>
                         </td>
@@ -463,6 +551,34 @@ export default function DownloaderDashboardClient({
                       videos.slice((currentPage - 1) * 10, currentPage * 10).map((video, idx) => (
                         <tr key={video.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
                           <td className="py-3 px-4 text-gray-500">{video.id}</td>
+                          <td className="py-2 px-4">
+                            {video.thumbnailUrl ? (
+                              <div 
+                                className="relative cursor-pointer group/thumb w-20 h-[45px] rounded-md overflow-hidden border border-white/10 bg-black/40 hover:border-purple-500/50 transition-colors"
+                                onClick={() => setPreviewVideo(video)}
+                                title="Click để xem fullsize & so sánh"
+                              >
+                                <img 
+                                  src={video.translatedThumbnailUrl || video.thumbnailUrl} 
+                                  alt="" 
+                                  className="w-full h-full object-cover" 
+                                  loading="lazy" 
+                                />
+                                {video.translatedThumbnailUrl && (
+                                  <span className="absolute top-0.5 right-0.5 bg-teal-500/90 text-white text-[7px] font-bold px-1 py-0.2 rounded">
+                                    VI
+                                  </span>
+                                )}
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-opacity">
+                                  <Eye className="w-4 h-4 text-white" />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-20 h-[45px] bg-white/5 rounded-md flex items-center justify-center">
+                                <Image className="w-4 h-4 text-gray-600" />
+                              </div>
+                            )}
+                          </td>
                           <td className="py-3 px-4">
                             <p className="text-gray-200 font-medium truncate max-w-[200px] lg:max-w-md" title={video.title}>{video.title}</p>
                             <a href={video.videoUrl} target="_blank" rel="noreferrer" title={video.videoUrl} className="text-[11px] text-blue-400 hover:underline block truncate max-w-[200px] lg:max-w-md">{video.videoUrl}</a>
@@ -526,6 +642,21 @@ export default function DownloaderDashboardClient({
                           </td>
                           <td className="py-3 px-4 text-right">
                             <div className="flex items-center justify-end gap-2">
+                              {/* Nút Dịch & Redesign Thumbnail */}
+                              {video.thumbnailUrl && (
+                                <button 
+                                  onClick={() => handleTranslateThumbnail(video.id)} 
+                                  disabled={translatingIds.has(video.id)}
+                                  className="p-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/20 transition-colors disabled:opacity-40" 
+                                  title={video.translatedThumbnailUrl ? 'Dịch lại Thumbnail (AI)' : 'Dịch & Redesign Thumbnail (AI)'}
+                                >
+                                  {translatingIds.has(video.id) ? (
+                                    <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                                  ) : (
+                                    <Languages className="w-4 h-4" />
+                                  )}
+                                </button>
+                              )}
                               {video.status === 'downloading' ? (
                                 <>
                                   {video.downloadSpeed && <span className="text-teal-400 font-bold text-xs font-mono">{video.downloadSpeed}</span>}
@@ -620,6 +751,104 @@ export default function DownloaderDashboardClient({
           window.location.reload();
         }}
       />
+      {/* Modal Preview & So sánh Thumbnail */}
+      {previewVideo && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewVideo(null)}
+        >
+          <div 
+            className="bg-gray-900/95 border border-white/10 rounded-2xl p-6 max-w-3xl w-full shadow-2xl space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2 text-gray-100 font-bold text-base">
+                <Eye className="w-5 h-5 text-purple-400" />
+                <span>Xem & So sánh Ảnh bìa Thumbnail</span>
+              </div>
+              <button 
+                onClick={() => setPreviewVideo(null)}
+                className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-400 truncate" title={previewVideo.title}>
+              {previewVideo.title}
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              {/* Ảnh bìa gốc */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-400 uppercase font-semibold">Ảnh bìa gốc (Trung Quốc)</span>
+                </div>
+                {previewVideo.thumbnailUrl ? (
+                  <div className="rounded-xl overflow-hidden border border-white/10 bg-black/50 aspect-video flex items-center justify-center">
+                    <img 
+                      src={previewVideo.thumbnailUrl} 
+                      alt="Thumbnail Gốc" 
+                      className="w-full h-full object-contain" 
+                    />
+                  </div>
+                ) : (
+                  <div className="aspect-video bg-white/5 rounded-xl flex items-center justify-center text-gray-600 text-xs">
+                    Không có ảnh bìa gốc
+                  </div>
+                )}
+              </div>
+
+              {/* Ảnh bìa đã dịch */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-teal-400 uppercase font-semibold flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Ảnh bìa đã dịch ({selectedLang})
+                  </span>
+                </div>
+                {previewVideo.translatedThumbnailUrl ? (
+                  <div className="rounded-xl overflow-hidden border border-teal-500/40 bg-black/50 aspect-video flex items-center justify-center">
+                    <img 
+                      src={previewVideo.translatedThumbnailUrl} 
+                      alt="Thumbnail Đã Dịch" 
+                      className="w-full h-full object-contain" 
+                    />
+                  </div>
+                ) : (
+                  <div className="aspect-video bg-white/5 rounded-xl flex items-center justify-center text-gray-500 text-xs flex-col gap-2 border border-dashed border-white/10">
+                    <Languages className="w-6 h-6 text-gray-600" />
+                    <span>Chưa thực hiện Dịch Thumbnail</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+              {previewVideo.thumbnailUrl && (
+                <button
+                  onClick={() => {
+                    handleTranslateThumbnail(previewVideo.id);
+                    setPreviewVideo(null);
+                  }}
+                  disabled={translatingIds.has(previewVideo.id) || !selectedAiConn}
+                  className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-xs font-semibold shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all flex items-center gap-2 disabled:opacity-40"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>{previewVideo.translatedThumbnailUrl ? 'Dịch & Redesign Lại' : 'Dịch & Redesign Ngay'}</span>
+                </button>
+              )}
+              <button
+                onClick={() => setPreviewVideo(null)}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs border border-white/10 transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

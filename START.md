@@ -136,10 +136,15 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Khắc phục lỗi body scroll lock do popup video bằng cách tự động dọn sạch các tham số URL (`vid=...`) trước khi cào.
   - `[x]` Sửa lỗi biên dịch TypeScript lỗi gán kiểu string cho Date trong PairingWidget của cả 3 module (`connect-hub`, `hero-dub`, `hero-video-maker`).
   - `[x]` Nâng cấp Python Local Worker (`worker.py`): Tự động phát hiện và hỗ trợ lựa chọn môi trường máy chủ kết nối động (AI2Hero Cloud / Localhost) trong quá trình pairing và lưu trữ trực tiếp vào cấu hình `config.json`.
+  - `[x]` Tích hợp tính năng **Dịch & Redesign Thumbnail bằng AI** (Connect Hub Vision + Image Gen): Cho phép chọn AI Model và Ngôn ngữ đích (Việt, Anh, Hàn, Nhật, Thái...), tự động đọc text trên ảnh bìa gốc, dịch thuật, tạo lại thumbnail mới và tải lên R2 cloud storage kèm Modal Preview so sánh 2 ảnh trực quan trên Dashboard.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
-- [x] **Sửa lỗi Bilibili Download & Tắt Docker database**: Di chuyển database local Docker sang Supabase Cloud, hoàn thiện cơ chế bypass HTTP 412 bằng cookie sync cho Bilibili downloader.
-- [x] **Lọc trùng & Dừng cào thông minh Douyin**: Triển khai bóc tách ID tuyệt đối lọc trùng và thuật toán dừng cào sớm bảo vệ tài nguyên trên Extension Chrome + Server API.
+- [x] **Dịch & Redesign Thumbnail bằng AI (Hero Downloader)**: Đã hoàn thành 100% pipeline AI qua Connect Hub Gateway, hiển thị thumbnail + badge VI + Toolbar chọn AI & Ngôn ngữ + Modal Preview so sánh ảnh bìa gốc vs ảnh bìa đã dịch.
+
+- **2026-07-22 (hero-downloader - Dịch & Redesign Thumbnail AI)**:
+  - 🚀 **Database & Actions**: Bổ sung cột `translatedThumbnailUrl` vào bảng `downloader_videos` và đẩy migration thành công lên Supabase Cloud (`pnpm db:push`).
+  - 🚀 **Connect Hub AI Pipeline**: Phát triển API Route `/api/hero-downloader/thumbnail` tự động điều khiển Vision AI (đọc text & mô tả layout) kết hợp Image Gen AI (tạo thumbnail mới với text đã dịch) và lưu R2.
+  - 🚀 **Dashboard UI Enhancement**: Bổ sung Toolbar chọn Ngôn ngữ & Chọn AI kết nối dynamic, render cột Ảnh bìa, nút Dịch 1-click và Modal Preview so sánh ảnh gốc vs ảnh đã dịch mượt mà.
 
 - **2026-07-15 (Gỡ bỏ HeroSocial MVP & Postiz Integration)**:
   - 🚀 **Loại bỏ app đăng ký**: Đã gỡ bỏ hero-social khỏi apps-registry.ts, ẩn hoàn toàn app khỏi Dashboard và App Switcher.
