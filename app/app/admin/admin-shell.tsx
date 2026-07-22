@@ -13,7 +13,8 @@ import {
   ArrowLeft,
   Menu,
   LayoutGrid,
-  Megaphone
+  Megaphone,
+  Gauge
 } from 'lucide-react';
 
 type AdminShellProps = {
@@ -41,6 +42,7 @@ const adminSections = [
   {
     label: 'Hệ thống',
     items: [
+      { href: '/admin/traffic', icon: Gauge, label: 'Traffic & Polling' },
       { href: '/admin/settings', icon: Settings, label: 'Cấu hình' },
       { href: '/admin/announcements', icon: Megaphone, label: 'Loa phát thanh' },
       { href: '/admin/logs', icon: Activity, label: 'System Logs' }

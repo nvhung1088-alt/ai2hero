@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { PollingBanner } from '@/components/polling-banner';
 import {
   createDubTaskAction,
@@ -385,16 +386,17 @@ export default function DashboardClient({ teamId, userId, teamName, connectedAiA
     }
   }, [teamId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Initial load and polling
+  // Initial load and smart polling linked to Super Admin Traffic Control
+  useSmartPolling({
+    appId: 'hero-dub',
+    fetchFn: async () => {
+      await refreshData(false);
+      return false; // Return false to trigger smooth backoff when idle
+    },
+  });
+
   useEffect(() => {
     refreshData(true);
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        refreshData(false);
-      }
-    }, 600000); // Poll every 10 minutes
-
-    return () => clearInterval(interval);
   }, [refreshData]);
 
 

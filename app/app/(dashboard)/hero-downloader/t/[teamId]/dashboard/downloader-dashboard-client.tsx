@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSmartPolling } from '@/hooks/use-smart-polling';
 import { Plus, Play, Pause, FolderOpen, Settings, Search, CheckCircle2, Loader2, Download, AlertCircle, LayoutDashboard, Copy, Terminal, ChevronDown, ChevronUp, Square, Trash2, RefreshCw } from 'lucide-react';
 import { CreateProjectModal } from './create-project-modal';
 import { EditProjectModal } from './edit-project-modal';
@@ -35,18 +36,19 @@ export default function DownloaderDashboardClient({
 
   const activeProject = projects.find(p => p.id === activeProjectId);
 
-  // Auto-refresh khi có video đang download
-  useEffect(() => {
-    const hasDownloading = videos.some(v => v.status === 'downloading' || v.status === 'pending');
-    if (!hasDownloading || !activeProjectId) return;
-    const interval = setInterval(async () => {
-      if (document.visibilityState === 'visible') {
-        const res = await getDownloaderVideosAction(teamId, activeProjectId);
-        if (res.success && res.videos) setVideos(res.videos);
-      }
-    }, 600000);
-    return () => clearInterval(interval);
-  }, [videos, activeProjectId, teamId]);
+  const hasDownloading = videos.some(v => v.status === 'downloading' || v.status === 'pending');
+
+  // Auto-refresh using Smart Polling connected to Super Admin Traffic Control
+  useSmartPolling({
+    appId: 'hero-downloader',
+    enabled: Boolean(hasDownloading && activeProjectId),
+    fetchFn: async () => {
+      if (!activeProjectId) return false;
+      const res = await getDownloaderVideosAction(teamId, activeProjectId);
+      if (res.success && res.videos) setVideos(res.videos);
+      return false;
+    },
+  });
 
   // Reset trang về 1 khi đổi project
   useEffect(() => {
