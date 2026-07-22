@@ -1,5 +1,11 @@
 # AI2HERO — CHANGELOG
 
+## 2026-07-22 — Thiết lập Hệ thống Quản lý Polling Trung Tâm & Super Admin Traffic Control (/admin/traffic)
+- **Shared Polling Config & Engine**: Khởi tạo `app/lib/shared-polling-config.ts` và hook `app/hooks/use-smart-polling.ts` quản lý thời gian Polling toàn platform. Tự động ngắt 100% API calls khi tab trình duyệt bị ẩn (`document.visibilityState !== 'visible'`) và tự động giãn thời gian (Backoff) khi rảnh.
+- **Python Worker Traffic Optimization**: Chuẩn hóa `shared_worker_config.py` cho `herodub-worker` và `hero-downloader-worker`, chuyển nhịp nghỉ rảnh từ 2s-3s lên 20s-30s, cắt giảm 90%+ lượng Vercel Function Invocations.
+- **Super Admin Traffic Manager UI**: Xây dựng giao diện Super Admin tại `/admin/traffic` tích hợp Vercel Quota Monitor Cards, 1-Click Platform Mode Switcher (Normal 15s / Eco 30s / Emergency 60s) và bảng theo dõi Telemetry số request tiết kiệm được của từng MVP.
+- **Vercel Production Deploy**: Commit & push mã nguồn sạch thành công lên GitHub `main` branch, tự động kích hoạt Vercel Production Build.
+
 ## 2026-07-12 — Hoàn thiện Lọc Trùng Douyin & Quét Kênh Tuần Tự (Hero Downloader)
 - **Lọc trùng bằng Video ID**: Triển khai trích xuất ID độc lập từ link Douyin (`/video/` hoặc `modal_id=`) trên Backend Next.js (`extension/route.ts`) và Extension Chrome. Ngăn chặn triệt để lặp video khi link đính kèm tracking parameters của Douyin.
 - **Cấu hình Máy chủ kết nối Extension**: Thêm tùy chọn chọn môi trường kết nối (Local Development / AI2Hero Cloud) ngay trên giao diện Đăng nhập của Extension. Tự động lưu cấu hình và định tuyến API gọi đến máy chủ được chọn.
