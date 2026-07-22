@@ -21,7 +21,15 @@ dist/
 __pycache__/
 *.mp4
 *.wav
-*.spec
+*.mp3
+*.jpeg
+*.jpg
+*.png
+*.webm
+downloads/
+**/downloads/
+hero-downloader-worker/downloads/
+herodub-worker/downloads/
 yt_debug.html
 yt_rss.xml
 
