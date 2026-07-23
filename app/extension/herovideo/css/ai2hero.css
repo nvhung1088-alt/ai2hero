@@ -545,12 +545,56 @@ input[type="checkbox"] {
   border: 1px solid rgba(248, 113, 113, 0.2) !important;
 }
 
-/* ===== CHẾ ĐỘ DOUYIN: Ẩn các panel native của Extension gốc ===== */
-/* Khi body có class .is-douyin → ẩn Tabs và danh sách video gốc hoàn toàn */
+/* ===== CHẾ ĐỘ DOUYIN & BILIBILI: Ẩn các panel native của Extension gốc ===== */
 body.is-douyin .Tabs,
 body.is-douyin #mediaList,
 body.is-douyin #allMediaList,
 body.is-douyin #Tips,
-body.is-douyin #TipsFixed {
+body.is-douyin #TipsFixed,
+body.is-bilibili .Tabs,
+body.is-bilibili #mediaList,
+body.is-bilibili #allMediaList,
+body.is-bilibili #Tips,
+body.is-bilibili #TipsFixed {
   display: none !important;
 }
+
+/* ===== BILIBILI CAPTURE PANEL ===== */
+.hero-bilibili-panel {
+  background: rgba(251, 114, 153, 0.08) !important;
+  border: 1px solid rgba(251, 114, 153, 0.2) !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  margin: 10px 12px !important;
+}
+
+.hero-bilibili-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: #fb7299 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  margin-bottom: 10px !important;
+}
+
+.hero-bilibili-actions {
+  display: flex !important;
+  gap: 8px !important;
+}
+
+.hero-bilibili-actions .hero-btn {
+  flex: 1 !important;
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+  border-radius: 8px !important;
+}
+
+.hero-bilibili-status {
+  margin-top: 10px !important;
+  padding: 8px 10px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+}
+

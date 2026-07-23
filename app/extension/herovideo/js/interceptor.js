@@ -25,10 +25,17 @@
                url.includes('recommend/feed');
     }
 
+    function isBilibiliVideoAPI(url) {
+        return url.includes('x/space/wbi/arc/search') || 
+               url.includes('x/space/arc/search') ||
+               url.includes('x/web-interface/wbi/index/top/rcmd') ||
+               url.includes('x/space/video');
+    }
+
     // DEBUG: Log TẤT CẢ URL đi qua (để tìm endpoint đúng - comment out sau khi debug xong)
     function debugLogURL(type, url) {
-        if (url && (url.includes('douyin.com') || url.includes('tiktok.com') || url.includes('zjcdn.com'))) {
-            if (url.includes('aweme') || url.includes('video') || url.includes('feed')) {
+        if (url && (url.includes('douyin.com') || url.includes('tiktok.com') || url.includes('bilibili.com'))) {
+            if (url.includes('aweme') || url.includes('video') || url.includes('feed') || url.includes('space')) {
                 console.log('[AI2Hero DEBUG]', type, ':', url.substring(0, 150));
             }
         }
@@ -46,9 +53,21 @@
             const clone = response.clone();
             clone.text().then(function(body) {
                 if (body && body.length > 100) {
-                    console.log('[AI2Hero] ✅ Bắt được API video:', url.substring(0, 100));
+                    console.log('[AI2Hero] ✅ Bắt được API video Douyin:', url.substring(0, 100));
                     window.postMessage({
                         type: 'AI2HERO_DOUYIN_API',
+                        url: url,
+                        body: body
+                    }, '*');
+                }
+            }).catch(function(e) {});
+        } else if (isBilibiliVideoAPI(url)) {
+            const clone = response.clone();
+            clone.text().then(function(body) {
+                if (body && body.length > 50) {
+                    console.log('[AI2Hero] ✅ Bắt được API video Bilibili:', url.substring(0, 100));
+                    window.postMessage({
+                        type: 'AI2HERO_BILIBILI_API',
                         url: url,
                         body: body
                     }, '*');
@@ -77,9 +96,21 @@
                 try {
                     const body = this.responseText;
                     if (body && body.length > 100) {
-                        console.log('[AI2Hero] ✅ XHR Bắt được API video:', url.substring(0, 100));
+                        console.log('[AI2Hero] ✅ XHR Bắt được API video Douyin:', url.substring(0, 100));
                         window.postMessage({
                             type: 'AI2HERO_DOUYIN_API',
+                            url: url,
+                            body: body
+                        }, '*');
+                    }
+                } catch(e) {}
+            } else if (isBilibiliVideoAPI(url)) {
+                try {
+                    const body = this.responseText;
+                    if (body && body.length > 50) {
+                        console.log('[AI2Hero] ✅ XHR Bắt được API video Bilibili:', url.substring(0, 100));
+                        window.postMessage({
+                            type: 'AI2HERO_BILIBILI_API',
                             url: url,
                             body: body
                         }, '*');

@@ -1220,7 +1220,8 @@ async function checkWorkerAndDownload(videoId, directMp4Url, token, apiBase) {
         if (statusRes.ok) {
             const statusData = await statusRes.json();
             if (statusData.status === 'pending' || statusData.status === 'force_pending') {
-                console.log(`[AI2Hero] Worker không phản hồi. Extension tự tải video ${videoId}...`);
+                console.log(`[AI2Hero] Worker không phản hồi. (Đã tắt tính năng extension tự tải).`);
+                /*
                 const storage = await chrome.storage.local.get(['herovideo_subfolder']);
                 const subfolder = storage.herovideo_subfolder || 'HeroVideo';
                 chrome.downloads.download({
@@ -1228,6 +1229,7 @@ async function checkWorkerAndDownload(videoId, directMp4Url, token, apiBase) {
                     filename: `${subfolder}/${videoId}_douyin.mp4`,
                     saveAs: false
                 });
+                */
             }
         }
     } catch(e) {

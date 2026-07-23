@@ -352,7 +352,7 @@
     // [AI2HERO] Inject interceptor.js vào page context của Douyin
     // Dùng script.src vì chrome-extension:// URL được whitelist trong CSP của Douyin
     // KHÔNG dùng textContent (bị CSP chặn vì inline-script bị cấm)
-    if (window.location.hostname.includes('douyin.com')) {
+    if (window.location.hostname.includes('douyin.com') || window.location.hostname.includes('bilibili.com')) {
         if (!window.__ai2hero_injected) {
             const s = document.createElement('script');
             s.src = chrome.runtime.getURL('js/interceptor.js');
@@ -400,6 +400,7 @@
     let crawlRecentIds = new Set();
     let crawlMaxScanVideos = 50;
     let crawlConsecutiveDuplicates = 0;
+    let channelAuthorSecUid = null; // Khóa tác giả chính chủ của kênh
 
     window.addEventListener('message', function(event) {
         if (event.source !== window || !event.data) return;
@@ -420,16 +421,23 @@
                     if (aweme.images && aweme.images.length > 0) return;
                     if (aweme.is_ads) return;
 
-                    // LỌC 1.5: Nếu đang ở trang cá nhân, CHỈ bắt video của đúng tác giả đó
-                    if (window.location.pathname.includes('/user/')) {
-                        const secUidMatch = window.location.pathname.match(/\/user\/([^?\/]+)/);
+                    // LỌC 1.5: Khóa tác giả chính chủ (chống cào tràn sang phần Video Gợi Ý / Related Videos ở cuối kênh)
+                    const authorSecUid = aweme.author ? aweme.author.sec_uid : null;
+                    
+                    // Tự động nhận diện sec_uid tác giả từ URL hoặc video đầu tiên của kênh
+                    if (!channelAuthorSecUid) {
+                        const secUidMatch = window.location.href.match(/\/user\/([^?\/]+)/);
                         if (secUidMatch && secUidMatch[1]) {
-                            const pageSecUid = secUidMatch[1];
-                            const authorSecUid = aweme.author ? aweme.author.sec_uid : null;
-                            if (authorSecUid && authorSecUid !== pageSecUid) {
-                                return; // Bỏ qua video rác (Recommended / Related)
-                            }
+                            channelAuthorSecUid = secUidMatch[1];
+                        } else if (authorSecUid) {
+                            channelAuthorSecUid = authorSecUid;
                         }
+                    }
+
+                    // Nếu đã xác định được kênh tác giả, CHỈ bắt video của tác giả đó
+                    if (channelAuthorSecUid && authorSecUid && authorSecUid !== channelAuthorSecUid) {
+                        console.log(`[AI2Hero] Bỏ qua video gợi ý của tác giả khác (${aweme.author?.nickname || authorSecUid})`);
+                        return;
                     }
 
                     const id = String(aweme.aweme_id);
@@ -492,7 +500,12 @@
                 });
 
                 if (newCount > 0) {
-                    console.log(`[AI2Hero] Bắt được ${newCount} video Douyin chuẩn (đã lọc rác). Tổng: ${_douyinVideos.length} videos.`);
+                    console.log(`[AI2Hero] Bắt được ${newCount} video Douyin chuẩn (đã lọc rác). Tổng: ${_douyinVideoIds.size} videos.`);
+                    
+                    // Cập nhật giao diện đếm tổng video đã cào
+                    const capturedEl = document.getElementById('crawl-stat-captured');
+                    if (capturedEl) capturedEl.innerText = _douyinVideoIds.size;
+
                     try {
                         chrome.runtime.sendMessage({
                             action: 'DOUYIN_VIDEOS_CAPTURED',
@@ -505,6 +518,79 @@
 
             } catch(e) {
                 console.error("[AI2Hero] Lỗi phân tích Douyin JSON data", e);
+            }
+        }
+
+        if (event.data.type === 'AI2HERO_BILIBILI_API') {
+            try {
+                const data = JSON.parse(event.data.body);
+                let vlist = [];
+
+                if (data && data.data && data.data.list && Array.isArray(data.data.list.vlist)) {
+                    vlist = data.data.list.vlist;
+                } else if (data && data.data && Array.isArray(data.data.vlist)) {
+                    vlist = data.data.vlist;
+                }
+
+                let newCount = 0;
+                vlist.forEach(item => {
+                    if (!item || (!item.bvid && !item.aid)) return;
+
+                    const bvid = item.bvid || item.aid;
+                    const id = String(bvid);
+
+                    if (isCrawling && crawlRecentIds.has(id)) {
+                        crawlConsecutiveDuplicates++;
+                        console.log(`[AI2Hero] Bilibili: Phát hiện video trùng lặp thứ ${crawlConsecutiveDuplicates} trên DB: ${id}`);
+                        if (crawlConsecutiveDuplicates >= 5) {
+                            console.log("[AI2Hero] Bilibili: Đã phát hiện 5 video trùng liên tiếp. Tự động dừng cào.");
+                        }
+                    }
+
+                    if (_douyinVideoIds.has(id)) return;
+
+                    let pic = item.pic || '';
+                    if (pic.startsWith('//')) {
+                        pic = 'https:' + pic;
+                    }
+
+                    const videoUrl = `https://www.bilibili.com/video/${bvid}`;
+
+                    if (isCrawling && crawlMaxScanVideos && (totalSyncedVideos + _douyinVideos.length) >= crawlMaxScanVideos) {
+                        return;
+                    }
+
+                    _douyinVideoIds.add(id);
+                    _douyinVideos.push({
+                        platform: 'bilibili',
+                        video_id: id,
+                        original_url: videoUrl,
+                        play_addr: videoUrl,
+                        desc: item.title || '',
+                        author: item.author || '',
+                        cover: pic,
+                        duration: item.length || 0
+                    });
+                    newCount++;
+                });
+
+                if (newCount > 0) {
+                    console.log(`[AI2Hero] Bắt được ${newCount} video Bilibili chuẩn. Tổng: ${_douyinVideoIds.size} videos.`);
+                    const capturedEl = document.getElementById('crawl-stat-captured');
+                    if (capturedEl) capturedEl.innerText = _douyinVideoIds.size;
+
+                    try {
+                        chrome.runtime.sendMessage({
+                            action: 'DOUYIN_VIDEOS_CAPTURED',
+                            videos: _douyinVideos.slice(-newCount)
+                        });
+                    } catch (e) {
+                        console.warn("[AI2Hero] Failed to send Bilibili captured videos to background:", e);
+                    }
+                }
+
+            } catch (e) {
+                console.error("[AI2Hero] Lỗi phân tích Bilibili JSON data", e);
             }
         }
     });
@@ -532,6 +618,7 @@
         totalSyncedVideos = 0;
         lastScrollHeight = document.documentElement.scrollHeight;
         sameHeightCount = 0;
+        channelAuthorSecUid = null; // Reset tác giả kênh
         
         crawlRecentIds = new Set(recentIds || []);
         crawlMaxScanVideos = maxScanVideos || 50;
@@ -570,7 +657,7 @@
                 <span style="animation: pulse 2s infinite; font-size: 16px; display: inline-block;">🤖</span> Robot Đang Cào Douyin...
             </div>
             <div style="font-size: 12px; color: #d4d4d8; margin-bottom: 14px; line-height: 1.6;">
-                • Đã bắt: <strong id="crawl-stat-captured" style="color: #fb923c; font-size: 13px;">0</strong> video<br>
+                • Đã cào: <strong id="crawl-stat-captured" style="color: #fb923c; font-size: 13px;">${_douyinVideoIds.size}</strong> video<br>
                 • Đã đồng bộ: <strong id="crawl-stat-synced" style="color: #4ade80; font-size: 13px;">0</strong> video
             </div>
             <button id="btn-crawl-stop" style="width: 100% !important; border: none !important; background: #ef4444 !important; color: #fff !important; padding: 10px !important; border-radius: 8px !important; font-weight: 700 !important; cursor: pointer !important; font-size: 13px !important; transition: background 0.2s !important;">
@@ -615,7 +702,7 @@
                     ✅ Đã Hoàn Thành!
                 </div>
                 <div style="font-size: 12px; color: #e4e4e7; line-height: 1.5;">
-                    Đã đồng bộ tổng cộng <strong>${totalSyncedVideos}</strong> video Douyin không logo vào hàng đợi Server.
+                    Đã cào <strong>${_douyinVideoIds.size}</strong> video và đồng bộ <strong>${totalSyncedVideos}</strong> video vào hàng đợi.
                 </div>
             `;
             setTimeout(removeFloatingUI, 4000);
@@ -637,20 +724,23 @@
             try { closeBtn.click(); } catch(e) {}
         }
 
-        // 2. Cập nhật số lượng bắt được lên UI
-        const currentCaptured = _douyinVideos.length;
-        const capturedEl = document.getElementById('crawl-stat-captured');
-        if (capturedEl) capturedEl.innerText = currentCaptured;
+        // 2. Phao phát hiện chạm đáy kênh Douyin ("暂时没有更多了" hoặc "没有更多了")
+        const pageText = document.body.innerText || "";
+        if (pageText.includes('暂时没有更多了') || pageText.includes('没有更多了')) {
+            console.log("[AI2Hero Crawler] Đã phát hiện dòng thông báo hết video trên trang (暂时没有更多了). Tự động dừng cào.");
+            stopAutoCrawl();
+            return;
+        }
 
-        // 2. Cuộn trang giả lập thao tác người dùng (scroll ngẫu nhiên từ 450 - 750px)
+        // 3. Cuộn trang giả lập thao tác người dùng (scroll ngẫu nhiên từ 450 - 750px)
         const scrollAmount = Math.floor(Math.random() * 300) + 450;
         window.scrollBy(0, scrollAmount);
 
-        // 3. Kiểm tra kẹt trang (kéo đến đáy trang profile không load thêm được nữa)
+        // 4. Kiểm tra kẹt trang (kéo đến đáy trang profile không load thêm được nữa)
         const currentScrollHeight = document.documentElement.scrollHeight;
         if (currentScrollHeight === lastScrollHeight) {
             sameHeightCount++;
-            if (sameHeightCount >= 30) { // Quá 45 giây không thay đổi chiều cao trang
+            if (sameHeightCount >= 15) { // Quá 22.5 giây không thay đổi chiều cao trang
                 console.log("[AI2Hero Crawler] Đã cuộn hết trang hoặc bị nghẽn. Tự động hoàn thành.");
                 stopAutoCrawl();
                 return;
@@ -660,7 +750,7 @@
             lastScrollHeight = currentScrollHeight;
         }
 
-        // 4. Batch Upload: Nếu gom được từ 10 video, bắn ngay lên Server
+        // 5. Batch Upload: Nếu gom được từ 10 video, bắn ngay lên Server
         if (_douyinVideos.length >= 10) {
             uploadCrawlBatch(false);
         }

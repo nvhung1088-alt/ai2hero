@@ -1327,6 +1327,136 @@ function base64ToHex(base64) {
     function showDouyinStatus(msg, type) {
         $('#douyin-status').text(msg).removeClass('success error').addClass(type).show();
     }
+
+// [AI2HERO] Bilibili Video Panel Handler
+(function initBilibiliPanel() {
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+        const tab = tabs[0];
+        if (!tab || !tab.url || !tab.url.includes('bilibili.com')) return;
+        
+        document.body.classList.add('is-bilibili');
+
+        $('#bilibili-panel').show();
+        $('.Tabs').hide();
+        $('#mediaList').hide();
+        $('#allMediaList').hide();
+        $('#TipsFixed').hide();
+        
+        chrome.tabs.sendMessage(tab.id, {action: 'GET_DOUYIN_VIDEOS'}, function(res) {
+            const videos = (!chrome.runtime.lastError && res?.videos?.length) ? res.videos : [];
+            $('#bilibili-count').text(videos.length);
+            
+            if (!videos.length) {
+                showBilibiliStatus('⚠️ Chưa bắt được video. Hãy lướt trang Video trên Bilibili rồi mở lại Popup.', 'error');
+            }
+
+            chrome.storage.local.get(
+                ['herovideo_token', 'herovideo_workspace', 'herovideo_subfolder'],
+                function(auth) {
+                    const hasAuth = Boolean(auth.herovideo_token && auth.herovideo_workspace);
+                    const subfolder = auth.herovideo_subfolder || '';
+                    
+                    $('#btn-bilibili-local').prop('disabled', false).on('click', function() {
+                        if (!videos.length) {
+                            showBilibiliStatus('⚠️ Chưa bắt được video nào.', 'error');
+                            return;
+                        }
+                        const $btn = $(this);
+                        $btn.prop('disabled', true).text('Đang tải...');
+                        let downloaded = 0;
+                        for (const v of videos) {
+                            const safeName = (v.desc || v.video_id)
+                                .replace(/[<>:"/\\|?*]/g, '_').substring(0, 80).trim();
+                            const filename = subfolder 
+                                ? `${subfolder}/${v.video_id}_${safeName}.mp4`
+                                : `HeroVideo/${v.video_id}_${safeName}.mp4`;
+                            chrome.downloads.download({
+                                url: v.original_url || v.play_addr,
+                                filename: filename,
+                                saveAs: false
+                            }, () => {
+                                downloaded++;
+                                if (downloaded >= videos.length) {
+                                    showBilibiliStatus('✅ Đã tải xong ' + downloaded + ' video về máy!', 'success');
+                                    $btn.text('⬇️ Tải lại');
+                                    $btn.prop('disabled', false);
+                                }
+                            });
+                        }
+                    });
+                    
+                    if (hasAuth) {
+                        $('#btn-bilibili-queue').prop('disabled', false).on('click', async function() {
+                            if (!videos.length) {
+                                showBilibiliStatus('⚠️ Chưa bắt được video nào.', 'error');
+                                return;
+                            }
+                            const $btn = $(this);
+                            $btn.prop('disabled', true).text('Đang gửi...');
+                            try {
+                                const apiBase = await resolveApiHost();
+                                const res = await fetch(`${apiBase}/api/hero-downloader/extension`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': 'Bearer ' + auth.herovideo_token
+                                    },
+                                    body: JSON.stringify({
+                                        teamId: auth.herovideo_workspace,
+                                        videos: videos
+                                    })
+                                });
+                                
+                                if (!res.ok) {
+                                    const text = await res.text();
+                                    throw new Error(`Lỗi HTTP ${res.status}: ${text}`);
+                                }
+
+                                const data = await res.json();
+                                if (data.success) {
+                                    showBilibiliStatus('✅ Đã đồng bộ ' + data.count + ' video Bilibili vào hàng đợi!', 'success');
+                                    chrome.tabs.sendMessage(tab.id, {action: 'CLEAR_DOUYIN_VIDEOS'});
+                                    $('#bilibili-count').text(0);
+                                } else {
+                                    throw new Error(data.error || 'Đồng bộ thất bại (API báo false)');
+                                }
+                            } catch(e) {
+                                showBilibiliStatus('❌ Lỗi: ' + e.message.substring(0, 80), 'error');
+                                $btn.prop('disabled', false).text('☁️ Thử lại');
+                            }
+                        });
+
+                        $('#btn-bilibili-crawl').prop('disabled', false).on('click', async function() {
+                            const $btn = $(this);
+                            const apiBase = await resolveApiHost();
+                            $btn.prop('disabled', true).text('🤖 Đang khởi động...');
+                            chrome.tabs.sendMessage(tab.id, {
+                                action: 'START_AUTO_CRAWL',
+                                token: auth.herovideo_token,
+                                teamId: auth.herovideo_workspace,
+                                apiBase: apiBase
+                            }, function(response) {
+                                if (chrome.runtime.lastError || !response?.success) {
+                                    showBilibiliStatus('❌ Lỗi kết nối robot. Hãy F5 lại trang Bilibili.', 'error');
+                                    $btn.prop('disabled', false).text('🤖 Tự Động Cào (Auto-Scroll)');
+                                    return;
+                                }
+                                showBilibiliStatus('🤖 Robot cào đã bắt đầu lướt Bilibili!', 'success');
+                                setTimeout(() => window.close(), 1500);
+                            });
+                        });
+                    } else {
+                        $('#btn-bilibili-queue').attr('title', 'Vui lòng đăng nhập để dùng Hàng đợi');
+                        $('#btn-bilibili-crawl').attr('title', 'Vui lòng đăng nhập để dùng Robot cào');
+                    }
+                }
+            );
+        });
+    });
+    
+    function showBilibiliStatus(msg, type) {
+        $('#bilibili-status').text(msg).removeClass('success error').addClass(type).show();
+    }
     
     // Tìm API host từ tab Dashboard đang mở hoặc fallback production
     async function resolveApiHost() {

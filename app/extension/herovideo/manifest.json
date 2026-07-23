@@ -81,7 +81,7 @@
   "web_accessible_resources": [
     {
       "resources": ["js/interceptor.js"],
-      "matches": ["*://*.douyin.com/*"]
+      "matches": ["*://*.douyin.com/*", "*://*.bilibili.com/*"]
     }
   ],
   "default_locale": "en",

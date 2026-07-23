@@ -86,8 +86,8 @@ function getScanIntervalMs(intervalStr: string): number {
     // Lọc thủ công project cần quét và gán maxScanVideos
     const pendingScansList = scanTasksQuery
       .filter(p => {
-        // Douyin projects MUST be scanned by the Chrome Extension.
-        if (p.platform === 'douyin') {
+        // Douyin & Bilibili channel scans MUST be scanned by the Chrome Extension to prevent 412 anti-bot blocks.
+        if (p.platform === 'douyin' || p.platform === 'bilibili' || p.sourceUrl?.includes('bilibili.com')) {
           return false;
         }
 
