@@ -23,6 +23,7 @@ export function CreateProjectModal({ isOpen, onClose, teamId, cookies = [], onPr
   const [scanInterval, setScanInterval] = useState('Mỗi 1 giờ');
   const [quality, setQuality] = useState('Tốt nhất (No Watermark)');
   const [maxScanVideos, setMaxScanVideos] = useState(50);
+  const [downloadThumbnail, setDownloadThumbnail] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   const toggleCookie = (id: number) => {
@@ -52,6 +53,7 @@ export function CreateProjectModal({ isOpen, onClose, teamId, cookies = [], onPr
         scanInterval,
         quality,
         maxScanVideos,
+        downloadThumbnail,
         sources
       }
     });
@@ -168,7 +170,7 @@ export function CreateProjectModal({ isOpen, onClose, teamId, cookies = [], onPr
           {/* Lịch & Bộ lọc */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-teal-400 uppercase tracking-wider">2. Lịch quét & Bộ lọc</h3>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs text-gray-400 font-medium">Chu kỳ quét</label>
                 <select 
@@ -201,6 +203,17 @@ export function CreateProjectModal({ isOpen, onClose, teamId, cookies = [], onPr
                   onChange={(e) => setMaxScanVideos(parseInt(e.target.value) || 50)}
                   className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono"
                 />
+              </div>
+              <div className="space-y-1.5 flex flex-col justify-end">
+                <label className="flex items-center gap-2 cursor-pointer bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200">
+                  <input
+                    type="checkbox"
+                    checked={downloadThumbnail}
+                    onChange={(e) => setDownloadThumbnail(e.target.checked)}
+                    className="w-4 h-4 rounded border-white/10 bg-black/50 text-teal-500 focus:ring-teal-500/50"
+                  />
+                  <span>Tải ảnh Thumbnail</span>
+                </label>
               </div>
             </div>
           </div>

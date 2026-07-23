@@ -129,6 +129,7 @@ function getScanIntervalMs(intervalStr: string): number {
         platform: downloaderProjects.platform,
         directMp4Url: downloaderVideos.directMp4Url,
         thumbnailUrl: downloaderVideos.thumbnailUrl,
+        settings: downloaderProjects.settings,
       })
       .from(downloaderVideos)
       .innerJoin(downloaderProjects, eq(downloaderVideos.projectId, downloaderProjects.id))
@@ -157,6 +158,7 @@ function getScanIntervalMs(intervalStr: string): number {
         platform: downloaderProjects.platform,
         directMp4Url: downloaderVideos.directMp4Url,
         thumbnailUrl: downloaderVideos.thumbnailUrl,
+        settings: downloaderProjects.settings,
       })
       .from(downloaderVideos)
       .innerJoin(downloaderProjects, eq(downloaderVideos.projectId, downloaderProjects.id))
@@ -186,6 +188,7 @@ function getScanIntervalMs(intervalStr: string): number {
         platform: downloaderProjects.platform,
         directMp4Url: downloaderVideos.directMp4Url,
         thumbnailUrl: downloaderVideos.thumbnailUrl,
+        settings: downloaderProjects.settings,
       })
       .from(downloaderVideos)
       .innerJoin(downloaderProjects, eq(downloaderVideos.projectId, downloaderProjects.id))
@@ -215,6 +218,8 @@ function getScanIntervalMs(intervalStr: string): number {
         title: v.title,
         status: v.status,
         thumbnailUrl: v.thumbnailUrl,
+        localFolder: (v.settings as any)?.localFolder || null,
+        downloadThumbnail: (v.settings as any)?.downloadThumbnail !== false,
       };
     });
 

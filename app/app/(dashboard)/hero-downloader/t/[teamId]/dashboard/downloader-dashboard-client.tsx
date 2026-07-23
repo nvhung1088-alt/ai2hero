@@ -366,13 +366,13 @@ export default function DownloaderDashboardClient({
                     </div>
                     <div className="text-xs text-gray-400 leading-relaxed space-y-1.5">
                       <p>1. Copy toàn bộ câu lệnh bên dưới.</p>
-                      <p>2. Mở Start Menu trên Windows, gõ <strong>cmd</strong> và nhấn Enter để mở màn hình đen (Terminal/Command Prompt).</p>
-                      <p>3. Di chuyển đến thư mục chứa <strong>hero-downloader-worker</strong> trên máy bạn, dán câu lệnh và nhấn Enter để khởi chạy!</p>
+                      <p>2. Mở thư mục <strong>hero-downloader-worker</strong>, click vào thanh địa chỉ (Address bar) phía trên cùng của thư mục, gõ <strong>cmd</strong> và nhấn Enter.</p>
+                      <p>3. Dán câu lệnh dưới đây vào màn hình đen vừa hiện ra và nhấn Enter để khởi chạy!</p>
                     </div>
                     <div className="bg-black/60 p-3 rounded-lg border border-white/10 font-mono text-xs text-gray-300 flex items-center justify-between gap-4 group">
-                      <p className="break-all text-teal-400/90">cd hero-downloader-worker && pip install -r requirements.txt && python worker.py</p>
+                      <p className="break-all text-teal-400/90">pip install -r requirements.txt && python worker.py</p>
                       <button 
-                        onClick={() => { navigator.clipboard.writeText('cd hero-downloader-worker && pip install -r requirements.txt && python worker.py'); showToast('Đã copy câu lệnh', 'success'); }} 
+                        onClick={() => { navigator.clipboard.writeText('pip install -r requirements.txt && python worker.py'); showToast('Đã copy câu lệnh', 'success'); }} 
                         className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors shrink-0" 
                         title="Copy lệnh"
                       >

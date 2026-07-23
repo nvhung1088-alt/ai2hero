@@ -71,7 +71,9 @@ def download_direct_mp4(video, url, update_callback):
     title = video.get('title') or "douyin"
     safe_title = "".join([c for c in title if c.isalnum() or c in [' ', '_', '-']]).strip()
     safe_title = safe_title.replace(' ', '_')
-    downloads_dir = os.path.abspath(os.path.join(os.getcwd(), "downloads"))
+    downloads_dir = video.get('localFolder')
+    if not downloads_dir:
+        downloads_dir = os.path.abspath(os.path.join(os.getcwd(), "downloads"))
     os.makedirs(downloads_dir, exist_ok=True)
     
     filepath = os.path.join(downloads_dir, f"{video_id}_{safe_title}.mp4")
@@ -88,7 +90,7 @@ def download_direct_mp4(video, url, update_callback):
     try:
         # Download thumbnail parallelly or before starting
         thumbnail_url = video.get('thumbnailUrl')
-        if thumbnail_url:
+        if thumbnail_url and video.get('downloadThumbnail', True):
             threading.Thread(target=_download_thumbnail, args=(thumbnail_url, filepath), daemon=True).start()
 
         response = requests.get(url, headers=headers, stream=True, timeout=30)
@@ -161,7 +163,9 @@ def download_video(video, update_callback, cookie_data: str = None):
 
     print(Fore.GREEN + f"[-] Dang tai video ID {video_id} - URL: {url}")
 
-    downloads_dir = os.path.abspath(os.path.join(os.getcwd(), "downloads"))
+    downloads_dir = video.get('localFolder')
+    if not downloads_dir:
+        downloads_dir = os.path.abspath(os.path.join(os.getcwd(), "downloads"))
     os.makedirs(downloads_dir, exist_ok=True)
 
     output_template = os.path.join(downloads_dir, f"{video_id}_%(title)s.%(ext)s")
@@ -172,7 +176,7 @@ def download_video(video, update_callback, cookie_data: str = None):
 
     # Download thumbnail
     thumbnail_url = video.get('thumbnailUrl')
-    if thumbnail_url:
+    if thumbnail_url and video.get('downloadThumbnail', True):
         # We don't know the exact base name with ext before yt-dlp finishes, but we can guess the prefix
         # Actually yt-dlp might download the thumbnail itself if we pass writethumbnail=True
         # But we do it manually to be safe for douyin/other platforms
