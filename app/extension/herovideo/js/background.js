@@ -1037,15 +1037,15 @@ function isSpecialPage(url) {
 // chrome.declarativeNetRequest.getSessionRules(function (rules) { console.log(rules); });
 // chrome.tabs.query({}, function (tabs) { for (let item of tabs) { console.log(item.id); } });
 
-// [AI2HERO] Inject Douyin Interceptor vào MAIN world để can thiệp fetch/XHR
+// [AI2HERO] Inject Douyin & Bilibili Interceptor vào MAIN world để can thiệp fetch/XHR
 chrome.webNavigation.onCommitted.addListener((details) => {
     if (details.frameId !== 0) return; // Chỉ main frame
-    if (details.url && details.url.includes("douyin.com")) {
+    if (details.url && (details.url.includes("douyin.com") || details.url.includes("bilibili.com"))) {
         chrome.scripting.executeScript({
             target: { tabId: details.tabId },
             world: "MAIN",
             files: ["js/interceptor.js"]
-        }).catch(err => console.warn("[AI2Hero] Douyin inject failed:", err));
+        }).catch(err => console.warn("[AI2Hero] Interceptor inject failed:", err));
     }
 });
 
@@ -1281,12 +1281,11 @@ setInterval(async () => {
         isScanningSyncing = false;
     }
 }, 10000);
-function cleanDouyinUserUrl(url) {
+function cleanUserUrl(url) {
     if (!url) return url;
-    if (url.includes('douyin.com/user/')) {
+    if (url.includes('douyin.com/user/') || url.includes('bilibili.com/')) {
         try {
             const u = new URL(url);
-            // Giữ lại pathname sạch, xóa hoàn toàn các param như ?vid=... để tránh mở modal popup khóa scroll trang cá nhân
             u.search = '';
             u.hash = '';
             return u.toString();
@@ -1307,7 +1306,7 @@ async function openTabForChannelScan(project, storage, apiBase) {
     }
     
     try {
-        const cleanedUrls = sourceUrls.map(cleanDouyinUserUrl);
+        const cleanedUrls = sourceUrls.map(cleanUserUrl);
         const firstUrl = cleanedUrls[0];
         console.log(`[AI2Hero] Bat dau quet kenh cho project ${projectId}: ${firstUrl} (1/${cleanedUrls.length})`);
         const tab = await chrome.tabs.create({

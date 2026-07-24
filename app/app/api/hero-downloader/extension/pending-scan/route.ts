@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: auth.error || 'Token không hợp lệ' }, { status: 401, headers: corsHeaders });
     }
 
-    // Lấy tất cả dự án active của Douyin
+    // Lấy tất cả dự án active của Douyin & Bilibili
     const allProjects = await db
       .select({
         id: downloaderProjects.id,
@@ -58,8 +58,13 @@ export async function GET(req: NextRequest) {
       .where(
         and(
           eq(downloaderProjects.teamId, auth.teamId),
-          eq(downloaderProjects.platform, 'douyin'),
-          eq(downloaderProjects.status, 'active')
+          eq(downloaderProjects.status, 'active'),
+          or(
+            eq(downloaderProjects.platform, 'douyin'),
+            eq(downloaderProjects.platform, 'bilibili'),
+            like(downloaderProjects.sourceUrl, '%bilibili.com%'),
+            like(downloaderProjects.sourceUrl, '%douyin.com%')
+          )
         )
       );
 
