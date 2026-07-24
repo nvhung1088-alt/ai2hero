@@ -61,10 +61,14 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const firstVid = videos[0] || {};
+    const isBilibili = firstVid.platform === 'bilibili' || (firstVid.video_id && String(firstVid.video_id).startsWith('BV'));
+    const targetPlatform = isBilibili ? 'bilibili' : 'douyin';
+
     if (!project) {
       project = await db.query.downloaderProjects.findFirst({
           where: (projects, { eq, and }) => and(
-              eq(projects.platform, 'douyin'),
+              eq(projects.platform, targetPlatform),
               eq(projects.teamId, parsedTeamId)
           ),
           orderBy: (projects, { desc }) => [desc(projects.createdAt)]
@@ -72,13 +76,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (!project) {
-        // Auto-create Douyin project for this team
+        // Auto-create project for this team
         const [newProject] = await db.insert(downloaderProjects).values({
             teamId: parsedTeamId,
             userId: auth.userId, // Secured: mapped to the real user from JWT
-            name: 'Douyin Extension Sync',
-            platform: 'douyin',
-            sourceUrl: 'https://www.douyin.com',
+            name: isBilibili ? 'Bilibili Extension Sync' : 'Douyin Extension Sync',
+            platform: targetPlatform,
+            sourceUrl: isBilibili ? 'https://www.bilibili.com' : 'https://www.douyin.com',
             status: 'active',
         }).returning();
 
@@ -98,7 +102,7 @@ export async function POST(req: NextRequest) {
     });
     
     const extractId = (url: string) => {
-      let match = url.match(/\/video\/(\d+)/);
+      let match = url.match(/\/video\/(BV[\w]+|\d+)/i);
       if (match) return match[1];
       match = url.match(/modal_id=(\d+)/);
       if (match) return match[1];
@@ -118,15 +122,23 @@ export async function POST(req: NextRequest) {
         continue; // Skip duplicate
       }
       
-      const normalizedPageUrl = `https://www.douyin.com/video/${id}`;
+      const vidIsBilibili = vid.platform === 'bilibili' || (id && String(id).startsWith('BV'));
+      let normalizedPageUrl = vid.original_url || vid.play_addr || '';
+      if (!normalizedPageUrl || !normalizedPageUrl.startsWith('http')) {
+        normalizedPageUrl = vidIsBilibili 
+          ? `https://www.bilibili.com/video/${id}`
+          : `https://www.douyin.com/video/${id}`;
+      }
+
+      const defaultTitle = vidIsBilibili ? `Bilibili ${id}` : `Douyin ${id}`;
 
       videosToInsert.push({
         projectId: project.id,
-        title: vid.title || `Douyin ${id}`,
+        title: vid.desc || vid.title || defaultTitle,
         videoUrl: normalizedPageUrl, 
-        directMp4Url: vid.direct_mp4_url,
+        directMp4Url: vidIsBilibili ? null : (vid.direct_mp4_url || null),
         author: vid.author || null,     
-        thumbnailUrl: vid.cover_url || null,
+        thumbnailUrl: vid.cover || vid.cover_url || vid.thumbnail || null,
         status: 'pending',
         progress: 0,
       });
