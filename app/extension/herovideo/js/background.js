@@ -1133,10 +1133,10 @@ async function openHiddenTabForExtract(task, storage, apiBase) {
     const { id: videoId, videoUrl } = task;
     
     try {
-        // Mở tab ẩn (không active)
+        // Mở tab ẩn phía sau (active: false) để không tự nhảy tab làm gián đoạn người dùng
         const tab = await chrome.tabs.create({
             url: videoUrl,
-            active: true
+            active: false
         });
         
         // Timeout 15 giây
