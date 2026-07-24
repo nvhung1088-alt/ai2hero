@@ -206,7 +206,7 @@ export default function DownloaderSettingsClient({
                           Tải thư mục <strong>hero-downloader-worker</strong> về máy tính. Mở Terminal/CMD tại thư mục đó và chạy lệnh sau để cài đặt thư viện:
                         </p>
                         <div className="bg-black/50 p-3 rounded-lg border border-white/5 font-mono text-xs text-gray-300">
-                          <p>pip install -r requirements.txt</p>
+                          <p>python -m pip install -U -r requirements.txt</p>
                           <p className="mt-2 text-teal-500/50"># Sau đó khởi chạy worker</p>
                           <p>python worker.py</p>
                         </div>
