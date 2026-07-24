@@ -86,11 +86,6 @@ function getScanIntervalMs(intervalStr: string): number {
     // Lọc thủ công project cần quét và gán maxScanVideos
     const pendingScansList = scanTasksQuery
       .filter(p => {
-        // Douyin & Bilibili channel scans MUST be scanned by the Chrome Extension to prevent 412 anti-bot blocks.
-        if (p.platform === 'douyin' || p.platform === 'bilibili' || p.sourceUrl?.includes('bilibili.com')) {
-          return false;
-        }
-
         const settings = p.settings as any || {};
         const scanInterval = settings.scanInterval || 'Mỗi 1 giờ';
         const intervalMs = getScanIntervalMs(scanInterval);
@@ -99,11 +94,15 @@ function getScanIntervalMs(intervalStr: string): number {
         const needsScan = (Date.now() - lastScan) >= intervalMs;
         return needsScan;
       })
-      .map(p => ({ 
-        ...p, 
-        maxScanVideos: (p.settings as any)?.maxScanVideos || maxScanVideos,
-        recentUrls: [] as string[]
-      }));
+      .map(p => {
+        const isExt = p.platform === 'douyin' || p.platform === 'bilibili' || Boolean(p.sourceUrl?.includes('bilibili.com')) || Boolean(p.sourceUrl?.includes('douyin.com'));
+        return { 
+          ...p, 
+          scannedByExtension: isExt,
+          maxScanVideos: (p.settings as any)?.maxScanVideos || maxScanVideos,
+          recentUrls: [] as string[]
+        };
+      });
 
     // Lấy 100 URL gần nhất của mỗi dự án để Worker tự động dừng (break-on-existing)
     for (let i = 0; i < pendingScansList.length; i++) {
