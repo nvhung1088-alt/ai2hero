@@ -22,7 +22,7 @@ export function CreateProjectModal({ isOpen, onClose, teamId, cookies = [], onPr
   const [localFolder, setLocalFolder] = useState('');
   const [scanInterval, setScanInterval] = useState('Mỗi 1 giờ');
   const [quality, setQuality] = useState('Tốt nhất (No Watermark)');
-  const [maxScanVideos, setMaxScanVideos] = useState(50);
+  const [maxScanVideos, setMaxScanVideos] = useState<number | string>(50);
   const [downloadThumbnail, setDownloadThumbnail] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -52,7 +52,7 @@ export function CreateProjectModal({ isOpen, onClose, teamId, cookies = [], onPr
         localFolder,
         scanInterval,
         quality,
-        maxScanVideos,
+        maxScanVideos: Number(maxScanVideos) || 50,
         downloadThumbnail,
         sources
       }
@@ -200,7 +200,7 @@ export function CreateProjectModal({ isOpen, onClose, teamId, cookies = [], onPr
                 <input 
                   type="number" 
                   value={maxScanVideos}
-                  onChange={(e) => setMaxScanVideos(parseInt(e.target.value) || 50)}
+                  onChange={(e) => setMaxScanVideos(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value) || 0))}
                   className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono"
                 />
               </div>
