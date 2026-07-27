@@ -482,6 +482,18 @@
                             return;
                         }
                         
+                        let rawCover = "";
+                        if (videoObj.cover && videoObj.cover.url_list && videoObj.cover.url_list.length > 0) {
+                            rawCover = videoObj.cover.url_list[0];
+                        } else if (videoObj.origin_cover && videoObj.origin_cover.url_list && videoObj.origin_cover.url_list.length > 0) {
+                            rawCover = videoObj.origin_cover.url_list[0];
+                        } else if (videoObj.dynamic_cover && videoObj.dynamic_cover.url_list && videoObj.dynamic_cover.url_list.length > 0) {
+                            rawCover = videoObj.dynamic_cover.url_list[0];
+                        }
+                        if (rawCover && rawCover.startsWith("//")) {
+                            rawCover = "https:" + rawCover;
+                        }
+
                         _douyinVideoIds.add(id);
                         _douyinVideos.push({
                             platform: 'douyin',
@@ -491,7 +503,7 @@
                             direct_mp4_url: bestUrl,
                             quality: quality,
                             author: aweme.author ? (aweme.author.nickname || aweme.author.sec_uid) : "Unknown",
-                            cover_url: (videoObj.cover && videoObj.cover.url_list) ? videoObj.cover.url_list[0] : "",
+                            cover_url: rawCover,
                             duration: videoObj.duration ? Math.round(videoObj.duration / 1000) : 0,
                             captured_at: Date.now()
                         });

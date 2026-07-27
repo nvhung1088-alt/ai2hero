@@ -20,6 +20,7 @@ import { runFptAi } from './runners/fpt-ai';
 import { runViettelAi } from './runners/viettel-ai';
 import { runGoogleTts } from './runners/google-tts';
 import { runElevenLabs } from './runners/elevenlabs';
+import { runPostiz } from './runners/postiz';
 
 const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promise<any>> = {
   'custom-http': runCustomHttp,
@@ -38,6 +39,7 @@ const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promis
   'viettel-ai': runViettelAi,
   'google-tts': runGoogleTts,
   'elevenlabs': runElevenLabs,
+  'postiz': runPostiz,
   
   // Batch 1A Generic HTTP Runners
   'telegram-bot': (creds, action, input) => runGenericHttp('telegram-bot', creds, action, input),

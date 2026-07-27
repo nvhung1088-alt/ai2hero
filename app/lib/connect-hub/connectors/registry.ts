@@ -28,6 +28,7 @@ import { fptAiConnector } from './definitions/fpt-ai';
 import { viettelAiConnector } from './definitions/viettel-ai';
 import { googleTtsConnector } from './definitions/google-tts';
 import { elevenlabsConnector } from './definitions/elevenlabs';
+import { postizConnector } from './definitions/postiz';
 
 import { GENERATED_CONNECTORS } from './registry-generated';
 
@@ -60,6 +61,7 @@ const RAW_CONNECTORS: ConnectorDefinition[] = [
   viettelAiConnector,
   googleTtsConnector,
   elevenlabsConnector,
+  postizConnector,
   customHttpConnector
 ];
 
@@ -94,7 +96,8 @@ const READY_SLUGS = [
   'fpt-ai',
   'viettel-ai',
   'google-tts',
-  'elevenlabs'
+  'elevenlabs',
+  'postiz'
 ];
 
 // Combine manual and generated connectors. Manual configuration overrides generated ones.

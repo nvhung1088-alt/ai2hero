@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
-import { Plus, Play, Pause, FolderOpen, Settings, Search, CheckCircle2, Loader2, Download, AlertCircle, LayoutDashboard, Copy, Terminal, ChevronDown, ChevronUp, Square, Trash2, RefreshCw, Image, Languages, Sparkles, Eye } from 'lucide-react';
+import { Plus, Play, Pause, FolderOpen, Settings, Search, CheckCircle2, Loader2, Download, AlertCircle, LayoutDashboard, Copy, Terminal, ChevronDown, ChevronUp, Square, Trash2, RefreshCw, Image, Languages, Sparkles, Eye, X } from 'lucide-react';
 import { CreateProjectModal } from './create-project-modal';
 import { EditProjectModal } from './edit-project-modal';
 import { PollingBanner } from '@/components/polling-banner';
@@ -44,6 +44,19 @@ export default function DownloaderDashboardClient({
   const [translatingIds, setTranslatingIds] = useState<Set<number>>(new Set());
   const [previewVideo, setPreviewVideo] = useState<any>(null);
 
+  // Add URL Inline Form State
+  const [isAddUrlOpen, setIsAddUrlOpen] = useState(false);
+  const [addUrlValue, setAddUrlValue] = useState('');
+  const [isAddingUrl, setIsAddingUrl] = useState(false);
+
+  // Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
   const handleTranslateThumbnail = async (videoId: number) => {
     if (!selectedAiConn) {
       showToast('Vui lòng chọn AI model từ danh sách Connect Hub', 'error');
@@ -59,6 +72,7 @@ export default function DownloaderDashboardClient({
           videoId,
           connectionId: parseInt(connId, 10),
           model,
+          imageModel: 'dall-e-3',
           targetLang: selectedLang
         }),
       });
@@ -157,37 +171,43 @@ export default function DownloaderDashboardClient({
   };
 
   const handleAddUrl = async () => {
-    if (!activeProjectId) return;
-    const url = prompt('Nhập URL Video (Youtube/Tiktok/Douyin):');
-    if (!url) return;
+    if (!activeProjectId || !addUrlValue.trim()) return;
+    setIsAddingUrl(true);
     
-    const res = await createDownloaderVideoAction({ projectId: activeProjectId, videoUrl: url, title: url });
+    const res = await createDownloaderVideoAction({ projectId: activeProjectId, videoUrl: addUrlValue.trim(), title: addUrlValue.trim() });
     if (res.success) {
       showToast('Đã thêm URL thành công!', 'success');
+      setAddUrlValue('');
+      setIsAddUrlOpen(false);
       fetchVideosRef();
     } else {
       showToast('Lỗi: ' + res.error, 'error');
     }
+    setIsAddingUrl(false);
   };
 
-  const handleStopAll = async () => {
+  const handleStopAll = () => {
     if (!activeProjectId) return;
-    if (!confirm('Bạn có chắc muốn dừng tất cả video đang tải và chờ tải của dự án này không?')) return;
-    
-    // Cập nhật UI tạm thời
-    setVideos(prev => prev.map(v => 
-      (v.status === 'pending' || v.status === 'downloading') 
-        ? { ...v, status: 'cancelled' } 
-        : v
-    ));
-    
-    const res = await stopAllDownloaderVideosAction(teamId, activeProjectId);
-    if (res.success) {
-      showToast('Đã dừng tất cả tác vụ đang tải và chờ tải!', 'success');
-    } else {
-      showToast('Lỗi: ' + res.error, 'error');
-      if (activeProjectId) fetchVideosRef();
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Dừng tất cả tác vụ',
+      message: 'Bạn có chắc muốn dừng tất cả video đang tải và chờ tải của dự án này không?',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setVideos(prev => prev.map(v => 
+          (v.status === 'pending' || v.status === 'downloading') 
+            ? { ...v, status: 'cancelled' } 
+            : v
+        ));
+        const res = await stopAllDownloaderVideosAction(teamId, activeProjectId);
+        if (res.success) {
+          showToast('Đã dừng tất cả tác vụ đang tải và chờ tải!', 'success');
+        } else {
+          showToast('Lỗi: ' + res.error, 'error');
+          if (activeProjectId) fetchVideosRef();
+        }
+      }
+    });
   };
 
   const handleToggleProjectStatus = async () => {
@@ -208,8 +228,8 @@ export default function DownloaderDashboardClient({
       showToast(isRunning ? 'Đã tạm dừng tiến trình quét' : 'Đã bật tiến trình quét. Worker sẽ bắt đầu ngay!', 'success');
     } else {
       showToast('Lỗi: ' + res.error, 'error');
-      // Revert status on error by refetching
-      window.location.reload(); 
+      // Revert status on error
+      setProjects(prev => prev.map(p => p.id === activeProject.id ? { ...p, status: activeProject.status } : p));
     }
   };
   const handleForceScan = async () => {
@@ -225,20 +245,26 @@ export default function DownloaderDashboardClient({
     }
   };
 
-  const handleClearVideos = async () => {
+  const handleClearVideos = () => {
     if (!activeProject) return;
-    if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ video trong dự án này? Thao tác này không thể hoàn tác!')) return;
-    
-    const res = await clearDownloaderVideosAction(activeProject.id, teamId);
-    if (res.success) {
-      showToast('Đã xóa toàn bộ video', 'success');
-      const fetchRes = await getDownloaderVideosAction(teamId, activeProject.id);
-      if (fetchRes.success && fetchRes.videos) setVideos(fetchRes.videos);
-      else setVideos([]);
-      setCurrentPage(1);
-    } else {
-      showToast('Lỗi khi xóa video: ' + res.error, 'error');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Xóa toàn bộ video',
+      message: 'Bạn có chắc chắn muốn xóa toàn bộ video trong dự án này? Thao tác này không thể hoàn tác!',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        const res = await clearDownloaderVideosAction(activeProject.id, teamId);
+        if (res.success) {
+          showToast('Đã xóa toàn bộ video', 'success');
+          const fetchRes = await getDownloaderVideosAction(teamId, activeProject.id);
+          if (fetchRes.success && fetchRes.videos) setVideos(fetchRes.videos);
+          else setVideos([]);
+          setCurrentPage(1);
+        } else {
+          showToast('Lỗi khi xóa video: ' + res.error, 'error');
+        }
+      }
+    });
   };
 
   return (
@@ -447,7 +473,7 @@ export default function DownloaderDashboardClient({
                 </h1>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={handleAddUrl} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-gray-300 transition-colors">
+                <button onClick={() => setIsAddUrlOpen(!isAddUrlOpen)} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-gray-300 transition-colors">
                   <Plus className="w-4 h-4" />
                   <span className="text-xs font-medium">Thêm URL</span>
                 </button>
@@ -480,6 +506,34 @@ export default function DownloaderDashboardClient({
 
             {/* Video List */}
             <div className="flex-1 overflow-auto p-6">
+              {/* Form Inline Thêm URL */}
+              {isAddUrlOpen && (
+                <div className="flex items-center gap-2 mb-4 bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                  <input
+                    type="text"
+                    value={addUrlValue}
+                    onChange={e => setAddUrlValue(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddUrl()}
+                    placeholder="Dán URL Video (Youtube/Tiktok/Douyin)..."
+                    className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-gray-200 text-xs focus:outline-none focus:border-teal-500/50 placeholder:text-gray-600"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleAddUrl}
+                    disabled={!addUrlValue.trim() || isAddingUrl}
+                    className="px-4 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-40 text-white text-xs font-semibold rounded-lg transition-colors"
+                  >
+                    {isAddingUrl ? 'Đang thêm...' : 'Thêm'}
+                  </button>
+                  <button
+                    onClick={() => { setIsAddUrlOpen(false); setAddUrlValue(''); }}
+                    className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
               {/* Toolbar Chọn Ngôn Ngữ & Chọn AI */}
               <div className="flex items-center justify-between gap-4 mb-4 bg-white/[0.02] border border-white/5 rounded-xl p-3">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -737,7 +791,10 @@ export default function DownloaderDashboardClient({
         teamId={teamId}
         cookies={initialCookies}
         onProjectCreated={(project) => {
-          window.location.reload();
+          setProjects(prev => [...prev, project]);
+          setActiveProjectId(project.id);
+          setVideos([]);
+          setIsCreateModalOpen(false);
         }}
       />
 
@@ -748,7 +805,8 @@ export default function DownloaderDashboardClient({
         project={projectToEdit}
         cookies={initialCookies}
         onProjectUpdated={(project) => {
-          window.location.reload();
+          setProjects(prev => prev.map(p => p.id === project.id ? project : p));
+          setIsEditModalOpen(false);
         }}
       />
       {/* Modal Preview & So sánh Thumbnail */}
@@ -844,6 +902,36 @@ export default function DownloaderDashboardClient({
                 className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs border border-white/10 transition-colors"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal.isOpen && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        >
+          <div 
+            className="bg-gray-900/95 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-white font-bold text-base">{confirmModal.title}</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">{confirmModal.message}</p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs border border-white/10 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-semibold shadow-[0_0_15px_rgba(239,68,68,0.3)] transition-all"
+              >
+                Xác nhận
               </button>
             </div>
           </div>

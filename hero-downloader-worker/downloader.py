@@ -44,6 +44,9 @@ def _download_thumbnail(thumbnail_url: str, base_filepath: str):
     if not thumbnail_url:
         return
     try:
+        if thumbnail_url.startswith("//"):
+            thumbnail_url = "https:" + thumbnail_url
+
         ext = thumbnail_url.split('?')[0].split('.')[-1]
         if ext.lower() not in ['jpg', 'jpeg', 'png', 'webp']:
             ext = 'jpg'
@@ -88,10 +91,10 @@ def download_direct_mp4(video, url, update_callback):
         active_downloads[video_id] = {"cancel": cancel_event}
 
     try:
-        # Download thumbnail parallelly or before starting
+        # Download thumbnail
         thumbnail_url = video.get('thumbnailUrl')
         if thumbnail_url and video.get('downloadThumbnail', True):
-            threading.Thread(target=_download_thumbnail, args=(thumbnail_url, filepath), daemon=True).start()
+            _download_thumbnail(thumbnail_url, filepath)
 
         response = requests.get(url, headers=headers, stream=True, timeout=30)
         response.raise_for_status()
@@ -177,15 +180,10 @@ def download_video(video, update_callback, cookie_data: str = None):
     # Download thumbnail
     thumbnail_url = video.get('thumbnailUrl')
     if thumbnail_url and video.get('downloadThumbnail', True):
-        # We don't know the exact base name with ext before yt-dlp finishes, but we can guess the prefix
-        # Actually yt-dlp might download the thumbnail itself if we pass writethumbnail=True
-        # But we do it manually to be safe for douyin/other platforms
-        base_path = os.path.join(downloads_dir, f"{video_id}_{safe_title if 'safe_title' in locals() else video_id}")
-        # Wait, safe_title is not defined here. Let's just create it.
         v_title = video.get('title') or "video"
         v_safe_title = "".join([c for c in v_title if c.isalnum() or c in [' ', '_', '-']]).strip().replace(' ', '_')
         base_path = os.path.join(downloads_dir, f"{video_id}_{v_safe_title}")
-        threading.Thread(target=_download_thumbnail, args=(thumbnail_url, base_path), daemon=True).start()
+        _download_thumbnail(thumbnail_url, base_path)
 
     last_progress = [0]      # mutable để dùng trong closure
     last_speed_report = [0]  # throttle gửi speed
@@ -248,10 +246,12 @@ def download_video(video, update_callback, cookie_data: str = None):
         'file_access_retries': 5,
     }
 
+    if video.get('downloadThumbnail', True):
+        ydl_opts['writethumbnail'] = True
+
     # Bilibili cần Referer để không bị 403, nhưng Douyin check User-Agent rất gắt.
     if 'bilibili.com' in url:
         ydl_opts['http_headers'] = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
             'Referer': 'https://www.bilibili.com',
         }
     elif 'douyin.com' in url or 'douyinvod.com' in url:
@@ -298,12 +298,17 @@ def download_video(video, update_callback, cookie_data: str = None):
         error_msg = str(e).lower()
         # WinError 32 = file bị khóa bởi OneDrive / Antivirus. Coi như lỗi mềm, retry
         is_file_locked = "winerror 32" in error_msg or "unable to rename" in error_msg or "being used by another process" in error_msg
-        # Lỗi mạng: retry tự động. Lỗi nặng: failed luôn.
-        is_soft_error = is_file_locked or any(err in error_msg for err in ["timed out", "handshake", "connection reset", "503", "unable to download webpage", "416", "range"])
+        # Lỗi mạng / 403 Forbidden / 503: retry tự động 3 lần.
+        soft_keywords = [
+            "timed out", "handshake", "connection", "reset", "500", "502", "503", "504",
+            "403", "forbidden", "unable to download", "416", "range", "giving up",
+            "remote end closed", "socket", "eof", "network", "service unavailable"
+        ]
+        is_soft_error = is_file_locked or any(err in error_msg for err in soft_keywords)
         
         if is_soft_error:
-            # Xóa các file .part nếu gặp lỗi 416 để tải lại từ đầu
-            if "416" in error_msg or "range" in error_msg:
+            # Xóa các file .part/.ytdl nếu gặp lỗi 403/416/forbidden để tải lại sạch từ đầu
+            if any(err in error_msg for err in ["403", "416", "forbidden", "range"]):
                 for f in os.listdir(downloads_dir):
                     if f.startswith(f"{video_id}_") and (f.endswith('.part') or f.endswith('.ytdl')):
                         try: os.remove(os.path.join(downloads_dir, f))

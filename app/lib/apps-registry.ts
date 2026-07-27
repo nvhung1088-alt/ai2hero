@@ -141,31 +141,7 @@ export const APPS: AppDefinition[] = [
     ],
     targetUsers: 'Chủ doanh nghiệp, Quản lý CSKH, các shop bán hàng đa kênh có lượng tin nhắn lớn cần tối ưu quy trình phản hồi.'
   },
-  {
-    id: 'hero-social',
-    name: 'Hero Social',
-    description: 'Quản lý Pages/Groups, Đặt lịch đăng bài & Đăng chéo tự động đa nền tảng.',
-    icon: 'Share2',
-    path: '/hero-social/dashboard',
-    status: 'beta',
-    tier: 'free',
-    category: 'management',
-    color: 'from-pink-500 to-rose-400',
-    slogan: 'Trạm điều khiển & Tự động hóa Mạng xã hội',
-    longDesc: 'Biến iSocial thành một cỗ máy tự động hóa. Đặt lịch bài đăng, quản lý trang doanh nghiệp, nhóm cộng đồng, và tự động chuyển tiếp (cross-post) lên Facebook, Zalo, Tiktok chỉ với 1 cú click.',
-    features: [
-      'Quản lý tất cả Trang & Nhóm tại một nơi',
-      'Đặt lịch đăng bài (Scheduler) thông minh',
-      'Đăng chéo (Cross-post) tự động qua HeroConnect',
-      'Thống kê tương tác thời gian thực',
-      'Đóng vai trò là MVP mặc định của hệ thống'
-    ],
-    benefits: [
-      'Tiết kiệm hàng giờ đồng hồ mỗi ngày nhờ lên lịch đăng bài',
-      'Quản lý tập trung không bị phân tâm bởi bảng tin giải trí'
-    ],
-    targetUsers: 'Chủ shop, Creator, Marketing Team cần một trung tâm điều khiển MXH chuyên nghiệp.'
-  },
+
   {
     id: 'hero-marketplace',
     name: 'Hero Marketplace',

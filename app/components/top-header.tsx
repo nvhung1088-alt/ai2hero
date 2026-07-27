@@ -188,6 +188,7 @@ export function HeaderUserAvatar({ isOpen, onToggle, onClose }: HeaderUserAvatar
               { icon: UserCircle, label: 'Hồ sơ cá nhân', href: '/dashboard/general' },
               { icon: Shield, label: 'Cài đặt bảo mật', href: '/dashboard/security' },
               { icon: Settings, label: 'Cấu hình nhóm', href: '/dashboard/settings' },
+              { icon: Settings, label: 'Cài đặt HeroSocial', href: '/settings/hero-social' },
             ].map((item) => (
               <Link
                 key={item.href}

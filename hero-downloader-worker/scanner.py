@@ -25,7 +25,6 @@ def scan_project_videos(project, cookie_data=None):
         }
     else:
         ydl_opts['http_headers'] = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
             'Referer': 'https://www.bilibili.com',
         }
 
@@ -77,7 +76,14 @@ def scan_project_videos(project, cookie_data=None):
         print(Fore.GREEN + f"[✓] Quét được {len(videos)} video từ {project.get('name')}")
         return videos
     except Exception as e:
-        print(Fore.RED + f"[✗] Lỗi quét dự án: {e}")
+        error_msg = str(e)
+        if "Request is blocked by server (412)" in error_msg:
+            print(Fore.RED + f"[✗] Bilibili chặn yêu cầu quét kênh (Lỗi 412 - Anti-bot).")
+            print(Fore.YELLOW + "    Giải pháp:")
+            print(Fore.YELLOW + "    1. Thêm Cookie Bilibili hợp lệ vào Cài đặt dự án trên Web.")
+            print(Fore.YELLOW + "    2. HOẶC copy dán link từng video (BV...) thay vì quét cả kênh.")
+        else:
+            print(Fore.RED + f"[✗] Lỗi quét dự án: {error_msg}")
         return []
     finally:
         if cookie_file and os.path.exists(cookie_file):

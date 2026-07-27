@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     const teamId = userWithTeam.teamId;
 
     // 2. Parse request body
-    const { videoId, connectionId, model, targetLang = 'Tiếng Việt' } = await req.json();
+    const { videoId, connectionId, model, targetLang = 'Tiếng Việt', imageModel = 'dall-e-3' } = await req.json();
     if (!videoId || !connectionId || !model) {
       return NextResponse.json(
         { error: 'Thiếu tham số videoId, connectionId hoặc model' },
@@ -127,7 +127,7 @@ Style: Bold high-contrast text, professional social media cover image, HD qualit
       connectionId,
       actionSlug: 'generate_image',
       input: {
-        model: 'dall-e-3',
+        model: imageModel,
         prompt: imgPrompt,
         size: '1792x1024',
       },

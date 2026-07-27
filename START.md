@@ -20,6 +20,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp nút 1-click **Mở thư mục** (Open Folder) thông minh trên Web App Dashboard, kết nối trực tiếp với API của Extension thông qua cơ chế Content-Script Bridge.
   - `[x]` Tích hợp tính năng **Dọn dẹp video lỗi** thủ công trên Dashboard: Tự động quét và loại bỏ các file video rỗng (< 500b), video trùng lặp (size + base name), video hỏng hoặc chỉ có âm thanh (không có khung hình) bằng DOM `<video>` ẩn chạy trên RAM.
   - `[x]` Gộp extension **Hero Downloader Pro** (bắt link Douyin không logo) vào extension chính **Hero Video Assistant** thành bản Unified Extension hoàn chỉnh, hỗ trợ dual-mode (tải local hoặc đồng bộ hàng đợi), vá lỗi multi-tenancy và tích hợp robot **Auto-Scroll Crawler** tự động lướt và cào video hàng loạt gửi lên Server.
+  - `[x]` Hotfix & Nâng cấp tính năng **Tải ảnh Thumbnail**: Sửa lỗi trích xuất `cover_url` Douyin trong Chrome Extension (chuẩn hóa protocol-relative `//...` ➔ `https:`), đồng thời nâng cấp Python Worker hỗ trợ tải thumbnail đồng bộ và bật cờ `writethumbnail` cho `yt-dlp`.
 ### 5. Hero Care (MVP Mới - Trợ lý CSKH AI đa kênh)
 - **Status:** `Beta`
 - **Mô tả:** Hộp thư hỗ trợ đa kênh (Zalo, Pancake, Telegram) tích hợp AI tự động trả lời thông minh dựa trên kịch bản FAQ và dữ liệu snapshot được đồng bộ liên tục.
@@ -242,6 +243,10 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🚀 **Tích hợp FPT AI & Viettel AI**: Cấu hình definitions và runners cho 2 nhà cung cấp TTS Tiếng Việt tốt nhất hiện nay, hỗ trợ tùy chỉnh tốc độ và tự động polling fetch audio file buffer an toàn.
   - 🚀 **Tích hợp Google TTS & ElevenLabs**: Tích hợp bộ API TTS toàn cầu cao cấp, hỗ trợ 8 giọng đọc ElevenLabs phổ biến và wave-net của Google.
   - 🚀 **Hub Capability Standard**: Đưa thuộc tính `group: 'tts'` vào toàn bộ 4 chuẩn đầu ra + OpenAI cũ. Đăng ký toàn bộ 4 Hub mới vào registry.
+
+- **2026-07-23 (hero-downloader - Bilibili Extension Scraper & Worker Fix)**:
+  - 🚀 **Bilibili Extension Scraper**: Tích hợp cào kênh Bilibili trực tiếp qua Chrome Extension (bốc tách API `/x/space/wbi/arc/search`), khắc phục triệt để lỗi 412 Anti-bot. Thêm Bilibili Panel (tông màu Hồng `#fb7299`) vào Popup Extension với đầy đủ chức năng cào tự động (Auto-scroll), Tải Local và Đồng bộ Server.
+  - 🚀 **Worker Scan Exclusion**: Cập nhật `tasks/route.ts` trên Server Web loại bỏ việc bắt Python Worker quét kênh Bilibili/Douyin. Python Worker chỉ làm nhiệm vụ tải file MP4 đơn lẻ, bàn giao 100% việc cào kênh cho Chrome Extension trên trình duyệt.
 
 - **2026-06-25 (hero-dub - Security Hardening & Dedupe Fix)**:
   - 🚀 **Vá lỗ hổng IDOR**: Thêm kiểm tra quyền sở hữu `taskId` với `teamId` của token worker trước khi sinh R2 presigned URL trong `getPresignedUploadUrlAction`. Ngăn chặn nguy cơ cross-team file overwrite.
@@ -1617,7 +1622,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
     - **Đẩy Activity Feed**: Tích hợp cơ chế tự động ghi nhật ký hoạt động (`activityLogs`) vào các Server Actions biến đổi của SIM (`createSimAsset`, `deleteSimAsset`, `createSimLinkedAccount`, `deleteSimLinkedAccount`, `resolveSimRiskEvent`, `addSimCheckLog`) giúp mọi tương tác trên SIM tự động xuất hiện trên Bảng tin trang chủ (`/dashboard/home`) và Timeline nhóm thật.
     - **Biên dịch**: Sản xuất build `pnpm build` đạt **0 errors** 100% thành công mỹ mãn.
   - ✅ **Hoàn thành Di chuyển Native Import CSV vào Web App (Bỏ Import từ Extension)**:
-    - **Ý tưởng thay đổi**: Chuyển luồng nhập mật khẩu (Import CSV từ Google Passwords) trực tiếp lên giao diện Web App `/sim/accounts`, gỡ bỏ hoàn toàn việc đọc file và logic đồng bộ từ Extension giúp Extension mỏng nhẹ hơn và triệt tiêu 100% các lỗi mất đồng bộ như `accountsData is not iterable`.
+    - **Lưu ý**: Chuyển luồng nhập mật khẩu (Import CSV từ Google Passwords) trực tiếp lên giao diện Web App `/sim/accounts`, gỡ bỏ hoàn toàn việc đọc file và logic đồng bộ từ Extension giúp Extension mỏng nhẹ hơn và triệt tiêu 100% các lỗi mất đồng bộ như `accountsData is not iterable`.
     - **Web App**:
       - Bổ sung Server Action `importSimLinkedAccountsBatch` trong `sim-actions.ts` hỗ trợ bulk insert/upsert an toàn trong transaction (dedup theo platformKey + username) với **giới hạn được nâng lên tối đa 2000 tài khoản/lần**.
       - Thiết kế Modal Nhập CSV Chrome kéo thả file CSV, cho phép chọn SIM liên kết mặc định và hiển thị thống kê Preview thời gian thực.
@@ -1842,3 +1847,5 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 ## TIEN DO
 
 - **2026-06-28**: Sửa lỗi Backend getProjectTasksAction (TypeError Drizzle), sửa Worker quét vô tận (Cập nhật failed -> pending), sửa lỗi UI hiển thị Date serialization và Crash Progress component, hoàn thiện mở thư mục Local.
+- **2026-07-27**: Hoàn thành Hotfix & Refactor Hero Downloader (PLAN_HOTFIX_HERO_DOWNLOADER.md): Động hóa model Image AI trong API route thumbnail, loại bỏ 100% window.location.reload() bằng immutable state update, thay thế prompt() native bằng inline URL input, và thay thế confirm() native bằng Premium Dark Mode Confirm Modal.
+
