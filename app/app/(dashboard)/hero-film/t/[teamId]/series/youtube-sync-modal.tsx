@@ -281,26 +281,44 @@ export function YoutubeSyncModal({
                         onClick={async () => {
                            if(isSyncing) return;
                            setIsSyncing(true);
-                           setStatusText(`Đang gọi Gemini 2.5 Flash biên dịch ngầm 10 video chưa dịch của kênh: ${c.channelName}...`);
+                           setError('');
+                           let keepGoing = true;
+                           let totalBatchProcessed = 0;
+                           setStatusText(`🚀 Đang kết nối Gemini 2.5 Flash để dịch cuốn chiếu tất cả video chưa dịch trong dự án...`);
+                           
                            try {
-                             const res = await batchTranslateChannelAiAction(c.id, teamId);
-                             if (res.success) {
-                               setStatusText(res.message || `Đã hoàn tất biên dịch & tạo Timeline cho ${res.count} video!`);
-                               await fetchChannels();
-                               setTimeout(() => setIsSyncing(false), 2500);
-                             } else {
-                               setError(`Lỗi dịch AI: ${res.error}`);
-                               setIsSyncing(false);
+                             while (keepGoing) {
+                               const res = await batchTranslateChannelAiAction(c.id, teamId);
+                               if (res.success && (res.count || 0) > 0) {
+                                 totalBatchProcessed += res.count;
+                                 setStatusText(`✨ Đã biên dịch AI & tạo Timeline cho ${totalBatchProcessed} video (Còn lại ${res.remaining} tập)...`);
+                                 await fetchChannels();
+                                 if (res.remaining === 0) {
+                                   keepGoing = false;
+                                   setStatusText(`🎉 ĐÃ DỊCH HOÀN TẤT 100%! Đã biên dịch toàn bộ ${totalBatchProcessed} video trong dự án.`);
+                                 }
+                               } else {
+                                 keepGoing = false;
+                                 if ((res.count || 0) === 0 && totalBatchProcessed === 0) {
+                                   setStatusText(`🎉 Tất cả video trong kênh đã được biên dịch AI hoàn tất trước đó!`);
+                                 } else if ((res.count || 0) === 0) {
+                                   setStatusText(`🎉 Hoàn tất! Tổng cộng đã biên dịch ${totalBatchProcessed} video.`);
+                                 } else {
+                                   setError(`Lỗi dịch AI: ${res.error}`);
+                                 }
+                               }
                              }
-                           } catch (e) { 
-                               setError('Lỗi không xác định'); 
+                             setTimeout(() => setIsSyncing(false), 3000);
+                           } catch (e: any) { 
+                               setError(e.message || 'Lỗi không xác định'); 
                                setIsSyncing(false); 
                            }
                         }} 
-                        className="p-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 rounded-md text-indigo-300 transition flex items-center gap-1 cursor-pointer" 
-                        title="Chạy Gemini 2.5 Flash biên dịch AI (Xử lý 10 video)"
+                        className="px-2.5 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 rounded-md text-indigo-300 transition flex items-center gap-1.5 cursor-pointer text-[10px] font-bold" 
+                        title="Kích hoạt Gemini 2.5 Flash dịch dần TẤT CẢ video chưa dịch trong dự án"
                       >
-                        <Sparkles className="w-4 h-4" />
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                        Dịch Tất Cả Video
                       </button>
 
                       <button 

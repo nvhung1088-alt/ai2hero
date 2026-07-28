@@ -634,6 +634,15 @@ export async function batchTranslateChannelAiAction(channelId: number, teamId: n
     });
     if (!channel) return { success: false, error: 'Không tìm thấy kênh' };
 
+    const missingCondition = sql`(${filmEpisodes.timeline} IS NULL OR jsonb_typeof(${filmEpisodes.timeline}) != 'array' OR jsonb_array_length(${filmEpisodes.timeline}) = 0)`;
+
+    // Đếm tổng số tập còn chưa dịch trong team
+    const totalRemainingRes = await db.select({ count: sql<number>`count(*)` })
+      .from(filmEpisodes)
+      .where(and(eq(filmEpisodes.teamId, teamId), missingCondition));
+
+    const totalRemainingBefore = Number(totalRemainingRes[0]?.count || 0);
+
     // Lấy tối đa 15 tập chưa có Timeline của team
     const eps = await db.select({
       id: filmEpisodes.id,
@@ -642,11 +651,11 @@ export async function batchTranslateChannelAiAction(channelId: number, teamId: n
       videoUrl: filmEpisodes.videoUrl
     })
     .from(filmEpisodes)
-    .where(and(eq(filmEpisodes.teamId, teamId), sql`${filmEpisodes.timeline} IS NULL`))
+    .where(and(eq(filmEpisodes.teamId, teamId), missingCondition))
     .limit(15);
 
     if (eps.length === 0) {
-      return { success: true, count: 0, message: 'Tất cả các tập đã được dịch AI hoàn tất!' };
+      return { success: true, count: 0, remaining: 0, message: 'Tất cả các tập trong dự án đã được dịch AI hoàn tất!' };
     }
 
     let successCount = 0;
@@ -702,11 +711,13 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
         .where(eq(youtubeSyncChannels.id, channelId));
     }
 
+    const remainingLeft = Math.max(0, totalRemainingBefore - successCount);
+
     return { 
       success: true, 
       count: successCount, 
-      remaining: eps.length - successCount,
-      message: `Đã dịch & tạo Timeline cho ${successCount} video!`
+      remaining: remainingLeft,
+      message: `Đã dịch & tạo Timeline cho ${successCount} video (Còn lại ${remainingLeft} tập chưa dịch).`
     };
   } catch (error: any) {
     return { success: false, error: error.message };
