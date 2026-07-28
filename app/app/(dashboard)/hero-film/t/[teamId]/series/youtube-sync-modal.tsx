@@ -289,9 +289,10 @@ export function YoutubeSyncModal({
                            try {
                              while (keepGoing) {
                                const res = await batchTranslateChannelAiAction(c.id, teamId);
-                               if (res.success && (res.count || 0) > 0) {
-                                 totalBatchProcessed += res.count;
-                                 setStatusText(`✨ Đã biên dịch AI & tạo Timeline cho ${totalBatchProcessed} video (Còn lại ${res.remaining} tập)...`);
+                               const countAdded = res.count || 0;
+                               if (res.success && countAdded > 0) {
+                                 totalBatchProcessed += countAdded;
+                                 setStatusText(`✨ Đã biên dịch AI & tạo Timeline cho ${totalBatchProcessed} video (Còn lại ${res.remaining ?? 0} tập)...`);
                                  await fetchChannels();
                                  if (res.remaining === 0) {
                                    keepGoing = false;
