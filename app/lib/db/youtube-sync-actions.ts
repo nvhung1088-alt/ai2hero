@@ -668,6 +668,7 @@ export async function batchTranslateChannelAiAction(channelId: number, teamId: n
     }
 
     let successCount = 0;
+    const translatedTitles: { epId: number; seriesTitle: string; summary: string }[] = [];
     const promptSystem = `Bạn là trợ lý AI biên tập phim ngắn dọc. Tôi gửi cho bạn tiêu đề video.
 Hãy tạo:
 1. Tóm tắt 2-3 câu kịch tính.
@@ -706,6 +707,7 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
           .where(eq(filmEpisodes.id, ep.id));
 
         successCount++;
+        translatedTitles.push({ epId: ep.id, seriesTitle: titleToUse, summary: summary.substring(0, 80) });
       } catch (err) {
         console.error('Error batch AI for episode:', ep.id, err);
       }
@@ -726,6 +728,7 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
       success: true, 
       count: successCount, 
       remaining: remainingLeft,
+      translatedTitles,
       message: `Đã dịch & tạo Timeline cho ${successCount} video (Còn lại ${remainingLeft} tập chưa dịch).`
     };
   } catch (error: any) {
