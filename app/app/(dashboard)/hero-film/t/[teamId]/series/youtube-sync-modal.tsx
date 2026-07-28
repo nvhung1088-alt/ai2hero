@@ -289,8 +289,15 @@ export function YoutubeSyncModal({
                            try {
                              while (keepGoing) {
                                const res = await batchTranslateChannelAiAction(c.id, teamId);
+                               
+                               if (!res.success) {
+                                 keepGoing = false;
+                                 setError(`Lỗi dịch AI: ${res.error || 'Không xác định'}`);
+                                 break;
+                               }
+
                                const countAdded = res.count || 0;
-                               if (res.success && countAdded > 0) {
+                               if (countAdded > 0) {
                                  totalBatchProcessed += countAdded;
                                  setStatusText(`✨ Đã biên dịch AI & tạo Timeline cho ${totalBatchProcessed} video (Còn lại ${res.remaining ?? 0} tập)...`);
                                  await fetchChannels();
@@ -300,12 +307,10 @@ export function YoutubeSyncModal({
                                  }
                                } else {
                                  keepGoing = false;
-                                 if ((res.count || 0) === 0 && totalBatchProcessed === 0) {
+                                 if (totalBatchProcessed === 0) {
                                    setStatusText(`🎉 Tất cả video trong kênh đã được biên dịch AI hoàn tất trước đó!`);
-                                 } else if ((res.count || 0) === 0) {
-                                   setStatusText(`🎉 Hoàn tất! Tổng cộng đã biên dịch ${totalBatchProcessed} video.`);
                                  } else {
-                                   setError(`Lỗi dịch AI: ${res.error}`);
+                                   setStatusText(`🎉 Hoàn tất! Tổng cộng đã biên dịch ${totalBatchProcessed} video.`);
                                  }
                                }
                              }
