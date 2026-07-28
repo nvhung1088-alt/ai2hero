@@ -622,9 +622,11 @@ export async function getSyncChannelsAction(teamId: number) {
   }
 }
 
-export async function batchTranslateChannelAiAction(channelId: number, teamId: number) {
+export async function batchTranslateChannelAiAction(channelId: number) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    let apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    apiKey = apiKey ? apiKey.replace(/['"]/g, '').trim() : undefined;
+    
     if (!apiKey) {
       return { success: false, error: 'Chưa cấu hình GEMINI_API_KEY trong hệ thống' };
     }
@@ -753,7 +755,9 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
 
 export async function batchTranslateTeamAiAction(teamId: number) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    let apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    apiKey = apiKey ? apiKey.replace(/['"]/g, '').trim() : undefined;
+    
     if (!apiKey) {
       return { success: false, error: 'Chưa cấu hình GEMINI_API_KEY trong hệ thống' };
     }
