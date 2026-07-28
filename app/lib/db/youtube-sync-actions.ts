@@ -634,7 +634,11 @@ export async function batchTranslateChannelAiAction(channelId: number, teamId: n
     });
     if (!channel) return { success: false, error: 'Không tìm thấy kênh' };
 
-    const missingCondition = sql`(${filmEpisodes.timeline} IS NULL OR jsonb_typeof(${filmEpisodes.timeline}) != 'array' OR jsonb_array_length(${filmEpisodes.timeline}) = 0)`;
+    const missingCondition = sql`(
+      ${filmEpisodes.timeline} IS NULL 
+      OR jsonb_typeof(${filmEpisodes.timeline}) != 'array' 
+      OR (jsonb_typeof(${filmEpisodes.timeline}) = 'array' AND jsonb_array_length(${filmEpisodes.timeline}) = 0)
+    )`;
 
     // Đếm tổng số tập còn chưa dịch trong team
     const totalRemainingRes = await db.select({ count: sql<number>`count(*)` })
@@ -790,4 +794,34 @@ export async function manualTriggerSyncChannelAction(channelId: number, teamId: 
    } catch (e: any) {
      return { success: false, error: e.message };
    }
+}
+
+/**
+ * Lấy tổng số video và số video đã dịch AI của Team để hiển thị trên Sidebar góc trái
+ */
+export async function getAiTranslationProgressAction(teamId: number) {
+  try {
+    const totalEpsRes = await db.select({ count: sql<number>`count(*)` })
+      .from(filmEpisodes)
+      .where(eq(filmEpisodes.teamId, teamId));
+
+    const processedRes = await db.select({ count: sql<number>`count(*)` })
+      .from(filmEpisodes)
+      .where(and(
+        eq(filmEpisodes.teamId, teamId),
+        sql`${filmEpisodes.timeline} IS NOT NULL AND jsonb_typeof(${filmEpisodes.timeline}) = 'array' AND jsonb_array_length(${filmEpisodes.timeline}) > 0`
+      ));
+
+    const total = Number(totalEpsRes[0]?.count || 0);
+    const processed = Number(processedRes[0]?.count || 0);
+
+    return {
+      success: true,
+      total,
+      processed,
+      remaining: Math.max(0, total - processed)
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
 }
