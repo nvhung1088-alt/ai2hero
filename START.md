@@ -99,6 +99,8 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` [Phase 2] Tích hợp tự động đăng feed bài đăng `film_publish` lên iSocial khi Creator bật phát sóng phim.
   - `[x]` [Phase 2] Tái sử dụng hệ thống bình luận (comments) và thả tim (likes) của iSocial Feed cho các phim ngắn, đồng bộ trực tiếp lên Watch Player.
   - `[x]` [Phase 2] Phát triển chức năng báo lỗi phim ngắn (Video hỏng, Lỗi tập, Bản quyền) và quản trị lỗi (CMS Reports list) dành cho Creator kèm badge cảnh báo.
+  - `[x]` [Phase 4] Tích hợp thành công **Google Gemini 2.5 Flash API** vào tính năng Đồng bộ Kênh YouTube: Tự động tối ưu lại Tiêu đề chuẩn phim ngắn, sinh đoạn Tóm tắt hấp dẫn 2-3 câu và trích xuất Bảng Timeline mốc thời gian diễn biến.
+  - `[x]` [Phase 4] Phát triển Trình phát **Click-to-jump (AI Interactive Timeline Player)** trên giao diện Quản lý tập phim (`episodes/page.tsx`), cho phép bấm trực tiếp vào từng mốc thời gian để tua nhanh video đến đúng giây tương ứng.
 
 ### 9. HeroDub (MVP Mới - Dịch & Burn phụ đề phim)
 - **Status:** `Beta`

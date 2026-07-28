@@ -11,7 +11,21 @@ import { getUserGroups } from './social-queries';
 import { dispatchMvpFeedPost } from './feed-dispatcher';
 
 const HeroAiText = {
-  TitleOptimizeSystem: `Bạn là trợ lý AI biên tập phim. Tôi sẽ gửi cho bạn một tiêu đề gốc. Hãy tối ưu lại tiêu đề cho hay, chuẩn SEO, bỏ các từ rác (như HD, Full, Vietsub). Trả về định dạng JSON với 2 khóa: {"title": "Tiêu đề mới", "description": "Tóm tắt ngắn 1 câu"}. Không giải thích gì thêm.`
+  TitleOptimizeSystem: `Bạn là trợ lý AI biên tập phim ngắn dọc chuyên nghiệp. Tôi sẽ gửi cho bạn thông tin video gồm tiêu đề gốc và mô tả.
+Hãy giúp tôi:
+1. Tối ưu lại tiêu đề ngắn gọn, kịch tính, chuẩn phim ngắn dọc, bỏ các từ rác (như HD, Full, Vietsub).
+2. Viết đoạn Tóm tắt nội dung kịch tính 2-3 câu lôi cuốn người xem.
+3. Tạo mảng Timeline các mốc thời gian diễn biến chính trong video (VD: [{"time": "00:00", "label": "Mở đầu..."}, {"time": "01:30", "label": "Biến cố..."}]).
+
+Trả về DUY NHẤT định dạng JSON:
+{
+  "title": "Tiêu đề kịch tính mới",
+  "description": "Đoạn tóm tắt nội dung lôi cuốn 2-3 câu...",
+  "timeline": [
+    { "time": "00:00", "label": "Mô tả mốc 1" },
+    { "time": "01:30", "label": "Mô tả mốc 2" }
+  ]
+}`
 };
 
 export async function getAiConnectionsAction(teamId: number) {
@@ -19,9 +33,25 @@ export async function getAiConnectionsAction(teamId: number) {
     const connections = await db.query.connectHubConnections.findMany({
       where: and(eq(connectHubConnections.teamId, teamId), eq(connectHubConnections.status, 'active'))
     });
-    return connections.map(c => ({ id: c.id, name: c.connectionName, model: c.appSlug, provider: c.appName }));
+    const mapped = connections.map(c => ({ id: c.id, name: c.connectionName, model: c.appSlug, provider: c.appName }));
+    
+    // Đảm bảo luôn có tùy chọn Gemini 2.5 Flash Miễn phí
+    if (mapped.length === 0 || !mapped.some(c => c.name.includes('Gemini'))) {
+      mapped.unshift({
+        id: -1,
+        name: 'Google Gemini 2.5 Flash (Mặc định Miễn phí)',
+        model: 'gemini-2.5-flash',
+        provider: 'Google AI Studio'
+      });
+    }
+    return mapped;
   } catch (e) {
-    return [];
+    return [{
+      id: -1,
+      name: 'Google Gemini 2.5 Flash (Mặc định Miễn phí)',
+      model: 'gemini-2.5-flash',
+      provider: 'Google AI Studio'
+    }];
   }
 }
 
@@ -418,19 +448,25 @@ export async function syncYoutubeChannelAction(
           )
       });
 
+      let optimizedTimeline: any[] = [];
+
       if (possibleExisting) {
           seriesId = possibleExisting.id;
           optimizedTitle = possibleExisting.title;
           optimizedDesc = possibleExisting.description || '';
       } else {
           // Chưa có series này, gọi AI để optimize nếu cần
-          if (filters.useAiTitle && process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+          const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+          if (filters.useAiTitle && apiKey) {
               try {
                 const prompt = `${HeroAiText.TitleOptimizeSystem}\n\nTiêu đề gốc: ${baseTitle}`;
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GOOGLE_GENERATIVE_AI_API_KEY}`, {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
                    method: 'POST',
                    headers: { 'Content-Type': 'application/json' },
-                   body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                   body: JSON.stringify({
+                     contents: [{ parts: [{ text: prompt }] }],
+                     generationConfig: { response_mime_type: 'application/json' }
+                   })
                 });
                 const aiData = await res.json();
                 const text = aiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -438,6 +474,7 @@ export async function syncYoutubeChannelAction(
                 const parsed = JSON.parse(rawText);
                 if (parsed.title) optimizedTitle = parsed.title;
                 if (parsed.description) optimizedDesc = parsed.description;
+                if (parsed.timeline && Array.isArray(parsed.timeline)) optimizedTimeline = parsed.timeline;
               } catch (err) {
                 console.error('AI Error for series', baseTitle, err);
               }
@@ -510,6 +547,8 @@ export async function syncYoutubeChannelAction(
           videoSource: 'youtube',
           videoUrl: v.videoUrl,
           duration: parseDuration(v.lengthText),
+          summary: optimizedDesc,
+          timeline: optimizedTimeline.length > 0 ? optimizedTimeline : null,
           status: filters.status
         });
 

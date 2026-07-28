@@ -168,6 +168,31 @@ export default function EpisodeManagementPage() {
     }
   };
 
+  // Selected episode for Timeline player modal
+  const [selectedEpForTimeline, setSelectedEpForTimeline] = useState<FilmEpisode | null>(null);
+
+  // Helper convert timestamp string (01:30 or 90) to seconds
+  const parseTimeToSeconds = (timeStr: string) => {
+    if (!timeStr) return 0;
+    if (typeof timeStr === 'number') return timeStr;
+    const parts = timeStr.toString().split(':').map(Number);
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    return parseInt(timeStr, 10) || 0;
+  };
+
+  const handleJumpToTime = (timeStr: string) => {
+    const seconds = parseTimeToSeconds(timeStr);
+    const iframe = document.getElementById('yt-player-iframe') as HTMLIFrameElement;
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage(JSON.stringify({
+        event: 'command',
+        func: 'seekTo',
+        args: [seconds, true]
+      }), '*');
+    }
+  };
+
   return (
     <div className="p-6 max-w-6xl mx-auto pb-20 space-y-8">
       {/* Header */}
@@ -355,6 +380,7 @@ export default function EpisodeManagementPage() {
               <div className="space-y-3">
                 {episodes.map((ep) => {
                   const isEpEditing = editingEpisode?.id === ep.id;
+                  const hasTimeline = Boolean(ep.timeline && Array.isArray(ep.timeline) && ep.timeline.length > 0);
 
                   return (
                     <div
@@ -367,15 +393,24 @@ export default function EpisodeManagementPage() {
                     >
                       <div className="flex items-center gap-3">
                         {/* Play Icon / Thumbnail placeholder */}
-                        <div className="h-10 w-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-rose-500">
+                        <button
+                          onClick={() => setSelectedEpForTimeline(ep)}
+                          className="h-10 w-10 rounded-lg bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-500 hover:scale-105 transition cursor-pointer shrink-0"
+                          title="Bật Trình phát AI Timeline"
+                        >
                           <Play className="h-4 w-4 fill-rose-500" />
-                        </div>
+                        </button>
                         <div className="min-w-0">
                           <h4 className="font-black text-xs text-gray-200 flex items-center gap-2">
                             <span>Tập {ep.episodeNumber}: {ep.title}</span>
                             <span className="text-[9px] bg-white/5 border border-white/10 px-1.5 py-0.2 rounded font-bold text-gray-500 uppercase">
                               {ep.videoSource}
                             </span>
+                            {hasTimeline && (
+                              <span className="text-[9px] bg-rose-500/20 border border-rose-500/30 text-rose-400 font-bold px-1.5 py-0.5 rounded-full">
+                                ✨ Timeline AI
+                              </span>
+                            )}
                           </h4>
                           <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold mt-1">
                             <span>Thời lượng: {ep.duration}s</span>
@@ -406,6 +441,12 @@ export default function EpisodeManagementPage() {
 
                       {/* Right action control */}
                       <div className="flex items-center gap-2 mt-3 sm:mt-0 justify-end">
+                        <button
+                          onClick={() => setSelectedEpForTimeline(ep)}
+                          className="px-2.5 py-1.5 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 rounded-lg text-rose-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <Play className="h-3 w-3 fill-rose-300" /> Xem & Timeline
+                        </button>
                         <a
                           href={ep.videoUrl}
                           target="_blank"
@@ -441,6 +482,88 @@ export default function EpisodeManagementPage() {
             )}
           </div>
 
+        </div>
+      )}
+
+      {/* MODAL TRÌNH PHÁT NHẢY THỜI GIAN (CLICK-TO-JUMP PLAYER MODAL) */}
+      {selectedEpForTimeline && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setSelectedEpForTimeline(null)} />
+          
+          <div className="relative w-full max-w-4xl bg-gray-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col md:flex-row z-10 max-h-[90vh]">
+            {/* Player Left Area */}
+            <div className="flex-1 bg-black flex flex-col justify-center items-center relative aspect-video md:aspect-auto">
+              {selectedEpForTimeline.videoSource === 'youtube' ? (
+                <iframe
+                  id="yt-player-iframe"
+                  src={`https://www.youtube.com/embed/${selectedEpForTimeline.videoUrl.split('v=')[1]?.split('&')[0] || selectedEpForTimeline.videoUrl.split('/').pop()}?enablejsapi=1&autoplay=1`}
+                  className="w-full h-full min-h-[300px]"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <video
+                  src={selectedEpForTimeline.videoUrl}
+                  controls
+                  autoPlay
+                  className="w-full h-full object-contain max-h-[500px]"
+                />
+              )}
+            </div>
+
+            {/* Sidebar Right: AI Summary & Timeline Click-to-jump */}
+            <div className="w-full md:w-80 bg-gray-950 p-5 flex flex-col border-t md:border-t-0 md:border-l border-white/10 overflow-y-auto custom-scrollbar gap-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div>
+                  <h3 className="font-bold text-sm text-white">Tập {selectedEpForTimeline.episodeNumber}: {selectedEpForTimeline.title}</h3>
+                  <p className="text-[10px] text-rose-400 font-semibold flex items-center gap-1">
+                    ✨ AI Interactive Timeline
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedEpForTimeline(null)}
+                  className="p-1 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Episode Summary */}
+              {selectedEpForTimeline.summary && (
+                <div className="p-3 bg-white/5 border border-white/10 rounded-xl space-y-1">
+                  <span className="text-[10px] font-bold text-gray-400 block uppercase tracking-wider">Tóm tắt tập phim</span>
+                  <p className="text-xs text-gray-300 leading-relaxed">{selectedEpForTimeline.summary}</p>
+                </div>
+              )}
+
+              {/* Timeline Click-to-jump Items */}
+              <div className="space-y-2 flex-1">
+                <span className="text-[10px] font-bold text-gray-400 block uppercase tracking-wider">Bảng Mốc Thời Gian (Timeline)</span>
+                {selectedEpForTimeline.timeline && Array.isArray(selectedEpForTimeline.timeline) && selectedEpForTimeline.timeline.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {selectedEpForTimeline.timeline.map((item: any, idx: number) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleJumpToTime(item.time)}
+                        className="w-full text-left p-2.5 rounded-lg bg-white/[0.03] border border-white/5 hover:border-rose-500/40 hover:bg-rose-500/10 transition flex items-center gap-3 group cursor-pointer"
+                      >
+                        <span className="px-2 py-0.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-bold rounded font-mono group-hover:scale-105 transition">
+                          {item.time}
+                        </span>
+                        <span className="text-xs text-gray-300 font-medium group-hover:text-white transition line-clamp-2">
+                          {item.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 border border-dashed border-white/10 rounded-xl text-center text-xs text-gray-500 font-medium">
+                    Chưa có mốc thời gian AI nào cho tập phim này.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

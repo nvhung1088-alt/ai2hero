@@ -2167,6 +2167,9 @@ export const filmEpisodes = pgTable('film_episodes', {
   thumbnailUrl: text('thumbnail_url'),       // Ảnh thu nhỏ tập
   duration: integer('duration'),             // Thời lượng (giây)
   
+  summary: text('summary'),                  // Tóm tắt nội dung do AI tạo
+  timeline: jsonb('timeline'),               // Mốc thời gian do AI tạo [{time: '01:20', label: '...'}]
+  
   isFree: boolean('is_free').notNull().default(true),
   tokenPrice: integer('token_price').notNull().default(0), // Giá xem tập phim (bằng token)
   
