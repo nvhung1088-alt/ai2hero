@@ -502,6 +502,15 @@ export async function syncYoutubeChannelAction(
           });
           if (existingEpisode) {
              alreadyExistsCount++;
+             // Nếu tập cũ chưa có timeline hoặc summary mà lần này có AI, cập nhật thêm cho tập cũ
+             if ((!existingEpisode.timeline || !existingEpisode.summary) && (optimizedDesc || optimizedTimeline.length > 0)) {
+                await db.update(filmEpisodes)
+                  .set({
+                    summary: existingEpisode.summary || optimizedDesc,
+                    timeline: existingEpisode.timeline || (optimizedTimeline.length > 0 ? optimizedTimeline : null)
+                  })
+                  .where(eq(filmEpisodes.id, existingEpisode.id));
+             }
           } else {
              newEpisodesToInsert.push({ ...v, videoUrl });
           }

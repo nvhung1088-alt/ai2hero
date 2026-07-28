@@ -38,7 +38,7 @@ export function YoutubeSyncModal({
   const [category, setCategory] = useState('other');
   
   // AI Rewrite
-  const [rewriteTitle, setRewriteTitle] = useState(false);
+  const [rewriteTitle, setRewriteTitle] = useState(true);
   const [aiList, setAiList] = useState<any[]>([]);
   const [aiConnectionId, setAiConnectionId] = useState<number | null>(null);
 
