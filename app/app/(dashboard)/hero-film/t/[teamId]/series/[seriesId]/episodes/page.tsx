@@ -8,11 +8,12 @@ import {
   getSeriesEpisodesAction, 
   createEpisodeAction, 
   updateEpisodeAction, 
-  deleteEpisodeAction 
+  deleteEpisodeAction,
+  translateSingleEpisodeAiAction
 } from '@/lib/db/film-actions';
 import { 
   Film, ArrowLeft, Loader2, Plus, Edit, Trash2, Coins, Play, 
-  ExternalLink, Video, Check, Save, X, AlertTriangle 
+  ExternalLink, Video, Check, Save, X, AlertTriangle, Sparkles
 } from 'lucide-react';
 import { FilmEpisode } from '@/lib/db/schema';
 
@@ -170,6 +171,24 @@ export default function EpisodeManagementPage() {
 
   // Selected episode for Timeline player modal
   const [selectedEpForTimeline, setSelectedEpForTimeline] = useState<FilmEpisode | null>(null);
+  const [translatingEpId, setTranslatingEpId] = useState<number | null>(null);
+
+  const handleTranslateSingleEp = async (epId: number) => {
+    setTranslatingEpId(epId);
+    try {
+      const res = await translateSingleEpisodeAiAction(epId, teamId);
+      if (res.success) {
+        setEpisodes(prev => prev.map(ep => ep.id === epId ? { ...ep, summary: res.summary, timeline: res.timeline as any } : ep));
+      } else {
+        alert(`Dịch AI thất bại: ${res.error}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Lỗi xử lý AI');
+    } finally {
+      setTranslatingEpId(null);
+    }
+  };
 
   // Helper convert timestamp string (01:30 or 90) to seconds
   const parseTimeToSeconds = (timeStr: string) => {
@@ -441,6 +460,20 @@ export default function EpisodeManagementPage() {
 
                       {/* Right action control */}
                       <div className="flex items-center gap-2 mt-3 sm:mt-0 justify-end">
+                        <button
+                          onClick={() => handleTranslateSingleEp(ep.id)}
+                          disabled={translatingEpId === ep.id}
+                          className="px-2.5 py-1.5 bg-indigo-500/15 border border-indigo-500/30 hover:bg-indigo-500/25 rounded-lg text-indigo-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          title="Dùng Gemini 2.5 Flash biên dịch & tạo Timeline tức thì"
+                        >
+                          {translatingEpId === ep.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin text-indigo-400" />
+                          ) : (
+                            <Sparkles className="h-3 w-3 text-indigo-400" />
+                          )}
+                          {hasTimeline ? 'Dịch lại AI' : 'Dịch AI'}
+                        </button>
+
                         <button
                           onClick={() => setSelectedEpForTimeline(ep)}
                           className="px-2.5 py-1.5 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 rounded-lg text-rose-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"

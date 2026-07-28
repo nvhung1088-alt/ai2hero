@@ -9,7 +9,8 @@ import {
   toggleSyncChannelAction,
   deleteSyncChannelAction,
   manualTriggerSyncChannelAction,
-  getPublishTargetsAction
+  getPublishTargetsAction,
+  batchTranslateChannelAiAction
 } from '@/lib/db/youtube-sync-actions';
 import { Youtube, X, Loader2, CheckCircle2, AlertCircle, Settings2, Sparkles, Play, Save, Share2 } from 'lucide-react';
 
@@ -227,10 +228,14 @@ export function YoutubeSyncModal({
                     <div className="flex-1 min-w-0">
                       <div className="text-white font-bold text-sm truncate">{c.channelName}</div>
                       <a href={c.channelUrl} target="_blank" className="text-xs text-blue-400 hover:underline truncate block mb-1">{c.channelUrl}</a>
-                      <div className="text-[10px] font-medium text-gray-400 flex items-center gap-2">
+                      <div className="text-[10px] font-medium text-gray-400 flex items-center gap-2 flex-wrap">
                          <span>Cập nhật: {c.lastSyncedAt ? new Date(c.lastSyncedAt).toLocaleString('vi') : 'Đang chờ quét'}</span>
                          <span>•</span>
                          <span className="text-emerald-400 font-bold">Đã kéo: {c.totalSynced || 0} video</span>
+                         <span>•</span>
+                         <span className="text-indigo-400 font-bold flex items-center gap-1">
+                           <Sparkles className="w-3 h-3 text-indigo-400" /> Đã dịch AI: {c.totalAiProcessed || 0} video
+                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 bg-black/40 p-1.5 rounded-lg border border-white/5">
@@ -246,7 +251,7 @@ export function YoutubeSyncModal({
                         onClick={async () => {
                            if(isSyncing) return;
                            setIsSyncing(true);
-                           setStatusText(`Đang quét thủ công kênh: ${c.channelName}...`);
+                           setStatusText(`Đang quét kéo video từ kênh: ${c.channelName}...`);
                            try {
                              const res = await manualTriggerSyncChannelAction(c.id, teamId, creatorId);
                              if (res.success) {
@@ -267,9 +272,35 @@ export function YoutubeSyncModal({
                            }
                         }} 
                         className="p-1.5 hover:bg-white/10 rounded-md text-red-400 hover:text-red-300 transition" 
-                        title="Kéo về ngay"
+                        title="Kéo video mới về ngay"
                       >
                         <Play className="w-4 h-4" />
+                      </button>
+
+                      <button 
+                        onClick={async () => {
+                           if(isSyncing) return;
+                           setIsSyncing(true);
+                           setStatusText(`Đang gọi Gemini 2.5 Flash biên dịch ngầm 10 video chưa dịch của kênh: ${c.channelName}...`);
+                           try {
+                             const res = await batchTranslateChannelAiAction(c.id, teamId);
+                             if (res.success) {
+                               setStatusText(res.message || `Đã hoàn tất biên dịch & tạo Timeline cho ${res.count} video!`);
+                               await fetchChannels();
+                               setTimeout(() => setIsSyncing(false), 2500);
+                             } else {
+                               setError(`Lỗi dịch AI: ${res.error}`);
+                               setIsSyncing(false);
+                             }
+                           } catch (e) { 
+                               setError('Lỗi không xác định'); 
+                               setIsSyncing(false); 
+                           }
+                        }} 
+                        className="p-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 rounded-md text-indigo-300 transition flex items-center gap-1 cursor-pointer" 
+                        title="Chạy Gemini 2.5 Flash biên dịch AI (Xử lý 10 video)"
+                      >
+                        <Sparkles className="w-4 h-4" />
                       </button>
 
                       <button 

@@ -1399,12 +1399,86 @@ export async function deleteFilmSeriesAction(seriesId: number) {
     await db.delete(filmSeries).where(eq(filmSeries.id, seriesId));
 
     // Th� x�a feed posts n�u li�n k�t (n�u ��c)
+    // Thêm xóa feed posts nếu liên kết (nếu có)
     // await db.delete(feedPosts).where(and(eq(feedPosts.targetId, seriesId), eq(feedPosts.type, 'film_publish')));
 
     return { success: true };
   } catch (error) {
     console.error('Delete film error:', error);
-    return { success: false, error: 'C� l�i x�y ra khi x�a phim' };
+    return { success: false, error: 'Có lỗi xảy ra khi xóa phim' };
   }
 }
 
+/**
+ * Gọi AI Gemini 2.5 Flash biên dịch & sinh Timeline cho 1 tập phim cụ thể theo yêu cầu (1-Click)
+ */
+export async function translateSingleEpisodeAiAction(episodeId: number, teamId: number) {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (!apiKey) {
+      return { success: false, error: 'Chưa cấu hình GEMINI_API_KEY trong file environment' };
+    }
+
+    const ep = await db.query.filmEpisodes.findFirst({
+      where: and(eq(filmEpisodes.id, episodeId), eq(filmEpisodes.teamId, teamId))
+    });
+
+    if (!ep) {
+      return { success: false, error: 'Không tìm thấy tập phim' };
+    }
+
+    const series = await db.query.filmSeries.findFirst({
+      where: eq(filmSeries.id, ep.seriesId)
+    });
+
+    const titleToUse = series?.title || ep.title || 'Phim ngắn';
+
+    const promptSystem = `Bạn là trợ lý AI biên tập phim ngắn dọc chuyên nghiệp.
+Hãy giúp tôi:
+1. Viết đoạn Tóm tắt nội dung kịch tính 2-3 câu lôi cuốn người xem.
+2. Tạo mảng Timeline các mốc thời gian diễn biến chính trong video (VD: [{"time": "00:00", "label": "Mở đầu..."}, {"time": "01:30", "label": "Biến cố..."}]).
+
+Trả về DUY NHẤT định dạng JSON:
+{
+  "description": "Đoạn tóm tắt nội dung...",
+  "timeline": [
+    { "time": "00:00", "label": "Mô tả mốc 1" },
+    { "time": "01:30", "label": "Mô tả mốc 2" }
+  ]
+}`;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `${promptSystem}\n\nTiêu đề phim: ${titleToUse}` }] }],
+        generationConfig: { response_mime_type: 'application/json' }
+      })
+    });
+
+    const aiData = await res.json();
+    const text = aiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const rawText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(rawText);
+
+    const summary = parsed.description || `Bộ phim kịch tính: ${titleToUse}`;
+    const timeline = Array.isArray(parsed.timeline) && parsed.timeline.length > 0
+      ? parsed.timeline
+      : [{ time: '00:00', label: 'Bắt đầu phim' }];
+
+    await db.update(filmEpisodes)
+      .set({ summary, timeline })
+      .where(eq(filmEpisodes.id, episodeId));
+
+    revalidatePath(`/hero-film/t/${teamId}/series/${ep.seriesId}/episodes`);
+
+    return {
+      success: true,
+      summary,
+      timeline
+    };
+  } catch (error: any) {
+    console.error('translateSingleEpisodeAiAction error:', error);
+    return { success: false, error: error.message || 'Lỗi xử lý AI' };
+  }
+}
