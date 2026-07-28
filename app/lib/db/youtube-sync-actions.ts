@@ -616,19 +616,7 @@ export async function getSyncChannelsAction(teamId: number) {
       orderBy: (channels, { desc }) => [desc(channels.createdAt)]
     });
 
-    // Tính tổng số tập đã được dịch AI trong team
-    const aiProcessedCountResult = await db.select({ count: sql<number>`count(*)` })
-      .from(filmEpisodes)
-      .where(and(eq(filmEpisodes.teamId, teamId), sql`${filmEpisodes.timeline} IS NOT NULL`));
-    
-    const totalAiProcessedInTeam = Number(aiProcessedCountResult[0]?.count || 0);
-
-    const channelsWithStats = channels.map(c => ({
-      ...c,
-      totalAiProcessed: totalAiProcessedInTeam
-    }));
-
-    return { success: true, channels: channelsWithStats };
+    return { success: true, channels };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -641,7 +629,12 @@ export async function batchTranslateChannelAiAction(channelId: number, teamId: n
       return { success: false, error: 'Chưa cấu hình GEMINI_API_KEY trong hệ thống' };
     }
 
-    // Lấy tối đa 10 tập chưa có Timeline của team
+    const channel = await db.query.youtubeSyncChannels.findFirst({
+      where: eq(youtubeSyncChannels.id, channelId)
+    });
+    if (!channel) return { success: false, error: 'Không tìm thấy kênh' };
+
+    // Lấy tối đa 15 tập chưa có Timeline của team
     const eps = await db.select({
       id: filmEpisodes.id,
       title: filmEpisodes.title,
@@ -650,7 +643,7 @@ export async function batchTranslateChannelAiAction(channelId: number, teamId: n
     })
     .from(filmEpisodes)
     .where(and(eq(filmEpisodes.teamId, teamId), sql`${filmEpisodes.timeline} IS NULL`))
-    .limit(10);
+    .limit(15);
 
     if (eps.length === 0) {
       return { success: true, count: 0, message: 'Tất cả các tập đã được dịch AI hoàn tất!' };
@@ -700,7 +693,21 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
       }
     }
 
-    return { success: true, count: successCount, remaining: eps.length - successCount };
+    if (successCount > 0) {
+      await db.update(youtubeSyncChannels)
+        .set({
+          totalAiProcessed: (channel.totalAiProcessed || 0) + successCount,
+          updatedAt: new Date()
+        })
+        .where(eq(youtubeSyncChannels.id, channelId));
+    }
+
+    return { 
+      success: true, 
+      count: successCount, 
+      remaining: eps.length - successCount,
+      message: `Đã dịch & tạo Timeline cho ${successCount} video!`
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

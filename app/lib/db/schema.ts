@@ -2280,6 +2280,7 @@ export const youtubeSyncChannels = pgTable('youtube_sync_channels', {
   filters: jsonb('filters').notNull(),
   lastSyncedAt: timestamp('last_synced_at'),
   totalSynced: integer('total_synced').notNull().default(0),
+  totalAiProcessed: integer('total_ai_processed').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
