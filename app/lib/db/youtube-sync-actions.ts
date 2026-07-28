@@ -668,6 +668,7 @@ export async function batchTranslateChannelAiAction(channelId: number, teamId: n
     }
 
     let successCount = 0;
+    let lastError = '';
     const translatedTitles: { epId: number; seriesTitle: string; summary: string }[] = [];
     const promptSystem = `Bạn là trợ lý AI biên tập phim ngắn dọc. Tôi gửi cho bạn tiêu đề video.
 Hãy tạo:
@@ -691,9 +692,18 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
             generationConfig: { response_mime_type: 'application/json' }
           })
         });
+        
+        if (!res.ok) {
+           const errData = await res.text();
+           throw new Error(`API Error ${res.status}: ${errData}`);
+        }
 
         const aiData = await res.json();
         const text = aiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if (!text) {
+           throw new Error('AI trả về kết quả rỗng');
+        }
+        
         const rawText = text.replace(/```json/g, '').replace(/```/g, '').trim();
         const parsed = JSON.parse(rawText);
 
@@ -708,8 +718,9 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
 
         successCount++;
         translatedTitles.push({ epId: ep.id, seriesTitle: titleToUse, summary: summary.substring(0, 80) });
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error batch AI for episode:', ep.id, err);
+        lastError = err.message || 'Lỗi xử lý AI';
       }
     }
 
@@ -723,6 +734,10 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
     }
 
     const remainingLeft = Math.max(0, totalRemainingBefore - successCount);
+    
+    if (successCount === 0 && lastError) {
+       return { success: false, error: `Gemini API Lỗi: ${lastError}` };
+    }
 
     return { 
       success: true, 
@@ -770,6 +785,7 @@ export async function batchTranslateTeamAiAction(teamId: number) {
     }
 
     let successCount = 0;
+    let lastError = '';
     const translatedTitles: { epId: number; seriesTitle: string; summary: string }[] = [];
     const promptSystem = `Bạn là trợ lý AI biên tập phim ngắn dọc. Tôi gửi cho bạn tiêu đề video.
 Hãy tạo:
@@ -794,8 +810,17 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
           })
         });
 
+        if (!res.ok) {
+           const errData = await res.text();
+           throw new Error(`API Error ${res.status}: ${errData}`);
+        }
+
         const aiData = await res.json();
         const text = aiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if (!text) {
+           throw new Error('AI trả về kết quả rỗng');
+        }
+
         const rawText = text.replace(/```json/g, '').replace(/```/g, '').trim();
         const parsed = JSON.parse(rawText);
 
@@ -810,12 +835,17 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
 
         successCount++;
         translatedTitles.push({ epId: ep.id, seriesTitle: titleToUse, summary: summary.substring(0, 80) });
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error batch AI for episode:', ep.id, err);
+        lastError = err.message || 'Lỗi xử lý AI';
       }
     }
 
     const remainingLeft = Math.max(0, totalRemainingBefore - successCount);
+
+    if (successCount === 0 && lastError) {
+       return { success: false, error: `Gemini API Lỗi: ${lastError}` };
+    }
 
     return { 
       success: true, 
