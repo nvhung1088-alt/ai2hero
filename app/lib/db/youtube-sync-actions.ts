@@ -651,7 +651,8 @@ export async function batchTranslateChannelAiAction(channelId: number, teamId: n
 
     const totalRemainingBefore = Number(totalRemainingRes[0]?.count || 0);
 
-    // Lấy tối đa 15 tập chưa có Timeline của team (dùng effectiveTeamId từ DB)
+    // Lấy tối đa 3 tập chưa có Timeline (giảm từ 15 → 3 để tránh Vercel 10s timeout)
+    // Modal có while loop → sẽ gọi lại liên tục cho đến khi hết
     const eps = await db.select({
       id: filmEpisodes.id,
       title: filmEpisodes.title,
@@ -660,7 +661,7 @@ export async function batchTranslateChannelAiAction(channelId: number, teamId: n
     })
     .from(filmEpisodes)
     .where(and(eq(filmEpisodes.teamId, effectiveTeamId), missingCondition))
-    .limit(15);
+    .limit(3);
 
     if (eps.length === 0) {
       return { success: true, count: 0, remaining: 0, message: '🎉 Tất cả video trong kênh đã được biên dịch AI hoàn tất trước đó!' };
