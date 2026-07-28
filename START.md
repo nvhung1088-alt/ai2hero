@@ -102,6 +102,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` [Phase 4] Tích hợp thành công **Google Gemini 2.5 Flash API** vào tính năng Đồng bộ Kênh YouTube: Tự động tối ưu lại Tiêu đề chuẩn phim ngắn, sinh đoạn Tóm tắt hấp dẫn 2-3 câu và trích xuất Bảng Timeline mốc thời gian diễn biến.
   - `[x]` [Phase 4] Phát triển Trình phát **Click-to-jump (AI Interactive Timeline Player)** trên giao diện Quản lý tập phim (`episodes/page.tsx`), cho phép bấm trực tiếp vào từng mốc thời gian để tua nhanh video đến đúng giây tương ứng.
   - `[x]` [Phase 5] Tách biệt quy trình 2 bước: Kéo video siêu tốc ➔ AI Biên dịch theo yêu cầu. Bổ sung hiển thị `Đã kéo: X video • Đã dịch AI: Y video` chính xác theo từng kênh và nút 1-click **"✨ Dịch Tất Cả Video"** kích hoạt vòng lặp dịch cuốn chiếu toàn bộ video chưa dịch trong dự án.
+  - `[x]` [Phase 6] Khắc phục lỗi SQL PostgreSQL (`jsonb_array_length`), cho phép dịch ngầm không vách ngăn (Background Processing) và tích hợp Widget hiển thị tiến độ sống động `⏳ Dịch AI Dự Án (Processed/Total)` ngay góc trái thanh điều hướng Sidebar.
 
 ### 9. HeroDub (MVP Mới - Dịch & Burn phụ đề phim)
 - **Status:** `Beta`
