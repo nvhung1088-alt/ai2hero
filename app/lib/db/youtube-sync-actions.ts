@@ -634,20 +634,24 @@ export async function batchTranslateChannelAiAction(channelId: number, teamId: n
     });
     if (!channel) return { success: false, error: 'Không tìm thấy kênh' };
 
+    // Dùng teamId từ channel record trong DB, không phải từ URL param
+    // (URL param teamId có thể không khớp với teamId lưu trong DB)
+    const effectiveTeamId = channel.teamId;
+
     const missingCondition = sql`(
       ${filmEpisodes.timeline} IS NULL 
       OR jsonb_typeof(${filmEpisodes.timeline}) != 'array' 
       OR (jsonb_typeof(${filmEpisodes.timeline}) = 'array' AND jsonb_array_length(${filmEpisodes.timeline}) = 0)
     )`;
 
-    // Đếm tổng số tập còn chưa dịch trong team
+    // Đếm tổng số tập còn chưa dịch trong team (dùng effectiveTeamId từ DB)
     const totalRemainingRes = await db.select({ count: sql<number>`count(*)` })
       .from(filmEpisodes)
-      .where(and(eq(filmEpisodes.teamId, teamId), missingCondition));
+      .where(and(eq(filmEpisodes.teamId, effectiveTeamId), missingCondition));
 
     const totalRemainingBefore = Number(totalRemainingRes[0]?.count || 0);
 
-    // Lấy tối đa 15 tập chưa có Timeline của team
+    // Lấy tối đa 15 tập chưa có Timeline của team (dùng effectiveTeamId từ DB)
     const eps = await db.select({
       id: filmEpisodes.id,
       title: filmEpisodes.title,
@@ -655,11 +659,11 @@ export async function batchTranslateChannelAiAction(channelId: number, teamId: n
       videoUrl: filmEpisodes.videoUrl
     })
     .from(filmEpisodes)
-    .where(and(eq(filmEpisodes.teamId, teamId), missingCondition))
+    .where(and(eq(filmEpisodes.teamId, effectiveTeamId), missingCondition))
     .limit(15);
 
     if (eps.length === 0) {
-      return { success: true, count: 0, remaining: 0, message: 'Tất cả các tập trong dự án đã được dịch AI hoàn tất!' };
+      return { success: true, count: 0, remaining: 0, message: '🎉 Tất cả video trong kênh đã được biên dịch AI hoàn tất trước đó!' };
     }
 
     let successCount = 0;
