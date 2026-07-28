@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart2, Film, Coins, AlertTriangle, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
-import { getAiTranslationProgressAction } from '@/lib/db/youtube-sync-actions';
+import { BarChart2, Film, Coins, AlertTriangle, Sparkles, Loader2, CheckCircle2, PlayCircle, PauseCircle } from 'lucide-react';
+import { getAiTranslationProgressAction, batchTranslateTeamAiAction } from '@/lib/db/youtube-sync-actions';
 
 interface SidebarMenuProps {
   teamId: number;
@@ -13,19 +13,85 @@ interface SidebarMenuProps {
 export default function HeroFilmSidebarMenu({ teamId }: SidebarMenuProps) {
   const pathname = usePathname();
   const [stats, setStats] = useState<{ total: number; processed: number; remaining: number } | null>(null);
+  
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(false);
+  const [recentlyDone, setRecentlyDone] = useState<{seriesTitle: string; summary: string}[]>([]);
+  const [error, setError] = useState('');
+
+  const fetchProgress = async () => {
+    const res = await getAiTranslationProgressAction(teamId);
+    if (res.success && res.total !== undefined) {
+      setStats({ total: res.total, processed: res.processed || 0, remaining: res.remaining || 0 });
+    }
+  };
 
   useEffect(() => {
-    const fetchProgress = async () => {
-      const res = await getAiTranslationProgressAction(teamId);
-      if (res.success && res.total !== undefined) {
-        setStats({ total: res.total, processed: res.processed || 0, remaining: res.remaining || 0 });
-      }
-    };
-
     fetchProgress();
     const interval = setInterval(fetchProgress, 5000);
     return () => clearInterval(interval);
   }, [teamId]);
+
+  const toggleTranslation = async () => {
+    if (isTranslating) {
+      // Pause
+      if (!isPaused) {
+        isPausedRef.current = true;
+        setIsPaused(true);
+      } else {
+        // Resume
+        isPausedRef.current = false;
+        setIsPaused(false);
+        runTranslationLoop();
+      }
+    } else {
+      // Start
+      setIsTranslating(true);
+      isPausedRef.current = false;
+      setIsPaused(false);
+      setRecentlyDone([]);
+      setError('');
+      runTranslationLoop();
+    }
+  };
+
+  const runTranslationLoop = async () => {
+    let keepGoing = true;
+    try {
+      while (keepGoing && !isPausedRef.current) {
+        const res = await batchTranslateTeamAiAction(teamId);
+        
+        if (!res.success) {
+          keepGoing = false;
+          setError(res.error || 'Lỗi không xác định');
+          break;
+        }
+
+        const countAdded = res.count || 0;
+        if (countAdded > 0) {
+          if (res.translatedTitles) {
+            setRecentlyDone(prev => [...res.translatedTitles, ...prev].slice(0, 3)); // Giữ 3 cái gần nhất trên sidebar
+          }
+          await fetchProgress();
+          if (res.remaining === 0) keepGoing = false;
+        } else {
+          keepGoing = false; // Hết video
+        }
+        
+        if (isPausedRef.current) break;
+      }
+      
+      if (!isPausedRef.current) {
+        setTimeout(() => {
+          setIsTranslating(false);
+        }, 2000);
+      }
+    } catch (e: any) {
+      setError(e.message);
+      setIsTranslating(false);
+    }
+  };
 
   const menuItems = [
     {
@@ -87,34 +153,68 @@ export default function HeroFilmSidebarMenu({ teamId }: SidebarMenuProps) {
 
       {/* Widget Trạng Thái Dịch AI Ngầm */}
       {stats && stats.total > 0 && (
-        <div className="mx-1 p-3 rounded-xl bg-gradient-to-b from-indigo-950/40 to-gray-900/60 border border-indigo-500/20 shadow-lg space-y-2">
+        <div className="mx-1 p-3 rounded-xl bg-gradient-to-b from-indigo-950/40 to-gray-900/60 border border-indigo-500/20 shadow-lg flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-indigo-300 font-bold text-[11px]">
               <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
               <span>Dịch AI Dự Án</span>
             </div>
-            {stats.remaining > 0 ? (
-              <span className="flex items-center gap-1 text-[10px] text-amber-400 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                <Loader2 className="w-2.5 h-2.5 animate-spin" /> Đang chạy
-              </span>
-            ) : (
+            
+            {stats.remaining === 0 ? (
               <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
                 <CheckCircle2 className="w-2.5 h-2.5" /> Xong
               </span>
+            ) : (
+              <button 
+                onClick={toggleTranslation}
+                className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${
+                  isTranslating && !isPaused 
+                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20' 
+                    : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/30'
+                }`}
+              >
+                {isTranslating && !isPaused ? (
+                   <><PauseCircle className="w-2.5 h-2.5" /> Dừng</>
+                ) : (
+                   <><PlayCircle className="w-2.5 h-2.5" /> {isPaused ? 'Tiếp tục' : 'Bắt đầu'}</>
+                )}
+              </button>
             )}
           </div>
 
-          <div className="w-full bg-gray-800/80 rounded-full h-2 overflow-hidden p-0.5 border border-white/5">
+          <div className="w-full bg-gray-800/80 rounded-full h-2 overflow-hidden p-0.5 border border-white/5 relative">
             <div 
-              className="bg-gradient-to-r from-indigo-500 to-rose-500 h-full rounded-full transition-all duration-500" 
+              className="bg-gradient-to-r from-indigo-500 to-rose-500 h-full rounded-full transition-all duration-500 relative" 
               style={{ width: `${percent}%` }}
-            />
+            >
+              {isTranslating && !isPaused && <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full"></div>}
+            </div>
           </div>
 
           <div className="flex items-center justify-between text-[10px] font-medium text-gray-400">
-            <span>Đã dịch: <strong className="text-indigo-300">{stats.processed}</strong>/{stats.total} video</span>
-            <span className="text-indigo-400 font-bold">{percent}%</span>
+            <span>Đã dịch: <strong className="text-indigo-300">{stats.processed}</strong>/{stats.total}</span>
+            <span className="flex items-center gap-1">
+               {isTranslating && !isPaused && <Loader2 className="w-2.5 h-2.5 animate-spin text-indigo-400" />}
+               <span className="text-indigo-400 font-bold">{percent}%</span>
+            </span>
           </div>
+          
+          {error && <div className="text-[9px] text-red-400 truncate">{error}</div>}
+
+          {/* Recent translations mini-list */}
+          {recentlyDone.length > 0 && (
+            <div className="mt-1 pt-2 border-t border-white/5 flex flex-col gap-1.5">
+              <div className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Vừa xử lý:</div>
+              {recentlyDone.map((item, idx) => (
+                <div key={idx} className="flex gap-1.5 items-start bg-white/5 rounded p-1.5 border border-white/5">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                  <div className="text-[9px] leading-tight flex-1 min-w-0">
+                    <span className="text-gray-300 block truncate font-medium">{item.seriesTitle}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

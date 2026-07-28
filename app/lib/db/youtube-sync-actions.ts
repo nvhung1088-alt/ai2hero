@@ -736,6 +736,100 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
   }
 }
 
+export async function batchTranslateTeamAiAction(teamId: number) {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (!apiKey) {
+      return { success: false, error: 'Chưa cấu hình GEMINI_API_KEY trong hệ thống' };
+    }
+
+    const missingCondition = sql`(
+      ${filmEpisodes.timeline} IS NULL 
+      OR jsonb_typeof(${filmEpisodes.timeline}) != 'array' 
+      OR (jsonb_typeof(${filmEpisodes.timeline}) = 'array' AND jsonb_array_length(${filmEpisodes.timeline}) = 0)
+    )`;
+
+    const totalRemainingRes = await db.select({ count: sql<number>`count(*)` })
+      .from(filmEpisodes)
+      .where(and(eq(filmEpisodes.teamId, teamId), missingCondition));
+
+    const totalRemainingBefore = Number(totalRemainingRes[0]?.count || 0);
+
+    const eps = await db.select({
+      id: filmEpisodes.id,
+      title: filmEpisodes.title,
+      seriesId: filmEpisodes.seriesId,
+      videoUrl: filmEpisodes.videoUrl
+    })
+    .from(filmEpisodes)
+    .where(and(eq(filmEpisodes.teamId, teamId), missingCondition))
+    .limit(3);
+
+    if (eps.length === 0) {
+      return { success: true, count: 0, remaining: 0, message: '🎉 Tất cả video trong dự án đã được biên dịch AI hoàn tất trước đó!' };
+    }
+
+    let successCount = 0;
+    const translatedTitles: { epId: number; seriesTitle: string; summary: string }[] = [];
+    const promptSystem = `Bạn là trợ lý AI biên tập phim ngắn dọc. Tôi gửi cho bạn tiêu đề video.
+Hãy tạo:
+1. Tóm tắt 2-3 câu kịch tính.
+2. Timeline mốc thời gian diễn biến (VD: [{"time": "00:00", "label": "Mở đầu..."}, {"time": "01:30", "label": "Biến cố..."}]).
+
+Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{"time": "00:00", "label": "..."}]}`;
+
+    for (const ep of eps) {
+      try {
+        const series = await db.query.filmSeries.findFirst({
+          where: eq(filmSeries.id, ep.seriesId)
+        });
+        const titleToUse = series?.title || ep.title || 'Phim ngắn';
+
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${promptSystem}\n\nTiêu đề: ${titleToUse}` }] }],
+            generationConfig: { response_mime_type: 'application/json' }
+          })
+        });
+
+        const aiData = await res.json();
+        const text = aiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const rawText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(rawText);
+
+        const summary = parsed.description || `Phim hấp dẫn: ${titleToUse}`;
+        const timeline = Array.isArray(parsed.timeline) && parsed.timeline.length > 0
+          ? parsed.timeline
+          : [{ time: '00:00', label: 'Bắt đầu phim' }];
+
+        await db.update(filmEpisodes)
+          .set({ summary, timeline })
+          .where(eq(filmEpisodes.id, ep.id));
+
+        successCount++;
+        translatedTitles.push({ epId: ep.id, seriesTitle: titleToUse, summary: summary.substring(0, 80) });
+      } catch (err) {
+        console.error('Error batch AI for episode:', ep.id, err);
+      }
+    }
+
+    const remainingLeft = Math.max(0, totalRemainingBefore - successCount);
+
+    return { 
+      success: true, 
+      count: successCount, 
+      remaining: remainingLeft,
+      translatedTitles,
+      message: `Đã dịch & tạo Timeline cho ${successCount} video (Còn lại ${remainingLeft} tập chưa dịch).`
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+
 export async function saveSyncChannelAction(teamId: number, data: { channelUrl: string; filters: any; }) {
   const user = await getUser();
   if (!user) return { success: false, error: 'Unauthorized' };
