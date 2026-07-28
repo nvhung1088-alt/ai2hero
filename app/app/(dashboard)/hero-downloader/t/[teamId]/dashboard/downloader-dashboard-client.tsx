@@ -396,9 +396,9 @@ export default function DownloaderDashboardClient({
                       <p>3. Dán câu lệnh dưới đây vào màn hình đen vừa hiện ra và nhấn Enter để khởi chạy!</p>
                     </div>
                     <div className="bg-black/60 p-3 rounded-lg border border-white/10 font-mono text-xs text-gray-300 flex items-center justify-between gap-4 group">
-                      <p className="break-all text-teal-400/90">cd hero-downloader-worker 2&gt;nul &amp; python -m pip install -U -r requirements.txt &amp;&amp; python worker.py</p>
+                      <p className="break-all text-teal-400/90">cd OneDrive\Desktop\Ai2Hero\hero-downloader-worker &amp;&amp; python -m pip install -U -r requirements.txt &amp;&amp; python worker.py</p>
                       <button 
-                        onClick={() => { navigator.clipboard.writeText('cd hero-downloader-worker 2>nul & python -m pip install -U -r requirements.txt && python worker.py'); showToast('Đã copy câu lệnh', 'success'); }} 
+                        onClick={() => { navigator.clipboard.writeText('cd OneDrive\\Desktop\\Ai2Hero\\hero-downloader-worker && python -m pip install -U -r requirements.txt && python worker.py'); showToast('Đã copy câu lệnh', 'success'); }} 
                         className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors shrink-0" 
                         title="Copy lệnh"
                       >
@@ -617,6 +617,7 @@ export default function DownloaderDashboardClient({
                                   alt="" 
                                   className="w-full h-full object-cover" 
                                   loading="lazy" 
+                                  referrerPolicy="no-referrer"
                                 />
                                 {video.translatedThumbnailUrl && (
                                   <span className="absolute top-0.5 right-0.5 bg-teal-500/90 text-white text-[7px] font-bold px-1 py-0.2 rounded">
@@ -848,6 +849,7 @@ export default function DownloaderDashboardClient({
                       src={previewVideo.thumbnailUrl} 
                       alt="Thumbnail Gốc" 
                       className="w-full h-full object-contain" 
+                      referrerPolicy="no-referrer"
                     />
                   </div>
                 ) : (
@@ -871,6 +873,7 @@ export default function DownloaderDashboardClient({
                       src={previewVideo.translatedThumbnailUrl} 
                       alt="Thumbnail Đã Dịch" 
                       className="w-full h-full object-contain" 
+                      referrerPolicy="no-referrer"
                     />
                   </div>
                 ) : (

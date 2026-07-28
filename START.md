@@ -21,6 +21,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp tính năng **Dọn dẹp video lỗi** thủ công trên Dashboard: Tự động quét và loại bỏ các file video rỗng (< 500b), video trùng lặp (size + base name), video hỏng hoặc chỉ có âm thanh (không có khung hình) bằng DOM `<video>` ẩn chạy trên RAM.
   - `[x]` Gộp extension **Hero Downloader Pro** (bắt link Douyin không logo) vào extension chính **Hero Video Assistant** thành bản Unified Extension hoàn chỉnh, hỗ trợ dual-mode (tải local hoặc đồng bộ hàng đợi), vá lỗi multi-tenancy và tích hợp robot **Auto-Scroll Crawler** tự động lướt và cào video hàng loạt gửi lên Server.
   - `[x]` Hotfix & Nâng cấp tính năng **Tải ảnh Thumbnail**: Sửa lỗi trích xuất `cover_url` Douyin trong Chrome Extension (chuẩn hóa protocol-relative `//...` ➔ `https:`), đồng thời nâng cấp Python Worker hỗ trợ tải thumbnail đồng bộ và bật cờ `writethumbnail` cho `yt-dlp`.
+  - `[x]` Hotfix UI Modal **Giới hạn video/lần quét**: Cho phép xóa sạch ô nhập số để gõ số mới tự do (dùng kiểu dữ liệu `number | string` và fallback khi submit), sửa triệt để lỗi cưỡng chế nhảy số về 50 khi bấm Backspace.
 ### 5. Hero Care (MVP Mới - Trợ lý CSKH AI đa kênh)
 - **Status:** `Beta`
 - **Mô tả:** Hộp thư hỗ trợ đa kênh (Zalo, Pancake, Telegram) tích hợp AI tự động trả lời thông minh dựa trên kịch bản FAQ và dữ liệu snapshot được đồng bộ liên tục.

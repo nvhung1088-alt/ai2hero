@@ -203,12 +203,10 @@ export default function DownloaderSettingsClient({
                           Cài đặt & Khởi chạy Worker
                         </div>
                         <p className="text-xs text-gray-400 leading-relaxed">
-                          Tải thư mục <strong>hero-downloader-worker</strong> về máy tính. Mở Terminal/CMD tại thư mục đó và chạy lệnh sau để cài đặt thư viện:
+                          Mở Terminal/CMD và chạy câu lệnh sau để cài đặt & khởi chạy Worker:
                         </p>
                         <div className="bg-black/50 p-3 rounded-lg border border-white/5 font-mono text-xs text-gray-300">
-                          <p>python -m pip install -U -r requirements.txt</p>
-                          <p className="mt-2 text-teal-500/50"># Sau đó khởi chạy worker</p>
-                          <p>python worker.py</p>
+                          <p>cd OneDrive\Desktop\Ai2Hero\hero-downloader-worker && python -m pip install -U -r requirements.txt && python worker.py</p>
                         </div>
                       </div>
 

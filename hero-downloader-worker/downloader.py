@@ -58,6 +58,7 @@ def _download_thumbnail(thumbnail_url: str, base_filepath: str):
             
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.bilibili.com/'
         }
         res = requests.get(thumbnail_url, headers=headers, stream=True, timeout=10)
         res.raise_for_status()
@@ -233,7 +234,6 @@ def download_video(video, update_callback, cookie_data: str = None):
         'progress_hooks': [progress_hook],
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best', # Ưu tiên MP4 tự nhiên để tương thích tốt nhất, fallback về best
         'merge_output_format': 'mp4',         # Hợp nhất thành mp4, tránh rớt tiếng
-        # Bật giải mã JS của YouTube để lấy được link video thay vì bị kẹt ở image
         'js_runtimes': {'node': {}, 'deno': {}, 'bun': {}, 'quickjs': {}},
         'remote_components': ['ejs:github'],
         # Giảm số luồng tải xuống còn 3 để tránh bị Bilibili bóp băng thông làm hỏng chunk (nguyên nhân gây lag video)
