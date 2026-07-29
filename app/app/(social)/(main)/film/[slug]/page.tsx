@@ -96,6 +96,14 @@ export default async function FilmWatchPage({ params }: PageProps) {
     };
   });
 
+  // Collect valid thumbnail URLs with default fallback
+  const validThumbnails = [
+    currentEpisode?.thumbnailUrl,
+    data.series.coverUrl,
+    data.series.bannerUrl,
+    'https://www.ai2hero.com/images/default-film-cover.jpg'
+  ].filter(Boolean) as string[];
+
   // Schema JSON-LD
   const jsonLdSchema = {
     '@context': 'https://schema.org',
@@ -104,8 +112,8 @@ export default async function FilmWatchPage({ params }: PageProps) {
         '@type': 'Movie',
         '@id': `https://www.ai2hero.com/film/${slug}#movie`,
         'name': seriesTitle,
-        'description': data.series.description,
-        'image': data.series.coverUrl || data.series.bannerUrl,
+        'description': data.series.description || summaryText,
+        'image': validThumbnails[0],
         'genre': data.series.genre || 'Phim Ngắn',
         'director': { '@type': 'Person', 'name': data.series.director || 'AI' },
         'actor': [{ '@type': 'Person', 'name': data.series.cast || 'AI' }]
@@ -115,10 +123,11 @@ export default async function FilmWatchPage({ params }: PageProps) {
         '@id': `https://www.ai2hero.com/film/${slug}#video`,
         'name': pageFullTitle,
         'description': summaryText,
-        'thumbnailUrl': [currentEpisode?.thumbnailUrl || data.series.coverUrl],
+        'thumbnailUrl': validThumbnails,
         'uploadDate': data.series.createdAt ? new Date(data.series.createdAt).toISOString() : new Date().toISOString(),
         'contentUrl': currentEpisode?.videoUrl,
         'embedUrl': currentEpisode?.videoUrl,
+        'isPartOf': { '@id': `https://www.ai2hero.com/film/${slug}#movie` },
         'hasPart': clipsSchema.length > 0 ? clipsSchema : undefined
       }
     ]
