@@ -30,9 +30,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const description = data.series.description || `Xem ngay phim ${data.series.title} tập ${ep || 1} cực hấp dẫn trên mạng xã hội HeroFilm.`;
   const imageUrl = data.series.coverUrl || '/images/default-film-cover.jpg'; // Thêm default image nếu cần
   
+  const canonicalUrl = `https://www.ai2hero.com/film/${slug}${ep > 1 ? `-tap-${ep}` : ''}`;
+
   return {
     title,
     description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description,
@@ -108,6 +113,30 @@ export default async function FilmWatchPage({ params }: PageProps) {
   const jsonLdSchema = {
     '@context': 'https://schema.org',
     '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `https://www.ai2hero.com/film/${slug}#breadcrumb`,
+        'itemListElement': [
+          {
+            '@type': 'ListItem',
+            'position': 1,
+            'name': 'Trang Chủ',
+            'item': 'https://www.ai2hero.com'
+          },
+          {
+            '@type': 'ListItem',
+            'position': 2,
+            'name': 'Kho Phim',
+            'item': 'https://www.ai2hero.com/film'
+          },
+          {
+            '@type': 'ListItem',
+            'position': 3,
+            'name': seriesTitle,
+            'item': `https://www.ai2hero.com/film/${slug}`
+          }
+        ]
+      },
       {
         '@type': 'Movie',
         '@id': `https://www.ai2hero.com/film/${slug}#movie`,
