@@ -645,6 +645,7 @@ export async function batchTranslateChannelAiAction(channelId: number) {
       OR jsonb_typeof(${filmEpisodes.timeline}) != 'array' 
       OR (jsonb_typeof(${filmEpisodes.timeline}) = 'array' AND jsonb_array_length(${filmEpisodes.timeline}) = 0)
       OR ${filmEpisodes.summary} LIKE 'Phim hấp dẫn:%'
+      OR ${filmEpisodes.summary} LIKE 'Bộ phim hấp dẫn:%'
     )`;
 
     // Đếm tổng số tập còn chưa dịch trong team (dùng effectiveTeamId từ DB)
@@ -763,6 +764,7 @@ export async function batchTranslateTeamAiAction(teamId: number) {
       OR jsonb_typeof(${filmEpisodes.timeline}) != 'array' 
       OR (jsonb_typeof(${filmEpisodes.timeline}) = 'array' AND jsonb_array_length(${filmEpisodes.timeline}) = 0)
       OR ${filmEpisodes.summary} LIKE 'Phim hấp dẫn:%'
+      OR ${filmEpisodes.summary} LIKE 'Bộ phim hấp dẫn:%'
     )`;
 
     const totalRemainingRes = await db.select({ count: sql<number>`count(*)` })
