@@ -644,6 +644,7 @@ export async function batchTranslateChannelAiAction(channelId: number) {
       ${filmEpisodes.timeline} IS NULL 
       OR jsonb_typeof(${filmEpisodes.timeline}) != 'array' 
       OR (jsonb_typeof(${filmEpisodes.timeline}) = 'array' AND jsonb_array_length(${filmEpisodes.timeline}) = 0)
+      OR ${filmEpisodes.summary} LIKE 'Phim hấp dẫn:%'
     )`;
 
     // Đếm tổng số tập còn chưa dịch trong team (dùng effectiveTeamId từ DB)
@@ -672,12 +673,7 @@ export async function batchTranslateChannelAiAction(channelId: number) {
     let successCount = 0;
     let lastError = '';
     const translatedTitles: { epId: number; seriesTitle: string; summary: string }[] = [];
-    const promptSystem = `Bạn là trợ lý AI biên tập phim ngắn dọc. Tôi gửi cho bạn tiêu đề video.
-Hãy tạo:
-1. Tóm tắt 2-3 câu kịch tính.
-2. Timeline mốc thời gian diễn biến (VD: [{"time": "00:00", "label": "Mở đầu..."}, {"time": "01:30", "label": "Biến cố..."}]).
-
-Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{"time": "00:00", "label": "..."}]}`;
+    const promptSystem = HeroAiText.TitleOptimizeSystem;
 
     for (const ep of eps) {
       try {
@@ -766,6 +762,7 @@ export async function batchTranslateTeamAiAction(teamId: number) {
       ${filmEpisodes.timeline} IS NULL 
       OR jsonb_typeof(${filmEpisodes.timeline}) != 'array' 
       OR (jsonb_typeof(${filmEpisodes.timeline}) = 'array' AND jsonb_array_length(${filmEpisodes.timeline}) = 0)
+      OR ${filmEpisodes.summary} LIKE 'Phim hấp dẫn:%'
     )`;
 
     const totalRemainingRes = await db.select({ count: sql<number>`count(*)` })
@@ -791,12 +788,7 @@ export async function batchTranslateTeamAiAction(teamId: number) {
     let successCount = 0;
     let lastError = '';
     const translatedTitles: { epId: number; seriesTitle: string; summary: string }[] = [];
-    const promptSystem = `Bạn là trợ lý AI biên tập phim ngắn dọc. Tôi gửi cho bạn tiêu đề video.
-Hãy tạo:
-1. Tóm tắt 2-3 câu kịch tính.
-2. Timeline mốc thời gian diễn biến (VD: [{"time": "00:00", "label": "Mở đầu..."}, {"time": "01:30", "label": "Biến cố..."}]).
-
-Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{"time": "00:00", "label": "..."}]}`;
+    const promptSystem = HeroAiText.TitleOptimizeSystem;
 
     for (const ep of eps) {
       try {
@@ -829,17 +821,18 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
         const parsed = JSON.parse(rawText);
 
         const summary = parsed.description || `Phim hấp dẫn: ${titleToUse}`;
+        const newTitle = parsed.title || titleToUse;
         const timeline = Array.isArray(parsed.timeline) && parsed.timeline.length > 0
           ? parsed.timeline
           : [{ time: '00:00', label: 'Bắt đầu phim' }];
 
         await db.update(filmEpisodes)
-          .set({ summary, timeline })
+          .set({ summary, timeline, title: newTitle })
           .where(eq(filmEpisodes.id, ep.id));
 
         if (series && series.description?.startsWith('Bộ phim hấp dẫn:')) {
           await db.update(filmSeries)
-            .set({ description: summary })
+            .set({ description: summary, title: newTitle })
             .where(eq(filmSeries.id, series.id));
         }
 
