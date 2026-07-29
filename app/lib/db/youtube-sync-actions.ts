@@ -740,7 +740,7 @@ export async function batchTranslateChannelAiAction(channelId: number) {
         .where(eq(youtubeSyncChannels.id, channelId));
     }
 
-    const remainingLeft = Math.max(0, totalRemainingBefore - successCount);
+
     
     if (successCount === 0 && lastError) {
        return { success: false, error: `Gemini API Lỗi: ${lastError}` };
