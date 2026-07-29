@@ -1293,9 +1293,53 @@ export default function HeroFilmWatchClient({
               <div className="space-y-2">
                 <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Tóm Tắt Nội Dung</h3>
                 <p className="text-sm text-gray-300 leading-relaxed font-medium whitespace-pre-wrap">
-                  {series.description || 'Chưa có thông tin mô tả chi tiết cho bộ phim này.'}
+                  {currentEpisode?.summary || series.description || 'Chưa có thông tin mô tả chi tiết cho bộ phim này.'}
                 </p>
               </div>
+
+              {/* Timeline Click-to-jump Items */}
+              {currentEpisode?.timeline && Array.isArray(currentEpisode.timeline) && currentEpisode.timeline.length > 0 && (
+                <div className="space-y-2 flex-1 pt-2">
+                  <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Bảng Mốc Thời Gian (Timeline)</h3>
+                  <div className="space-y-1.5">
+                    {currentEpisode.timeline.map((item: any, idx: number) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          const timeParts = item.time.split(':');
+                          let seconds = 0;
+                          if (timeParts.length === 3) {
+                            seconds = parseInt(timeParts[0]) * 3600 + parseInt(timeParts[1]) * 60 + parseInt(timeParts[2]);
+                          } else if (timeParts.length === 2) {
+                            seconds = parseInt(timeParts[0]) * 60 + parseInt(timeParts[1]);
+                          }
+                          const videoElement = videoRefs.current[activeEpNumber];
+                          const iframeElement = iframeRefs.current[activeEpNumber];
+                          if (videoElement) {
+                            videoElement.currentTime = seconds;
+                            videoElement.play().catch(console.error);
+                          } else if (iframeElement && iframeElement.contentWindow) {
+                            iframeElement.contentWindow.postMessage(JSON.stringify({
+                              event: 'command',
+                              func: 'seekTo',
+                              args: [seconds, true]
+                            }), '*');
+                          }
+                          setShowInfoDrawer(false);
+                        }}
+                        className="w-full text-left p-2.5 rounded-lg bg-white/[0.03] border border-white/5 hover:border-rose-500/40 hover:bg-rose-500/10 transition flex items-center gap-3 group cursor-pointer"
+                      >
+                        <span className="px-2 py-0.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-bold rounded font-mono group-hover:scale-105 transition">
+                          {item.time}
+                        </span>
+                        <span className="text-xs text-gray-300 font-medium group-hover:text-white transition line-clamp-2">
+                          {item.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="pt-4 mt-auto">
