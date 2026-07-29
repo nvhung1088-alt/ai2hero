@@ -16,11 +16,15 @@ Hãy giúp tôi:
 1. Giữ nguyên tiêu đề gốc của video (chỉ dịch sang tiếng Việt nếu tiêu đề đang ở tiếng nước ngoài, nếu đã là tiếng Việt thì giữ nguyên).
 2. Viết đoạn Tóm tắt nội dung kịch tính 2-3 câu lôi cuốn người xem dựa vào mô tả hoặc tiêu đề.
 3. Tạo mảng Timeline phân bổ đều thời lượng, chia làm khoảng 10 mốc thời gian diễn biến chính trong video. Dựa vào độ dài thực tế của phim (ví dụ 60 phút hoặc 120 phút) để ước lượng chia khoảng cách mỗi mốc cho hợp lý (VD: phim 120 phút thì mỗi mốc cách nhau khoảng 12 phút), các mốc phải phủ đều từ đầu đến cuối phim.
+4. Phân loại phim (genre) bằng một trong các từ khóa tiếng Anh sau: romance, drama, action, comedy, thriller.
+5. Tạo mảng hashtags (tags) SEO gồm 3-5 từ khóa tiếng Việt nổi bật nhất phù hợp với nội dung phim (ví dụ: ["tình cảm", "ngôn tình", "tổng tài"]).
 
 Trả về DUY NHẤT định dạng JSON:
 {
   "title": "Tiêu đề tiếng Việt",
   "description": "Đoạn tóm tắt nội dung lôi cuốn 2-3 câu...",
+  "genre": "romance",
+  "tags": ["hashtag1", "hashtag2", "hashtag3"],
   "timeline": [
     { "time": "00:00", "label": "Mở đầu..." },
     ... (khoảng 10 mốc rải đều đến hết phim)
@@ -475,6 +479,15 @@ export async function syncYoutubeChannelAction(
                 if (parsed.title) optimizedTitle = parsed.title;
                 if (parsed.description) optimizedDesc = parsed.description;
                 if (parsed.timeline && Array.isArray(parsed.timeline)) optimizedTimeline = parsed.timeline;
+                
+                if (parsed.genre || parsed.tags) {
+                  await db.update(filmSeries)
+                    .set({
+                      genre: parsed.genre || undefined,
+                      tags: parsed.tags || undefined
+                    })
+                    .where(eq(filmSeries.id, seriesId));
+                }
               } catch (err) {
                 console.error('AI Error for series', baseTitle, err);
               }
@@ -719,6 +732,17 @@ export async function batchTranslateChannelAiAction(channelId: number) {
           .set({ summary, timeline })
           .where(eq(filmEpisodes.id, ep.id));
 
+        if (parsed.genre || parsed.tags) {
+           await db.update(filmSeries)
+             .set({
+               genre: parsed.genre || undefined,
+               tags: parsed.tags || undefined
+             })
+             .where(eq(filmSeries.id, ep.seriesId));
+        }
+
+
+
         successCount++;
         translatedTitles.push({ epId: ep.id, seriesTitle: titleToUse, summary: summary.substring(0, 80) });
 
@@ -852,6 +876,15 @@ export async function batchTranslateTeamAiAction(teamId: number) {
           await db.update(filmSeries)
             .set({ description: summary, title: newTitle })
             .where(eq(filmSeries.id, series.id));
+        }
+
+        if (parsed.genre || parsed.tags) {
+           await db.update(filmSeries)
+             .set({
+               genre: parsed.genre || undefined,
+               tags: parsed.tags || undefined
+             })
+             .where(eq(filmSeries.id, ep.seriesId));
         }
 
         successCount++;
