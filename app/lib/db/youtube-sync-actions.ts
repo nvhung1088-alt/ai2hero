@@ -203,35 +203,54 @@ function parseViews(text: string | undefined): number {
 function groupYoutubeVideos(videos: any[]) {
    const groups = new Map();
    for (const v of videos) {
-       let clean = v.title.replace(/(?:\[|\()?(?:Full|Vietsub|Thuyết Minh|HD|4K|1080p)(?:\]|\))?/gi, '').trim();
+       let clean = v.title;
        
-       // Cắt bỏ phần từ dấu "|" trở đi và xoá chữ "Kết)"
-       clean = clean.split('|')[0].trim();
-       clean = clean.replace(/Kết\)/gi, '').replace(/\(Kết\)/gi, '').trim();
-
+       // Xóa rác, các thẻ phổ biến
+       clean = clean.replace(/(?:\[|\()?(?:Full|Vietsub|Thuyết Minh|Lồng Tiếng|HD|4K|1080p)(?:\]|\))?/gi, '').trim();
+       
        let epNum = 1;
-       const epRegex = /(?:Phần|Tập|Part|P)\s*\.?\s*([0-9]+)(?:\s*[-|:|\|]\s*|\s+|$)/i;
+       // Match: Tập 1, Phần 2, Part 3, Ep 4...
+       const epRegex = /(?:Phần|Tập|Part|Ep|Episode|P)\s*\.?\s*0*([1-9][0-9]*)/i;
        const match = clean.match(epRegex);
+       
        let baseTitle = clean;
        if (match) {
            epNum = parseInt(match[1]);
-           baseTitle = clean.replace(match[0], '').trim();
+           baseTitle = clean.replace(match[0], '');
        } else {
-           const endRegex = /(?:-|\s|\|)\s*([0-9]+)$/;
+           // Match các số lẻ loi có gạch nối hoặc sọc: "- 06 -" hoặc "| 10 |" hoặc "[10/100]"
+           const endRegex = /(?:-|\s|\||\[|\()\s*0*([1-9][0-9]*)\s*(?:\/[0-9]+)?\s*(?:\]|\)|\||-|$)/;
            const endMatch = clean.match(endRegex);
            if (endMatch) {
                epNum = parseInt(endMatch[1]);
-               baseTitle = clean.replace(endMatch[0], '').trim();
+               baseTitle = clean.replace(endMatch[0], ' ');
+           } else {
+               // Try to find "Tập cuối" or "Trọn bộ"
+               if (/Tập cuối/i.test(clean)) {
+                   epNum = 999;
+                   baseTitle = clean.replace(/Tập cuối/i, '');
+               } else if (/Trọn bộ/i.test(clean)) {
+                   epNum = 1;
+                   baseTitle = clean.replace(/Trọn bộ/i, '');
+               }
            }
        }
-       baseTitle = baseTitle.replace(/^[-|:|\|]\s*/, '').replace(/\s*[-|:|\|]$/, '').trim();
-       if(!baseTitle) baseTitle = v.title;
+       
+       // Xóa ngoặc đơn, ngoặc vuông còn sót lại
+       baseTitle = baseTitle.replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '');
+       
+       // Lấy phần đầu tiên trước dấu | hoặc - nếu có
+       const parts = baseTitle.split(/\||-/);
+       baseTitle = parts.length > 0 ? parts[0].trim() : baseTitle.trim();
+       
+       if (!baseTitle) baseTitle = v.title.split(/\||-/)[0].trim();
        
        let foundKey = null;
        const normalizedBase = baseTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
        for (const key of groups.keys()) {
             const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
             if (normalizedKey.length > 5 && normalizedBase.length > 5) {
+                // Nếu chứa nhau thì tính là cùng 1 phim (gom nhóm rộng rãi hơn)
                 if (normalizedKey.includes(normalizedBase) || normalizedBase.includes(normalizedKey)) {
                     foundKey = key;
                     break;
