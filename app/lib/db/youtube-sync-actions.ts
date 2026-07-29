@@ -718,30 +718,18 @@ export async function batchTranslateChannelAiAction(channelId: number) {
         const durationMinutes = ep.duration ? Math.round(ep.duration / 60) : 0;
         const durationInfo = durationMinutes > 0 ? `\nThời lượng video: khoảng ${durationMinutes} phút.` : '';
 
-        let res: Response | null = null;
-        const modelsToTry = ['gemini-2.0-flash', 'gemini-flash-lite-latest', 'gemini-1.5-flash'];
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${promptSystem}${durationInfo}\n\nTiêu đề: ${titleToUse}` }] }],
+            generationConfig: { response_mime_type: 'application/json' }
+          })
+        });
         
-        for (const modelName of modelsToTry) {
-          try {
-            const apiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: `${promptSystem}${durationInfo}\n\nTiêu đề: ${titleToUse}` }] }],
-                generationConfig: { response_mime_type: 'application/json' }
-              })
-            });
-            if (apiRes.ok) {
-              res = apiRes;
-              break;
-            }
-          } catch (fetchErr) {
-            console.error(`Gemini fetch error with ${modelName}:`, fetchErr);
-          }
-        }
-
-        if (!res || !res.ok) {
-           throw new Error(`API Gemini tạm thời không phản hồi hoặc hết Quota gói Free. Vui lòng thử lại sau ít phút.`);
+        if (!res.ok) {
+           const errData = await res.text();
+           throw new Error(`API Error ${res.status}: ${errData}`);
         }
 
         const aiData = await res.json();
@@ -869,30 +857,18 @@ export async function batchTranslateTeamAiAction(teamId: number) {
         const durationMinutes = ep.duration ? Math.round(ep.duration / 60) : 0;
         const durationInfo = durationMinutes > 0 ? `\nThời lượng video: khoảng ${durationMinutes} phút.` : '';
 
-        let res: Response | null = null;
-        const modelsToTry = ['gemini-2.0-flash', 'gemini-flash-lite-latest', 'gemini-1.5-flash'];
-        
-        for (const modelName of modelsToTry) {
-          try {
-            const apiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: `${promptSystem}${durationInfo}\n\nTiêu đề: ${titleToUse}` }] }],
-                generationConfig: { response_mime_type: 'application/json' }
-              })
-            });
-            if (apiRes.ok) {
-              res = apiRes;
-              break;
-            }
-          } catch (fetchErr) {
-            console.error(`Gemini fetch error with ${modelName}:`, fetchErr);
-          }
-        }
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${promptSystem}${durationInfo}\n\nTiêu đề: ${titleToUse}` }] }],
+            generationConfig: { response_mime_type: 'application/json' }
+          })
+        });
 
-        if (!res || !res.ok) {
-           throw new Error(`API Gemini tạm thời không phản hồi hoặc hết Quota gói Free. Vui lòng thử lại sau ít phút.`);
+        if (!res.ok) {
+           const errData = await res.text();
+           throw new Error(`API Error ${res.status}: ${errData}`);
         }
 
         const aiData = await res.json();
