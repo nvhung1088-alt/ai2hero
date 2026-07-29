@@ -55,7 +55,7 @@ async function backfill() {
       const titleToUse = series?.title || ep.title || 'Phim ngắn';
 
       const prompt = `${HeroAiText.TitleOptimizeSystem}\n\nTiêu đề gốc: ${titleToUse}`;
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

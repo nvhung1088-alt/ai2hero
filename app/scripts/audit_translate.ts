@@ -75,7 +75,7 @@ async function audit(channelId: number, urlTeamId: number) {
   if (apiKey) {
     console.log(`\n[6] Testing Gemini API...`);
     try {
-      const testRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      const testRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

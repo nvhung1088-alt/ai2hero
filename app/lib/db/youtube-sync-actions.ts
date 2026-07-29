@@ -40,7 +40,7 @@ export async function getAiConnectionsAction(teamId: number) {
       mapped.unshift({
         id: -1,
         name: 'Google Gemini 2.5 Flash (Mặc định Miễn phí)',
-        model: 'gemini-2.5-flash',
+        model: 'gemini-flash-lite-latest',
         provider: 'Google AI Studio'
       });
     }
@@ -49,7 +49,7 @@ export async function getAiConnectionsAction(teamId: number) {
     return [{
       id: -1,
       name: 'Google Gemini 2.5 Flash (Mặc định Miễn phí)',
-      model: 'gemini-2.5-flash',
+      model: 'gemini-flash-lite-latest',
       provider: 'Google AI Studio'
     }];
   }
@@ -460,7 +460,7 @@ export async function syncYoutubeChannelAction(
           if (filters.useAiTitle && apiKey) {
               try {
                 const prompt = `${HeroAiText.TitleOptimizeSystem}\n\nTiêu đề gốc: ${baseTitle}`;
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${apiKey}`, {
                    method: 'POST',
                    headers: { 'Content-Type': 'application/json' },
                    body: JSON.stringify({
@@ -686,7 +686,7 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
         });
         const titleToUse = series?.title || ep.title || 'Phim ngắn';
 
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -805,7 +805,7 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
         });
         const titleToUse = series?.title || ep.title || 'Phim ngắn';
 
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
