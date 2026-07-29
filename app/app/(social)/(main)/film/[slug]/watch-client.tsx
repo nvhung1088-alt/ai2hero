@@ -1266,7 +1266,7 @@ export default function HeroFilmWatchClient({
                 </span>
                 {Array.isArray(series.tags) && (series.tags as string[]).map((tag, i) => (
                   <span key={i} className="text-[10px] bg-white/5 border border-white/10 px-2.5 py-1 rounded-full text-gray-300">
-                    {tag}
+                    #{tag}
                   </span>
                 ))}
               </div>
