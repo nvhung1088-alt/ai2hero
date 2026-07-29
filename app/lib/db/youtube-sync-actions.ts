@@ -687,16 +687,6 @@ export async function batchTranslateChannelAiAction(channelId: number) {
 
     const totalRemainingBefore = Number(totalRemainingRes[0]?.count || 0);
 
-    // Lấy tối đa 3 tập chưa có Timeline (giảm từ 15 → 3 để tránh Vercel 10s timeout)
-    // Modal có while loop → sẽ gọi lại liên tục cho đến khi hết
-    const eps = await db.select({
-      id: filmEpisodes.id,
-      title: filmEpisodes.title,
-      seriesId: filmEpisodes.seriesId,
-      videoUrl: filmEpisodes.videoUrl,
-      duration: filmEpisodes.duration
-    })
-    .from(filmEpisodes)
     // Lấy 1 tập chưa có Timeline mỗi lượt gọi (đảm bảo phản hồi nhanh trong 3s, tránh Vercel 10s Server Action timeout)
     const eps = await db.select({
       id: filmEpisodes.id,
