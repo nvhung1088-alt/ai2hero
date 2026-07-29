@@ -11,19 +11,19 @@ import { getUserGroups } from './social-queries';
 import { dispatchMvpFeedPost } from './feed-dispatcher';
 
 const HeroAiText = {
-  TitleOptimizeSystem: `Bạn là trợ lý AI biên tập phim ngắn dọc chuyên nghiệp. Tôi sẽ gửi cho bạn thông tin video gồm tiêu đề gốc và mô tả.
+  TitleOptimizeSystem: `Bạn là trợ lý AI biên tập phim ngắn chuyên nghiệp. Tôi sẽ gửi cho bạn thông tin video gồm tiêu đề gốc và mô tả.
 Hãy giúp tôi:
-1. Tối ưu lại tiêu đề ngắn gọn, kịch tính, chuẩn phim ngắn dọc, bỏ các từ rác (như HD, Full, Vietsub).
-2. Viết đoạn Tóm tắt nội dung kịch tính 2-3 câu lôi cuốn người xem.
-3. Tạo mảng Timeline các mốc thời gian diễn biến chính trong video (VD: [{"time": "00:00", "label": "Mở đầu..."}, {"time": "01:30", "label": "Biến cố..."}]).
+1. Giữ nguyên tiêu đề gốc của video (chỉ dịch sang tiếng Việt nếu tiêu đề đang ở tiếng nước ngoài, nếu đã là tiếng Việt thì giữ nguyên).
+2. Viết đoạn Tóm tắt nội dung kịch tính 2-3 câu lôi cuốn người xem dựa vào mô tả hoặc tiêu đề.
+3. Tạo mảng Timeline phân bổ đều thời lượng, chia làm khoảng 10 mốc thời gian diễn biến chính trong video (VD: [{"time": "00:00", "label": "Mở đầu..."}, {"time": "15:30", "label": "Biến cố..."}, ...]).
 
 Trả về DUY NHẤT định dạng JSON:
 {
-  "title": "Tiêu đề kịch tính mới",
+  "title": "Tiêu đề tiếng Việt",
   "description": "Đoạn tóm tắt nội dung lôi cuốn 2-3 câu...",
   "timeline": [
     { "time": "00:00", "label": "Mô tả mốc 1" },
-    { "time": "01:30", "label": "Mô tả mốc 2" }
+    ... (khoảng 10 mốc)
   ]
 }`
 };
