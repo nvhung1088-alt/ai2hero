@@ -11,19 +11,19 @@ import { getUserGroups } from './social-queries';
 import { dispatchMvpFeedPost } from './feed-dispatcher';
 
 const HeroAiText = {
-  TitleOptimizeSystem: `Bạn là trợ lý AI biên tập phim ngắn chuyên nghiệp. Tôi sẽ gửi cho bạn thông tin video gồm tiêu đề gốc và mô tả.
+  TitleOptimizeSystem: `Bạn là trợ lý AI biên tập phim ngắn chuyên nghiệp. Tôi sẽ gửi cho bạn thông tin video gồm tiêu đề gốc, mô tả và thời lượng.
 Hãy giúp tôi:
 1. Giữ nguyên tiêu đề gốc của video (chỉ dịch sang tiếng Việt nếu tiêu đề đang ở tiếng nước ngoài, nếu đã là tiếng Việt thì giữ nguyên).
 2. Viết đoạn Tóm tắt nội dung kịch tính 2-3 câu lôi cuốn người xem dựa vào mô tả hoặc tiêu đề.
-3. Tạo mảng Timeline phân bổ đều thời lượng, chia làm khoảng 10 mốc thời gian diễn biến chính trong video (VD: [{"time": "00:00", "label": "Mở đầu..."}, {"time": "15:30", "label": "Biến cố..."}, ...]).
+3. Tạo mảng Timeline phân bổ đều thời lượng, chia làm khoảng 10 mốc thời gian diễn biến chính trong video. Dựa vào độ dài thực tế của phim (ví dụ 60 phút hoặc 120 phút) để ước lượng chia khoảng cách mỗi mốc cho hợp lý (VD: phim 120 phút thì mỗi mốc cách nhau khoảng 12 phút), các mốc phải phủ đều từ đầu đến cuối phim.
 
 Trả về DUY NHẤT định dạng JSON:
 {
   "title": "Tiêu đề tiếng Việt",
   "description": "Đoạn tóm tắt nội dung lôi cuốn 2-3 câu...",
   "timeline": [
-    { "time": "00:00", "label": "Mô tả mốc 1" },
-    ... (khoảng 10 mốc)
+    { "time": "00:00", "label": "Mở đầu..." },
+    ... (khoảng 10 mốc rải đều đến hết phim)
   ]
 }`
 };
@@ -661,7 +661,8 @@ export async function batchTranslateChannelAiAction(channelId: number) {
       id: filmEpisodes.id,
       title: filmEpisodes.title,
       seriesId: filmEpisodes.seriesId,
-      videoUrl: filmEpisodes.videoUrl
+      videoUrl: filmEpisodes.videoUrl,
+      duration: filmEpisodes.duration
     })
     .from(filmEpisodes)
     .where(and(eq(filmEpisodes.teamId, effectiveTeamId), missingCondition))
@@ -683,11 +684,14 @@ export async function batchTranslateChannelAiAction(channelId: number) {
         });
         const titleToUse = series?.title || ep.title || 'Phim ngắn';
 
+        const durationMinutes = ep.duration ? Math.round(ep.duration / 60) : 0;
+        const durationInfo = durationMinutes > 0 ? `\nThời lượng video: khoảng ${durationMinutes} phút.` : '';
+
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `${promptSystem}\n\nTiêu đề: ${titleToUse}` }] }],
+            contents: [{ parts: [{ text: `${promptSystem}${durationInfo}\n\nTiêu đề: ${titleToUse}` }] }],
             generationConfig: { response_mime_type: 'application/json' }
           })
         });
@@ -785,7 +789,8 @@ export async function batchTranslateTeamAiAction(teamId: number) {
       id: filmEpisodes.id,
       title: filmEpisodes.title,
       seriesId: filmEpisodes.seriesId,
-      videoUrl: filmEpisodes.videoUrl
+      videoUrl: filmEpisodes.videoUrl,
+      duration: filmEpisodes.duration
     })
     .from(filmEpisodes)
     .where(and(eq(filmEpisodes.teamId, teamId), missingCondition))
@@ -807,11 +812,14 @@ export async function batchTranslateTeamAiAction(teamId: number) {
         });
         const titleToUse = series?.title || ep.title || 'Phim ngắn';
 
+        const durationMinutes = ep.duration ? Math.round(ep.duration / 60) : 0;
+        const durationInfo = durationMinutes > 0 ? `\nThời lượng video: khoảng ${durationMinutes} phút.` : '';
+
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `${promptSystem}\n\nTiêu đề: ${titleToUse}` }] }],
+            contents: [{ parts: [{ text: `${promptSystem}${durationInfo}\n\nTiêu đề: ${titleToUse}` }] }],
             generationConfig: { response_mime_type: 'application/json' }
           })
         });
