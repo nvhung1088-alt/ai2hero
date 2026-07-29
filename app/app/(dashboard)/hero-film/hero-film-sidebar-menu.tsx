@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarChart2, Film, Coins, AlertTriangle, Sparkles, Loader2, CheckCircle2, PlayCircle, PauseCircle } from 'lucide-react';
 import { getAiTranslationProgressAction, batchTranslateTeamAiAction } from '@/lib/db/youtube-sync-actions';
+import { getTeamAutoTranslateAction, toggleTeamAutoTranslateAction, resetTeamAiTranslationAction } from '@/lib/db/auto-translate';
 
 interface SidebarMenuProps {
   teamId: number;
@@ -19,6 +20,7 @@ export default function HeroFilmSidebarMenu({ teamId }: SidebarMenuProps) {
   const isPausedRef = useRef(false);
   const [recentlyDone, setRecentlyDone] = useState<{seriesTitle: string; summary: string}[]>([]);
   const [error, setError] = useState('');
+  const [autoTranslate, setAutoTranslate] = useState(false);
 
   const fetchProgress = async () => {
     const res = await getAiTranslationProgressAction(teamId);
@@ -29,9 +31,23 @@ export default function HeroFilmSidebarMenu({ teamId }: SidebarMenuProps) {
 
   useEffect(() => {
     fetchProgress();
+    getTeamAutoTranslateAction(teamId).then(res => setAutoTranslate(res));
     const interval = setInterval(fetchProgress, 5000);
     return () => clearInterval(interval);
   }, [teamId]);
+
+  const handleToggleAutoTranslate = async () => {
+    const newValue = !autoTranslate;
+    setAutoTranslate(newValue);
+    await toggleTeamAutoTranslateAction(teamId, newValue);
+  };
+
+  const handleResetTranslation = async () => {
+    if (confirm('Bạn có chắc chắn muốn Dịch lại toàn bộ dự án? Quá trình này sẽ dịch lại toàn bộ video chưa có nội dung hoặc cần chỉnh sửa lại!')) {
+      await resetTeamAiTranslationAction(teamId);
+      await fetchProgress();
+    }
+  };
 
   const toggleTranslation = async () => {
     if (isTranslating) {
@@ -161,24 +177,42 @@ export default function HeroFilmSidebarMenu({ teamId }: SidebarMenuProps) {
             </div>
             
             {stats.remaining === 0 ? (
-              <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                <CheckCircle2 className="w-2.5 h-2.5" /> Xong
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                  <CheckCircle2 className="w-2.5 h-2.5" /> Xong
+                </span>
+                <button 
+                  onClick={handleResetTranslation}
+                  className="text-[10px] text-gray-300 bg-white/5 hover:bg-white/10 px-1.5 py-0.5 rounded border border-white/10 transition-colors"
+                >
+                  Dịch Lại
+                </button>
+              </div>
             ) : (
-              <button 
-                onClick={toggleTranslation}
-                className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${
-                  isTranslating && !isPaused 
-                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20' 
-                    : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/30'
-                }`}
-              >
-                {isTranslating && !isPaused ? (
-                   <><PauseCircle className="w-2.5 h-2.5" /> Dừng</>
-                ) : (
-                   <><PlayCircle className="w-2.5 h-2.5" /> {isPaused ? 'Tiếp tục' : 'Bắt đầu'}</>
+              <div className="flex items-center gap-1.5">
+                <button 
+                  onClick={toggleTranslation}
+                  className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${
+                    isTranslating && !isPaused 
+                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20' 
+                      : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/30'
+                  }`}
+                >
+                  {isTranslating && !isPaused ? (
+                     <><PauseCircle className="w-2.5 h-2.5" /> Dừng</>
+                  ) : (
+                     <><PlayCircle className="w-2.5 h-2.5" /> {isPaused ? 'Tiếp tục' : 'Bắt đầu'}</>
+                  )}
+                </button>
+                {stats.processed > 0 && !isTranslating && (
+                  <button 
+                    onClick={handleResetTranslation}
+                    className="text-[10px] text-gray-300 bg-white/5 hover:bg-white/10 px-1.5 py-0.5 rounded border border-white/10 transition-colors"
+                  >
+                    Dịch Lại
+                  </button>
                 )}
-              </button>
+              </div>
             )}
           </div>
 
@@ -198,6 +232,16 @@ export default function HeroFilmSidebarMenu({ teamId }: SidebarMenuProps) {
                <span className="text-indigo-400 font-bold">{percent}%</span>
             </span>
           </div>
+
+          <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
+            <input 
+              type="checkbox" 
+              checked={autoTranslate}
+              onChange={handleToggleAutoTranslate}
+              className="w-3 h-3 rounded bg-gray-800 border-gray-600 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-gray-900 cursor-pointer"
+            />
+            <span className="text-[10px] text-gray-400 font-medium">Tự động dịch ngầm video mới</span>
+          </label>
           
           {error && <div className="text-[9px] text-red-400 truncate">{error}</div>}
 

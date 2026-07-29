@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { youtubeSyncChannels } from '@/lib/db/schema';
 import { eq, and, isNull, or, lte } from 'drizzle-orm';
-import { syncYoutubeChannelAction } from '@/lib/db/youtube-sync-actions';
+import { syncYoutubeChannelAction, batchTranslateTeamAiAction } from '@/lib/db/youtube-sync-actions';
+import { getTeamAutoTranslateAction } from '@/lib/db/auto-translate';
 
 // Thiết lập giới hạn thời gian chạy cho Vercel (Max duration)
 export const maxDuration = 300; // Cho phép API chạy tối đa 5 phút
@@ -58,11 +59,25 @@ export async function GET(request: Request) {
           updatedAt: new Date()
        }).where(eq(youtubeSyncChannels.id, channel.id));
 
+       // Dịch tự động nếu team bật tính năng này
+       let autoTranslateTriggered = false;
+       const isAutoTranslate = await getTeamAutoTranslateAction(channel.teamId);
+       if (isAutoTranslate) {
+         try {
+           // Gọi chạy dịch 1 mẻ (15 video) tự động cho team này
+           await batchTranslateTeamAiAction(channel.teamId);
+           autoTranslateTriggered = true;
+         } catch (e) {
+           console.error('Auto translate error for team', channel.teamId, e);
+         }
+       }
+
        results.push({ 
          channelUrl: channel.channelUrl, 
          success: res.success, 
          error: res.error, 
-         count: res.count || 0 
+         count: res.count || 0,
+         autoTranslateTriggered
        });
     }
 
