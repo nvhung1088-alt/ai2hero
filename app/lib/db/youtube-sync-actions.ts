@@ -837,6 +837,12 @@ Trả về DUY NHẤT định dạng JSON: {"description": "...", "timeline": [{
           .set({ summary, timeline })
           .where(eq(filmEpisodes.id, ep.id));
 
+        if (series && series.description?.startsWith('Bộ phim hấp dẫn:')) {
+          await db.update(filmSeries)
+            .set({ description: summary })
+            .where(eq(filmSeries.id, series.id));
+        }
+
         successCount++;
         translatedTitles.push({ epId: ep.id, seriesTitle: titleToUse, summary: summary.substring(0, 80) });
       } catch (err: any) {
