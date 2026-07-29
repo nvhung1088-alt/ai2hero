@@ -717,12 +717,20 @@ export async function batchTranslateChannelAiAction(channelId: number) {
 
         successCount++;
         translatedTitles.push({ epId: ep.id, seriesTitle: titleToUse, summary: summary.substring(0, 80) });
+
+        // Tự động delay 4.5s để tránh lỗi Rate Limit (429)
+        await new Promise(resolve => setTimeout(resolve, 4500));
       } catch (err: any) {
         console.error('Error batch AI for episode:', ep.id, err);
         lastError = err.message || 'Lỗi xử lý AI';
+        if (lastError.includes('429')) {
+          await new Promise(resolve => setTimeout(resolve, 8000));
+        }
       }
     }
 
+    const remainingLeft = Math.max(0, totalRemainingBefore - successCount);
+    
     if (successCount > 0) {
       await db.update(youtubeSyncChannels)
         .set({
@@ -840,9 +848,16 @@ export async function batchTranslateTeamAiAction(teamId: number) {
 
         successCount++;
         translatedTitles.push({ epId: ep.id, seriesTitle: titleToUse, summary: summary.substring(0, 80) });
+
+        // Tự động delay 4.5s để tránh lỗi Rate Limit (429) của gói Gemini Free (15 requests/minute)
+        await new Promise(resolve => setTimeout(resolve, 4500));
       } catch (err: any) {
         console.error('Error batch AI for episode:', ep.id, err);
         lastError = err.message || 'Lỗi xử lý AI';
+        // Nếu lỗi 429 (Quá tải), delay dài hơn một chút
+        if (lastError.includes('429')) {
+          await new Promise(resolve => setTimeout(resolve, 8000));
+        }
       }
     }
 
