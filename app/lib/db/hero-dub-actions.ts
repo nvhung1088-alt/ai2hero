@@ -93,20 +93,24 @@ export async function createDubTaskAction(data: {
     // Dedupe Key: teamId + url + targetLang
     const dedupeKey = `${data.teamId}:${sourceUrl}:${targetLang}`;
 
-    // Check duplicate (chỉ block khi tác vụ cùng dedupeKey đang trong trạng thái active/xử lý)
-    const ACTIVE_STATUSES = ['pending', 'assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading'];
     const [existing] = await db
       .select()
       .from(dubTasks)
       .where(
         and(
-          eq(dubTasks.dedupeKey, dedupeKey),
-          inArray(dubTasks.status, ACTIVE_STATUSES)
+          eq(dubTasks.teamId, data.teamId),
+          eq(dubTasks.dedupeKey, dedupeKey)
         )
       )
       .limit(1);
 
     if (existing) {
+      if (data.scanConfigId && existing.scanConfigId !== data.scanConfigId) {
+        await db
+          .update(dubTasks)
+          .set({ scanConfigId: data.scanConfigId })
+          .where(eq(dubTasks.id, existing.id));
+      }
       return { success: true, taskId: existing.id, isDuplicate: true };
     }
 

@@ -36,6 +36,9 @@ export async function POST(request: Request) {
     let successCount = 0;
     const errors: string[] = [];
     
+    const rawConfigId = config?.id || config?.config_id || config?.scan_config_id || config?.scanConfigId;
+    const scanConfigId = rawConfigId ? parseInt(rawConfigId.toString()) : undefined;
+
     for (const filePath of videoPaths) {
       const sourceLang = config.sourceLang || config.source_lang;
       const targetLang = config.targetLang || config.target_lang;
@@ -69,22 +72,20 @@ export async function POST(request: Request) {
         bgVolume,
         ttsVolume,
         outputFolder: outputFolder?.trim() || undefined,
-        scanConfigId: config.id,
+        scanConfigId,
       });
 
       console.log(`[create-from-worker] filePath=${filePath} result=`, JSON.stringify(result));
 
-      if (result?.success && !result.isDuplicate) {
+      if (result?.success) {
         successCount++;
       } else if (result?.error) {
         errors.push(`${path.basename(filePath)}: ${result.error}`);
-      } else if (result?.isDuplicate) {
-        // skip silently - already exists
       }
     }
 
-    if (config.id) {
-      await updateDubScanConfigStatsAction(config.id, successCount);
+    if (scanConfigId) {
+      await updateDubScanConfigStatsAction(scanConfigId, successCount);
     }
 
     return NextResponse.json({ 
