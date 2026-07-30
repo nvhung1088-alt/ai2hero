@@ -166,6 +166,7 @@ export async function getDubTasksAction(
   teamId: number,
   filters?: {
     status?: string;
+    scanConfigId?: number | null;
     limit?: number;
     offset?: number;
   }
@@ -177,6 +178,13 @@ export async function getDubTasksAction(
     let conditions = [eq(dubTasks.teamId, teamId)];
     if (filters?.status) {
       conditions.push(eq(dubTasks.status, filters.status));
+    }
+    if (filters?.scanConfigId !== undefined) {
+      if (filters.scanConfigId === null || filters.scanConfigId === 0) {
+        conditions.push(isNull(dubTasks.scanConfigId));
+      } else {
+        conditions.push(eq(dubTasks.scanConfigId, filters.scanConfigId));
+      }
     }
 
     const tasks = await db
@@ -205,6 +213,34 @@ export async function getDubTasksAction(
     return { error: 'Lỗi lấy danh sách tác vụ: ' + error.message };
   }
 }
+
+export async function retryTasksByScanConfigAction(scanConfigId: number, teamId: number) {
+  try {
+    const updated = await db
+      .update(dubTasks)
+      .set({
+        status: 'pending',
+        error: null,
+        progress: '0%',
+        retryCount: sql`${dubTasks.retryCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(dubTasks.teamId, teamId),
+          eq(dubTasks.scanConfigId, scanConfigId),
+          eq(dubTasks.status, 'failed')
+        )
+      )
+      .returning({ id: dubTasks.id });
+
+    return { success: true, retriedCount: updated.length };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] retryTasksByScanConfigAction error:', error);
+    return { error: 'Lỗi thử lại tác vụ: ' + error.message };
+  }
+}
+
 
 export async function getDubTaskDetailAction(taskId: number, teamId: number) {
   try {

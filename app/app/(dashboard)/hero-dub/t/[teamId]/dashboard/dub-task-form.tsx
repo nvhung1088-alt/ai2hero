@@ -177,96 +177,18 @@ export default function DubTaskForm({
             <span>Nguồn Video</span>
           </label>
 
-          <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
-            <button
-              type="button"
-              onClick={() => { setUploadMode('file'); setEditingProjectId(null); }}
-              className={`flex-1 text-[11px] py-1.5 rounded-lg font-bold transition-all ${uploadMode === 'file' && !editingTaskId ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
-            >
-              File Từng Video
-            </button>
-            <button
-              type="button"
-              onClick={() => setUploadMode('folder')}
-              className={`flex-1 text-[11px] py-1.5 rounded-lg font-bold transition-all ${uploadMode === 'folder' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
-            >
-              Dự án
-            </button>
-          </div>
-
-          {uploadMode === 'folder' ? (
-            <div className="space-y-4 pt-2">
-              {scanProjects.length > 0 && !editingProjectId && (
-                <div className="space-y-2">
-                  {scanProjects.map(p => (
-                    <div key={p.id} className={`bg-black/40 p-3 rounded-xl border ${p.isActive ? 'border-white/10' : 'border-red-500/20 opacity-75'} flex flex-col gap-2`}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold text-white flex items-center gap-2">
-                            {p.name}
-                            {!p.isActive && <span className="text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-md">Đã Tạm Dừng</span>}
-                          </span>
-                          <span 
-                            className="text-[10px] text-gray-400 break-all mt-0.5 cursor-pointer hover:text-white transition-colors flex items-center gap-1 group"
-                            onClick={() => { navigator.clipboard.writeText(p.folderPath); showToast('Đã copy đường dẫn gốc', 'success'); }}
-                            title="Click để copy đường dẫn"
-                          >
-                            📁 Gốc: {p.folderPath}
-                            <span className="opacity-0 group-hover:opacity-100 text-[9px] bg-white/10 px-1 rounded">Copy</span>
-                          </span>
-                          {p.outputFolder && (
-                            <span 
-                              className="text-[10px] text-amber-500/80 break-all mt-0.5 cursor-pointer hover:text-amber-400 transition-colors flex items-center gap-1 group"
-                              onClick={() => { navigator.clipboard.writeText(p.outputFolder!); showToast('Đã copy thư mục lưu', 'success'); }}
-                              title="Click để copy thư mục lưu video"
-                            >
-                              💾 Lưu: {p.outputFolder}
-                              <span className="opacity-0 group-hover:opacity-100 text-[9px] bg-amber-500/20 px-1 rounded">Copy</span>
-                            </span>
-                          )}
-                          <span className="text-[9px] text-amber-500 mt-1 flex flex-col gap-0.5">
-                            <span>{p.intervalMinutes === 0 ? 'Chạy 1 lần' : `Quét mỗi ${p.intervalMinutes} phút`}</span>
-                            <span>Đã quét: <b className="text-white">{p.scannedCount || 0}</b> video {p.lastScanAt && `| Lần cuối: ${new Date(p.lastScanAt).toLocaleTimeString()}`}</span>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-wrap justify-end max-w-[120px]">
-                          <button type="button" onClick={() => handleScanNow(p)} className="p-1.5 bg-amber-500/10 rounded-lg text-amber-400 hover:bg-amber-500/20" title="Quét ngay lập tức"><Zap className="h-3 w-3" /></button>
-                          <button type="button" onClick={() => handleToggleActive(p)} className={`p-1.5 rounded-lg ${p.isActive ? 'bg-white/5 text-gray-400 hover:text-white' : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'}`} title={p.isActive ? "Tạm dừng quét" : "Tiếp tục quét"}>
-                            {p.isActive ? <Pause className="h-3 w-3" /> : <PlayCircle className="h-3 w-3" />}
-                          </button>
-                          <button type="button" onClick={() => handleEditScanProject(p)} className="p-1.5 bg-white/5 rounded-lg text-gray-400 hover:text-amber-400" title="Sửa dự án"><Edit className="h-3 w-3" /></button>
-                          <button type="button" onClick={() => handleDeleteScanProject(p.id)} className="p-1.5 bg-white/5 rounded-lg text-gray-400 hover:text-red-400" title="Xóa dự án"><Trash2 className="h-3 w-3" /></button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <button type="button" onClick={() => { setEditingProjectId('new'); setTaskTitle(''); setScanFolderPath(''); setOutputFolder(''); }} className="w-full py-2 bg-white/5 border border-dashed border-white/10 rounded-xl text-xs text-gray-400 hover:text-white transition-all">+ Tạo Dự Án Mới</button>
-                </div>
-              )}
-
-              {(!scanProjects.length || editingProjectId) && (
-                <div className="space-y-3 bg-amber-500/5 p-4 rounded-xl border border-amber-500/20">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-bold text-amber-500">{editingProjectId === 'new' || !scanProjects.length ? 'Tạo Dự án Mới' : 'Sửa Dự án'}</h3>
-                    {scanProjects.length > 0 && <button type="button" onClick={() => setEditingProjectId(null)} className="text-[10px] text-gray-400 hover:text-white">Hủy</button>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">Đường dẫn Thư mục (_VD: D:\Videos)</label>
-                    <input type="text" value={scanFolderPath} onChange={e => setScanFolderPath(e.target.value.replace(/["']/g, ''))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/55" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">Chu kỳ quét tự động</label>
-                    <select value={scanInterval} onChange={e => setScanInterval(Number(e.target.value))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer">
-                      <option value={0}>Chạy 1 lần (Không lặp lại)</option>
-                      <option value={60}>Quét mỗi 60 phút</option>
-                      <option value={120}>Quét mỗi 120 phút</option>
-                      <option value={600}>Quét mỗi 10 giờ</option>
-                    </select>
-                  </div>
-                </div>
-              )}
+          <div className="space-y-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-semibold text-zinc-300">Đường dẫn Local hoặc Link Video (Bilibili, Douyin, YouTube)</label>
+              <input
+                type="text"
+                placeholder="VD: C:\Video\input.mp4 hoặc https://www.bilibili.com/video/..."
+                value={localFilePaths}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocalFilePaths(e.target.value)}
+                className="w-full bg-black/60 border border-zinc-800 text-zinc-100 text-xs rounded-lg h-9 px-3 focus:outline-none focus:border-orange-500/50"
+              />
             </div>
-          ) : (
+          </div>
             <div className="space-y-2 pt-2">
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-2">
                 <p className="text-xs text-amber-500 font-semibold mb-1">💡 Mẹo nhập nhiều video cực nhanh (Windows):</p>
@@ -301,8 +223,7 @@ export default function DubTaskForm({
                 </label>
               </div>
             </div>
-          )}
-        </div>
+          </div>
 
         <div className="space-y-1.5">
           <label className="text-[10px] font-bold text-gray-400 uppercase">Tên Tác Vụ / Tên Dự Án</label>

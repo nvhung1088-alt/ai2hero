@@ -1,6 +1,7 @@
 # AI2HERO — CHANGELOG
 
-## 2026-07-30 — HeroFilm ReactNode Bug Fix & Downloader Enhancements
+## 2026-07-30 — Hero Dub Project Management Refactor & HeroFilm Bug Fix
+- **Hero Dub Split-Pane Project Management UI**: Tái cấu trúc toàn bộ mục Quản lý Dự án sang giao diện Split-Pane 2 cột (Tương tự Quản lý Thương hiệu & Hero Downloader). Tạo `DubScanSidebar` bên trái giúp quản lý danh sách dự án quét thư mục tự động và phân tách riêng biệt với các "Tác vụ lẻ". Tạo `DubScanProjectPane` bên phải giúp hiển thị cấu hình dự án, bảng danh sách video đã được lọc theo đúng dự án, và nút "Thử lại tất cả lỗi" của dự án đó.
 - **Fix TS2322 ReactNode Fallback**: Phát hiện và xử lý dứt điểm lỗi ảo "Type 'unknown' is not assignable to type 'ReactNode'" ở `watch-client.tsx`. Lỗi phát sinh do TypeScript không nhận diện được kiểu của biểu thức `&&` với các biến `unknown` (JSONB) kết hợp với lỗi parsing tại các khối JSX comments. Đã thay thế thành Ternary Operator an toàn và xóa các comment nội tuyến, đảm bảo TSC pass 100%.
 - **Hero Dub Modular Refactor**: Tách file khổng lồ `dashboard-client.tsx` (2.072 dòng) thành các sub-component chuyên biệt. Rút gọn file chính xuống ~560 dòng, compile sạch 100%. Đổi UI `projects-client.tsx` sang dạng Split-Pane chuyên nghiệp.
 - **Hero Downloader First/Last Page & Retry All**: Bổ sung nút "Thử lại tất cả" để chạy lại toàn bộ video lỗi, và nút "Đầu", "Cuối" cho thanh phân trang. Tối ưu hàm `getStatusRank` ra helper chung.

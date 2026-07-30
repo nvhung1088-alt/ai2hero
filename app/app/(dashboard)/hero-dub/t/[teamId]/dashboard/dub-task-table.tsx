@@ -29,6 +29,7 @@ interface DubTaskTableProps {
   setPreviewVideoUrl: (_url: string | null) => void;
   setPreviewSrtUrl: (_url: string | null) => void;
   teamId: number;
+  scanConfigId?: number | null;
 }
 
 export default function DubTaskTable({

@@ -160,6 +160,12 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính từ 1.018 dòng xuống còn ~350 dòng, giảm bớt 65% code dư thừa giúp UI render nhanh hơn và tối ưu bảo trì. Verify build 100% không lỗi.
 
+- **2026-07-30 (hero-dub - Split-Pane Project Management UI Refactor)**:
+  - 🚀 **Nâng cấp Giao diện Quản lý Dự án**: Tách biệt hoàn toàn tính năng "Dự án quét thư mục tự động" và "Tác vụ dịch lẻ". 
+  - 📂 **`DubScanSidebar` & `DubScanProjectPane`**: Triển khai giao diện Split-Pane 2 cột (Sidebar trái điều hướng dự án, Pane phải quản lý cấu hình & danh sách video dịch thuộc về riêng dự án đó).
+  - 🔄 **Thử lại tất cả lỗi theo Dự án**: Phát triển Server Action `retryTasksByScanConfigAction` cho phép 1-click khôi phục toàn bộ tác vụ lỗi của một dự án về trạng thái chờ.
+  - 🟢 **TypeScript Verification**: Kiểm tra tĩnh `npx tsc --noEmit` đạt kết quả 100% thành công 0 lỗi.
+
 - **2026-07-30 (hero-film - Fix TypeScript ReactNode & JSX Comments Bug)**:
   - 🚀 **Fix TS2322 ReactNode Fallback**: Tìm và xử lý dứt điểm lỗi ảo "Type 'unknown' is not assignable to type 'ReactNode'" ở `watch-client.tsx`. Lỗi phát sinh do TypeScript không nhận diện được kiểu của biểu thức `&&` với các biến `unknown` (JSONB) và bị lag parser tại các khối JSX comments nội tuyến. Đã thay thế thành Ternary Operator `Boolean(x) ? String(x) : null` và xóa sạch các comment gây lỗi AST. Kiểm tra TSC pass 100%.
 
