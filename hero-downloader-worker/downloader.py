@@ -1,9 +1,14 @@
 import os
+import re
 import tempfile
 import threading
 import requests
 import yt_dlp
 from colorama import Fore
+
+def _strip_ansi(text: str) -> str:
+    """Xóa tất cả ANSI escape codes khỏi chuỗi (tránh lem ký tự rác lên Web UI)."""
+    return re.sub(r'\x1b\[[0-9;]*m|\x1b\[[0-9;]*K', '', str(text)) if text else ''
 
 # Lock bảo vệ dict active_downloads (thread-safe)
 _lock = threading.Lock()
@@ -249,10 +254,11 @@ def download_video(video, update_callback, cookie_data: str = None):
     if video.get('downloadThumbnail', True):
         ydl_opts['writethumbnail'] = True
 
-    # Bilibili cần Referer để không bị 403, nhưng Douyin check User-Agent rất gắt.
+    # Bilibili cần Referer và User-Agent Chrome chuẩn để CDN không đóng kết nối (Remote end closed connection).
     if 'bilibili.com' in url:
         ydl_opts['http_headers'] = {
-            'Referer': 'https://www.bilibili.com',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.bilibili.com/',
         }
     elif 'douyin.com' in url or 'douyinvod.com' in url:
         if 'douyinvod.com' in url or url.endswith('.mp4'):
@@ -295,20 +301,22 @@ def download_video(video, update_callback, cookie_data: str = None):
         print(Fore.YELLOW + f"[-] Da huy tai video ID {video_id}")
 
     except Exception as e:
-        error_msg = str(e).lower()
+        clean_err = _strip_ansi(str(e))
+        error_msg = clean_err.lower()
         # WinError 32 = file bị khóa bởi OneDrive / Antivirus. Coi như lỗi mềm, retry
         is_file_locked = "winerror 32" in error_msg or "unable to rename" in error_msg or "being used by another process" in error_msg
-        # Lỗi mạng / 403 Forbidden / 503: retry tự động 3 lần.
+        # Lỗi mạng / 403 Forbidden / 503 / Bilibili CDN drop: retry tự động 3 lần.
         soft_keywords = [
             "timed out", "handshake", "connection", "reset", "500", "502", "503", "504",
             "403", "forbidden", "unable to download", "416", "range", "giving up",
-            "remote end closed", "socket", "eof", "network", "service unavailable"
+            "remote end closed", "socket", "eof", "network", "service unavailable",
+            "did not get any data blocks", "data blocks"
         ]
         is_soft_error = is_file_locked or any(err in error_msg for err in soft_keywords)
         
         if is_soft_error:
-            # Xóa các file .part/.ytdl nếu gặp lỗi 403/416/forbidden để tải lại sạch từ đầu
-            if any(err in error_msg for err in ["403", "416", "forbidden", "range"]):
+            # Xóa các file .part/.ytdl nếu gặp lỗi 403/416/forbidden/data blocks để tải lại sạch từ đầu
+            if any(err in error_msg for err in ["403", "416", "forbidden", "range", "data blocks"]):
                 for f in os.listdir(downloads_dir):
                     if f.startswith(f"{video_id}_") and (f.endswith('.part') or f.endswith('.ytdl')):
                         try: os.remove(os.path.join(downloads_dir, f))
@@ -319,17 +327,17 @@ def download_video(video, update_callback, cookie_data: str = None):
                 current_retries = retry_counts[video_id]
             
             if current_retries <= 3:
-                update_callback(video_id, status='pending', error=str(e), progress=last_progress[0], speed='')
-                reason = "File bi khoa (OneDrive/AV)" if is_file_locked else "Loi mang"
+                update_callback(video_id, status='pending', error=clean_err, progress=last_progress[0], speed='')
+                reason = "File bi khoa (OneDrive/AV)" if is_file_locked else "Loi mang/CDN Bilibili"
                 print(Fore.YELLOW + f"[!] {reason} video ID {video_id}. Tu dong thu lai {current_retries}/3...")
             else:
-                update_callback(video_id, status='failed', error=f"Da thu lai 3 lan khong thanh cong: {str(e)}", progress=last_progress[0], speed='')
+                update_callback(video_id, status='failed', error=f"Da thu lai 3 lan khong thanh cong: {clean_err}", progress=last_progress[0], speed='')
                 print(Fore.RED + f"[X] Video ID {video_id} that bai sau 3 lan thu. Cho nguoi dung xu ly.")
                 with _lock:
                     retry_counts[video_id] = 0
         else:
-            update_callback(video_id, status='failed', error=f"Loi: {e}")
-            print(Fore.RED + f"[X] Loi video ID {video_id}: {e}")
+            update_callback(video_id, status='failed', error=f"Loi: {clean_err}")
+            print(Fore.RED + f"[X] Loi video ID {video_id}: {clean_err}")
 
     finally:
         # Dọn dẹp TẤT CẢ các file rác .part và .ytdl của video này sau khi xong hoặc lỗi

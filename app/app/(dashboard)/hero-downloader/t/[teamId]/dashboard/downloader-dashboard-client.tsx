@@ -699,7 +699,9 @@ export default function DownloaderDashboardClient({
                                     title={video.error}
                                   >
                                     {video.error.includes('403') || video.error.includes('forbidden') || video.error.includes('Anti-bot') || video.error.includes('Sign') ? (
-                                      <span>🔴 <strong>Lỗi Cookie/Anti-bot:</strong> Douyin chặn tải. Vui lòng cập nhật Cookie mới hoặc dùng Chrome Extension.</span>
+                                      <span>🔴 <strong>Lỗi Cookie/Anti-bot:</strong> Douyin/Bilibili chặn tải. Vui lòng cập nhật Cookie mới hoặc dùng Chrome Extension.</span>
+                                    ) : video.error.includes('data blocks') || video.error.includes('Remote end closed') || video.error.includes('Giving up') ? (
+                                      <span>🔴 <strong>Bilibili CDN ngắt kết nối:</strong> Server từ chối truyền dữ liệu. Vui lòng thử lại hoặc cập nhật Cookie Bilibili.</span>
                                     ) : video.error.includes('WinError 32') || video.error.includes('locked') || video.error.includes('being used') ? (
                                       <span>⚠️ <strong>File bị khóa:</strong> Tệp đang được mở bởi chương trình khác/OneDrive.</span>
                                     ) : (
