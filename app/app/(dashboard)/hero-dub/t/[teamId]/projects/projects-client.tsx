@@ -13,11 +13,9 @@ import Link from 'next/link';
 
 interface ProjectsClientProps {
   teamId: number;
-  userId: number;
-  teamName: string;
 }
 
-export default function ProjectsClient({ teamId, userId, teamName }: ProjectsClientProps) {
+export default function ProjectsClient({ teamId }: ProjectsClientProps) {
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   

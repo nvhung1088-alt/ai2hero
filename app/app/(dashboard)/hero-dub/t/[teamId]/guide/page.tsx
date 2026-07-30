@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download, Info, Terminal, Laptop, HelpCircle, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Info, Terminal, Laptop, Copy, Check } from 'lucide-react';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 
 export default function HeroDubGuidePage() {

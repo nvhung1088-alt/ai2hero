@@ -1,0 +1,789 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import {
+  Languages,
+  Loader2,
+  FolderOpen,
+  Zap,
+  Pause,
+  PlayCircle,
+  Edit,
+  Trash2,
+  ExternalLink,
+  Play,
+  Check,
+  Plus
+} from 'lucide-react';
+import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
+
+interface DubTaskFormProps {
+  uploadMode: 'file' | 'folder';
+  setUploadMode: (_mode: 'file' | 'folder') => void;
+  editingTaskId: number | null;
+  setEditingTaskId: (_id: number | null) => void;
+  editingProjectId: string | null;
+  setEditingProjectId: (_id: string | null) => void;
+  
+  localFilePaths: string;
+  setLocalFilePaths: (_paths: string) => void;
+  isUploadingFile: boolean;
+  handleLocalFileUpload: (_e: React.ChangeEvent<HTMLInputElement>) => void;
+  
+  taskTitle: string;
+  setTaskTitle: (_title: string) => void;
+  sourceLang: string;
+  setSourceLang: (_lang: string) => void;
+  targetLang: string;
+  setTargetLang: (_lang: string) => void;
+  asrEngine: string;
+  setAsrEngine: (_engine: string) => void;
+  sttPreset: 'fast' | 'balanced' | 'quality';
+  setSttPreset: (_p: 'fast' | 'balanced' | 'quality') => void;
+  noiseLevel: 'clean' | 'normal' | 'noisy';
+  setNoiseLevel: (_l: 'clean' | 'normal' | 'noisy') => void;
+  subtitleMode: string;
+  setSubtitleMode: (_mode: string) => void;
+  
+  selectedAiAppSlug: string;
+  setSelectedAiAppSlug: (_slug: string) => void;
+  selectedAiModel: string;
+  setSelectedAiModel: (_model: string) => void;
+  connectedAiApps?: { slug: string; name: string; models: any[] }[];
+  connectedAiTtsApps?: { slug: string; name: string; voices: string[] }[];
+  
+  ttsEnabled: boolean;
+  setTtsEnabled: (_enabled: boolean) => void;
+  ttsEngine: string;
+  handleTtsEngineChange: (_engine: string) => void;
+  ttsVoice: string;
+  setTtsVoice: (_voice: string) => void;
+  ttsSpeed: string;
+  setTtsSpeed: (_speed: string) => void;
+  bgVolume: string;
+  setBgVolume: (_vol: string) => void;
+  ttsVolume: string;
+  setTtsVolume: (_vol: string) => void;
+  handlePreviewVoice: () => void;
+  
+  brandingEnabled: boolean;
+  setBrandingEnabled: (_enabled: boolean) => void;
+  selectedProjectId: number | '';
+  setSelectedProjectId: (_id: number | '') => void;
+  projects: any[];
+  
+  outputFolder: string;
+  setOutputFolder: (_folder: string) => void;
+  creatingTask: boolean;
+  uploadProgressMsg: string;
+  handleCreateTask: (_e: React.FormEvent) => void;
+  
+  scanProjects: any[];
+  scanFolderPath: string;
+  setScanFolderPath: (_path: string) => void;
+  scanInterval: number;
+  setScanInterval: (_interval: number) => void;
+  handleSaveScanProject: () => void;
+  handleScanNow: (_config: any) => void;
+  handleToggleActive: (_config: any) => void;
+  handleEditScanProject: (_project: any) => void;
+  handleDeleteScanProject: (_id: string) => void;
+  
+  teamId: number;
+}
+
+export default function DubTaskForm({
+  uploadMode,
+  setUploadMode,
+  editingTaskId,
+  setEditingTaskId,
+  editingProjectId,
+  setEditingProjectId,
+  localFilePaths,
+  setLocalFilePaths,
+  isUploadingFile,
+  handleLocalFileUpload,
+  taskTitle,
+  setTaskTitle,
+  sourceLang,
+  setSourceLang,
+  targetLang,
+  setTargetLang,
+  asrEngine,
+  setAsrEngine,
+  sttPreset,
+  setSttPreset,
+  noiseLevel,
+  setNoiseLevel,
+  subtitleMode,
+  setSubtitleMode,
+  selectedAiAppSlug,
+  setSelectedAiAppSlug,
+  selectedAiModel,
+  setSelectedAiModel,
+  connectedAiApps,
+  connectedAiTtsApps,
+  ttsEnabled,
+  setTtsEnabled,
+  ttsEngine,
+  handleTtsEngineChange,
+  ttsVoice,
+  setTtsVoice,
+  ttsSpeed,
+  setTtsSpeed,
+  bgVolume,
+  setBgVolume,
+  ttsVolume,
+  setTtsVolume,
+  handlePreviewVoice,
+  brandingEnabled,
+  setBrandingEnabled,
+  selectedProjectId,
+  setSelectedProjectId,
+  projects,
+  outputFolder,
+  setOutputFolder,
+  creatingTask,
+  handleCreateTask,
+  scanProjects,
+  scanFolderPath,
+  setScanFolderPath,
+  scanInterval,
+  setScanInterval,
+  handleSaveScanProject,
+  handleScanNow,
+  handleToggleActive,
+  handleEditScanProject,
+  handleDeleteScanProject,
+  teamId,
+}: DubTaskFormProps) {
+  return (
+    <div className="lg:col-span-1 bg-gray-900/40 border border-white/5 p-5 rounded-2xl shadow-sm backdrop-blur-xl h-fit space-y-4 relative overflow-hidden">
+      {editingTaskId && (
+        <div className="absolute top-0 left-0 w-full bg-blue-500/20 text-blue-300 text-[10px] py-1 px-4 flex justify-between items-center z-10 font-bold">
+          <span>Đang sửa cấu hình Tác vụ #{editingTaskId}</span>
+          <button type="button" onClick={() => setEditingTaskId(null)} className="hover:text-white underline">Hủy sửa</button>
+        </div>
+      )}
+      <h2 className={`text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2 ${editingTaskId ? 'mt-4' : ''}`}>
+        <Languages className="h-4 w-4 text-amber-400" />
+        {editingTaskId ? 'Cập Nhật Tác Vụ Dịch' : 'Tạo tác vụ dịch phụ đề'}
+      </h2>
+
+      <form onSubmit={handleCreateTask} className="space-y-4">
+        <div className="space-y-2">
+          <label className="text-[10px] font-bold text-gray-400 uppercase flex justify-between items-center">
+            <span>Nguồn Video</span>
+          </label>
+
+          <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+            <button
+              type="button"
+              onClick={() => { setUploadMode('file'); setEditingProjectId(null); }}
+              className={`flex-1 text-[11px] py-1.5 rounded-lg font-bold transition-all ${uploadMode === 'file' && !editingTaskId ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+              File Từng Video
+            </button>
+            <button
+              type="button"
+              onClick={() => setUploadMode('folder')}
+              className={`flex-1 text-[11px] py-1.5 rounded-lg font-bold transition-all ${uploadMode === 'folder' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+              Dự án
+            </button>
+          </div>
+
+          {uploadMode === 'folder' ? (
+            <div className="space-y-4 pt-2">
+              {scanProjects.length > 0 && !editingProjectId && (
+                <div className="space-y-2">
+                  {scanProjects.map(p => (
+                    <div key={p.id} className={`bg-black/40 p-3 rounded-xl border ${p.isActive ? 'border-white/10' : 'border-red-500/20 opacity-75'} flex flex-col gap-2`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-white flex items-center gap-2">
+                            {p.name}
+                            {!p.isActive && <span className="text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-md">Đã Tạm Dừng</span>}
+                          </span>
+                          <span 
+                            className="text-[10px] text-gray-400 break-all mt-0.5 cursor-pointer hover:text-white transition-colors flex items-center gap-1 group"
+                            onClick={() => { navigator.clipboard.writeText(p.folderPath); showToast('Đã copy đường dẫn gốc', 'success'); }}
+                            title="Click để copy đường dẫn"
+                          >
+                            📁 Gốc: {p.folderPath}
+                            <span className="opacity-0 group-hover:opacity-100 text-[9px] bg-white/10 px-1 rounded">Copy</span>
+                          </span>
+                          {p.outputFolder && (
+                            <span 
+                              className="text-[10px] text-amber-500/80 break-all mt-0.5 cursor-pointer hover:text-amber-400 transition-colors flex items-center gap-1 group"
+                              onClick={() => { navigator.clipboard.writeText(p.outputFolder!); showToast('Đã copy thư mục lưu', 'success'); }}
+                              title="Click để copy thư mục lưu video"
+                            >
+                              💾 Lưu: {p.outputFolder}
+                              <span className="opacity-0 group-hover:opacity-100 text-[9px] bg-amber-500/20 px-1 rounded">Copy</span>
+                            </span>
+                          )}
+                          <span className="text-[9px] text-amber-500 mt-1 flex flex-col gap-0.5">
+                            <span>{p.intervalMinutes === 0 ? 'Chạy 1 lần' : `Quét mỗi ${p.intervalMinutes} phút`}</span>
+                            <span>Đã quét: <b className="text-white">{p.scannedCount || 0}</b> video {p.lastScanAt && `| Lần cuối: ${new Date(p.lastScanAt).toLocaleTimeString()}`}</span>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end max-w-[120px]">
+                          <button type="button" onClick={() => handleScanNow(p)} className="p-1.5 bg-amber-500/10 rounded-lg text-amber-400 hover:bg-amber-500/20" title="Quét ngay lập tức"><Zap className="h-3 w-3" /></button>
+                          <button type="button" onClick={() => handleToggleActive(p)} className={`p-1.5 rounded-lg ${p.isActive ? 'bg-white/5 text-gray-400 hover:text-white' : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'}`} title={p.isActive ? "Tạm dừng quét" : "Tiếp tục quét"}>
+                            {p.isActive ? <Pause className="h-3 w-3" /> : <PlayCircle className="h-3 w-3" />}
+                          </button>
+                          <button type="button" onClick={() => handleEditScanProject(p)} className="p-1.5 bg-white/5 rounded-lg text-gray-400 hover:text-amber-400" title="Sửa dự án"><Edit className="h-3 w-3" /></button>
+                          <button type="button" onClick={() => handleDeleteScanProject(p.id)} className="p-1.5 bg-white/5 rounded-lg text-gray-400 hover:text-red-400" title="Xóa dự án"><Trash2 className="h-3 w-3" /></button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => { setEditingProjectId('new'); setTaskTitle(''); setScanFolderPath(''); setOutputFolder(''); }} className="w-full py-2 bg-white/5 border border-dashed border-white/10 rounded-xl text-xs text-gray-400 hover:text-white transition-all">+ Tạo Dự Án Mới</button>
+                </div>
+              )}
+
+              {(!scanProjects.length || editingProjectId) && (
+                <div className="space-y-3 bg-amber-500/5 p-4 rounded-xl border border-amber-500/20">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-bold text-amber-500">{editingProjectId === 'new' || !scanProjects.length ? 'Tạo Dự án Mới' : 'Sửa Dự án'}</h3>
+                    {scanProjects.length > 0 && <button type="button" onClick={() => setEditingProjectId(null)} className="text-[10px] text-gray-400 hover:text-white">Hủy</button>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase">Đường dẫn Thư mục (_VD: D:\Videos)</label>
+                    <input type="text" value={scanFolderPath} onChange={e => setScanFolderPath(e.target.value.replace(/["']/g, ''))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/55" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase">Chu kỳ quét tự động</label>
+                    <select value={scanInterval} onChange={e => setScanInterval(Number(e.target.value))} className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer">
+                      <option value={0}>Chạy 1 lần (Không lặp lại)</option>
+                      <option value={60}>Quét mỗi 60 phút</option>
+                      <option value={120}>Quét mỗi 120 phút</option>
+                      <option value={600}>Quét mỗi 10 giờ</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2 pt-2">
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-2">
+                <p className="text-xs text-amber-500 font-semibold mb-1">💡 Mẹo nhập nhiều video cực nhanh (Windows):</p>
+                <ol className="text-[11px] text-gray-300 list-decimal pl-4 space-y-0.5">
+                  <li>Bôi đen tất cả các video cần dịch trong máy tính.</li>
+                  <li>Giữ phím <strong>Shift + Click chuột phải</strong> vào các file đó.</li>
+                  <li>Chọn <strong>&quot;Copy as path&quot;</strong> (Sao chép dưới dạng đường dẫn).</li>
+                  <li>Nhấn <strong>Ctrl + V</strong> dán vào ô bên dưới là xong!</li>
+                </ol>
+              </div>
+              <textarea
+                value={localFilePaths}
+                onChange={(e) => setLocalFilePaths(e.target.value.replace(/["']/g, ''))}
+                placeholder={`C:\\Downloads\\video1.mp4\nD:\\Movies\\video2.mp4\n\n(Bấm Ctrl + V vào đây)`}
+                disabled={creatingTask || isUploadingFile}
+                className="w-full h-28 bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/50 resize-none font-mono"
+              />
+              <div className="flex justify-end pt-1">
+                <input 
+                  type="file" 
+                  id="localFileInput" 
+                  className="hidden" 
+                  accept="video/*"
+                  onChange={handleLocalFileUpload}
+                />
+                <label 
+                  htmlFor="localFileInput" 
+                  className="text-[10px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-3 py-1.5 rounded-lg cursor-pointer transition-all flex items-center gap-1.5 font-bold"
+                >
+                  {isUploadingFile ? <Loader2 className="w-3 h-3 animate-spin" /> : <FolderOpen className="w-3 h-3" />}
+                  Hoặc chọn file từ máy...
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-gray-400 uppercase">Tên Tác Vụ / Tên Dự Án</label>
+          <input
+            type="text"
+            placeholder="VD: Video giải trí số 1"
+            value={taskTitle}
+            onChange={(e) => setTaskTitle(e.target.value)}
+            disabled={creatingTask || isUploadingFile}
+            className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/55 transition-all shadow-inner"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label htmlFor="src-lang" className="text-[10px] font-bold text-gray-400 uppercase">Ngôn ngữ gốc</label>
+            <select
+              id="src-lang"
+              value={sourceLang}
+              onChange={(e) => setSourceLang(e.target.value)}
+              disabled={creatingTask}
+              className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+            >
+              <option value="zh">Trung Quốc (zh)</option>
+              <option value="en">Tiếng Anh (en)</option>
+              <option value="ja">Tiếng Nhật (ja)</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="tgt-lang" className="text-[10px] font-bold text-gray-400 uppercase">Dịch sang</label>
+            <select
+              id="tgt-lang"
+              value={targetLang}
+              onChange={(e) => setTargetLang(e.target.value)}
+              disabled={creatingTask}
+              className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+            >
+              <option value="vi">Tiếng Việt (vi)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="asr" className="text-[10px] font-bold text-gray-400 uppercase">Chuyển âm thanh thành text (STT)</label>
+          <select
+            id="asr"
+            value={asrEngine}
+            onChange={(e) => setAsrEngine(e.target.value)}
+            disabled={creatingTask}
+            className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+          >
+            <option value="faster-whisper">Faster-Whisper (Local)</option>
+            <option value="bcut">Bilibili BCut ASR (Free Online)</option>
+          </select>
+          
+          {asrEngine === 'faster-whisper' && (
+            <div className="space-y-1.5 pt-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+              <label className="text-[9px] font-bold text-gray-400 uppercase flex items-center justify-between">
+                <span>Tốc độ & Chất lượng STT</span>
+                <span className="text-[8px] text-amber-500/80 normal-case">Faster-Whisper presets</span>
+              </label>
+              <div className="grid grid-cols-3 gap-1.5 bg-black/25 p-1 rounded-xl border border-white/5">
+                <button
+                  type="button"
+                  disabled={creatingTask}
+                  onClick={() => setSttPreset('fast')}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                    sttPreset === 'fast'
+                      ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                      : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[11px]">⚡ Nhanh</span>
+                  <span className="text-[7.5px] text-gray-500 mt-0.5">Base (Beam 2)</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={creatingTask}
+                  onClick={() => setSttPreset('balanced')}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                    sttPreset === 'balanced'
+                      ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                      : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[11px]">⚖️ Ổn định</span>
+                  <span className="text-[7.5px] text-gray-500 mt-0.5">Small (Beam 3)</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={creatingTask}
+                  onClick={() => setSttPreset('quality')}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                    sttPreset === 'quality'
+                      ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                      : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[11px]">💎 Chất lượng</span>
+                  <span className="text-[7.5px] text-gray-500 mt-0.5">Small (Beam 5)</span>
+                </button>
+              </div>
+              <p className="text-[8.5px] text-gray-500 leading-relaxed px-1">
+                {sttPreset === 'fast' && '⚡ Nhanh: Nhanh gấp ~3.5 lần, độ chính xác ~95-97%. Phù hợp âm rõ.'}
+                {sttPreset === 'balanced' && '⚖️ Ổn định: Nhanh gấp ~1.5 lần, độ chính xác ~98-99%. Mặc định.'}
+                {sttPreset === 'quality' && '💎 Chất lượng: Độ chính xác ~100%, tốn tài nguyên nhất (Baseline).'}
+              </p>
+              
+              <label className="text-[9px] font-bold text-gray-400 uppercase flex items-center justify-between pt-2">
+                <span>Mức độ Tạp âm & Nhạc nền</span>
+                <span className="text-[8px] text-amber-500/80 normal-case">VAD noise filters</span>
+              </label>
+              <div className="grid grid-cols-3 gap-1.5 bg-black/25 p-1 rounded-xl border border-white/5">
+                <button
+                  type="button"
+                  disabled={creatingTask}
+                  onClick={() => setNoiseLevel('clean')}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                    noiseLevel === 'clean'
+                      ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                      : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[11px]">🎤 Ít tạp âm</span>
+                  <span className="text-[7.5px] text-gray-500 mt-0.5">Tốc độ: 100%</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={creatingTask}
+                  onClick={() => setNoiseLevel('normal')}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                    noiseLevel === 'normal'
+                      ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                      : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[11px]">🎬 Bình thường</span>
+                  <span className="text-[7.5px] text-gray-500 mt-0.5">Tốc độ: ~90-95%</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={creatingTask}
+                  onClick={() => setNoiseLevel('noisy')}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                    noiseLevel === 'noisy'
+                      ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                      : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[11px]">💥 Nhiều tạp âm</span>
+                  <span className="text-[7.5px] text-gray-500 mt-0.5">Tốc độ: ~60-80% (AI tách nền)</span>
+                </button>
+              </div>
+              <p className="text-[8.5px] text-gray-500 leading-relaxed px-1">
+                {noiseLevel === 'clean' && '🎤 Ít tạp âm: Thích hợp cho podcast, hội thảo, phỏng vấn, âm thanh sạch. Tốc độ giữ nguyên 100%.'}
+                {noiseLevel === 'normal' && '🎬 Bình thường: Thích hợp cho vlog, video review, giáo trình. Tốc độ giảm nhẹ còn ~90-95%.'}
+                {noiseLevel === 'noisy' && '💥 Nhiều tạp âm: Sử dụng AI Demucs tách riêng giọng nói khỏi nhạc nền trước khi nhận dạng. Phù hợp phim ảnh, video nhạc nền to, cháy nổ. Tốc độ: ~60-80% (thêm bước tách nền).'}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="translate" className="text-[10px] font-bold text-gray-400 uppercase flex items-center justify-between">
+            <span>Dịch thuật (Connect Hub)</span>
+            {(!connectedAiApps || connectedAiApps.length === 0) && (
+              <Link href={`/t/${teamId}/connect-hub`} className="text-amber-500 hover:text-amber-400 flex items-center gap-1">
+                Kết nối ngay <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <select
+              value={selectedAiAppSlug}
+              onChange={(e) => {
+                setSelectedAiAppSlug(e.target.value);
+                if (e.target.value === '') {
+                  setSelectedAiModel('');
+                } else {
+                  const app = connectedAiApps?.find(a => a.slug === e.target.value);
+                  if (app && app.models && app.models.length > 0) {
+                    setSelectedAiModel(app.models[0].name);
+                  } else {
+                    setSelectedAiModel('');
+                  }
+                }
+              }}
+              disabled={creatingTask}
+              className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+            >
+              <option value="">Google Dịch (Miễn phí)</option>
+              {connectedAiApps?.map(app => (
+                <option key={app.slug} value={app.slug}>{app.name}</option>
+              ))}
+            </select>
+            
+            <select
+              value={selectedAiModel}
+              onChange={(e) => setSelectedAiModel(e.target.value)}
+              disabled={creatingTask || !selectedAiAppSlug}
+              className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 disabled:opacity-50 cursor-pointer"
+            >
+              {!selectedAiAppSlug ? (
+                <option value="">Tự động</option>
+              ) : (
+                connectedAiApps?.find(a => a.slug === selectedAiAppSlug)?.models.map(m => (
+                  <option key={m.name} value={m.name}>{m.name}</option>
+                )) || <option value="">Chọn Model...</option>
+              )}
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="mode" className="text-[10px] font-bold text-gray-400 uppercase">Phương thức phụ đề</label>
+          <select
+            id="mode"
+            value={subtitleMode}
+            onChange={(e) => setSubtitleMode(e.target.value)}
+            disabled={creatingTask}
+            className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+          >
+            <option value="burn_subtitle">Burn phụ đề cứng (Mặc định)</option>
+            <option value="srt_only">Chỉ xuất file phụ đề SRT</option>
+          </select>
+        </div>
+
+        {/* Lồng tiếng AI (TTS) */}
+        <div className="space-y-3 pt-2 border-t border-white/5">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Lồng tiếng AI (TTS)</label>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={ttsEnabled}
+                onChange={(e) => setTtsEnabled(e.target.checked)}
+                disabled={creatingTask}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
+
+          {ttsEnabled && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-extrabold text-gray-500 uppercase">Engine lồng tiếng</label>
+                <select
+                  value={ttsEngine}
+                  onChange={(e) => handleTtsEngineChange(e.target.value)}
+                  disabled={creatingTask}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                >
+                  <option value="edge-tts">Edge-TTS (Miễn phí, rất tự nhiên)</option>
+                  <option value="connect-hub">Connect Hub OpenAI (Yêu cầu kết nối OpenAI)</option>
+                  {connectedAiTtsApps?.map(app => (
+                    <option key={app.slug} value={app.slug}>{app.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[9px] font-extrabold text-gray-500 uppercase">Giọng lồng tiếng AI</label>
+                  <button 
+                    type="button" 
+                    onClick={handlePreviewVoice}
+                    className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 cursor-pointer"
+                  >
+                    <Play className="h-2.5 w-2.5 fill-current" />
+                    Nghe thử
+                  </button>
+                </div>
+                <select
+                  value={ttsVoice}
+                  onChange={(e) => setTtsVoice(e.target.value)}
+                  disabled={creatingTask}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                >
+                  {ttsEngine === 'edge-tts' ? (
+                    <>
+                      <optgroup label="🇻🇳 Tiếng Việt">
+                        <option value="vi-VN-HoaiMyNeural">Hoài Mỹ (Giọng Nữ Miền Nam - Chuẩn)</option>
+                        <option value="vi-VN-NamMinhNeural">Nam Minh (Giọng Nam Miền Bắc - Chuẩn)</option>
+                      </optgroup>
+                      <optgroup label="🇺🇸 Tiếng Anh">
+                        <option value="en-US-AriaNeural">Aria (Nữ Mỹ - Tự nhiên)</option>
+                        <option value="en-US-ChristopherNeural">Christopher (Nam Mỹ - Trầm ấm)</option>
+                        <option value="en-US-GuyNeural">Guy (Nam Mỹ - Tin tức)</option>
+                        <option value="en-US-JennyNeural">Jenny (Nữ Mỹ - Thân thiện)</option>
+                      </optgroup>
+                      <optgroup label="🇨🇳 Tiếng Trung">
+                        <option value="zh-CN-XiaoxiaoNeural">Xiaoxiao (Nữ Trung - Sống động)</option>
+                        <option value="zh-CN-YunxiNeural">Yunxi (Nam Trung - Ấm áp)</option>
+                      </optgroup>
+                    </>
+                  ) : ttsEngine === 'connect-hub' ? (
+                    <>
+                      <option value="nova">Nova (Nữ - Mặc định)</option>
+                      <option value="alloy">Alloy (Trung tính)</option>
+                      <option value="echo">Echo (Nam ấm áp)</option>
+                      <option value="fable">Fable (Sinh động)</option>
+                      <option value="onyx">Onyx (Nam trầm)</option>
+                      <option value="shimmer">Shimmer (Nữ trong trẻo)</option>
+                    </>
+                  ) : (
+                    <>
+                      {connectedAiTtsApps?.find(a => a.slug === ttsEngine)?.voices?.map(voice => (
+                        <option key={voice} value={voice}>{voice}</option>
+                      ))}
+                    </>
+                  )}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-extrabold text-gray-500 uppercase">Tốc độ đọc</label>
+                <select
+                  value={ttsSpeed}
+                  onChange={(e) => setTtsSpeed(e.target.value)}
+                  disabled={creatingTask}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer disabled:opacity-50"
+                >
+                  <option value="0.8">0.8x (Chậm)</option>
+                  <option value="1.0">1.0x (Bình thường)</option>
+                  <option value="1.1">1.1x (Hơi nhanh)</option>
+                  <option value="1.2">1.2x (Nhanh vừa)</option>
+                  <option value="1.3">1.3x (Nhanh)</option>
+                  <option value="1.4">1.4x (Rất nhanh)</option>
+                  <option value="1.5">1.5x (Cực nhanh)</option>
+                </select>
+              </div>
+            </div>
+          )}
+            
+          {ttsEnabled && (
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-extrabold text-gray-500 uppercase">Âm lượng Video Gốc</label>
+                <select
+                  value={bgVolume}
+                  onChange={(e) => setBgVolume(e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                >
+                  <option value="0.0">Tắt âm (0.0)</option>
+                  <option value="0.2">Rất bé (0.2)</option>
+                  <option value="0.5">Bé (0.5)</option>
+                  <option value="0.8">Vừa (0.8)</option>
+                  <option value="1.0">Mặc định (1.0)</option>
+                  <option value="1.5">Lớn (1.5)</option>
+                  <option value="2.0">Rất lớn (2.0)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-extrabold text-gray-500 uppercase">Âm lượng Giọng AI</label>
+                <select
+                  value={ttsVolume}
+                  onChange={(e) => setTtsVolume(e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                >
+                  <option value="0.5">Bé (0.5)</option>
+                  <option value="1.0">Vừa (1.0)</option>
+                  <option value="1.5">Mặc định (1.5)</option>
+                  <option value="2.0">Lớn (2.0)</option>
+                  <option value="2.5">Rất lớn (2.5)</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Branding */}
+        <div className="space-y-3 pt-2 border-t border-white/5">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Chèn Logo & Intro/Outro</label>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={brandingEnabled}
+                onChange={(e) => {
+                  setBrandingEnabled(e.target.checked);
+                  if (!e.target.checked) setSelectedProjectId('');
+                }}
+                disabled={creatingTask}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
+
+          {brandingEnabled && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[9px] font-extrabold text-gray-500 uppercase">Chọn Thương hiệu Branding</label>
+                  <Link 
+                    href={`/hero-dub/t/${teamId}/projects`}
+                    className="text-[9px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20"
+                  >
+                    Quản lý Thương hiệu
+                  </Link>
+                </div>
+                <select
+                  value={selectedProjectId}
+                  onChange={(e) => setSelectedProjectId(e.target.value === '' ? '' : parseInt(e.target.value))}
+                  disabled={creatingTask}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                >
+                  <option value="">-- Chọn Thương hiệu (Bỏ qua) --</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                {selectedProjectId !== '' && projects.find(p => p.id === selectedProjectId) && (
+                  <div className="bg-white/5 p-2 rounded-lg text-[10px] text-gray-400 space-y-1 mt-1">
+                    {projects.find(p => p.id === selectedProjectId)?.logoUrl && <div>• Có Logo ({projects.find(p => p.id === selectedProjectId)?.logoPosition})</div>}
+                    {projects.find(p => p.id === selectedProjectId)?.introVideoUrl && <div>• Có Video Intro</div>}
+                    {projects.find(p => p.id === selectedProjectId)?.outroVideoUrl && <div>• Có Video Outro</div>}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2 pt-2 border-t border-white/5">
+          <label htmlFor="output-folder" className="text-[10px] font-bold text-gray-400 uppercase">Thư mục lưu kết quả (Tùy chọn)</label>
+          <input
+            id="output-folder"
+            type="text"
+            placeholder="VD: C:\Users\ADMIN\Videos"
+            value={outputFolder}
+            onChange={(e) => setOutputFolder(e.target.value.replace(/["']/g, ''))}
+            disabled={creatingTask}
+            className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/55 transition-all"
+          />
+          <p className="text-[9px] text-gray-500 font-medium">Bỏ trống để dùng thư mục mặc định của Worker</p>
+        </div>
+
+        {uploadMode === 'folder' && (!scanProjects.length || editingProjectId) ? (
+          <button
+            type="button"
+            onClick={handleSaveScanProject}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-95 text-white rounded-xl text-xs font-black tracking-wide shadow-lg shadow-green-500/10 transition-all cursor-pointer"
+          >
+            <Check className="h-4 w-4" />
+            Lưu cấu hình Dự Án Quét
+          </button>
+        ) : uploadMode === 'file' ? (
+          <div className="flex gap-2 w-full">
+            {editingTaskId && (
+              <button
+                type="button"
+                onClick={() => setEditingTaskId(null)}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer"
+              >
+                Hủy Sửa
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={creatingTask || (!editingTaskId && !localFilePaths.trim())}
+              className={`flex items-center justify-center gap-1.5 px-3 py-3 bg-gradient-to-r hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-xs font-black tracking-wide shadow-lg transition-all cursor-pointer ${editingTaskId ? 'from-blue-500 to-indigo-500 shadow-blue-500/10 flex-[2]' : 'from-amber-500 to-orange-500 shadow-orange-500/10 w-full'}`}
+            >
+              {creatingTask ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  {editingTaskId ? 'Cập Nhật & Chạy Lại' : 'Bắt đầu dịch thuật'}
+                </>
+              )}
+            </button>
+          </div>
+        ) : null}
+      </form>
+    </div>
+  );
+}

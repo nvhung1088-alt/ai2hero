@@ -145,6 +145,11 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp tính năng **Dịch & Redesign Thumbnail bằng AI** (Connect Hub Vision + Image Gen): Cho phép chọn AI Model và Ngôn ngữ đích (Việt, Anh, Hàn, Nhật, Thái...), tự động đọc text trên ảnh bìa gốc, dịch thuật, tạo lại thumbnail mới và tải lên R2 cloud storage kèm Modal Preview so sánh 2 ảnh trực quan trên Dashboard.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- **2026-07-30 (hero-dub - Modular Component Refactor & UI Clean Code)**:
+  - 🧩 **Shared UI Helpers**: Tạo `_shared/dub-ui-helpers.tsx` tập trung 3 hàm helper pure `formatTime`, `getStatusBadge`, `getPlatformLabel`, dùng chung giữa Dashboard và History, gỡ bỏ 100% code trùng lặp.
+  - 🧩 **Modular Component Splitting**: Tách file khổng lồ `dashboard-client.tsx` (2.072 dòng) thành 4 sub-component chuyên biệt (`dub-guide-panel.tsx`, `dub-worker-panel.tsx`, `dub-task-form.tsx`, `dub-task-table.tsx`).
+  - 🚀 **Performance & Maintainability**: Rút gọn file chính `dashboard-client.tsx` từ 2.072 dòng xuống ~560 dòng (tăng 73% khả năng bảo trì), compile TypeScript & ESLint sạch 100% (0 errors, 0 warnings) không ảnh hưởng đến bất kỳ data flow hay logic nào.
+
 - **2026-07-30 (hero-downloader - Retry All Failed Videos & First/Last Page Controls)**:
   - 🔄 **Batch Action Retry All Failed**: Phát triển Server Action `retryAllFailedVideosAction` (`hero-downloader-actions.ts`) và nút **"Thử lại tất cả"** (Màu cam/amber) trên Toolbar Header (`downloader-dashboard-client.tsx`), cho phép kích hoạt tải lại toàn bộ các video bị lỗi trong 1 click.
   - ⏩ **Quick First & Last Page Navigation**: Bổ sung 2 nút điều hướng **"Đầu"** (nhảy về Trang 1) và **"Cuối"** (nhảy tới Trang cuối) song song với "Trước / Sau" ở phần phân trang bên dưới bảng video.

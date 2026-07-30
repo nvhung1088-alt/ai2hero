@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { PollingBanner } from '@/components/polling-banner';
 import { getDubTasksAction, retryDubTaskAction, deleteDubTaskAction } from '@/lib/db/hero-dub-actions';
-import { History, Search, Loader2, Video, CheckCircle2, XCircle, Clock, PlayCircle, Trash2, RotateCcw, ExternalLink, Filter } from 'lucide-react';
+import { History, Search, Loader2, Video, PlayCircle, Trash2, RotateCcw, Filter } from 'lucide-react';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
+import { getStatusBadge, getPlatformLabel } from '../_shared/dub-ui-helpers';
 
 interface HistoryClientProps {
   teamId: number;
@@ -167,22 +168,7 @@ export default function HistoryClient({ teamId }: HistoryClientProps) {
     }
   };
 
-  const getStatusBadge = (status: string, progress: number) => {
-    switch (status) {
-      case 'completed': return <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold"><CheckCircle2 className="h-3 w-3" /> Hoàn thành</span>;
-      case 'failed': return <span className="inline-flex items-center gap-1 bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-bold"><XCircle className="h-3 w-3" /> Lỗi</span>;
-      case 'pending': return <span className="inline-flex items-center gap-1 bg-gray-500/10 text-gray-400 border border-gray-500/20 px-2 py-0.5 rounded text-[10px] font-bold"><Clock className="h-3 w-3" /> Đang chờ</span>;
-      default: return <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded text-[10px] font-bold"><Loader2 className="h-3 w-3 animate-spin" /> Đang xử lý ({progress}%)</span>;
-    }
-  };
 
-  const getPlatformLabel = (platform: string) => {
-    if (!platform) return null;
-    if (platform === 'local') return <span className="text-[9px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded font-bold border border-blue-500/20">Local File</span>;
-    if (platform === 'youtube') return <span className="text-[9px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded font-bold border border-red-500/20">YouTube</span>;
-    if (platform === 'douyin') return <span className="text-[9px] bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded font-bold border border-purple-500/20">Douyin</span>;
-    return <span className="text-[9px] bg-gray-500/10 text-gray-400 px-1.5 py-0.5 rounded font-bold border border-gray-500/20 capitalize">{platform}</span>;
-  };
 
   const filteredTasks = tasks.filter(task => {
     if (filterStatus !== 'all' && task.status !== filterStatus) {
