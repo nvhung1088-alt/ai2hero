@@ -160,11 +160,10 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính từ 1.018 dòng xuống còn ~350 dòng, giảm bớt 65% code dư thừa giúp UI render nhanh hơn và tối ưu bảo trì. Verify build 100% không lỗi.
 
-- **2026-07-30 (hero-dub - Scan Project Pause/Resume & Interactive Controls)**:
-  - ⏸️ **Nút Tạm Dừng Quét Dự Án**: Thêm nút bấm trực tiếp **`⏸️ Tạm dừng quét`** / **`▶️ Kích hoạt quét`** ngay trên Header Thẻ Dự Án (`DubScanProjectPane`), giúp người dùng chuyển đổi trạng thái quét tự động cực kỳ nhanh chóng.
+- **2026-07-30 (hero-dub - Explicit "Ngừng dịch" & "Dịch tiếp" Control Buttons)**:
+  - ⏸️ **Nút Ngừng Dịch & Dịch Tiếp Trực Diện**: Bổ sung song song 2 nút bấm **`⏸️ Ngừng dịch`** (Màu cam) và **`▶️ Dịch tiếp`** (Màu xanh) ngay tại Thẻ Dự Án (`DubScanProjectPane`) và Header của Bảng (`DubTaskTable`).
   - 🖥️ **Full-Width 100% Fluid Fix**: Loại bỏ thuộc tính `max-w-7xl` gò bó tại container `DashboardClient`, đưa giao diện về trạng thái tràn viền 100% không còn 2 khoảng lề đen.
   - 🗑️ **Xóa Tác Vụ Lẻ Tự Do**: Viết Server Action `clearUnassignedDubTasksAction` và tích hợp nút "Xóa tất cả tác vụ lẻ" trên Header của Bảng.
-  - ⏸️ **Nút Tạm Dừng & Tiếp Tục Nổi Bật**: Viết các Server Action `pauseAllDubTasksAction` & `resumeAllDubTasksAction`. Nâng cấp nút thao tác trên từng dòng thành nút chữ **`⏸️ Tạm dừng`** và **`▶️ Tiếp tục`** màu sắc vô cùng nổi bật, dễ nhận biết.
 
 - **2026-07-30 (hero-dub - Split-Pane Project Management UI Refactor)**:
   - 🚀 **Nâng cấp Giao diện Quản lý Dự án**: Tách biệt hoàn toàn tính năng "Dự án quét thư mục tự động" và "Tác vụ dịch lẻ". 

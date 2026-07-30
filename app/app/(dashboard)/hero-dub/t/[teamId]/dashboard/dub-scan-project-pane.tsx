@@ -129,26 +129,39 @@ export function DubScanProjectPane({
             <Button
               onClick={() => onTriggerScan(config.id)}
               size="sm"
-              className="bg-orange-500 hover:bg-orange-600 text-white font-medium text-xs h-8 px-3 rounded-lg shadow flex items-center gap-1.5"
+              className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-8 px-3 rounded-lg shadow flex items-center gap-1.5"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>Quét ngay</span>
             </Button>
 
-            {onToggleActive && (
+            {handlePauseAll && (
               <Button
-                onClick={() => onToggleActive(config)}
+                onClick={() => {
+                  handlePauseAll();
+                  if (config.isActive && onToggleActive) onToggleActive(config);
+                }}
                 variant="outline"
                 size="sm"
-                className={`font-medium text-xs h-8 px-3 rounded-lg flex items-center gap-1.5 ${
-                  config.isActive 
-                    ? 'border-amber-500/30 hover:bg-amber-500/10 text-amber-300' 
-                    : 'border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-300'
-                }`}
-                title={config.isActive ? 'Tạm dừng quét tự động' : 'Bật lại quét tự động'}
+                className="border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-extrabold text-xs h-8 px-3 rounded-lg flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
-                {config.isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                <span>{config.isActive ? 'Tạm dừng quét' : 'Kích hoạt quét'}</span>
+                <Pause className="w-3.5 h-3.5 fill-amber-400" />
+                <span>Ngừng dịch</span>
+              </Button>
+            )}
+
+            {handleResumeAll && (
+              <Button
+                onClick={() => {
+                  handleResumeAll();
+                  if (!config.isActive && onToggleActive) onToggleActive(config);
+                }}
+                variant="outline"
+                size="sm"
+                className="border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-extrabold text-xs h-8 px-3 rounded-lg flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <Play className="w-3.5 h-3.5 fill-emerald-400" />
+                <span>Dịch tiếp</span>
               </Button>
             )}
 

@@ -71,7 +71,7 @@ export default function DubTaskTable({
               onClick={handlePauseAll}
               className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-lg text-[10px] font-extrabold flex items-center gap-1 cursor-pointer transition-all"
             >
-              <Pause className="h-3 w-3" /> Tạm dừng tất cả
+              <Pause className="h-3 w-3" /> Ngừng dịch
             </button>
           )}
           {handleResumeAll && tasks.length > 0 && (
@@ -80,7 +80,7 @@ export default function DubTaskTable({
               onClick={handleResumeAll}
               className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-[10px] font-extrabold flex items-center gap-1 cursor-pointer transition-all"
             >
-              <Play className="h-3 w-3" /> Tiếp tục tất cả
+              <Play className="h-3 w-3" /> Dịch tiếp
             </button>
           )}
           {handleClearUnassigned && tasks.length > 0 && (
