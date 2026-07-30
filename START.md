@@ -145,10 +145,11 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp tính năng **Dịch & Redesign Thumbnail bằng AI** (Connect Hub Vision + Image Gen): Cho phép chọn AI Model và Ngôn ngữ đích (Việt, Anh, Hàn, Nhật, Thái...), tự động đọc text trên ảnh bìa gốc, dịch thuật, tạo lại thumbnail mới và tải lên R2 cloud storage kèm Modal Preview so sánh 2 ảnh trực quan trên Dashboard.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
-- **2026-07-30 (hero-downloader - Auto Re-extract & UI Error Visibility Upgrade)**:
+- **2026-07-30 (hero-downloader - Dynamic Status Reordering & Vercel Deploy)**:
+  - 🚀 **Dynamic Video Reordering**: Cấu hình thuật toán SQL `CASE WHEN` (`hero-downloader-actions.ts`) kết hợp `getStatusRank` Client Side (`downloader-dashboard-client.tsx`) tự động sắp xếp danh sách video theo 3 nhóm ưu tiên: **Đang tải (Xếp ĐẦU)** ➔ **Chờ tải / Paused (Xếp GIỮA)** ➔ **Hoàn tất / Thất bại (Xếp DƯỚI CÙNG)**.
   - 🚀 **Auto Re-extract Direct MP4**: Cập nhật `updateDownloaderVideoStatusAction` tự động xóa `directMp4Url`, `extractStatus` và `error` cũ khi reset trạng thái về `pending` (nút "Thử lại"), kích hoạt Chrome Extension tự động bắt lại link Direct MP4 tươi mới và tải lại từ đầu.
-  - 🚀 **UI Error & Cookie Warning**: Hiển thị trực tiếp thông báo lỗi phân loại thông minh ngay dưới chữ "Thất bại" trên Dashboard (`downloader-dashboard-client.tsx`), cảnh báo rõ ràng khi Cookie bị chết hoặc bị Douyin chặn Anti-bot.
-  - 🚀 **Vercel Deploy**: Pass 100% dry-run `npm run build` ở local và push thành công lên Vercel Production (`commit 8c9d023`).
+  - 🚀 **UI Error & Cookie Warning**: Hiển thị trực tiếp thông báo lỗi phân loại thông minh ngay dưới chữ "Thất bại" trên Dashboard, cảnh báo rõ ràng khi Cookie bị chết hoặc bị Douyin chặn Anti-bot.
+  - 🚀 **Vercel Deploy**: Push thành công 2 commit nâng cấp mới nhất lên Vercel Production (`commit b562c44`).
 
 - **2026-07-22 (hero-downloader - Dịch & Redesign Thumbnail AI)**:
   - 🚀 **Database & Actions**: Bổ sung cột `translatedThumbnailUrl` vào bảng `downloader_videos` và đẩy migration thành công lên Supabase Cloud (`pnpm db:push`).
