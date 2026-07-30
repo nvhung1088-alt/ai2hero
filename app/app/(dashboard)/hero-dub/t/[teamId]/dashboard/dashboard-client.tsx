@@ -650,6 +650,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
         if (successCount > 0) {
           showToast(`Đã thêm ${successCount}/${paths.length} video vào hàng đợi!`, 'success');
           setLocalFilePaths('');
+          setIsTaskModalOpen(false);
         }
         refreshData();
       } else if (!editingTaskId) {
@@ -742,6 +743,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
         setScanFolderPath('');
         setTaskTitle('');
         setUploadMode('folder');
+        setIsTaskModalOpen(false);
         refreshData();
       } else {
         showToast(res.error || 'Lỗi khi lưu dự án', 'error');
