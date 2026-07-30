@@ -844,3 +844,71 @@ export async function getPresignedUploadUrlAction(taskId: number, teamId: number
     return { error: 'Lỗi tạo presigned URL: ' + error.message };
   }
 }
+
+// === PAUSE / RESUME & CLEAR ACTIONS ===
+
+export async function pauseDubTaskAction(taskId: number, teamId: number) {
+  try {
+    const [task] = await db
+      .select({ id: dubTasks.id, status: dubTasks.status })
+      .from(dubTasks)
+      .where(and(eq(dubTasks.id, taskId), eq(dubTasks.teamId, teamId)))
+      .limit(1);
+
+    if (!task) {
+      return { error: 'Tác vụ không tồn tại hoặc không có quyền' };
+    }
+
+    await db
+      .update(dubTasks)
+      .set({ status: 'paused', updatedAt: new Date() })
+      .where(eq(dubTasks.id, taskId));
+
+    await appendTaskLog(taskId, 'paused', '⏸️ Đã tạm dừng tác vụ theo yêu cầu người dùng.');
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] pauseDubTaskAction error:', error);
+    return { error: 'Lỗi tạm dừng tác vụ: ' + error.message };
+  }
+}
+
+export async function resumeDubTaskAction(taskId: number, teamId: number) {
+  try {
+    const [task] = await db
+      .select({ id: dubTasks.id, status: dubTasks.status })
+      .from(dubTasks)
+      .where(and(eq(dubTasks.id, taskId), eq(dubTasks.teamId, teamId)))
+      .limit(1);
+
+    if (!task) {
+      return { error: 'Tác vụ không tồn tại hoặc không có quyền' };
+    }
+
+    await db
+      .update(dubTasks)
+      .set({ status: 'pending', error: null, updatedAt: new Date() })
+      .where(eq(dubTasks.id, taskId));
+
+    await appendTaskLog(taskId, 'resumed', '▶️ Đã kích hoạt lại tác vụ. Đang chờ Worker xử lý.');
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] resumeDubTaskAction error:', error);
+    return { error: 'Lỗi tiếp tục tác vụ: ' + error.message };
+  }
+}
+
+export async function clearAllDubDataAction(teamId: number) {
+  try {
+    // 1. Xóa toàn bộ tác vụ của team
+    await db.delete(dubTasks).where(eq(dubTasks.teamId, teamId));
+
+    // 2. Xóa toàn bộ scan configs của team
+    await db.delete(dubScanConfigs).where(eq(dubScanConfigs.teamId, teamId));
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] clearAllDubDataAction error:', error);
+    return { error: 'Lỗi dọn dẹp dữ liệu: ' + error.message };
+  }
+}
+

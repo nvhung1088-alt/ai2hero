@@ -14,11 +14,14 @@ import {
   ExternalLink,
   Play,
   Check,
-  Plus
+  Plus,
+  X
 } from 'lucide-react';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 
 interface DubTaskFormProps {
+  isOpen?: boolean;
+  onClose?: () => void;
   uploadMode: 'file' | 'folder';
   setUploadMode: (_mode: 'file' | 'folder') => void;
   editingTaskId: number | null;
@@ -94,6 +97,8 @@ interface DubTaskFormProps {
 }
 
 export default function DubTaskForm({
+  isOpen = true,
+  onClose,
   uploadMode,
   setUploadMode,
   editingTaskId,
@@ -158,18 +163,32 @@ export default function DubTaskForm({
   handleDeleteScanProject,
   teamId,
 }: DubTaskFormProps) {
+  if (!isOpen) return null;
+
   return (
-    <div className="lg:col-span-1 bg-gray-900/40 border border-white/5 p-5 rounded-2xl shadow-sm backdrop-blur-xl h-fit space-y-4 relative overflow-hidden">
-      {editingTaskId && (
-        <div className="absolute top-0 left-0 w-full bg-blue-500/20 text-blue-300 text-[10px] py-1 px-4 flex justify-between items-center z-10 font-bold">
-          <span>Đang sửa cấu hình Tác vụ #{editingTaskId}</span>
-          <button type="button" onClick={() => setEditingTaskId(null)} className="hover:text-white underline">Hủy sửa</button>
-        </div>
-      )}
-      <h2 className={`text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2 ${editingTaskId ? 'mt-4' : ''}`}>
-        <Languages className="h-4 w-4 text-amber-400" />
-        {editingTaskId ? 'Cập Nhật Tác Vụ Dịch' : 'Tạo tác vụ dịch phụ đề'}
-      </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-2xl bg-gray-900 border border-white/10 p-6 rounded-2xl shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto my-auto">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all z-20"
+            title="Đóng cửa sổ"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
+
+        {editingTaskId && (
+          <div className="bg-blue-500/20 text-blue-300 text-[10px] py-1.5 px-4 rounded-lg flex justify-between items-center z-10 font-bold">
+            <span>Đang sửa cấu hình Tác vụ #{editingTaskId}</span>
+            <button type="button" onClick={() => setEditingTaskId(null)} className="hover:text-white underline">Hủy sửa</button>
+          </div>
+        )}
+        <h2 className="text-sm font-extrabold text-gray-300 uppercase tracking-wider flex items-center gap-2 pr-8">
+          <Languages className="h-5 w-5 text-amber-400" />
+          {editingTaskId ? 'Cập Nhật Tác Vụ Dịch' : 'Tạo Tác Vụ Dịch Phụ Đề Mới'}
+        </h2>
 
       <form onSubmit={handleCreateTask} className="space-y-4">
         <div className="space-y-2">
@@ -706,5 +725,6 @@ export default function DubTaskForm({
         ) : null}
       </form>
     </div>
-  );
+  </div>
+);
 }

@@ -1,5 +1,11 @@
 # AI2HERO — CHANGELOG
 
+## 2026-07-30 — Hero Dub Full-Width UI, Popup Modal Form, Clear DB & Pause/Resume
+- **Full-Width Fluid Layout**: Tối ưu hóa bố cục màn hình Dashboard Hero Dub tràn viền 2 bên (`w-full px-4 md:px-6`), mở rộng Bảng danh sách video chiếm 100% diện tích hiển thị giúp dễ dàng theo dõi đường dẫn local file và thumbnails.
+- **Form Popup Modal**: Đóng gói component `DubTaskForm` thành Modal Overlay kính mờ (Backdrop-blur) chuyên nghiệp. Kích hoạt thông qua nút "+ Tạo tác vụ dịch mới" trên thanh công cụ Header giúp tiết kiệm tối đa diện tích làm việc.
+- **Dọn dẹp dữ liệu (Clear DB)**: Tích hợp Server Action `clearAllDubDataAction` và nút "Xóa sạch dữ liệu" trên giao diện giúp 1-click xóa triệt để toàn bộ dự án quét và tác vụ thử nghiệm rác từ Database.
+- **Tạm dừng & Tiếp tục dịch (Pause/Resume)**: Triển khai các Server Actions `pauseDubTaskAction` và `resumeDubTaskAction`, bổ sung nút bấm thao tác ⏸️/▶️ trực tiếp trên từng dòng của Bảng tác vụ `DubTaskTable`.
+
 ## 2026-07-30 — Hero Dub Project Management Refactor & HeroFilm Bug Fix
 - **Hero Dub Split-Pane Project Management UI**: Tái cấu trúc toàn bộ mục Quản lý Dự án sang giao diện Split-Pane 2 cột (Tương tự Quản lý Thương hiệu & Hero Downloader). Tạo `DubScanSidebar` bên trái giúp quản lý danh sách dự án quét thư mục tự động và phân tách riêng biệt với các "Tác vụ lẻ". Tạo `DubScanProjectPane` bên phải giúp hiển thị cấu hình dự án, bảng danh sách video đã được lọc theo đúng dự án, và nút "Thử lại tất cả lỗi" của dự án đó.
 - **Fix TS2322 ReactNode Fallback**: Phát hiện và xử lý dứt điểm lỗi ảo "Type 'unknown' is not assignable to type 'ReactNode'" ở `watch-client.tsx`. Lỗi phát sinh do TypeScript không nhận diện được kiểu của biểu thức `&&` với các biến `unknown` (JSONB) kết hợp với lỗi parsing tại các khối JSX comments. Đã thay thế thành Ternary Operator an toàn và xóa các comment nội tuyến, đảm bảo TSC pass 100%.

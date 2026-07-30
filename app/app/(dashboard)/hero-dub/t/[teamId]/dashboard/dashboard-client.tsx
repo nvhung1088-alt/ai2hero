@@ -12,6 +12,9 @@ import {
   deleteDubWorkerAction,
   getDubProjectsAction,
   updateAndRetryDubTaskAction,
+  clearAllDubDataAction,
+  pauseDubTaskAction,
+  resumeDubTaskAction,
 } from '@/lib/db/hero-dub-actions';
 import {
   getDubScanConfigsAction,
@@ -29,7 +32,9 @@ import {
   Download,
   BookOpen,
   Shield,
-  MessageCircle
+  MessageCircle,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import { generateLivePreviewAudioAction } from '@/lib/db/tts-preview-actions';
@@ -59,7 +64,28 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
   const [taskPage, setTaskPage] = useState(1);
   const [taskTotalCount, setTaskTotalCount] = useState(0);
   const [selectedScanConfigId, setSelectedScanConfigId] = useState<number | null>(null);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const TASKS_PER_PAGE = 20;
+
+  const handlePauseTask = async (taskId: number) => {
+    const res = await pauseDubTaskAction(taskId, teamId);
+    if (res.error) showToast(res.error, 'error');
+    else { showToast('Đã tạm dừng tác vụ', 'success'); refreshData(false); }
+  };
+
+  const handleResumeTask = async (taskId: number) => {
+    const res = await resumeDubTaskAction(taskId, teamId);
+    if (res.error) showToast(res.error, 'error');
+    else { showToast('Đã tiếp tục tác vụ', 'success'); refreshData(false); }
+  };
+
+  const handleClearAllData = async () => {
+    if (window.confirm('⚠️ Bạn có chắc chắn muốn XÓA SẠCH tất cả các dự án quét và tác vụ dịch thuật không? Thao tác này không thể hoàn tác!')) {
+      const res = await clearAllDubDataAction(teamId);
+      if (res.error) showToast(res.error, 'error');
+      else { showToast('Đã dọn dẹp sạch sẽ toàn bộ dữ liệu!', 'success'); refreshData(true); }
+    }
+  };
 
   // Form State
   const [taskTitle, setTaskTitle] = useState('');
@@ -867,6 +893,23 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
           )}
           
           <button
+            onClick={() => setIsTaskModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 rounded-xl text-xs font-black tracking-wider transition-all cursor-pointer shadow-sm"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Tạo tác vụ dịch mới
+          </button>
+
+          <button
+            onClick={handleClearAllData}
+            className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+            title="Xóa toàn bộ dự án quét và tác vụ rác"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Xóa sạch dữ liệu
+          </button>
+
+          <button
             onClick={handleToggleGuide}
             className={`px-3 py-2 border rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
               showGuide 
@@ -898,8 +941,84 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
         section="status"
       />
 
-      {/* Split-pane Workspace Layout */}
-      <div className="flex flex-col lg:flex-row gap-6 items-start my-6">
+      {/* DubTaskForm Modal Overlay */}
+      <DubTaskForm
+        isOpen={isTaskModalOpen || editingTaskId !== null}
+        onClose={() => {
+          setIsTaskModalOpen(false);
+          setEditingTaskId(null);
+        }}
+        uploadMode={uploadMode}
+        setUploadMode={setUploadMode}
+        editingTaskId={editingTaskId}
+        setEditingTaskId={setEditingTaskId}
+        editingProjectId={editingProjectId}
+        setEditingProjectId={setEditingProjectId}
+        localFilePaths={localFilePaths}
+        setLocalFilePaths={setLocalFilePaths}
+        isUploadingFile={isUploadingFile}
+        handleLocalFileUpload={handleLocalFileUpload}
+        taskTitle={taskTitle}
+        setTaskTitle={setTaskTitle}
+        sourceLang={sourceLang}
+        setSourceLang={setSourceLang}
+        targetLang={targetLang}
+        setTargetLang={setTargetLang}
+        asrEngine={asrEngine}
+        setAsrEngine={setAsrEngine}
+        sttPreset={sttPreset}
+        setSttPreset={setSttPreset}
+        noiseLevel={noiseLevel}
+        setNoiseLevel={setNoiseLevel}
+        subtitleMode={subtitleMode}
+        setSubtitleMode={setSubtitleMode}
+        selectedAiAppSlug={selectedAiAppSlug}
+        setSelectedAiAppSlug={setSelectedAiAppSlug}
+        selectedAiModel={selectedAiModel}
+        setSelectedAiModel={setSelectedAiModel}
+        connectedAiApps={connectedAiApps}
+        connectedAiTtsApps={connectedAiTtsApps}
+        ttsEnabled={ttsEnabled}
+        setTtsEnabled={setTtsEnabled}
+        ttsEngine={ttsEngine}
+        handleTtsEngineChange={handleTtsEngineChange}
+        ttsVoice={ttsVoice}
+        setTtsVoice={setTtsVoice}
+        ttsSpeed={ttsSpeed}
+        setTtsSpeed={setTtsSpeed}
+        bgVolume={bgVolume}
+        setBgVolume={setBgVolume}
+        ttsVolume={ttsVolume}
+        setTtsVolume={setTtsVolume}
+        handlePreviewVoice={handlePreviewVoice}
+        brandingEnabled={brandingEnabled}
+        setBrandingEnabled={setBrandingEnabled}
+        selectedProjectId={selectedProjectId}
+        setSelectedProjectId={setSelectedProjectId}
+        projects={projects}
+        outputFolder={outputFolder}
+        setOutputFolder={setOutputFolder}
+        creatingTask={creatingTask}
+        uploadProgressMsg={uploadProgressMsg}
+        handleCreateTask={async (e) => {
+          await handleCreateTask(e);
+          setIsTaskModalOpen(false);
+        }}
+        scanProjects={scanProjects}
+        scanFolderPath={scanFolderPath}
+        setScanFolderPath={setScanFolderPath}
+        scanInterval={scanInterval}
+        setScanInterval={setScanInterval}
+        handleSaveScanProject={handleSaveScanProject}
+        handleScanNow={handleScanNow}
+        handleToggleActive={handleToggleActive}
+        handleEditScanProject={handleEditScanProject}
+        handleDeleteScanProject={handleDeleteScanProject}
+        teamId={teamId}
+      />
+
+      {/* Split-pane Workspace Layout (Full Width) */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start my-6 w-full">
         {/* Left Sidebar: Scan Projects Navigator */}
         <DubScanSidebar
           scanConfigs={scanProjects}
@@ -912,8 +1031,12 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
             setEditingProjectId('new');
             setScanFolderPath('');
             setOutputFolder('');
+            setIsTaskModalOpen(true);
           }}
-          onEditConfig={(config) => handleEditScanProject(config)}
+          onEditConfig={(config) => {
+            handleEditScanProject(config);
+            setIsTaskModalOpen(true);
+          }}
           onDeleteConfig={(id) => handleDeleteScanProject(id.toString())}
           onTriggerScan={(id) => {
             const p = scanProjects.find(item => item.id.toString() === id.toString());
@@ -922,75 +1045,8 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
         />
 
         {/* Right Main Content Pane */}
-        {selectedScanConfigId === null ? (
-          <div className="flex-1 w-full grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            <DubTaskForm
-              uploadMode={uploadMode}
-              setUploadMode={setUploadMode}
-              editingTaskId={editingTaskId}
-              setEditingTaskId={setEditingTaskId}
-              editingProjectId={editingProjectId}
-              setEditingProjectId={setEditingProjectId}
-              localFilePaths={localFilePaths}
-              setLocalFilePaths={setLocalFilePaths}
-              isUploadingFile={isUploadingFile}
-              handleLocalFileUpload={handleLocalFileUpload}
-              taskTitle={taskTitle}
-              setTaskTitle={setTaskTitle}
-              sourceLang={sourceLang}
-              setSourceLang={setSourceLang}
-              targetLang={targetLang}
-              setTargetLang={setTargetLang}
-              asrEngine={asrEngine}
-              setAsrEngine={setAsrEngine}
-              sttPreset={sttPreset}
-              setSttPreset={setSttPreset}
-              noiseLevel={noiseLevel}
-              setNoiseLevel={setNoiseLevel}
-              subtitleMode={subtitleMode}
-              setSubtitleMode={setSubtitleMode}
-              selectedAiAppSlug={selectedAiAppSlug}
-              setSelectedAiAppSlug={setSelectedAiAppSlug}
-              selectedAiModel={selectedAiModel}
-              setSelectedAiModel={setSelectedAiModel}
-              connectedAiApps={connectedAiApps}
-              connectedAiTtsApps={connectedAiTtsApps}
-              ttsEnabled={ttsEnabled}
-              setTtsEnabled={setTtsEnabled}
-              ttsEngine={ttsEngine}
-              handleTtsEngineChange={handleTtsEngineChange}
-              ttsVoice={ttsVoice}
-              setTtsVoice={setTtsVoice}
-              ttsSpeed={ttsSpeed}
-              setTtsSpeed={setTtsSpeed}
-              bgVolume={bgVolume}
-              setBgVolume={setBgVolume}
-              ttsVolume={ttsVolume}
-              setTtsVolume={setTtsVolume}
-              handlePreviewVoice={handlePreviewVoice}
-              brandingEnabled={brandingEnabled}
-              setBrandingEnabled={setBrandingEnabled}
-              selectedProjectId={selectedProjectId}
-              setSelectedProjectId={setSelectedProjectId}
-              projects={projects}
-              outputFolder={outputFolder}
-              setOutputFolder={setOutputFolder}
-              creatingTask={creatingTask}
-              uploadProgressMsg={uploadProgressMsg}
-              handleCreateTask={handleCreateTask}
-              scanProjects={scanProjects}
-              scanFolderPath={scanFolderPath}
-              setScanFolderPath={setScanFolderPath}
-              scanInterval={scanInterval}
-              setScanInterval={setScanInterval}
-              handleSaveScanProject={handleSaveScanProject}
-              handleScanNow={handleScanNow}
-              handleToggleActive={handleToggleActive}
-              handleEditScanProject={handleEditScanProject}
-              handleDeleteScanProject={handleDeleteScanProject}
-              teamId={teamId}
-            />
-
+        <div className="flex-1 min-w-0 w-full">
+          {selectedScanConfigId === null ? (
             <DubTaskTable
               tasks={tasks}
               loading={loading}
@@ -1001,39 +1057,50 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
               refreshData={refreshData}
               handleRetryTask={handleRetryTask}
               handleDeleteTask={handleDeleteTask}
-              handleEditTask={handleEditTask}
+              handleEditTask={(task) => {
+                handleEditTask(task);
+                setIsTaskModalOpen(true);
+              }}
+              handlePauseTask={handlePauseTask}
+              handleResumeTask={handleResumeTask}
               handleOpenLocal={handleOpenLocal}
               setPreviewVideoUrl={setPreviewVideoUrl}
               setPreviewSrtUrl={setPreviewSrtUrl}
               teamId={teamId}
             />
-          </div>
-        ) : (
-          <DubScanProjectPane
-            config={scanProjects.find(p => p.id.toString() === selectedScanConfigId.toString())}
-            teamId={teamId}
-            tasks={tasks}
-            loading={loading}
-            taskPage={taskPage}
-            setTaskPage={setTaskPage}
-            taskTotalCount={taskTotalCount}
-            tasksPerPage={TASKS_PER_PAGE}
-            refreshData={refreshData}
-            handleRetryTask={handleRetryTask}
-            handleDeleteTask={handleDeleteTask}
-            handleEditTask={handleEditTask}
-            handleOpenLocal={handleOpenLocal}
-            setPreviewVideoUrl={setPreviewVideoUrl}
-            setPreviewSrtUrl={setPreviewSrtUrl}
-            onEdit={(config) => handleEditScanProject(config)}
-            onDelete={(id) => handleDeleteScanProject(id.toString())}
-            onTriggerScan={(id) => {
-              const p = scanProjects.find(item => item.id.toString() === id.toString());
-              if (p) handleScanNow(p);
-            }}
-            onRefreshTasks={refreshData}
-          />
-        )}
+          ) : (
+            <DubScanProjectPane
+              config={scanProjects.find(p => p.id.toString() === selectedScanConfigId.toString())}
+              teamId={teamId}
+              tasks={tasks}
+              loading={loading}
+              taskPage={taskPage}
+              setTaskPage={setTaskPage}
+              taskTotalCount={taskTotalCount}
+              tasksPerPage={TASKS_PER_PAGE}
+              refreshData={refreshData}
+              handleRetryTask={handleRetryTask}
+              handleDeleteTask={handleDeleteTask}
+              handleEditTask={(task) => {
+                handleEditTask(task);
+                setIsTaskModalOpen(true);
+              }}
+              handleOpenLocal={handleOpenLocal}
+              setPreviewVideoUrl={setPreviewVideoUrl}
+              setPreviewSrtUrl={setPreviewSrtUrl}
+              onEdit={(config) => {
+                handleEditScanProject(config);
+                setIsTaskModalOpen(true);
+              }}
+              onDelete={(id) => handleDeleteScanProject(id.toString())}
+              onTriggerScan={(id) => {
+                const p = scanProjects.find(item => item.id.toString() === id.toString());
+                if (p) handleScanNow(p);
+              }}
+              onRefreshTasks={refreshData}
+            />
+          )}
+        </div>
       </div>
 
       {/* Connected Workers management Sub-component */}

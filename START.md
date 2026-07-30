@@ -160,6 +160,12 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính từ 1.018 dòng xuống còn ~350 dòng, giảm bớt 65% code dư thừa giúp UI render nhanh hơn và tối ưu bảo trì. Verify build 100% không lỗi.
 
+- **2026-07-30 (hero-dub - Full-Width UI, Popup Form, Clear DB & Pause/Resume)**:
+  - 🖥️ **Full-Width Fluid Container**: Chuyển bố cục Dashboard sang không gian tràn viền 2 bên (`w-full px-4 md:px-6`), Sidebar cố định 320px và Bảng quản lý chiếm 100% diện tích còn lại.
+  - 🔲 **Modal Overlay Form**: Chuyển form `DubTaskForm` thành Modal Popup kính mờ (Backdrop-blur) điều khiển mở/đóng bằng nút "+ Tạo tác vụ dịch mới" trên Header Toolbar.
+  - 🗑️ **Clear All Data Action**: Viết Server Action `clearAllDubDataAction` và tích hợp nút xóa sạch dữ liệu rác/thử nghiệm kèm xác nhận bảo mật.
+  - ⏸️ **Pause & Resume Task Actions**: Viết `pauseDubTaskAction` và `resumeDubTaskAction`, bổ sung nút Dừng/Tiếp tục trên từng dòng bảng tác vụ `DubTaskTable`.
+
 - **2026-07-30 (hero-dub - Split-Pane Project Management UI Refactor)**:
   - 🚀 **Nâng cấp Giao diện Quản lý Dự án**: Tách biệt hoàn toàn tính năng "Dự án quét thư mục tự động" và "Tác vụ dịch lẻ". 
   - 📂 **`DubScanSidebar` & `DubScanProjectPane`**: Triển khai giao diện Split-Pane 2 cột (Sidebar trái điều hướng dự án, Pane phải quản lý cấu hình & danh sách video dịch thuộc về riêng dự án đó).

@@ -9,7 +9,9 @@ import {
   Folder,
   Edit,
   RotateCcw,
-  Trash2
+  Trash2,
+  Pause,
+  Play
 } from 'lucide-react';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 import { getStatusBadge, getPlatformLabel } from '../_shared/dub-ui-helpers';
@@ -25,6 +27,8 @@ interface DubTaskTableProps {
   handleRetryTask: (_taskId: number) => void;
   handleDeleteTask: (_taskId: number) => void;
   handleEditTask: (_task: any) => void;
+  handlePauseTask?: (_taskId: number) => void;
+  handleResumeTask?: (_taskId: number) => void;
   handleOpenLocal: (_path: string, isFolder?: boolean) => void;
   setPreviewVideoUrl: (_url: string | null) => void;
   setPreviewSrtUrl: (_url: string | null) => void;
@@ -43,9 +47,11 @@ export default function DubTaskTable({
   handleRetryTask,
   handleDeleteTask,
   handleEditTask,
+  handlePauseTask,
+  handleResumeTask,
 }: DubTaskTableProps) {
   return (
-    <div className="lg:col-span-2 bg-gray-900/40 border border-white/5 p-5 rounded-2xl shadow-sm backdrop-blur-xl space-y-4">
+    <div className="bg-gray-900/40 border border-white/5 p-5 rounded-2xl shadow-sm backdrop-blur-xl space-y-4 w-full">
       <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2">
         <Video className="h-4 w-4 text-orange-400" />
         Hàng đợi tác vụ dịch thuật ({taskTotalCount})
@@ -61,11 +67,11 @@ export default function DubTaskTable({
           <Video className="h-8 w-8 text-gray-600" />
           <span className="text-xs font-bold text-gray-400">Không có tác vụ dịch thuật nào trong hàng đợi</span>
           <p className="text-[10px] text-gray-500 leading-normal max-w-sm">
-            Hãy dán link video Douyin, Bilibili hoặc YouTube ở cột bên trái để bắt đầu tạo tác vụ dịch tự động.
+            Bấm nút "+ Tạo tác vụ dịch mới" ở góc trên để bắt đầu thêm video dịch tự động.
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/5 text-[9px] font-black text-gray-500 uppercase tracking-wider pb-2">
@@ -78,7 +84,7 @@ export default function DubTaskTable({
             <tbody className="divide-y divide-white/5">
               {tasks.map((task) => (
                 <tr key={task.id} className="text-xs group hover:bg-white/[0.01] transition-colors">
-                  <td className="py-3 pr-3 max-w-[240px]">
+                  <td className="py-3 pr-3 max-w-[320px]">
                     <div className="flex gap-3 items-center">
                       {task.sourceThumbnailUrl ? (
                         <img src={task.sourceThumbnailUrl} alt="" className="w-16 h-10 object-cover rounded-md border border-white/10 shrink-0" />
@@ -170,7 +176,26 @@ export default function DubTaskTable({
                     </div>
                   </td>
                   <td className="py-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      {/* Button Pause / Resume */}
+                      {task.status === 'paused' ? (
+                        <button
+                          onClick={() => handleResumeTask && handleResumeTask(task.id)}
+                          className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-lg cursor-pointer transition-all flex items-center gap-1 text-[10px] font-bold"
+                          title="Tiếp tục dịch"
+                        >
+                          <Play className="h-3.5 w-3.5 fill-emerald-400" />
+                        </button>
+                      ) : (task.status === 'pending' || task.status === 'running') ? (
+                        <button
+                          onClick={() => handlePauseTask && handlePauseTask(task.id)}
+                          className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 hover:text-amber-300 rounded-lg cursor-pointer transition-all flex items-center gap-1 text-[10px] font-bold"
+                          title="Tạm dừng dịch"
+                        >
+                          <Pause className="h-3.5 w-3.5 fill-amber-400" />
+                        </button>
+                      ) : null}
+
                       {task.status === 'failed' && (
                         <button
                           onClick={() => handleRetryTask(task.id)}
