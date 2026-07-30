@@ -322,17 +322,19 @@ export default function DubTaskForm({
           </div>
         )}
 
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-gray-400 uppercase">Tên Tác Vụ / Tên Dự Án</label>
-          <input
-            type="text"
-            placeholder="VD: Video giải trí số 1"
-            value={taskTitle}
-            onChange={(e) => setTaskTitle(e.target.value)}
-            disabled={creatingTask || isUploadingFile}
-            className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/55 transition-all shadow-inner"
-          />
-        </div>
+        {uploadMode === 'file' && !editingProjectId && (
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-gray-400 uppercase">Tên Tác Vụ (Tùy chọn)</label>
+            <input
+              type="text"
+              placeholder="VD: Video giải trí số 1"
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+              disabled={creatingTask || isUploadingFile}
+              className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/55 transition-all shadow-inner"
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
