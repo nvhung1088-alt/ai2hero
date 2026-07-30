@@ -499,7 +499,7 @@ export async function syncYoutubeChannelAction(
                 if (parsed.description) optimizedDesc = parsed.description;
                 if (parsed.timeline && Array.isArray(parsed.timeline)) optimizedTimeline = parsed.timeline;
                 
-                if (parsed.genre || parsed.tags) {
+                if ((parsed.genre || parsed.tags) && seriesId) {
                   await db.update(filmSeries)
                     .set({
                       genre: parsed.genre || undefined,

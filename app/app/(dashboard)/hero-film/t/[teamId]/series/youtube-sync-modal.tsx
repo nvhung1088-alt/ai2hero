@@ -305,7 +305,7 @@ export function YoutubeSyncModal({
                              
                              try {
                                while (keepGoing && !isPausedRef.current) {
-                                 const res = await batchTranslateChannelAiAction(c.id, teamId);
+                                 const res = await batchTranslateChannelAiAction(c.id);
                                  
                                  if (!res.success) {
                                    keepGoing = false;
@@ -419,7 +419,7 @@ export function YoutubeSyncModal({
                                    let keepGoing = true;
                                    try {
                                      while (keepGoing && !isPausedRef.current) {
-                                       const res = await batchTranslateChannelAiAction(c.id, teamId);
+                                       const res = await batchTranslateChannelAiAction(c.id);
                                        if (!res.success) {
                                          keepGoing = false;
                                          setError(`Lỗi dịch AI: ${res.error || 'Không xác định'}`);

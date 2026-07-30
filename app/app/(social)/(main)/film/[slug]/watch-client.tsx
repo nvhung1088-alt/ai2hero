@@ -1243,9 +1243,7 @@ export default function HeroFilmWatchClient({
               </div>
             </div>
 
-            {/* Content Details */}
             <div className="p-6 space-y-6 flex-1">
-              {/* Stats Row */}
               <div className="flex flex-wrap items-center gap-3 md:gap-4 text-xs font-bold text-gray-300">
                 <span className="text-emerald-400 border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 rounded-md">
                   {series.totalEpisodes} Tập
@@ -1259,46 +1257,42 @@ export default function HeroFilmWatchClient({
                 <span className="flex items-center gap-1"><Heart className="h-3 w-3"/> {likeCount.toLocaleString()}</span>
               </div>
 
-              {/* Tags & Genres */}
               <div className="flex flex-wrap gap-2">
                 <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider font-extrabold">
-                  {series.genre || 'Phim'}
+                  {Boolean(series.genre) ? String(series.genre) : 'Phim'}
                 </span>
-                {Array.isArray(series.tags) && (series.tags as string[]).map((tag, i) => (
+                {Array.isArray(series.tags) ? (series.tags as any[]).map((tag, i) => (
                   <span key={i} className="text-[10px] bg-white/5 border border-white/10 px-2.5 py-1 rounded-full text-gray-300">
-                    #{tag}
+                    #{String(tag)}
                   </span>
-                ))}
+                )) : null}
               </div>
 
-              {/* Cast & Crew Info */}
               <div className="space-y-1 text-sm border-y border-white/10 py-4">
                 <div className="grid grid-cols-[100px_1fr] gap-2">
                   <span className="text-gray-500 font-bold">Đạo diễn:</span>
-                  <span className="text-gray-200">{series.director || 'AI'}</span>
+                  <span className="text-gray-200">{Boolean(series.director) ? String(series.director) : 'AI'}</span>
                 </div>
                 <div className="grid grid-cols-[100px_1fr] gap-2">
                   <span className="text-gray-500 font-bold">Diễn viên:</span>
-                  <span className="text-gray-200">{series.cast || 'AI'}</span>
+                  <span className="text-gray-200">{Boolean(series.cast) ? String(series.cast) : 'AI'}</span>
                 </div>
-                {series.releaseYear && (
+                {Boolean(series.releaseYear) ? (
                   <div className="grid grid-cols-[100px_1fr] gap-2">
                     <span className="text-gray-500 font-bold">Năm KH:</span>
-                    <span className="text-gray-200">{series.releaseYear}</span>
+                    <span className="text-gray-200">{String(series.releaseYear)}</span>
                   </div>
-                )}
+                ) : null}
               </div>
 
-              {/* Description */}
               <div className="space-y-2">
                 <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Tóm Tắt Nội Dung</h3>
                 <p className="text-sm text-gray-300 leading-relaxed font-medium whitespace-pre-wrap">
-                  {currentEpisode?.summary || series.description || 'Chưa có thông tin mô tả chi tiết cho bộ phim này.'}
+                  {String((currentEpisode?.summary as any) || (series.description as any) || 'Chưa có thông tin mô tả chi tiết cho bộ phim này.')}
                 </p>
               </div>
 
-              {/* Timeline Click-to-jump Items */}
-              {currentEpisode?.timeline && Array.isArray(currentEpisode.timeline) && currentEpisode.timeline.length > 0 && (
+              {currentEpisode?.timeline && Array.isArray(currentEpisode.timeline) && currentEpisode.timeline.length > 0 ? (
                 <div className="space-y-2 flex-1 pt-2">
                   <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Bảng Mốc Thời Gian (Timeline)</h3>
                   <div className="space-y-1.5">
@@ -1339,7 +1333,7 @@ export default function HeroFilmWatchClient({
                     ))}
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {/* Action Buttons */}
               <div className="pt-4 mt-auto">

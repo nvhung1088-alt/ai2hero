@@ -150,6 +150,11 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file khổng lồ `dashboard-client.tsx` (2.072 dòng) thành 4 sub-component chuyên biệt (`dub-guide-panel.tsx`, `dub-worker-panel.tsx`, `dub-task-form.tsx`, `dub-task-table.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính `dashboard-client.tsx` từ 2.072 dòng xuống ~560 dòng (tăng 73% khả năng bảo trì), compile TypeScript & ESLint sạch 100% (0 errors, 0 warnings) không ảnh hưởng đến bất kỳ data flow hay logic nào.
 
+- **2026-07-30 (hero-dub - Split-Pane Projects UI Refactor)**:
+  - 🧩 **Modular Component Splitting**: Tách danh sách Thương hiệu ra component riêng `dub-project-sidebar.tsx` (có thanh tìm kiếm, hiệu ứng active Amber).
+  - 🖥️ **Split-Pane Layout**: Tái cấu trúc `projects-client.tsx` từ dạng Grid Cards vỡ bố cục sang kiến trúc Split-Pane (Sidebar bên trái + Dynamic Form bên phải) giống Downloader MVP.
+  - 🎯 **UX Enhancements**: Thêm ô Tìm kiếm thương hiệu nhanh, khu vực Form rộng rãi full-width dễ quản lý và thao tác an toàn.
+
 - **2026-07-30 (hero-downloader - Modular Component Refactor)**:
   - 🧩 **Shared UI Helpers**: Tạo `_shared/downloader-ui-helpers.tsx` chứa `getStatusRank`.
   - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
