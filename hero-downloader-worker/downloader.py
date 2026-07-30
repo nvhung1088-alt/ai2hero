@@ -106,7 +106,7 @@ def download_direct_mp4(video, url, update_callback):
         downloaded = 0
         last_progress = 0
         with open(filepath, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=65536):
+            for chunk in response.iter_content(chunk_size=1048576): # 1MB buffer (Tải 1 luồng đơn, tối ưu I/O đĩa cứng)
                 if active_downloads.get(video_id, {}).get("cancel", threading.Event()).is_set():
                     raise Exception("Bị huỷ bởi người dùng")
 
@@ -236,11 +236,11 @@ def download_video(video, update_callback, cookie_data: str = None):
         'merge_output_format': 'mp4',         # Hợp nhất thành mp4, tránh rớt tiếng
         'js_runtimes': {'node': {}, 'deno': {}, 'bun': {}, 'quickjs': {}},
         'remote_components': ['ejs:github'],
-        # Giảm số luồng tải xuống còn 3 để tránh bị Bilibili bóp băng thông làm hỏng chunk (nguyên nhân gây lag video)
-        'concurrent_fragment_downloads': 3,
-        # Timeout và Retry mạng
+        # Giữ nguyên 1 luồng đơn duy nhất cho mỗi video theo yêu cầu an toàn tuyệt đối
+        'concurrent_fragment_downloads': 1,
+        # Timeout và Retry mạng (hạ sleep_requests từ 1.5s xuống 0.3s để loại bỏ delay vô ích)
         'socket_timeout': 30,
-        'sleep_requests': 1.5,
+        'sleep_requests': 0.3,
         'retries': 10,
         'fragment_retries': 10,
         'file_access_retries': 5,
