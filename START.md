@@ -160,6 +160,9 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính từ 1.018 dòng xuống còn ~350 dòng, giảm bớt 65% code dư thừa giúp UI render nhanh hơn và tối ưu bảo trì. Verify build 100% không lỗi.
 
+- **2026-07-30 (hero-film - Fix TypeScript ReactNode & JSX Comments Bug)**:
+  - 🚀 **Fix TS2322 ReactNode Fallback**: Tìm và xử lý dứt điểm lỗi ảo "Type 'unknown' is not assignable to type 'ReactNode'" ở `watch-client.tsx`. Lỗi phát sinh do TypeScript không nhận diện được kiểu của biểu thức `&&` với các biến `unknown` (JSONB) và bị lag parser tại các khối JSX comments nội tuyến. Đã thay thế thành Ternary Operator `Boolean(x) ? String(x) : null` và xóa sạch các comment gây lỗi AST. Kiểm tra TSC pass 100%.
+
 - **2026-07-30 (hero-downloader - Retry All Failed Videos & First/Last Page Controls)**:
   - 🔄 **Batch Action Retry All Failed**: Phát triển Server Action `retryAllFailedVideosAction` (`hero-downloader-actions.ts`) và nút **"Thử lại tất cả"** (Màu cam/amber) trên Toolbar Header (`downloader-dashboard-client.tsx`), cho phép kích hoạt tải lại toàn bộ các video bị lỗi trong 1 click.
   - ⏩ **Quick First & Last Page Navigation**: Bổ sung 2 nút điều hướng **"Đầu"** (nhảy về Trang 1) và **"Cuối"** (nhảy tới Trang cuối) song song với "Trước / Sau" ở phần phân trang bên dưới bảng video.

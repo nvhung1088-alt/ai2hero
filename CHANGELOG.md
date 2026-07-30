@@ -1,5 +1,9 @@
 # AI2HERO — CHANGELOG
 
+## 2026-07-30 — HeroFilm ReactNode Bug Fix & Downloader Enhancements
+- **Fix TS2322 ReactNode Fallback**: Phát hiện và xử lý dứt điểm lỗi ảo "Type 'unknown' is not assignable to type 'ReactNode'" ở `watch-client.tsx`. Lỗi phát sinh do TypeScript không nhận diện được kiểu của biểu thức `&&` với các biến `unknown` (JSONB) kết hợp với lỗi parsing tại các khối JSX comments. Đã thay thế thành Ternary Operator an toàn và xóa các comment nội tuyến, đảm bảo TSC pass 100%.
+- **Hero Dub Modular Refactor**: Tách file khổng lồ `dashboard-client.tsx` (2.072 dòng) thành các sub-component chuyên biệt. Rút gọn file chính xuống ~560 dòng, compile sạch 100%. Đổi UI `projects-client.tsx` sang dạng Split-Pane chuyên nghiệp.
+- **Hero Downloader First/Last Page & Retry All**: Bổ sung nút "Thử lại tất cả" để chạy lại toàn bộ video lỗi, và nút "Đầu", "Cuối" cho thanh phân trang. Tối ưu hàm `getStatusRank` ra helper chung.
 ## 2026-07-22 — Thiết lập Hệ thống Quản lý Polling Trung Tâm & Super Admin Traffic Control (/admin/traffic)
 - **Shared Polling Config & Engine**: Khởi tạo `app/lib/shared-polling-config.ts` và hook `app/hooks/use-smart-polling.ts` quản lý thời gian Polling toàn platform. Tự động ngắt 100% API calls khi tab trình duyệt bị ẩn (`document.visibilityState !== 'visible'`) và tự động giãn thời gian (Backoff) khi rảnh.
 - **Python Worker Traffic Optimization**: Chuẩn hóa `shared_worker_config.py` cho `herodub-worker` và `hero-downloader-worker`, chuyển nhịp nghỉ rảnh từ 2s-3s lên 20s-30s, cắt giảm 90%+ lượng Vercel Function Invocations.
