@@ -353,7 +353,14 @@ export async function updateDownloaderVideoStatusAction(id: number, teamId: numb
       return { error: 'Video not found or unauthorized' };
     }
 
-    await db.update(downloaderVideos).set({ status, updatedAt: new Date() }).where(eq(downloaderVideos.id, id));
+    const updateData: any = { status, updatedAt: new Date() };
+    if (status === 'pending' || status === 'force_pending') {
+      updateData.error = null;
+      updateData.directMp4Url = null;
+      updateData.extractStatus = null;
+    }
+
+    await db.update(downloaderVideos).set(updateData).where(eq(downloaderVideos.id, id));
     return { success: true };
   } catch (error: any) {
     console.error('[hero-downloader-actions] updateDownloaderVideoStatusAction error:', error);

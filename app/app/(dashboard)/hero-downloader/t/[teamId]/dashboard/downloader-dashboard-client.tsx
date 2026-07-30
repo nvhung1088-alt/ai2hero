@@ -674,9 +674,25 @@ export default function DownloaderDashboardClient({
                                 <span>Tạm dừng ({video.progress}%)</span>
                               </div>
                             ) : video.status === 'failed' ? (
-                              <div className="flex items-center gap-2 text-red-400 text-xs">
-                                <AlertCircle className="w-3.5 h-3.5" />
-                                <span title={video.error || ''}>Thất bại</span>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-red-400 text-xs font-medium">
+                                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                  <span>Thất bại</span>
+                                </div>
+                                {video.error && (
+                                  <div 
+                                    className="text-[10px] leading-tight text-red-300/90 bg-red-500/10 border border-red-500/20 rounded px-1.5 py-1 max-w-[200px] break-words" 
+                                    title={video.error}
+                                  >
+                                    {video.error.includes('403') || video.error.includes('forbidden') || video.error.includes('Anti-bot') || video.error.includes('Sign') ? (
+                                      <span>🔴 <strong>Lỗi Cookie/Anti-bot:</strong> Douyin chặn tải. Vui lòng cập nhật Cookie mới hoặc dùng Chrome Extension.</span>
+                                    ) : video.error.includes('WinError 32') || video.error.includes('locked') || video.error.includes('being used') ? (
+                                      <span>⚠️ <strong>File bị khóa:</strong> Tệp đang được mở bởi chương trình khác/OneDrive.</span>
+                                    ) : (
+                                      <span>⚠️ {video.error}</span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             ) : video.status === 'force_pending' ? (
                               <div className="flex items-center gap-2 text-teal-400 text-xs">
