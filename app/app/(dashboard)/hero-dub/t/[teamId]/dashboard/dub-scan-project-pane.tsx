@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { 
   FolderOpen, 
   Play, 
+  Pause,
   Edit, 
   Trash2, 
   RotateCcw, 
@@ -33,12 +34,17 @@ interface DubScanProjectPaneProps {
   handleRetryTask: (taskId: number) => void;
   handleDeleteTask: (taskId: number) => void;
   handleEditTask: (task: any) => void;
+  handlePauseTask?: (taskId: number) => void;
+  handleResumeTask?: (taskId: number) => void;
+  handlePauseAll?: () => void;
+  handleResumeAll?: () => void;
   handleOpenLocal: (path: string, isFolder?: boolean) => void;
   setPreviewVideoUrl: (url: string | null) => void;
   setPreviewSrtUrl: (url: string | null) => void;
   onEdit: (config: any) => void;
   onDelete: (id: number) => void;
   onTriggerScan: (id: number) => void;
+  onToggleActive?: (config: any) => void;
   onRefreshTasks?: () => void;
 }
 
@@ -55,12 +61,17 @@ export function DubScanProjectPane({
   handleRetryTask,
   handleDeleteTask,
   handleEditTask,
+  handlePauseTask,
+  handleResumeTask,
+  handlePauseAll,
+  handleResumeAll,
   handleOpenLocal,
   setPreviewVideoUrl,
   setPreviewSrtUrl,
   onEdit,
   onDelete,
   onTriggerScan,
+  onToggleActive,
   onRefreshTasks,
 }: DubScanProjectPaneProps) {
   const [retrying, setRetrying] = useState(false);
@@ -114,7 +125,7 @@ export function DubScanProjectPane({
           </div>
 
           {/* Top Control Bar */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               onClick={() => onTriggerScan(config.id)}
               size="sm"
@@ -123,6 +134,24 @@ export function DubScanProjectPane({
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>Quét ngay</span>
             </Button>
+
+            {onToggleActive && (
+              <Button
+                onClick={() => onToggleActive(config)}
+                variant="outline"
+                size="sm"
+                className={`font-medium text-xs h-8 px-3 rounded-lg flex items-center gap-1.5 ${
+                  config.isActive 
+                    ? 'border-amber-500/30 hover:bg-amber-500/10 text-amber-300' 
+                    : 'border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-300'
+                }`}
+                title={config.isActive ? 'Tạm dừng quét tự động' : 'Bật lại quét tự động'}
+              >
+                {config.isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                <span>{config.isActive ? 'Tạm dừng quét' : 'Kích hoạt quét'}</span>
+              </Button>
+            )}
+
             <Button
               onClick={handleRetryAllFailed}
               disabled={retrying}
@@ -152,47 +181,51 @@ export function DubScanProjectPane({
           </div>
         </div>
 
-        {/* Configuration Details Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-xs">
-          <div className="bg-zinc-900/60 p-2.5 rounded-lg border border-zinc-800/40 flex items-center gap-2.5">
-            <Languages className="w-4 h-4 text-orange-400 shrink-0" />
-            <div>
-              <div className="text-[10px] text-zinc-500 font-medium">Ngôn ngữ</div>
-              <div className="text-zinc-200 font-semibold uppercase">{config.sourceLang || 'zh'} ➔ {config.targetLang || 'vi'}</div>
+        {/* Configurations detail grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+          <div className="bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
+            <div className="flex items-center gap-1.5 text-zinc-400 text-[10px] font-medium mb-1">
+              <Languages className="w-3.5 h-3.5 text-orange-400" />
+              <span>Ngôn ngữ</span>
             </div>
+            <p className="text-xs font-bold text-zinc-200">
+              {config.sourceLang?.toUpperCase()} &rarr; {config.targetLang?.toUpperCase()}
+            </p>
           </div>
 
-          <div className="bg-zinc-900/60 p-2.5 rounded-lg border border-zinc-800/40 flex items-center gap-2.5">
-            <Mic className="w-4 h-4 text-blue-400 shrink-0" />
-            <div>
-              <div className="text-[10px] text-zinc-500 font-medium">Bộ máy ASR</div>
-              <div className="text-zinc-200 font-semibold truncate">{config.asrEngine || 'faster-whisper'}</div>
+          <div className="bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
+            <div className="flex items-center gap-1.5 text-zinc-400 text-[10px] font-medium mb-1">
+              <Mic className="w-3.5 h-3.5 text-amber-400" />
+              <span>Độ máy ASR</span>
             </div>
+            <p className="text-xs font-bold text-zinc-200 truncate">{config.asrEngine || 'faster-whisper'}</p>
           </div>
 
-          <div className="bg-zinc-900/60 p-2.5 rounded-lg border border-zinc-800/40 flex items-center gap-2.5">
-            <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
-            <div>
-              <div className="text-[10px] text-zinc-500 font-medium">Lồng tiếng (TTS)</div>
-              <div className="text-zinc-200 font-semibold truncate">
-                {config.ttsEnabled ? (config.ttsVoice || 'Edge-TTS') : 'Tắt TTS (Chỉ phụ đề)'}
-              </div>
+          <div className="bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
+            <div className="flex items-center gap-1.5 text-zinc-400 text-[10px] font-medium mb-1">
+              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+              <span>Lồng tiếng (TTS)</span>
             </div>
+            <p className="text-xs font-bold text-zinc-200 truncate">
+              {config.ttsEnabled ? (config.ttsVoice || 'Bật') : 'Tắt'}
+            </p>
           </div>
 
-          <div className="bg-zinc-900/60 p-2.5 rounded-lg border border-zinc-800/40 flex items-center gap-2.5">
-            <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-            <div>
-              <div className="text-[10px] text-zinc-500 font-medium">Chu kỳ quét</div>
-              <div className="text-zinc-200 font-semibold">{config.intervalMinutes} phút / lần</div>
+          <div className="bg-zinc-900/60 border border-zinc-800/80 p-2.5 rounded-lg">
+            <div className="flex items-center gap-1.5 text-zinc-400 text-[10px] font-medium mb-1">
+              <Clock className="w-3.5 h-3.5 text-blue-400" />
+              <span>Chu kỳ quét</span>
             </div>
+            <p className="text-xs font-bold text-zinc-200">{config.intervalMinutes || 60} phút / lần</p>
           </div>
         </div>
 
         {config.outputFolder && (
-          <div className="mt-3 pt-2 border-t border-zinc-800/40 text-[11px] text-zinc-400 flex items-center justify-between">
-            <span className="truncate">Thư mục xuất thành phẩm: <strong className="text-zinc-300 font-mono">{config.outputFolder}</strong></span>
-            <span className="text-zinc-500 shrink-0">Đã dịch: <strong className="text-orange-400">{config.scannedCount || 0}</strong> video</span>
+          <div className="text-[11px] text-zinc-400 bg-zinc-900/40 border border-zinc-800/40 p-2 rounded-lg flex items-center justify-between font-mono mt-1">
+            <span className="truncate">Thư mục xuất thành phẩm: <strong className="text-zinc-200">{config.outputFolder}</strong></span>
+            <span className="text-[10px] text-zinc-500 font-sans font-medium shrink-0 ml-2">
+              Đã dịch: <strong className="text-orange-400 font-bold">{config.scannedCount || 0}</strong> video
+            </span>
           </div>
         )}
       </div>
@@ -217,6 +250,10 @@ export function DubScanProjectPane({
           handleRetryTask={handleRetryTask}
           handleDeleteTask={handleDeleteTask}
           handleEditTask={handleEditTask}
+          handlePauseTask={handlePauseTask}
+          handleResumeTask={handleResumeTask}
+          handlePauseAll={handlePauseAll}
+          handleResumeAll={handleResumeAll}
           handleOpenLocal={handleOpenLocal}
           setPreviewVideoUrl={setPreviewVideoUrl}
           setPreviewSrtUrl={setPreviewSrtUrl}

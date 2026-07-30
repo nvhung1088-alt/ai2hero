@@ -1111,6 +1111,10 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
                 handleEditTask(task);
                 setIsTaskModalOpen(true);
               }}
+              handlePauseTask={handlePauseTask}
+              handleResumeTask={handleResumeTask}
+              handlePauseAll={handlePauseAllTasks}
+              handleResumeAll={handleResumeAllTasks}
               handleOpenLocal={handleOpenLocal}
               setPreviewVideoUrl={setPreviewVideoUrl}
               setPreviewSrtUrl={setPreviewSrtUrl}
@@ -1123,6 +1127,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
                 const p = scanProjects.find(item => item.id.toString() === id.toString());
                 if (p) handleScanNow(p);
               }}
+              onToggleActive={(config) => handleToggleActive(config)}
               onRefreshTasks={refreshData}
             />
           )}
