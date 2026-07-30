@@ -1054,12 +1054,14 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
             setTaskPage(1);
           }}
           onCreateNew={() => {
+            setUploadMode('folder');
             setEditingProjectId('new');
             setScanFolderPath('');
             setOutputFolder('');
             setIsTaskModalOpen(true);
           }}
           onEditConfig={(config) => {
+            setUploadMode('folder');
             handleEditScanProject(config);
             setIsTaskModalOpen(true);
           }}

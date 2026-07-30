@@ -187,62 +187,140 @@ export default function DubTaskForm({
         )}
         <h2 className="text-sm font-extrabold text-gray-300 uppercase tracking-wider flex items-center gap-2 pr-8">
           <Languages className="h-5 w-5 text-amber-400" />
-          {editingTaskId ? 'Cập Nhật Tác Vụ Dịch' : 'Tạo Tác Vụ Dịch Phụ Đề Mới'}
+          {editingTaskId ? 'Cập Nhật Tác Vụ Dịch' : editingProjectId ? 'Cấu Hình Dự Án Quét Thư Mục' : 'Tạo Tác Vụ Dịch Phụ Đề Mới'}
         </h2>
 
-      <form onSubmit={handleCreateTask} className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-[10px] font-bold text-gray-400 uppercase flex justify-between items-center">
-            <span>Nguồn Video</span>
-          </label>
+        {/* Tab Switcher: Tác vụ lẻ vs Dự án quét thư mục */}
+        {!editingTaskId && (
+          <div className="flex bg-black/40 p-1 rounded-xl border border-white/10 text-xs font-bold my-2">
+            <button
+              type="button"
+              onClick={() => {
+                setUploadMode('file');
+                setEditingProjectId(null);
+              }}
+              className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                uploadMode === 'file' && !editingProjectId
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <span>📹 Tác Vụ Dịch Lẻ (File/URL)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setUploadMode('folder');
+                if (!editingProjectId) setEditingProjectId('new');
+              }}
+              className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                uploadMode === 'folder' || editingProjectId
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <span>📁 Dự Án Quét Thư Mục Tự Động</span>
+            </button>
+          </div>
+        )}
 
-          <div className="space-y-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold text-zinc-300">Đường dẫn Local hoặc Link Video (Bilibili, Douyin, YouTube)</label>
+      <form onSubmit={handleCreateTask} className="space-y-4">
+        {uploadMode === 'folder' || editingProjectId ? (
+          /* FORM TẠO DỰ ÁN QUÉT THƯ MỤC */
+          <div className="space-y-4 bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-xl">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-emerald-400 uppercase">1. Tên Dự Án Quét</label>
               <input
                 type="text"
-                placeholder="VD: C:\Video\input.mp4 hoặc https://www.bilibili.com/video/..."
-                value={localFilePaths}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocalFilePaths(e.target.value)}
-                className="w-full bg-black/60 border border-zinc-800 text-zinc-100 text-xs rounded-lg h-9 px-3 focus:outline-none focus:border-orange-500/50"
+                placeholder="VD: PHIM1, TEST, Kênh Phim Ngắn..."
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+                className="w-full bg-black/60 border border-emerald-500/30 text-white text-xs rounded-lg h-9 px-3 focus:outline-none focus:border-emerald-400 font-medium"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-emerald-400 uppercase">2. Đường dẫn Thư mục Gốc cần Quét (Local Path)</label>
+              <input
+                type="text"
+                placeholder="VD: C:\Users\ADMIN\OneDrive\Desktop\DOWNLOAD1\TEST"
+                value={scanFolderPath}
+                onChange={(e) => setScanFolderPath(e.target.value.replace(/["']/g, ''))}
+                className="w-full bg-black/60 border border-emerald-500/30 text-white text-xs rounded-lg h-9 px-3 focus:outline-none focus:border-emerald-400 font-mono"
+              />
+              <p className="text-[10px] text-gray-400">Worker sẽ tự động phát hiện tất cả các file video nằm trong thư mục này để dịch tự động.</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-emerald-400 uppercase">3. Chu kỳ Quét tự động (Phút)</label>
+              <input
+                type="number"
+                min="5"
+                max="1440"
+                value={scanInterval}
+                onChange={(e) => setScanInterval(parseInt(e.target.value) || 60)}
+                className="w-full bg-black/60 border border-emerald-500/30 text-white text-xs rounded-lg h-9 px-3 focus:outline-none focus:border-emerald-400 font-mono"
               />
             </div>
           </div>
-            <div className="space-y-2 pt-2">
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-2">
-                <p className="text-xs text-amber-500 font-semibold mb-1">💡 Mẹo nhập nhiều video cực nhanh (Windows):</p>
-                <ol className="text-[11px] text-gray-300 list-decimal pl-4 space-y-0.5">
-                  <li>Bôi đen tất cả các video cần dịch trong máy tính.</li>
-                  <li>Giữ phím <strong>Shift + Click chuột phải</strong> vào các file đó.</li>
-                  <li>Chọn <strong>&quot;Copy as path&quot;</strong> (Sao chép dưới dạng đường dẫn).</li>
-                  <li>Nhấn <strong>Ctrl + V</strong> dán vào ô bên dưới là xong!</li>
-                </ol>
+        ) : (
+          /* FORM TẠO TÁC VỤ LẺ */
+          <div className="space-y-3 bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-gray-400 uppercase flex justify-between items-center">
+                <span>Nguồn Video</span>
+              </label>
+
+              <div className="space-y-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-zinc-300">Đường dẫn Local hoặc Link Video (Bilibili, Douyin, YouTube)</label>
+                  <input
+                    type="text"
+                    placeholder="VD: C:\Video\input.mp4 hoặc https://www.bilibili.com/video/..."
+                    value={localFilePaths}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocalFilePaths(e.target.value)}
+                    className="w-full bg-black/60 border border-zinc-800 text-zinc-100 text-xs rounded-lg h-9 px-3 focus:outline-none focus:border-orange-500/50"
+                  />
+                </div>
               </div>
-              <textarea
-                value={localFilePaths}
-                onChange={(e) => setLocalFilePaths(e.target.value.replace(/["']/g, ''))}
-                placeholder={`C:\\Downloads\\video1.mp4\nD:\\Movies\\video2.mp4\n\n(Bấm Ctrl + V vào đây)`}
-                disabled={creatingTask || isUploadingFile}
-                className="w-full h-28 bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/50 resize-none font-mono"
-              />
-              <div className="flex justify-end pt-1">
-                <input 
-                  type="file" 
-                  id="localFileInput" 
-                  className="hidden" 
-                  accept="video/*"
-                  onChange={handleLocalFileUpload}
+
+              <div className="space-y-2 pt-2">
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-2">
+                  <p className="text-xs text-amber-500 font-semibold mb-1">💡 Mẹo nhập nhiều video cực nhanh (Windows):</p>
+                  <ol className="text-[11px] text-gray-300 list-decimal pl-4 space-y-0.5">
+                    <li>Bôi đen tất cả các video cần dịch trong máy tính.</li>
+                    <li>Giữ phím <strong>Shift + Click chuột phải</strong> vào các file đó.</li>
+                    <li>Chọn <strong>&quot;Copy as path&quot;</strong> (Sao chép dưới dạng đường dẫn).</li>
+                    <li>Nhấn <strong>Ctrl + V</strong> dán vào ô bên dưới là xong!</li>
+                  </ol>
+                </div>
+                <textarea
+                  value={localFilePaths}
+                  onChange={(e) => setLocalFilePaths(e.target.value.replace(/["']/g, ''))}
+                  placeholder={`C:\\Downloads\\video1.mp4\nD:\\Movies\\video2.mp4\n\n(Bấm Ctrl + V vào đây)`}
+                  disabled={creatingTask || isUploadingFile}
+                  className="w-full h-28 bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/50 resize-none font-mono"
                 />
-                <label 
-                  htmlFor="localFileInput" 
-                  className="text-[10px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-3 py-1.5 rounded-lg cursor-pointer transition-all flex items-center gap-1.5 font-bold"
-                >
-                  {isUploadingFile ? <Loader2 className="w-3 h-3 animate-spin" /> : <FolderOpen className="w-3 h-3" />}
-                  Hoặc chọn file từ máy...
-                </label>
+                <div className="flex justify-end pt-1">
+                  <input 
+                    type="file" 
+                    id="localFileInput" 
+                    className="hidden" 
+                    accept="video/*"
+                    onChange={handleLocalFileUpload}
+                  />
+                  <label 
+                    htmlFor="localFileInput" 
+                    className="text-[10px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 px-3 py-1.5 rounded-lg cursor-pointer transition-all flex items-center gap-1.5 font-bold"
+                  >
+                    {isUploadingFile ? <Loader2 className="w-3 h-3 animate-spin" /> : <FolderOpen className="w-3 h-3" />}
+                    Hoặc chọn file từ máy...
+                  </label>
+                </div>
               </div>
             </div>
           </div>
+        )}
 
         <div className="space-y-1.5">
           <label className="text-[10px] font-bold text-gray-400 uppercase">Tên Tác Vụ / Tên Dự Án</label>
@@ -684,16 +762,16 @@ export default function DubTaskForm({
           <p className="text-[9px] text-gray-500 font-medium">Bỏ trống để dùng thư mục mặc định của Worker</p>
         </div>
 
-        {uploadMode === 'folder' && (!scanProjects.length || editingProjectId) ? (
+        {uploadMode === 'folder' || editingProjectId ? (
           <button
             type="button"
             onClick={handleSaveScanProject}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-95 text-white rounded-xl text-xs font-black tracking-wide shadow-lg shadow-green-500/10 transition-all cursor-pointer"
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 text-white rounded-xl text-xs font-black tracking-wide shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
           >
             <Check className="h-4 w-4" />
-            Lưu cấu hình Dự Án Quét
+            Lưu Cấu Hình Dự Án Quét Thư Mục
           </button>
-        ) : uploadMode === 'file' ? (
+        ) : (
           <div className="flex gap-2 w-full">
             {editingTaskId && (
               <button
@@ -722,7 +800,7 @@ export default function DubTaskForm({
               )}
             </button>
           </div>
-        ) : null}
+        )}
       </form>
     </div>
   </div>

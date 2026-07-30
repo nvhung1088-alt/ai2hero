@@ -160,10 +160,10 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính từ 1.018 dòng xuống còn ~350 dòng, giảm bớt 65% code dư thừa giúp UI render nhanh hơn và tối ưu bảo trì. Verify build 100% không lỗi.
 
-- **2026-07-30 (hero-dub - Fix Project Deletion Client Crash & Reset Active Config)**:
+- **2026-07-30 (hero-dub - Explicit Tab Switcher for Single Tasks vs Folder Scan Projects)**:
+  - 🗂️ **Bổ Sung Tab Switcher Trực Quan**: Tích hợp 2 Tab chuyển đổi chế độ **`📹 Tác Vụ Dịch Lẻ (File/URL)`** và **`📁 Dự Án Quét Thư Mục Tự Động`** nổi bật ngay trên cùng của Modal Popup Form.
+  - 🎯 **Tránh Nhầm Lẫn**: Giúp người dùng phân biệt hoàn toàn việc dán link/đường dẫn file video đơn lẻ với việc đăng ký một thư mục chứa nhiều video (`C:\Users\ADMIN\OneDrive\Desktop\DOWNLOAD1\TEST`) làm Dự Án Quét tự động.
   - 🛠️ **Fix Client Crash**: Khắc phục dứt điểm lỗi `Cannot read properties of undefined (reading 'name')` khi xóa dự án. Thêm guard check an toàn `if (!config) return null;` trong `DubScanProjectPane`.
-  - 🔄 **Reset Selection State**: Tự động reset `selectedScanConfigId` về `null` ngay khi dự án đang chọn bị xóa trong `handleDeleteScanProject`, giúp giao diện quay về tab Tác vụ lẻ mượt mà không bị crash React component.
-  - ⏸️ **Nút Ngừng Dịch & Dịch Tiếp Trực Diện**: Bổ sung song song 2 nút bấm **`⏸️ Ngừng dịch`** (Màu cam) và **`▶️ Dịch tiếp`** (Màu xanh) ngay tại Thẻ Dự Án (`DubScanProjectPane`) và Header của Bảng (`DubTaskTable`).
 
 - **2026-07-30 (hero-dub - Split-Pane Project Management UI Refactor)**:
   - 🚀 **Nâng cấp Giao diện Quản lý Dự án**: Tách biệt hoàn toàn tính năng "Dự án quét thư mục tự động" và "Tác vụ dịch lẻ". 

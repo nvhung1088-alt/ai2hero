@@ -1,6 +1,7 @@
 # AI2HERO — CHANGELOG
 
-## 2026-07-30 — Hero Dub Fix Project Deletion Crash & Explicit Control Buttons
+## 2026-07-30 — Hero Dub Fix Project Deletion Crash, Tab Switcher & Explicit Control Buttons
+- **Tab Switcher Phân Biệt "Tác Vụ Lẻ" và "Dự Án Quét Thư Mục"**: Bổ sung 2 Tab chọn chế độ **`📹 Tác Vụ Dịch Lẻ (File/URL)`** và **`📁 Dự Án Quét Thư Mục Tự Động`** trực quan ngay đầu Modal Form. Tránh tuyệt đối việc dán nhầm đường dẫn thư mục `C:\Users\ADMIN\OneDrive\Desktop\DOWNLOAD1\TEST` thành tác vụ lẻ.
 - **Fix Client Crash Khi Xóa Dự Án**: Sửa triệt để lỗi `Cannot read properties of undefined (reading 'name')` khi người dùng bấm xóa dự án quét. Tự động chuyển trạng thái được chọn về `null` (Tác vụ lẻ) và thêm guard check an toàn cho `DubScanProjectPane`.
 - **Nút Ngừng Dịch & Dịch Tiếp Trực Diện**: Bổ sung song song 2 nút bấm **`⏸️ Ngừng dịch`** (Màu cam) và **`▶️ Dịch tiếp`** (Màu xanh) ngay tại Thẻ Dự Án (`DubScanProjectPane`) và Header của Bảng (`DubTaskTable`).
 
