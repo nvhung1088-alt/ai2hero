@@ -608,7 +608,25 @@ export async function pollPendingTaskAction(workerId: number, teamId: number) {
       `💻 Worker nhận việc: Worker [${workerName}] đã nhận tác vụ xử lý.`
     );
 
-    return { success: true, task: updatedTask };
+    let finalOutputFolder = updatedTask.outputFolder;
+    if (!finalOutputFolder && updatedTask.scanConfigId) {
+      const [scanConf] = await db
+        .select({ outputFolder: dubScanConfigs.outputFolder })
+        .from(dubScanConfigs)
+        .where(eq(dubScanConfigs.id, updatedTask.scanConfigId))
+        .limit(1);
+      if (scanConf?.outputFolder) {
+        finalOutputFolder = scanConf.outputFolder;
+      }
+    }
+
+    const taskPayload = {
+      ...updatedTask,
+      outputFolder: finalOutputFolder || undefined,
+      output_folder: finalOutputFolder || undefined,
+    };
+
+    return { success: true, task: taskPayload };
   } catch (error: any) {
     console.error('[hero-dub-actions] pollPendingTaskAction error:', error);
     return { error: 'Lỗi poll task: ' + error.message };

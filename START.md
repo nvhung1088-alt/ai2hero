@@ -160,10 +160,10 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính từ 1.018 dòng xuống còn ~350 dòng, giảm bớt 65% code dư thừa giúp UI render nhanh hơn và tối ưu bảo trì. Verify build 100% không lỗi.
 
-- **2026-07-30 (hero-dub - Fix Project Task Filtering & Safe Type Casting)**:
-  - 🔍 **Fix Filter Query**: Ép kiểu an toàn `scanConfigId` sang `integer` trong `getDubTasksAction` và `dashboard-client.tsx`, giúp hiển thị chính xác toàn bộ danh sách video thuộc dự án ngay khi chọn dự án trên Sidebar.
+- **2026-07-30 (hero-dub - Fix outputFolder Inheritance & Dual-Naming Compatibility)**:
+  - 📁 **Fix Tự Động Lưu Đúng Thư Mục**: Bổ sung cơ chế tự động kế thừa `outputFolder` từ Cấu hình Dự Án Quét sang Tác vụ con nếu tác vụ chưa có đường dẫn xuất riêng trong `pollPendingTaskAction`.
+  - 🔄 **Hỗ Trợ Đôi CamelCase & SnakeCase**: Bổ sung đồng thời 2 chuẩn `outputFolder` & `output_folder` (cũng như `source_lang`, `target_lang`, `asr_engine`, `tts_voice`...) trong API `create-from-worker` và API giao tác vụ cho Python Worker. Đảm bảo 100% video xuất ra được lưu chính xác vào thư mục tùy chọn đã cài đặt.
   - 🧹 **Loại Bỏ Ô Trùng Lặp**: Triệt tiêu hoàn toàn ô nhập "Tên Tác Vụ / Tên Dự Án" thừa khi đang ở chế độ Tạo Dự Án Quét Thư Mục, đảm bảo form chỉ có đúng 1 ô nhập Tên Dự Án duy nhất.
-  - 🚪 **Tự Động Đóng Popup**: Tự động đóng Modal Popup (`setIsTaskModalOpen(false)`) ngay sau khi tạo hoặc cập nhật dự án/tác vụ thành công, giúp người dùng không phải bấm đóng thủ công.
 
 - **2026-07-30 (hero-dub - Split-Pane Project Management UI Refactor)**:
   - 🚀 **Nâng cấp Giao diện Quản lý Dự án**: Tách biệt hoàn toàn tính năng "Dự án quét thư mục tự động" và "Tác vụ dịch lẻ". 

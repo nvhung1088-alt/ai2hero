@@ -37,24 +37,38 @@ export async function POST(request: Request) {
     const errors: string[] = [];
     
     for (const filePath of videoPaths) {
+      const sourceLang = config.sourceLang || config.source_lang;
+      const targetLang = config.targetLang || config.target_lang;
+      const asrEngine = config.asrEngine || config.asr_engine;
+      const aiAppSlug = config.aiAppSlug || config.ai_app_slug;
+      const aiModel = config.aiModel || config.ai_model;
+      const subtitleMode = config.subtitleMode || config.subtitle_mode;
+      const ttsEnabled = config.ttsEnabled ?? config.tts_enabled ?? false;
+      const ttsEngine = config.ttsEngine || config.tts_engine;
+      const ttsVoice = config.ttsVoice || config.tts_voice;
+      const ttsSpeed = config.ttsSpeed || config.tts_speed;
+      const bgVolume = config.bgVolume || config.bg_volume;
+      const ttsVolume = config.ttsVolume || config.tts_volume;
+      const outputFolder = config.outputFolder || config.output_folder;
+
       const result = await createDubTaskAction({
         teamId: auth.teamId,
         userId: auth.userId,
         sourceUrl: filePath,
         taskTitle: config.name ? `${config.name} - ${path.basename(filePath)}` : path.basename(filePath),
-        sourceLang: config.sourceLang,
-        targetLang: config.targetLang,
-        asrEngine: config.asrEngine,
-        translateEngine: config.aiAppSlug && config.aiModel ? 'connect-hub' : 'google-free',
-        llmModel: config.aiAppSlug && config.aiModel ? `${config.aiAppSlug}|${config.aiModel}` : undefined,
-        subtitleMode: config.subtitleMode,
-        ttsEnabled: config.ttsEnabled,
-        ttsEngine: config.ttsEngine,
-        ttsVoice: config.ttsVoice,
-        ttsSpeed: config.ttsSpeed,
-        bgVolume: config.bgVolume,
-        ttsVolume: config.ttsVolume,
-        outputFolder: config.outputFolder,
+        sourceLang,
+        targetLang,
+        asrEngine,
+        translateEngine: aiAppSlug && aiModel ? 'connect-hub' : 'google-free',
+        llmModel: aiAppSlug && aiModel ? `${aiAppSlug}|${aiModel}` : undefined,
+        subtitleMode,
+        ttsEnabled,
+        ttsEngine,
+        ttsVoice,
+        ttsSpeed,
+        bgVolume,
+        ttsVolume,
+        outputFolder: outputFolder?.trim() || undefined,
         scanConfigId: config.id,
       });
 
