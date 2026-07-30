@@ -15,6 +15,9 @@ import {
   clearAllDubDataAction,
   pauseDubTaskAction,
   resumeDubTaskAction,
+  clearUnassignedDubTasksAction,
+  pauseAllDubTasksAction,
+  resumeAllDubTasksAction,
 } from '@/lib/db/hero-dub-actions';
 import {
   getDubScanConfigsAction,
@@ -85,6 +88,26 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
       if (res.error) showToast(res.error, 'error');
       else { showToast('Đã dọn dẹp sạch sẽ toàn bộ dữ liệu!', 'success'); refreshData(true); }
     }
+  };
+
+  const handleClearUnassignedTasks = async () => {
+    if (window.confirm('⚠️ Bạn có chắc chắn muốn xóa TẤT CẢ các tác vụ dịch lẻ (tự do) không?')) {
+      const res = await clearUnassignedDubTasksAction(teamId);
+      if (res.error) showToast(res.error, 'error');
+      else { showToast('Đã xóa tất cả tác vụ lẻ thành công!', 'success'); refreshData(true); }
+    }
+  };
+
+  const handlePauseAllTasks = async () => {
+    const res = await pauseAllDubTasksAction(teamId, selectedScanConfigId);
+    if (res.error) showToast(res.error, 'error');
+    else { showToast('Đã tạm dừng tất cả tác vụ trong hàng đợi!', 'success'); refreshData(false); }
+  };
+
+  const handleResumeAllTasks = async () => {
+    const res = await resumeAllDubTasksAction(teamId, selectedScanConfigId);
+    if (res.error) showToast(res.error, 'error');
+    else { showToast('Đã kích hoạt lại tất cả tác vụ!', 'success'); refreshData(false); }
   };
 
   // Form State
@@ -836,7 +859,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
+    <div className="p-4 md:p-6 w-full space-y-6 animate-fade-in">
       <PollingBanner intervalMinutes={10} onRefresh={() => refreshData(true)} />
       
       {/* Header section */}
@@ -1063,6 +1086,9 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
               }}
               handlePauseTask={handlePauseTask}
               handleResumeTask={handleResumeTask}
+              handlePauseAll={handlePauseAllTasks}
+              handleResumeAll={handleResumeAllTasks}
+              handleClearUnassigned={handleClearUnassignedTasks}
               handleOpenLocal={handleOpenLocal}
               setPreviewVideoUrl={setPreviewVideoUrl}
               setPreviewSrtUrl={setPreviewSrtUrl}

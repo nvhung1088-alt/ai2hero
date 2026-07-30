@@ -1,10 +1,9 @@
 # AI2HERO — CHANGELOG
 
-## 2026-07-30 — Hero Dub Full-Width UI, Popup Modal Form, Clear DB & Pause/Resume
-- **Full-Width Fluid Layout**: Tối ưu hóa bố cục màn hình Dashboard Hero Dub tràn viền 2 bên (`w-full px-4 md:px-6`), mở rộng Bảng danh sách video chiếm 100% diện tích hiển thị giúp dễ dàng theo dõi đường dẫn local file và thumbnails.
-- **Form Popup Modal**: Đóng gói component `DubTaskForm` thành Modal Overlay kính mờ (Backdrop-blur) chuyên nghiệp. Kích hoạt thông qua nút "+ Tạo tác vụ dịch mới" trên thanh công cụ Header giúp tiết kiệm tối đa diện tích làm việc.
-- **Dọn dẹp dữ liệu (Clear DB)**: Tích hợp Server Action `clearAllDubDataAction` và nút "Xóa sạch dữ liệu" trên giao diện giúp 1-click xóa triệt để toàn bộ dự án quét và tác vụ thử nghiệm rác từ Database.
-- **Tạm dừng & Tiếp tục dịch (Pause/Resume)**: Triển khai các Server Actions `pauseDubTaskAction` và `resumeDubTaskAction`, bổ sung nút bấm thao tác ⏸️/▶️ trực tiếp trên từng dòng của Bảng tác vụ `DubTaskTable`.
+## 2026-07-30 — Hero Dub Full-Width UI Fix, Batch Pause/Resume & Clear Unassigned Tasks
+- **Full-Width 100% Fluid Fix**: Loại bỏ triệt để giới hạn `max-w-7xl` (1280px) gò bó tại `DashboardClient`, chuyển toàn bộ layout về tràn viền 100% không còn 2 cột đen lề 2 bên màn hình.
+- **Xóa Tác Vụ Lẻ Tự Do**: Viết Server Action `clearUnassignedDubTasksAction` và bổ sung nút **"🗑️ Xóa tất cả tác vụ lẻ"** trên Header Bảng tác vụ.
+- **Nút Tạm Dừng & Dịch Tiếp Nổi Bật**: Viết `pauseAllDubTasksAction` & `resumeAllDubTasksAction`. Nâng cấp nút thao tác hàng lẻ và bổ sung nút **`⏸️ Tạm dừng tất cả`** & **`▶️ Tiếp tục tất cả`** trên Header Bảng tác vụ.
 
 ## 2026-07-30 — Hero Dub Project Management Refactor & HeroFilm Bug Fix
 - **Hero Dub Split-Pane Project Management UI**: Tái cấu trúc toàn bộ mục Quản lý Dự án sang giao diện Split-Pane 2 cột (Tương tự Quản lý Thương hiệu & Hero Downloader). Tạo `DubScanSidebar` bên trái giúp quản lý danh sách dự án quét thư mục tự động và phân tách riêng biệt với các "Tác vụ lẻ". Tạo `DubScanProjectPane` bên phải giúp hiển thị cấu hình dự án, bảng danh sách video đã được lọc theo đúng dự án, và nút "Thử lại tất cả lỗi" của dự án đó.

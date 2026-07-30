@@ -29,6 +29,9 @@ interface DubTaskTableProps {
   handleEditTask: (_task: any) => void;
   handlePauseTask?: (_taskId: number) => void;
   handleResumeTask?: (_taskId: number) => void;
+  handlePauseAll?: () => void;
+  handleResumeAll?: () => void;
+  handleClearUnassigned?: () => void;
   handleOpenLocal: (_path: string, isFolder?: boolean) => void;
   setPreviewVideoUrl: (_url: string | null) => void;
   setPreviewSrtUrl: (_url: string | null) => void;
@@ -49,13 +52,48 @@ export default function DubTaskTable({
   handleEditTask,
   handlePauseTask,
   handleResumeTask,
+  handlePauseAll,
+  handleResumeAll,
+  handleClearUnassigned,
 }: DubTaskTableProps) {
   return (
     <div className="bg-gray-900/40 border border-white/5 p-5 rounded-2xl shadow-sm backdrop-blur-xl space-y-4 w-full">
-      <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-        <Video className="h-4 w-4 text-orange-400" />
-        Hàng đợi tác vụ dịch thuật ({taskTotalCount})
-      </h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
+        <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <Video className="h-4 w-4 text-orange-400" />
+          Hàng đợi tác vụ dịch thuật ({taskTotalCount})
+        </h2>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {handlePauseAll && tasks.length > 0 && (
+            <button
+              type="button"
+              onClick={handlePauseAll}
+              className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-lg text-[10px] font-extrabold flex items-center gap-1 cursor-pointer transition-all"
+            >
+              <Pause className="h-3 w-3" /> Tạm dừng tất cả
+            </button>
+          )}
+          {handleResumeAll && tasks.length > 0 && (
+            <button
+              type="button"
+              onClick={handleResumeAll}
+              className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-[10px] font-extrabold flex items-center gap-1 cursor-pointer transition-all"
+            >
+              <Play className="h-3 w-3" /> Tiếp tục tất cả
+            </button>
+          )}
+          {handleClearUnassigned && tasks.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearUnassigned}
+              className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg text-[10px] font-extrabold flex items-center gap-1 cursor-pointer transition-all"
+            >
+              <Trash2 className="h-3 w-3" /> Xóa tất cả tác vụ lẻ
+            </button>
+          )}
+        </div>
+      </div>
 
       {loading ? (
         <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-500">
@@ -180,19 +218,23 @@ export default function DubTaskTable({
                       {/* Button Pause / Resume */}
                       {task.status === 'paused' ? (
                         <button
+                          type="button"
                           onClick={() => handleResumeTask && handleResumeTask(task.id)}
-                          className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-lg cursor-pointer transition-all flex items-center gap-1 text-[10px] font-bold"
-                          title="Tiếp tục dịch"
+                          className="px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 rounded-lg cursor-pointer transition-all flex items-center gap-1 text-[10px] font-bold shadow-sm"
+                          title="Click để tiếp tục dịch video này"
                         >
-                          <Play className="h-3.5 w-3.5 fill-emerald-400" />
+                          <Play className="h-3 w-3 fill-emerald-400" />
+                          <span>Tiếp tục</span>
                         </button>
-                      ) : (task.status === 'pending' || task.status === 'running') ? (
+                      ) : (task.status === 'pending' || task.status === 'running' || task.status?.startsWith('processing')) ? (
                         <button
+                          type="button"
                           onClick={() => handlePauseTask && handlePauseTask(task.id)}
-                          className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 hover:text-amber-300 rounded-lg cursor-pointer transition-all flex items-center gap-1 text-[10px] font-bold"
-                          title="Tạm dừng dịch"
+                          className="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-400 rounded-lg cursor-pointer transition-all flex items-center gap-1 text-[10px] font-bold shadow-sm"
+                          title="Click để tạm dừng dịch video này"
                         >
-                          <Pause className="h-3.5 w-3.5 fill-amber-400" />
+                          <Pause className="h-3 w-3 fill-amber-400" />
+                          <span>Tạm dừng</span>
                         </button>
                       ) : null}
 

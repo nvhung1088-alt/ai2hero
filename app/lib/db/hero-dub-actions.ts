@@ -912,3 +912,50 @@ export async function clearAllDubDataAction(teamId: number) {
   }
 }
 
+export async function clearUnassignedDubTasksAction(teamId: number) {
+  try {
+    await db.delete(dubTasks).where(and(eq(dubTasks.teamId, teamId), isNull(dubTasks.scanConfigId)));
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] clearUnassignedDubTasksAction error:', error);
+    return { error: 'Lỗi xóa tác vụ lẻ: ' + error.message };
+  }
+}
+
+export async function pauseAllDubTasksAction(teamId: number, scanConfigId?: number | null) {
+  try {
+    const condition = scanConfigId !== undefined && scanConfigId !== null
+      ? and(eq(dubTasks.teamId, teamId), eq(dubTasks.scanConfigId, scanConfigId), inArray(dubTasks.status, ['pending', 'running']))
+      : and(eq(dubTasks.teamId, teamId), isNull(dubTasks.scanConfigId), inArray(dubTasks.status, ['pending', 'running']));
+
+    await db
+      .update(dubTasks)
+      .set({ status: 'paused', updatedAt: new Date() })
+      .where(condition);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] pauseAllDubTasksAction error:', error);
+    return { error: 'Lỗi tạm dừng tất cả: ' + error.message };
+  }
+}
+
+export async function resumeAllDubTasksAction(teamId: number, scanConfigId?: number | null) {
+  try {
+    const condition = scanConfigId !== undefined && scanConfigId !== null
+      ? and(eq(dubTasks.teamId, teamId), eq(dubTasks.scanConfigId, scanConfigId), eq(dubTasks.status, 'paused'))
+      : and(eq(dubTasks.teamId, teamId), isNull(dubTasks.scanConfigId), eq(dubTasks.status, 'paused'));
+
+    await db
+      .update(dubTasks)
+      .set({ status: 'pending', error: null, updatedAt: new Date() })
+      .where(condition);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] resumeAllDubTasksAction error:', error);
+    return { error: 'Lỗi tiếp tục tất cả: ' + error.message };
+  }
+}
+
+
