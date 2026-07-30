@@ -758,6 +758,9 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
       const res = await deleteDubScanConfigAction(parseInt(id), teamId);
       if (res.success) {
         showToast('Đã xóa dự án', 'success');
+        if (selectedScanConfigId === parseInt(id)) {
+          setSelectedScanConfigId(null);
+        }
         refreshData();
       } else {
         showToast(res.error || 'Lỗi khi xóa dự án', 'error');

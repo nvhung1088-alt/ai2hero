@@ -160,10 +160,10 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính từ 1.018 dòng xuống còn ~350 dòng, giảm bớt 65% code dư thừa giúp UI render nhanh hơn và tối ưu bảo trì. Verify build 100% không lỗi.
 
-- **2026-07-30 (hero-dub - Explicit "Ngừng dịch" & "Dịch tiếp" Control Buttons)**:
+- **2026-07-30 (hero-dub - Fix Project Deletion Client Crash & Reset Active Config)**:
+  - 🛠️ **Fix Client Crash**: Khắc phục dứt điểm lỗi `Cannot read properties of undefined (reading 'name')` khi xóa dự án. Thêm guard check an toàn `if (!config) return null;` trong `DubScanProjectPane`.
+  - 🔄 **Reset Selection State**: Tự động reset `selectedScanConfigId` về `null` ngay khi dự án đang chọn bị xóa trong `handleDeleteScanProject`, giúp giao diện quay về tab Tác vụ lẻ mượt mà không bị crash React component.
   - ⏸️ **Nút Ngừng Dịch & Dịch Tiếp Trực Diện**: Bổ sung song song 2 nút bấm **`⏸️ Ngừng dịch`** (Màu cam) và **`▶️ Dịch tiếp`** (Màu xanh) ngay tại Thẻ Dự Án (`DubScanProjectPane`) và Header của Bảng (`DubTaskTable`).
-  - 🖥️ **Full-Width 100% Fluid Fix**: Loại bỏ thuộc tính `max-w-7xl` gò bó tại container `DashboardClient`, đưa giao diện về trạng thái tràn viền 100% không còn 2 khoảng lề đen.
-  - 🗑️ **Xóa Tác Vụ Lẻ Tự Do**: Viết Server Action `clearUnassignedDubTasksAction` và tích hợp nút "Xóa tất cả tác vụ lẻ" trên Header của Bảng.
 
 - **2026-07-30 (hero-dub - Split-Pane Project Management UI Refactor)**:
   - 🚀 **Nâng cấp Giao diện Quản lý Dự án**: Tách biệt hoàn toàn tính năng "Dự án quét thư mục tự động" và "Tác vụ dịch lẻ". 
