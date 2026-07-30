@@ -375,6 +375,46 @@ export async function updateDownloaderVideoStatusAction(id: number, teamId: numb
   }
 }
 
+export async function retryAllFailedVideosAction(teamId: number, projectId?: number) {
+  try {
+    const conditions = [
+      eq(downloaderVideos.status, 'failed'),
+      eq(downloaderProjects.teamId, teamId)
+    ];
+    if (projectId) {
+      conditions.push(eq(downloaderVideos.projectId, projectId));
+    }
+
+    const failedVideos = await db
+      .select({ id: downloaderVideos.id })
+      .from(downloaderVideos)
+      .innerJoin(downloaderProjects, eq(downloaderVideos.projectId, downloaderProjects.id))
+      .where(and(...conditions));
+
+    if (failedVideos.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const failedIds = failedVideos.map(v => v.id);
+
+    await db
+      .update(downloaderVideos)
+      .set({
+        status: 'force_pending',
+        error: null,
+        directMp4Url: null,
+        extractStatus: null,
+        updatedAt: new Date(),
+      })
+      .where(inArray(downloaderVideos.id, failedIds));
+
+    return { success: true, count: failedIds.length };
+  } catch (error: any) {
+    console.error('[hero-downloader-actions] retryAllFailedVideosAction error:', error);
+    return { error: 'Failed to retry failed videos: ' + error.message };
+  }
+}
+
 export async function getDownloaderCookiesAction(teamId: number) {
   try {
     const cookiesList = await db

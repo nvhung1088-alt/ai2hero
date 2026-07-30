@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
-import { Plus, Play, Pause, FolderOpen, Settings, Search, CheckCircle2, Loader2, Download, AlertCircle, LayoutDashboard, Copy, Terminal, ChevronDown, ChevronUp, Square, Trash2, RefreshCw, Image, Languages, Sparkles, Eye, X } from 'lucide-react';
+import { Plus, Play, Pause, FolderOpen, Settings, Search, CheckCircle2, Loader2, Download, AlertCircle, LayoutDashboard, Copy, Terminal, ChevronDown, ChevronUp, Square, Trash2, RefreshCw, RotateCcw, Image, Languages, Sparkles, Eye, X } from 'lucide-react';
 import { CreateProjectModal } from './create-project-modal';
 import { EditProjectModal } from './edit-project-modal';
 import { PollingBanner } from '@/components/polling-banner';
 import { Edit3 } from 'lucide-react';
 
-import { getDownloaderVideosAction, updateDownloaderVideoStatusAction, generateDownloaderPairCodeAction, updateDownloaderProjectAction, createDownloaderVideoAction, stopAllDownloaderVideosAction, clearDownloaderVideosAction, forceScanDownloaderProjectAction } from '@/lib/db/hero-downloader-actions';
+import { getDownloaderVideosAction, updateDownloaderVideoStatusAction, generateDownloaderPairCodeAction, updateDownloaderProjectAction, createDownloaderVideoAction, stopAllDownloaderVideosAction, clearDownloaderVideosAction, forceScanDownloaderProjectAction, retryAllFailedVideosAction } from '@/lib/db/hero-downloader-actions';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 
 const LANGUAGES = ['Tiếng Việt', 'English', '한국어', '日本語', 'ภาษาไทย', 'Bahasa Indonesia'];
@@ -259,6 +259,25 @@ export default function DownloaderDashboardClient({
     }
   };
 
+  const handleRetryAllFailed = async () => {
+    if (!activeProject) return;
+    const failedCount = videos.filter(v => v.status === 'failed').length;
+    if (failedCount === 0) {
+      showToast('Không có video nào bị lỗi để thử lại', 'success');
+      return;
+    }
+    
+    showToast(`Đang yêu cầu thử lại ${failedCount} video bị lỗi...`, 'success');
+    const res = await retryAllFailedVideosAction(teamId, activeProject.id);
+    if (res.success) {
+      showToast(`Đã kích hoạt thử lại thành công ${res.count ?? failedCount} video!`, 'success');
+      const fetchRes = await getDownloaderVideosAction(teamId, activeProject.id);
+      if (fetchRes.success && fetchRes.videos) setVideos(fetchRes.videos);
+    } else {
+      showToast('Lỗi khi thử lại tất cả: ' + res.error, 'error');
+    }
+  };
+
   const handleClearVideos = () => {
     if (!activeProject) return;
     setConfirmModal({
@@ -498,6 +517,10 @@ export default function DownloaderDashboardClient({
                 <button onClick={() => handleOpenLocal('downloads')} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-gray-300 transition-colors">
                   <FolderOpen className="w-4 h-4" />
                   <span className="text-xs font-medium">Mở thư mục</span>
+                </button>
+                <button onClick={handleRetryAllFailed} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-400 transition-colors font-medium" title="Thử lại tất cả video bị lỗi">
+                  <RotateCcw className="w-4 h-4" />
+                  <span className="text-xs">Thử lại tất cả</span>
                 </button>
                 <button onClick={handleStopAll} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 transition-colors font-medium">
                   <Square className="w-4 h-4 fill-current" />
@@ -788,6 +811,14 @@ export default function DownloaderDashboardClient({
                     </div>
                     <div className="flex items-center gap-2">
                       <button 
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 disabled:opacity-30 border border-white/10 rounded-md text-gray-300 text-xs transition-colors"
+                        title="Trang đầu tiên"
+                      >
+                        Đầu
+                      </button>
+                      <button 
                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                         disabled={currentPage === 1}
                         className="px-3 py-1.5 bg-white/5 hover:bg-white/10 disabled:opacity-30 border border-white/10 rounded-md text-gray-300 text-xs transition-colors"
@@ -803,6 +834,14 @@ export default function DownloaderDashboardClient({
                         className="px-3 py-1.5 bg-white/5 hover:bg-white/10 disabled:opacity-30 border border-white/10 rounded-md text-gray-300 text-xs transition-colors"
                       >
                         Sau
+                      </button>
+                      <button 
+                        onClick={() => setCurrentPage(Math.ceil(sortedVideos.length / 10))}
+                        disabled={currentPage === Math.ceil(sortedVideos.length / 10)}
+                        className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 disabled:opacity-30 border border-white/10 rounded-md text-gray-300 text-xs transition-colors"
+                        title="Trang cuối cùng"
+                      >
+                        Cuối
                       </button>
                     </div>
                   </div>

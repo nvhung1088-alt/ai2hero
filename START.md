@@ -145,11 +145,11 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp tính năng **Dịch & Redesign Thumbnail bằng AI** (Connect Hub Vision + Image Gen): Cho phép chọn AI Model và Ngôn ngữ đích (Việt, Anh, Hàn, Nhật, Thái...), tự động đọc text trên ảnh bìa gốc, dịch thuật, tạo lại thumbnail mới và tải lên R2 cloud storage kèm Modal Preview so sánh 2 ảnh trực quan trên Dashboard.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
-- **2026-07-30 (hero-downloader - Fix Bilibili CDN Drop & Clean ANSI Error Leak)**:
-  - 🌐 **Fix Bilibili CDN Connection Drop**: Bổ sung `User-Agent` Chrome 120+ chuẩn vào `http_headers` của Bilibili trong `downloader.py`, loại bỏ triệt để hiện tượng CDN Bilibili đóng kết nối TCP giữa chừng gây lỗi `Remote end closed connection` và `Did not get any data blocks`.
-  - 🔤 **Clean ANSI Escape Code Leak**: Thêm hàm `_strip_ansi()` bằng Regex lọc sạch 100% các ký tự màu Terminal rác (`[0;31mERROR:[0m`) trước khi lưu thông báo lỗi vào Database.
-  - 🔄 **Bilibili Soft Keyword & Smart Error Translation**: Thêm `"did not get any data blocks"` vào danh sách lỗi tự động thử lại (Soft Error), đồng thời bổ sung thông báo tiếng Việt trực quan trên Web UI Dashboard (`downloader-dashboard-client.tsx`).
-  - 🚀 **Dry-run Build & Deploy**: Vượt qua 100% kiềm tra biên dịch `npm run build` local và push bản nâng cấp mới lên Vercel Production.
+- **2026-07-30 (hero-downloader - Retry All Failed Videos & First/Last Page Controls)**:
+  - 🔄 **Batch Action Retry All Failed**: Phát triển Server Action `retryAllFailedVideosAction` (`hero-downloader-actions.ts`) và nút **"Thử lại tất cả"** (Màu cam/amber) trên Toolbar Header (`downloader-dashboard-client.tsx`), cho phép kích hoạt tải lại toàn bộ các video bị lỗi trong 1 click.
+  - ⏩ **Quick First & Last Page Navigation**: Bổ sung 2 nút điều hướng **"Đầu"** (nhảy về Trang 1) và **"Cuối"** (nhảy tới Trang cuối) song song với "Trước / Sau" ở phần phân trang bên dưới bảng video.
+  - 🌐 **Fix Bilibili CDN Drop & Clean ANSI Error Leak**: Bổ sung `User-Agent` Chrome 120+ vào `downloader.py`, loại bỏ lỗi `Did not get any data blocks` & lọc sạch ký tự rác ANSI (`[0;31m`).
+  - 🚀 **Dry-run Build & Deploy**: Pass 100% dry-run `npm run build` local và push bản nâng cấp lên Vercel Production.
 
 - **2026-07-22 (hero-downloader - Dịch & Redesign Thumbnail AI)**:
   - 🚀 **Database & Actions**: Bổ sung cột `translatedThumbnailUrl` vào bảng `downloader_videos` và đẩy migration thành công lên Supabase Cloud (`pnpm db:push`).
