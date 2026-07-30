@@ -160,9 +160,9 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính từ 1.018 dòng xuống còn ~350 dòng, giảm bớt 65% code dư thừa giúp UI render nhanh hơn và tối ưu bảo trì. Verify build 100% không lỗi.
 
-- **2026-07-30 (hero-dub - Fix Project Re-binding & ScanConfigId Mapping)**:
+- **2026-07-30 (hero-dub - Fix Project Selection Re-fetch & React Closure Stale State)**:
+  - 🚀 **Fix Nguyên Nhân Gốc Hiển Thị**: Sửa triệt để lỗi React Closure Stale State trong `useCallback` của `refreshData`. Thêm `selectedScanConfigId` vào dependency array và bổ sung `useEffect` tự động re-fetch danh sách tác vụ ngay khi người dùng chọn dự án ở Sidebar.
   - 🔗 **Tự Động Chuyển Tác Vụ Về Dự Án Mới**: Khi Worker quét lại các file video đã tồn tại trên hệ thống cho một Dự án mới (`TEST1`), `createDubTaskAction` tự động liên kết (re-bind) và cập nhật `scanConfigId` của các tác vụ đó về trực thuộc Dự Án Mới ngay lập tức.
-  - 🛠️ **Fix Key Name Fallback**: Hỗ trợ ép kiểu an toàn cho `scanConfigId` từ mọi tên thuộc tính JSON của Python Worker (`id`, `scan_config_id`, `config_id`, `scanConfigId`).
   - 📁 **Fix Tự Động Lưu Đúng Thư Mục**: Bổ sung cơ chế tự động kế thừa `outputFolder` từ Cấu hình Dự Án Quét sang Tác vụ con nếu tác vụ chưa có đường dẫn xuất riêng trong `pollPendingTaskAction`.
 
 - **2026-07-30 (hero-dub - Split-Pane Project Management UI Refactor)**:

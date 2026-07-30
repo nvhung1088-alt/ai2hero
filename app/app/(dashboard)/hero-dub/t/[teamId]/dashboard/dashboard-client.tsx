@@ -419,7 +419,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [teamId, taskPage]);
+  }, [teamId, taskPage, selectedScanConfigId]);
 
   useSmartPolling({
     appId: 'hero-dub',
@@ -431,7 +431,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
 
   useEffect(() => {
     refreshData(true);
-  }, [refreshData]);
+  }, [selectedScanConfigId, taskPage, refreshData]);
 
   // Pairing Code Countdown Timer
   useEffect(() => {
