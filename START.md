@@ -160,12 +160,13 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính từ 1.018 dòng xuống còn ~350 dòng, giảm bớt 65% code dư thừa giúp UI render nhanh hơn và tối ưu bảo trì. Verify build 100% không lỗi.
 
-- **2026-07-30 (hero-dub - Fix Project Selection Re-fetch & React Closure Stale State)**:
-  - 🚀 **Fix Nguyên Nhân Gốc Hiển Thị**: Sửa triệt để lỗi React Closure Stale State trong `useCallback` của `refreshData`. Thêm `selectedScanConfigId` vào dependency array và bổ sung `useEffect` tự động re-fetch danh sách tác vụ ngay khi người dùng chọn dự án ở Sidebar.
-  - 🔗 **Tự Động Chuyển Tác Vụ Về Dự Án Mới**: Khi Worker quét lại các file video đã tồn tại trên hệ thống cho một Dự án mới (`TEST1`), `createDubTaskAction` tự động liên kết (re-bind) và cập nhật `scanConfigId` của các tác vụ đó về trực thuộc Dự Án Mới ngay lập tức.
-  - 📁 **Fix Tự Động Lưu Đúng Thư Mục**: Bổ sung cơ chế tự động kế thừa `outputFolder` từ Cấu hình Dự Án Quét sang Tác vụ con nếu tác vụ chưa có đường dẫn xuất riêng trong `pollPendingTaskAction`.
+- **2026-07-30 (hero-dub - Clean Titles, Auto Thumbnail Detection & Image Streaming)**:
+  - 🏷️ **Giữ Nguyên Tên Video Gốc**: Loại bỏ hoàn toàn tiền tố đường dẫn thư mục lê thê `TEST1 - C:\...`. Đặt tiêu đề tác vụ strictly theo tên file gốc `basename` (`261_狗系统竟让我劫唐僧_第九集骷髅山.mp4`), giúp giữ nguyên tên video sau khi thuyết minh để sẵn sàng đăng YouTube.
+  - 🖼️ **Tự Động Phát Hiện Ảnh Thumbnail Local**: Thêm logic phát hiện tự động file ảnh trùng tên với video (`.jpeg`, `.jpg`, `.png`, `.webp`) trong cùng thư mục nguồn local và gán vào `sourceThumbnailUrl`.
+  - 🖼️ **Stream Ảnh Local Trực Tiếp**: Nâng cấp API `/api/hero-dub/stream` hỗ trợ Content-Type cho các định dạng hình ảnh local (`image/jpeg`, `image/png`, `image/webp`).
+  - 🖼️ **Render Ảnh Thumbnail Thật**: Cập nhật `DubTaskTable` và `HistoryClient` render hình ảnh poster/thumbnail thật của tập phim thay thế cho icon video mặc định.
 
-- **2026-07-30 (hero-dub - Split-Pane Project Management UI Refactor)**:
+- **2026-07-30 (hero-dub - Fix Project Selection Re-fetch & React Closure Stale State)**:
   - 🚀 **Nâng cấp Giao diện Quản lý Dự án**: Tách biệt hoàn toàn tính năng "Dự án quét thư mục tự động" và "Tác vụ dịch lẻ". 
   - 📂 **`DubScanSidebar` & `DubScanProjectPane`**: Triển khai giao diện Split-Pane 2 cột (Sidebar trái điều hướng dự án, Pane phải quản lý cấu hình & danh sách video dịch thuộc về riêng dự án đó).
   - 🔄 **Thử lại tất cả lỗi theo Dự án**: Phát triển Server Action `retryTasksByScanConfigAction` cho phép 1-click khôi phục toàn bộ tác vụ lỗi của một dự án về trạng thái chờ.

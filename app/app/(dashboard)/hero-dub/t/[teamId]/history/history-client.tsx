@@ -257,13 +257,16 @@ export default function HistoryClient({ teamId }: HistoryClientProps) {
                     <td className="py-3 px-4">
                       <div className="flex flex-col gap-2">
                         <div className="flex gap-3 items-center max-w-[320px]">
-                          {task.sourceThumbnailUrl ? (
-                            <img src={task.sourceThumbnailUrl} alt="" className="w-16 h-10 object-cover rounded-md border border-white/10 shrink-0" />
-                          ) : (
-                            <div className="w-16 h-10 rounded-md bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                              <Video className="h-4 w-4 text-gray-500" />
-                            </div>
-                          )}
+                          {(() => {
+                            const thumbUrl = task.sourceThumbnailUrl ? (task.sourceThumbnailUrl.startsWith('http') || task.sourceThumbnailUrl.startsWith('data:') ? task.sourceThumbnailUrl : `/api/hero-dub/stream?path=${encodeURIComponent(task.sourceThumbnailUrl)}`) : null;
+                            return thumbUrl ? (
+                              <img src={thumbUrl} alt="" className="w-16 h-10 object-cover rounded-md border border-white/10 shrink-0" />
+                            ) : (
+                              <div className="w-16 h-10 rounded-md bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                                <Video className="h-4 w-4 text-gray-500" />
+                              </div>
+                            );
+                          })()}
                           <div className="flex flex-col gap-1 min-w-0">
                             <span className="font-bold text-white truncate group-hover:text-amber-400 transition-colors" title={task.taskTitle || task.sourceUrl}>
                               {task.taskTitle || task.sourceTitle || 'Tác vụ #' + task.id}

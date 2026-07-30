@@ -2,6 +2,18 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
+function getContentType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === '.srt') return 'text/plain; charset=utf-8';
+  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+  if (ext === '.png') return 'image/png';
+  if (ext === '.webp') return 'image/webp';
+  if (ext === '.gif') return 'image/gif';
+  if (ext === '.mp3') return 'audio/mpeg';
+  if (ext === '.wav') return 'audio/wav';
+  return 'video/mp4';
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const filePath = searchParams.get('path');
@@ -13,7 +25,6 @@ export async function GET(request: Request) {
   try {
     const absolutePath = path.resolve(filePath);
     
-    // Bảo mật: MVP localhost chỉ read file tồn tại.
     if (!fs.existsSync(absolutePath)) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
@@ -21,6 +32,7 @@ export async function GET(request: Request) {
     const stat = fs.statSync(absolutePath);
     const fileSize = stat.size;
     const range = request.headers.get('range');
+    const contentType = getContentType(absolutePath);
 
     if (range) {
       const parts = range.replace(/bytes=/, "").split("-");
@@ -39,7 +51,7 @@ export async function GET(request: Request) {
         'Content-Range': `bytes ${start}-${end}/${fileSize}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': chunksize.toString(),
-        'Content-Type': absolutePath.endsWith('.srt') ? 'text/plain' : 'video/mp4',
+        'Content-Type': contentType,
       };
       if (absolutePath.endsWith('.srt')) {
         head['Content-Disposition'] = `attachment; filename="${encodeURIComponent(path.basename(absolutePath))}"`;
@@ -48,7 +60,7 @@ export async function GET(request: Request) {
     } else {
       const head: Record<string, string> = {
         'Content-Length': fileSize.toString(),
-        'Content-Type': absolutePath.endsWith('.srt') ? 'text/plain' : 'video/mp4',
+        'Content-Type': contentType,
       };
       if (absolutePath.endsWith('.srt')) {
         head['Content-Disposition'] = `attachment; filename="${encodeURIComponent(path.basename(absolutePath))}"`;

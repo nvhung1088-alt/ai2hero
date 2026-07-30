@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { verifyDubWorkerToken, createDubTaskAction } from '@/lib/db/hero-dub-actions';
 import { updateDubScanConfigStatsAction } from '@/lib/db/hero-dub-scan-actions';
 import * as path from 'path';
+import * as fs from 'fs';
 
 function extractBearerToken(request: Request): string | null {
   const authHeader = request.headers.get('Authorization');
@@ -54,11 +55,28 @@ export async function POST(request: Request) {
       const ttsVolume = config.ttsVolume || config.tts_volume;
       const outputFolder = config.outputFolder || config.output_folder;
 
+      // Auto-detect matching image thumbnail file in same folder
+      let sourceThumbnailUrl: string | undefined = undefined;
+      try {
+        const parsedPath = path.parse(filePath);
+        const possibleExts = ['.jpeg', '.jpg', '.png', '.webp', '.JPEG', '.JPG', '.PNG', '.WEBP'];
+        for (const ext of possibleExts) {
+          const imgPath = path.join(parsedPath.dir, `${parsedPath.name}${ext}`);
+          if (fs.existsSync(imgPath)) {
+            sourceThumbnailUrl = imgPath;
+            break;
+          }
+        }
+      } catch (e) {
+        console.error('[create-from-worker] Thumbnail check error:', e);
+      }
+
       const result = await createDubTaskAction({
         teamId: auth.teamId,
         userId: auth.userId,
         sourceUrl: filePath,
-        taskTitle: config.name ? `${config.name} - ${path.basename(filePath)}` : path.basename(filePath),
+        taskTitle: path.basename(filePath),
+        sourceThumbnailUrl,
         sourceLang,
         targetLang,
         asrEngine,

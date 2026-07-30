@@ -124,13 +124,16 @@ export default function DubTaskTable({
                 <tr key={task.id} className="text-xs group hover:bg-white/[0.01] transition-colors">
                   <td className="py-3 pr-3 max-w-[320px]">
                     <div className="flex gap-3 items-center">
-                      {task.sourceThumbnailUrl ? (
-                        <img src={task.sourceThumbnailUrl} alt="" className="w-16 h-10 object-cover rounded-md border border-white/10 shrink-0" />
-                      ) : (
-                        <div className="w-16 h-10 rounded-md bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                          <Video className="h-4 w-4 text-gray-500" />
-                        </div>
-                      )}
+                      {(() => {
+                        const thumbUrl = task.sourceThumbnailUrl ? (task.sourceThumbnailUrl.startsWith('http') || task.sourceThumbnailUrl.startsWith('data:') ? task.sourceThumbnailUrl : `/api/hero-dub/stream?path=${encodeURIComponent(task.sourceThumbnailUrl)}`) : null;
+                        return thumbUrl ? (
+                          <img src={thumbUrl} alt="" className="w-16 h-10 object-cover rounded-md border border-white/10 shrink-0" />
+                        ) : (
+                          <div className="w-16 h-10 rounded-md bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                            <Video className="h-4 w-4 text-gray-500" />
+                          </div>
+                        );
+                      })()}
                       <div className="flex flex-col gap-1 min-w-0">
                         <span className="font-extrabold text-white truncate group-hover:text-amber-400 transition-colors" title={task.sourceTitle || task.taskTitle || task.sourceUrl}>
                           {task.sourceTitle || task.taskTitle || 'Chưa đặt tên tác vụ'}

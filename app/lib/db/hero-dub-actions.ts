@@ -105,10 +105,20 @@ export async function createDubTaskAction(data: {
       .limit(1);
 
     if (existing) {
+      const updatePayload: Record<string, any> = {};
       if (data.scanConfigId && existing.scanConfigId !== data.scanConfigId) {
+        updatePayload.scanConfigId = data.scanConfigId;
+      }
+      if (data.sourceThumbnailUrl && existing.sourceThumbnailUrl !== data.sourceThumbnailUrl) {
+        updatePayload.sourceThumbnailUrl = data.sourceThumbnailUrl;
+      }
+      if (data.taskTitle && existing.sourceTitle !== data.taskTitle) {
+        updatePayload.sourceTitle = data.taskTitle;
+      }
+      if (Object.keys(updatePayload).length > 0) {
         await db
           .update(dubTasks)
-          .set({ scanConfigId: data.scanConfigId })
+          .set(updatePayload)
           .where(eq(dubTasks.id, existing.id));
       }
       return { success: true, taskId: existing.id, isDuplicate: true };
