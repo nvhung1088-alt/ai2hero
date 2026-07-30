@@ -180,10 +180,11 @@ export async function getDubTasksAction(
       conditions.push(eq(dubTasks.status, filters.status));
     }
     if (filters?.scanConfigId !== undefined) {
-      if (filters.scanConfigId === null || filters.scanConfigId === 0) {
+      const parsedId = filters.scanConfigId === null ? null : typeof filters.scanConfigId === 'string' ? parseInt(filters.scanConfigId) : filters.scanConfigId;
+      if (parsedId === null || parsedId === 0 || isNaN(parsedId)) {
         conditions.push(isNull(dubTasks.scanConfigId));
       } else {
-        conditions.push(eq(dubTasks.scanConfigId, filters.scanConfigId));
+        conditions.push(eq(dubTasks.scanConfigId, parsedId));
       }
     }
 

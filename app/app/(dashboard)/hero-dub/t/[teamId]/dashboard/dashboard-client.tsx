@@ -1052,7 +1052,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
           scanConfigs={scanProjects}
           selectedConfigId={selectedScanConfigId}
           onSelectConfig={(id) => {
-            setSelectedScanConfigId(id);
+            setSelectedScanConfigId(id ? parseInt(id.toString()) : null);
             setTaskPage(1);
           }}
           onCreateNew={() => {
