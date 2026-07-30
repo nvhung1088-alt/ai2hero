@@ -141,7 +141,7 @@ export default function DubTaskTable({
                   </td>
                   <td className="py-3 pr-3 text-[10px] font-bold text-gray-400">
                     <div className="flex flex-col">
-                      <span>ASR: {task.asrEngine?.includes(':') ? task.asrEngine.split(':').map((_s: string, i: number) => i === 0 ? s : `(${s})`).join(' ') : task.asrEngine}</span>
+                      <span>ASR: {task.asrEngine?.includes(':') ? task.asrEngine.split(':').map((s: string, i: number) => i === 0 ? s : `(${s})`).join(' ') : task.asrEngine}</span>
                       <span className="text-gray-500">Dịch: {task.translateEngine}</span>
                     </div>
                   </td>

@@ -43,8 +43,6 @@ export default async function HeroDubProjectsPage({
   return (
     <ProjectsClient
       teamId={teamId}
-      userId={user.id}
-      teamName={team.name}
     />
   );
 }

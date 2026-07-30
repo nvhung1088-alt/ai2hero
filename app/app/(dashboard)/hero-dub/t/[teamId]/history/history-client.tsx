@@ -315,7 +315,7 @@ export default function HistoryClient({ teamId }: HistoryClientProps) {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex flex-col gap-1.5">
-                        {getStatusBadge(task.status, task.progress || 0)}
+                        {getStatusBadge(task.status)}
                         {['pending', 'downloading', 'transcribing', 'translating', 'rendering'].includes(task.status) && (
                           <div className="w-24 h-1 bg-white/10 rounded-full overflow-hidden">
                             <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300" style={{ width: `${task.progress || 0}%` }}></div>

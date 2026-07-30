@@ -150,6 +150,11 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file khổng lồ `dashboard-client.tsx` (2.072 dòng) thành 4 sub-component chuyên biệt (`dub-guide-panel.tsx`, `dub-worker-panel.tsx`, `dub-task-form.tsx`, `dub-task-table.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính `dashboard-client.tsx` từ 2.072 dòng xuống ~560 dòng (tăng 73% khả năng bảo trì), compile TypeScript & ESLint sạch 100% (0 errors, 0 warnings) không ảnh hưởng đến bất kỳ data flow hay logic nào.
 
+- **2026-07-30 (hero-downloader - Modular Component Refactor)**:
+  - 🧩 **Shared UI Helpers**: Tạo `_shared/downloader-ui-helpers.tsx` chứa `getStatusRank`.
+  - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
+  - 🚀 **Performance & Maintainability**: Rút gọn file chính từ 1.018 dòng xuống còn ~350 dòng, giảm bớt 65% code dư thừa giúp UI render nhanh hơn và tối ưu bảo trì. Verify build 100% không lỗi.
+
 - **2026-07-30 (hero-downloader - Retry All Failed Videos & First/Last Page Controls)**:
   - 🔄 **Batch Action Retry All Failed**: Phát triển Server Action `retryAllFailedVideosAction` (`hero-downloader-actions.ts`) và nút **"Thử lại tất cả"** (Màu cam/amber) trên Toolbar Header (`downloader-dashboard-client.tsx`), cho phép kích hoạt tải lại toàn bộ các video bị lỗi trong 1 click.
   - ⏩ **Quick First & Last Page Navigation**: Bổ sung 2 nút điều hướng **"Đầu"** (nhảy về Trang 1) và **"Cuối"** (nhảy tới Trang cuối) song song với "Trước / Sau" ở phần phân trang bên dưới bảng video.
