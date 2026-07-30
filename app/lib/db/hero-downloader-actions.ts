@@ -175,13 +175,20 @@ export async function getDownloaderVideosAction(teamId: number, projectId?: numb
   try {
     let videosList;
 
+    const statusPriority = sql`CASE 
+      WHEN ${downloaderVideos.status} IN ('downloading', 'force_pending') THEN 1
+      WHEN ${downloaderVideos.status} IN ('pending', 'extracting', 'paused') THEN 2
+      WHEN ${downloaderVideos.status} = 'completed' THEN 3
+      ELSE 4
+    END`;
+
     if (projectId) {
-      // Nếu có projectId thì chỉ cần query bảng downloaderVideos là đủ an toàn
+      // Nếu có projectId thì query bảng downloaderVideos theo ưu tiên status
       videosList = await db
         .select()
         .from(downloaderVideos)
         .where(eq(downloaderVideos.projectId, projectId))
-        .orderBy(desc(downloaderVideos.createdAt));
+        .orderBy(statusPriority, desc(downloaderVideos.createdAt));
     } else {
       // Nếu không có projectId, join với downloaderProjects để lấy theo teamId
       videosList = await db
@@ -207,7 +214,7 @@ export async function getDownloaderVideosAction(teamId: number, projectId?: numb
         .from(downloaderVideos)
         .innerJoin(downloaderProjects, eq(downloaderVideos.projectId, downloaderProjects.id))
         .where(eq(downloaderProjects.teamId, teamId))
-        .orderBy(desc(downloaderVideos.createdAt));
+        .orderBy(statusPriority, desc(downloaderVideos.createdAt));
     }
 
     return { success: true, videos: videosList };

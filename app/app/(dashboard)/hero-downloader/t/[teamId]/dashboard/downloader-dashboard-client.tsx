@@ -98,6 +98,20 @@ export default function DownloaderDashboardClient({
 
   const activeProject = projects.find(p => p.id === activeProjectId);
 
+  const getStatusRank = (status: string) => {
+    if (status === 'downloading' || status === 'force_pending') return 1; // Đang tải: xếp đầu
+    if (status === 'pending' || status === 'extracting' || status === 'paused') return 2; // Chờ tải: xếp giữa
+    if (status === 'completed') return 3; // Tải xong: xếp dưới
+    return 4; // Thất bại / Hủy: xếp dưới cùng
+  };
+
+  const sortedVideos = [...videos].sort((a, b) => {
+    const rankA = getStatusRank(a.status);
+    const rankB = getStatusRank(b.status);
+    if (rankA !== rankB) return rankA - rankB;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
   const hasDownloading = videos.some(v => v.status === 'downloading' || v.status === 'pending');
 
   // Auto-refresh using Smart Polling connected to Super Admin Traffic Control
@@ -594,7 +608,7 @@ export default function DownloaderDashboardClient({
                           <p className="text-gray-400">Đang tải danh sách video...</p>
                         </td>
                       </tr>
-                    ) : videos.length === 0 ? (
+                    ) : sortedVideos.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="py-12 text-center text-gray-500">
                           <Download className="w-8 h-8 mx-auto mb-3 opacity-20" />
@@ -602,7 +616,7 @@ export default function DownloaderDashboardClient({
                         </td>
                       </tr>
                     ) : (
-                      videos.slice((currentPage - 1) * 10, currentPage * 10).map((video, idx) => (
+                      sortedVideos.slice((currentPage - 1) * 10, currentPage * 10).map((video, idx) => (
                         <tr key={video.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
                           <td className="py-3 px-4 text-gray-500">{video.id}</td>
                           <td className="py-2 px-4">
@@ -765,10 +779,10 @@ export default function DownloaderDashboardClient({
                   </tbody>
                 </table>
                 {/* Pagination Controls */}
-                {videos.length > 0 && (
+                {sortedVideos.length > 0 && (
                   <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between bg-black/20">
                     <div className="text-xs text-gray-500">
-                      Hiển thị {(currentPage - 1) * 10 + 1} - {Math.min(currentPage * 10, videos.length)} trong tổng số {videos.length} video
+                      Hiển thị {(currentPage - 1) * 10 + 1} - {Math.min(currentPage * 10, sortedVideos.length)} trong tổng số {sortedVideos.length} video
                     </div>
                     <div className="flex items-center gap-2">
                       <button 
@@ -779,11 +793,11 @@ export default function DownloaderDashboardClient({
                         Trước
                       </button>
                       <span className="text-xs text-gray-400 px-2">
-                        Trang {currentPage} / {Math.ceil(videos.length / 10)}
+                        Trang {currentPage} / {Math.ceil(sortedVideos.length / 10)}
                       </span>
                       <button 
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(videos.length / 10)))}
-                        disabled={currentPage === Math.ceil(videos.length / 10)}
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(sortedVideos.length / 10)))}
+                        disabled={currentPage === Math.ceil(sortedVideos.length / 10)}
                         className="px-3 py-1.5 bg-white/5 hover:bg-white/10 disabled:opacity-30 border border-white/10 rounded-md text-gray-300 text-xs transition-colors"
                       >
                         Sau
