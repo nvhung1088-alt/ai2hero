@@ -128,16 +128,24 @@ export async function POST(request: Request) {
     texts.forEach((t: string, i: number) => { inputObj[i.toString()] = t; });
     const jsonInput = JSON.stringify(inputObj);
 
-    const systemMessage = `Bạn là một dịch giả phụ đề phim chuyên nghiệp. Nhiệm vụ duy nhất của bạn là dịch phụ đề từ tiếng Trung Quốc sang tiếng Việt tự nhiên, mượt mà, đúng ngữ cảnh.
+    const systemMessage = `Bạn là một biên dịch viên phụ đề phim điện ảnh chuyên nghiệp. Nhiệm vụ duy nhất của bạn là dịch phụ đề từ tiếng Trung Quốc sang tiếng Việt mượt mà, thoát ý, cô đọng, đúng bối cảnh phim.
 
-QUY TẮC BẮT BUỘC:
-1. Bạn LUÔN LUÔN trả về một JSON Object (key-value), tuyệt đối không được gộp câu.
-2. Key giữ nguyên như input (0, 1, 2...), Value là chuỗi tiếng Việt đã dịch.
-3. Số lượng key trong output PHẢI BẰNG ĐÚNG số lượng key trong input. KHÔNG ĐƯỢC GỘP 2 KEY LÀM 1.
-4. KHÔNG được thêm giải thích, ghi chú, markdown, hay bất kỳ text nào ngoài đối tượng JSON.
-5. KHÔNG BAO GIỜ trả về tiếng Trung. Mọi output đều phải là tiếng Việt.
-6. TỰ ĐỘNG PHÂN TÍCH NGỮ CẢNH: Dựa vào nội dung của toàn bộ các câu, hãy tự suy luận đây là thể loại video gì (Khoa học, Giang hồ, Nấu ăn...) để tự động chọn ĐẠI TỪ NHÂN XƯNG (Ví dụ: Chúng tôi/Mày-Tao/Anh-Em) và TỪ LÓNG phù hợp nhất.
-7. Giữ nguyên số liệu, tên riêng (phiên âm nếu cần).
+QUY TẮC PHONG CÁCH & ĐẠI TỪ XƯƠNG HÔ (BẮT BUỘC):
+1. TRAU CHUỐT & CÔ ĐỌNG: 
+   - Tuyệt đối KHÔNG dịch thô từ-nối-từ (word-by-word) làm câu bị cứng nhắc hoặc tối nghĩa.
+   - Dịch theo văn phong nói tự nhiên, cô đọng, mượt mà chuẩn lồng tiếng phim. Loại bỏ các từ đệm vô nghĩa.
+
+2. NHẬN DIỆN BỐI CẢNH & XUYÊN KHÔNG:
+   - TỰ ĐỘNG PHÂN TÍCH NGỮ CẢNH toàn bộ đoạn thoại để nhận diện thể loại phim (Cổ trang, Xuyên không, Đô thị, Tiên hiệp, Học đường...).
+   - Nếu là Phim Cổ Trang / Triều Đình: Dùng đại từ cổ phong (Trẫm, Bệ hạ, Thần, Khanh, Bổn vương, Tiên sinh). Tuyệt đối KHÔNG dùng "anh/cô/tôi/bạn".
+   - Nếu là Phim Xuyên Không (Hiện đại về Cổ đại):
+     * Khi giao tiếp với Vua/Mẫu hậu/Quan lại triều đình ➔ Phải dùng xưng hô triều đình (Bệ hạ, Thần, Tiểu nữ, Khanh).
+     * Khi suy nghĩ nội tâm, chửi thầm, hoặc nhắc tới thuật ngữ hiện đại ➔ Giữ nguyên đại từ hiện đại (Tôi, Anh, Hệ thống, KPI, Tài khoản).
+
+3. ĐỊNH DẠNG ĐẦU RA JSON BẮT BUỘC:
+   - Trả về duy nhất đối tượng JSON với key (0, 1, 2...) giữ nguyên như input. Value là chuỗi tiếng Việt đã dịch.
+   - Số lượng key trong output PHẢI BẰNG ĐÚNG số lượng key trong input. KHÔNG ĐƯỢC GỘP HOẶC BỎ BỚT KEY.
+   - KHÔNG được thêm bất kỳ giải thích hay markdown nào ngoài đối tượng JSON.
 
 VÍ DỤ:
 Input: {"0":"我是狼王","1":"我不能输"}
@@ -145,70 +153,85 @@ Output: {"0":"Tôi là Sói Vương","1":"Tôi không được thua"}`;
 
     const userMessage = `Dịch đối tượng JSON phụ đề sau sang tiếng Việt:\n${jsonInput}`;
 
-    const result = await executeAction(appSlug, credentials, 'chat_completion', {
-      model: modelName,
-      messages: [
-        { role: 'system', content: systemMessage },
-        { role: 'user', content: userMessage }
-      ],
-    });
+    let translatedTexts: string[] = [];
+    let attempts = 0;
+    const MAX_ATTEMPTS = 4;
+    let lastError: string = '';
 
-    if (!result.success || !result.data) {
-       console.error('[API Translate] AI Engine Error:', result.error);
-       return NextResponse.json({ error: result.error || 'AI request failed' }, { status: 500 });
+    while (attempts < MAX_ATTEMPTS) {
+      attempts++;
+      console.log(`[API Translate] Attempt ${attempts}/${MAX_ATTEMPTS} for task ${taskId}...`);
+      
+      const result = await executeAction(appSlug, credentials, 'chat_completion', {
+        model: modelName,
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: userMessage }
+        ],
+      });
+
+      if (!result.success || !result.data) {
+        lastError = result.error || 'AI request failed';
+        console.warn(`[API Translate] Attempt ${attempts} AI error: ${lastError}`);
+        await new Promise(r => setTimeout(r, 1500));
+        continue;
+      }
+
+      const outputText = extractContentFromResult(result.data);
+      
+      try {
+        let cleanOutput = outputText.trim();
+        cleanOutput = cleanOutput.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+        if (!cleanOutput.startsWith('{')) {
+          const objMatch = cleanOutput.match(/\{[\s\S]*\}/);
+          if (objMatch) {
+            cleanOutput = objMatch[0];
+          }
+        }
+
+        const parsed = JSON.parse(cleanOutput);
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+          throw new Error("Output is not a valid JSON object");
+        }
+
+        const tempTexts: string[] = [];
+        for (let i = 0; i < texts.length; i++) {
+          const key = i.toString();
+          if (parsed[key]) {
+            let val = parsed[key];
+            if (typeof val === 'object' && val.message && val.message.content) {
+              val = val.message.content;
+            }
+            tempTexts.push(typeof val === 'string' ? val.trim() : texts[i]);
+          } else {
+            tempTexts.push('');
+          }
+        }
+
+        const missingKeysCount = tempTexts.filter(t => t === '').length;
+        if (missingKeysCount === 0) {
+          translatedTexts = tempTexts;
+          console.log(`[API Translate] Attempt ${attempts} SUCCESS! All ${texts.length} keys translated cleanly.`);
+          break;
+        } else {
+          console.warn(`[API Translate] Attempt ${attempts} failed: missing ${missingKeysCount} keys out of ${texts.length}.`);
+          lastError = `AI returned incomplete JSON keys (${missingKeysCount} missing)`;
+        }
+      } catch (e: any) {
+        console.warn(`[API Translate] Attempt ${attempts} JSON parse error: ${e.message}`);
+        lastError = e.message;
+      }
+
+      await new Promise(r => setTimeout(r, 1500));
     }
 
-    // 5. Bóc tách kết quả - dùng hàm đào sâu qua mọi lớp bọc
-    const outputText = extractContentFromResult(result.data);
-    console.log('[API Translate] Extracted content:', outputText.substring(0, 200));
-
-    // 6. Parse JSON array từ output text
-    let translatedTexts: string[] = [];
-    try {
-      let cleanOutput = outputText.trim();
-      
-      // Loại bỏ markdown code block nếu có
-      cleanOutput = cleanOutput.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-
-      // Nếu vẫn có text thừa bao quanh mảng/object, dùng regex trích xuất
-      if (!cleanOutput.startsWith('{')) {
-        const objMatch = cleanOutput.match(/\{[\s\S]*\}/);
-        if (objMatch) {
-          cleanOutput = objMatch[0];
-        }
-      }
-      
-      const parsed = JSON.parse(cleanOutput);
-      
-      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        throw new Error("Output is not a JSON object");
-      }
-
-      // Trích xuất lại thành mảng theo thứ tự index
-      for (let i = 0; i < texts.length; i++) {
-        const key = i.toString();
-        if (parsed[key]) {
-           let val = parsed[key];
-           if (typeof val === 'object' && val.message && val.message.content) {
-              val = val.message.content;
-           }
-           translatedTexts.push(typeof val === 'string' ? val : texts[i]);
-        } else {
-           translatedTexts.push(texts[i]); // Fallback
-        }
-      }
-      
-      // Fallback if AI returned wrong size
-      if (translatedTexts.length !== texts.length) {
-         console.warn("[API Translate] AI returned array of different length. Input:", texts.length, "Output:", translatedTexts.length);
-         while (translatedTexts.length < texts.length) {
-            translatedTexts.push(texts[translatedTexts.length]);
-         }
-         translatedTexts = translatedTexts.slice(0, texts.length);
-      }
-    } catch (e) {
-      console.error('[API Translate] Failed to parse JSON array from AI:', outputText.substring(0, 500));
-      translatedTexts = texts;
+    if (translatedTexts.length === 0) {
+      console.error(`[API Translate] All ${MAX_ATTEMPTS} attempts failed. Last error: ${lastError}`);
+      return NextResponse.json({ 
+        error: `Dịch thuật bằng DeepSeek thất bại sau ${MAX_ATTEMPTS} lần thử: ${lastError}. Đang tự động giữ nguyên khối để thử lại.`,
+        isBlockError: true 
+      }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, translatedTexts });
