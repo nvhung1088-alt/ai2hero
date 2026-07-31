@@ -6,7 +6,7 @@ import { eq, or, isNull, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 // Seed mặc định 5 bộ từ điển chuẩn
-export const DEFAULT_SYSTEM_DICTIONARIES: Array<Omit<NewDubDictionary, 'id' | 'createdAt' | 'updatedAt'>> = [
+const DEFAULT_SYSTEM_DICTIONARIES: Array<Omit<NewDubDictionary, 'id' | 'createdAt' | 'updatedAt'>> = [
   {
     teamId: null,
     isGlobal: true,
