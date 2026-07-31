@@ -244,6 +244,20 @@ Output: {"0":"Tôi là Sói Vương","1":"Tôi không được thua"}`;
       }, { status: 500 });
     }
 
+    // VÒNG LẶP AI TỰ HỌC (PHƯƠNG ÁN B): Kích hoạt ngầm không làm chậm response
+    const { dictionaryId } = body;
+    if (dictionaryId) {
+      import('@/lib/db/hero-dub-dictionary-actions').then(({ evaluateAndLearnAction }) => {
+        evaluateAndLearnAction(Number(dictionaryId), JSON.stringify(texts), JSON.stringify(translatedTexts))
+          .then((res) => {
+            if (res?.learnedCount && res.learnedCount > 0) {
+              console.log(`[API Translate] AI Flywheel learned ${res.learnedCount} new rules for Dictionary #${dictionaryId}! New Score: ${res.newScore}`);
+            }
+          })
+          .catch(err => console.error('[API Translate] Async learn error:', err));
+      }).catch(() => {});
+    }
+
     return NextResponse.json({ success: true, translatedTexts });
   } catch (error: any) {
     console.error('[API Translate] Error:', error);
