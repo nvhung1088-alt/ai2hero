@@ -12,78 +12,82 @@ const DEFAULT_SYSTEM_DICTIONARIES: Array<Omit<NewDubDictionary, 'id' | 'createdA
     isGlobal: true,
     genreKey: 'xianxia',
     name: '🗡️ Tiên hiệp / Tu tiên',
-    keywords: 'tiên hiệp, tu tiên, độ kiếp, tu vi, pháp bảo, luyện khí, nguyên thần, kim đan, phi thăng, đại vương, yêu quái',
-    promptContent: `# VAI TRÒ
-Bạn là chuyên gia dịch thuật phụ đề phim cổ trang, tiên hiệp, tu tiên và Tây Du Ký từ Tiếng Trung sang Tiếng Việt.
-
-# THỂ LOẠI & NGỮ CẢNH
-- Phim Tiên hiệp / Tu tiên / Yêu vương trọng sinh / Âm mưu Tây Du.
-- Văn phong: Cổ trang, trang trọng, súc tích, mang đậm chất kiếm hiệp/tu tiên Việt Nam. TUYỆT ĐỐI không dùng từ lóng, từ hiện đại.
+    keywords: 'tiên hiệp, tu tiên, độ kiếp, tu vi, pháp bảo, luyện khí, nguyên thần, kim đan, nguyên anh, hóa thần, linh thạch, tẩu hỏa nhập ma',
+    promptContent: `# THỂ LOẠI & VĂN PHONG
+- Thể loại: Phim Tiên hiệp / Tu tiên / Huyền huyễn.
+- Văn phong: Trang trọng, tiên phong đạo cốt, sử dụng từ Hán-Việt chuẩn mực của giới tu tiên. TUYỆT ĐỐI KHÔNG dùng từ ngữ hiện đại, từ lóng hoặc văn nói đời thường.
 
 ---
 
-## 1. QUY TẮC XƯNG HÔ (THEO NGỮ CẢNH & GIAI TẦNG)
-- **Yêu Vương / Chúa động phủ (\`大王\`):**
-  - Gọi là **"Đại vương"** (TUYỆT ĐỐI KHÔNG dịch thành "Bệ hạ", "Hoàng thượng" trừ khi nhân vật là vua loài người).
-  - Yêu quái / Thuộc hạ xưng: **Thuộc hạ / Tiểu yêu / Bổn tọa** (nếu là yêu vương tự xưng với kẻ dưới).
-  - Nữ yêu có tình cảm với Đại vương xưng (\`奴家\`): **Thiếp / Tiểu nữ**.
-- **Tiên nhân / Tu sĩ:**
-  - Xưng hô: **Bần đạo / Đạo hữu / Tiền bối / Hậu bối / Chưởng môn / Sư tôn**.
-- **Phật môn / Sư sãi:**
-  - Xưng hô: **Bần tăng / Đệ tử / Thí chủ / Sư phụ**.
-- **Phàm trần / Quan trường (\`陛下\`, \`臣\`):**
-  - Chỉ khi ở triều đình con người mới dùng: **Bệ hạ / Trẫm / Thần / Lão thần / Ái khanh**.
+## 1. QUY TẮC XƯNG HÔ (THEO GIAI TẦNG & TÔNG MÔN)
+- **Yêu tộc / Chúa động phủ (\`大王\`):**
+  - \`大王\` → Đại vương (Dùng cho vua yêu quái / chúa động phủ. TUYỆT ĐỐI KHÔNG dịch thành "Bệ hạ" hay "Hoàng thượng").
+  - Yêu quái xưng hô với Đại vương: Thuộc hạ, Tiểu yêu.
+- **Tiên nhân / Tu sĩ độc lập:**
+  - Xưng hô ngang hàng: Đạo hữu, Bần đạo.
+  - Phân biệt tiền-hậu: Tiền bối, Vãn bối / Hậu bối.
+  - Cao nhân / Đại năng tự xưng: Bổn tọa, Bổn tôn.
+- **Sư môn / Tông phái:**
+  - \`师尊 / 师父\` → Sư tôn / Sư phụ.
+  - \`弟子 / 徒儿\` → Đệ tử / Đồ nhi.
+  - \`掌门 / 宗主\` → Chưởng môn / Tông chủ.
+  - \`师兄 / 师弟 / 师姐 / 师妹\` → Sư huynh / Sư đệ / Sư tỷ / Sư muội.
 
 ---
 
-## 2. QUY TẮC TỰ DIỄN DỊCH & SỬA LỖI ĐỒNG ÂM ASR (QUAN TRỌNG)
-Whisper ASR thường nhận diện sai chữ Hán do đồng âm/gần âm. **Trước khi dịch, bạn BUỘC PHẢI kiểm tra tính hợp lý của từ ngữ trong ngữ cảnh Tu tiên/Cổ trang.** Nếu thấy từ vô nghĩa, hãy tự suy luận từ đồng âm đúng:
+## 2. TỪ ĐIỂN THUẬT NGỮ TU TIÊN (GLOSSARY)
 
-- **Lỗi Tu tiên / Phép thuật:**
-  - 练画 → 炼化 (Luyện hóa)
-  - 天先 → 天仙 (Thiên Tiên)
-  - 度节 / 渡节 → 渡劫 (Độ kiếp)
-  - 法保 → 法宝 (Pháp bảo)
-  - 魂水 / 浑水 → 浑水 (Vũng nước đục - Vd: 趟不得这浑水 = Không thể dính vào vũng nước đục này)
-- **Lỗi Bối cảnh / Chiến lược / Tây Du:**
-  - 烧大的竹子 → 稍大的卒子 (Một quân tốt nhỉnh hơn một chút)
-  - 贺物器 → 货物 (Món hàng / Vật tế)
-- **Lỗi Lịch sử / Khoa cử:**
-  - 薄雪红磁壳 → 博学鸿词科 (Khoa thi Bác Học Hồng Từ)
-  - 春秋周离 → 春秋周礼 (Kinh điển: Xuân Thu, Chu Lễ)
-  - 状怨 → 状元 (Trạng nguyên)
-  - 彩相 → 宰相 (Tể tướng)
+### A. Cảnh giới tu luyện (Phải dịch chuẩn Hán-Việt)
+- 练气 = Luyện Khí
+- 筑基 = Trúc Cơ
+- 金丹 = Kim Đan
+- 元婴 = Nguyên Anh
+- 化神 = Hóa Thần
+- 渡劫 = Độ Kiếp
+- 飞升 = Phi Thăng
+- 天仙 = Thiên Tiên
+- 突破 = Đột phá / Phá cảnh
 
----
-
-## 3. TỪ ĐIỂN THUẬT NGỮ CỐ ĐỊNH (GLOSSARY)
-
-### A. Thuật ngữ Tu tiên / Huyền huyễn
-- 炼化 = Luyện hóa (hấp thụ/tinh luyện)
-- 天仙 = Thiên Tiên (cấp bậc)
-- 渡劫 = Độ kiếp
+### B. Khái niệm & Hành động tu luyện
+- 炼化 = Luyện hóa (hấp thụ/tinh luyện pháp bảo, linh lực)
 - 修为 = Tu vi
 - 功法 = Công pháp
 - 灵气 = Linh khí
 - 元神 = Nguyên Thần
+- 法宝 = Pháp bảo
+- 丹药 = Đan dược
+- 灵石 = Linh thạch (Đơn vị tiền tệ/năng lượng tu tiên)
+- 阵法 = Trận pháp
+- 秘境 = Bí cảnh
 - 洞府 = Động phủ
 - 闭关 / 出关 = Bế quan / Xuất quan
-- 气运 = Khí vận / Khế vận
-- 功德 = Công đức
-- 神念 = Thần niệm
-
-### B. Tên riêng & Địa danh (Khóa nhất quán không đổi)
-- 宝象国 = Bảo Tượng Quốc (Không dịch thành Bảo Hướng/Bảo Tướng)
-- 白虎岭 / 白骨岭 = Bạch Hổ Lĩnh / Bạch Cốt Lĩnh
-- 唐僧 = Đường Tăng
-- 燕琼 / 燕祖 = Yến Quỳnh (hoặc Yến Công)
+- 夺舍 = Đoạt xá
+- 走火入魔 = Tẩu hỏa nhập ma
 
 ---
 
-## 4. QUY TẮC ĐỊNH DẠNG PHỤ ĐỀ (SUBTITLE CONSTRAINTS)
-- **Độ dài:** Dịch ngắn gọn, tối ưu số chữ để người xem kịp đọc trong 1-3 giây.
-- **Tính liền mạch:** Nếu câu tiếng Trung bị ngắt làm 2 dòng timestamp, hãy dịch sao cho văn phạm tiếng Việt nối tiếp tự nhiên giữa 2 dòng.
-- **Đầu ra (Output):** CHỈ xuất ra phần văn bản đã dịch tương ứng với từng dòng, KHÔNG giải thích, KHÔNG thêm ghi chú hay ký tự Markdown rườm rà vào phụ đề.`,
+## 3. SỬA LỖI ĐỒNG ÂM ASR THƯỜNG GẶP (HOMOPHONE CORRECTION)
+Whisper AI thường nhận diện sai thuật ngữ tu tiên thành từ thông thường. LLM BUỘC PHẢI suy luận theo ngữ cảnh và tự sửa các lỗi sau trước khi dịch:
+
+- **Lỗi Cảnh giới & Tu luyện:**
+  - 练画 / 练话 → 炼化 (Luyện hóa)
+  - 天先 / 天线 → 天仙 (Thiên Tiên)
+  - 度节 / 渡节 → 渡劫 (Độ kiếp)
+  - 筑机 / 住基 → 筑基 (Trúc Cơ)
+  - 元鹰 / 原英 → 元婴 (Nguyên Anh)
+- **Lỗi Vật phẩm & Hành động:**
+  - 法保 / 发保 → 法宝 (Pháp bảo)
+  - 零食 / 灵诗 → 灵石 (Linh thạch - TUYỆT ĐỐI KHÔNG dịch là "đồ ăn vặt")
+  - 但药 / 耽药 → 丹药 (Đan dược)
+  - 壁关 / 避关 → 闭关 (Bế quan)
+  - 多舌 / 朵舌 → 夺舍 (Đoạt xá)
+  - 走火入膜 → 走火入魔 (Tẩu hỏa nhập ma)
+
+---
+
+## 4. QUY TẮC PHỤ ĐỀ (SUBTITLE CONSTRAINTS)
+- **Ngắn gọn, súc tích:** Ưu tiên câu từ cô đọng để phù hợp tốc độ đọc phụ đề (1-3 giây/câu).
+- **Chỉ xuất kết quả:** Chỉ trả về dòng dịch tiếng Việt tương ứng, KHÔNG kèm giải thích hay ghi chú.`,
     isAutoUpdate: false,
   },
   {
@@ -91,24 +95,45 @@ Whisper ASR thường nhận diện sai chữ Hán do đồng âm/gần âm. **T
     isGlobal: true,
     genreKey: 'tayDuKy',
     name: '🐒 Tây Du Ký / Ngoại truyện',
-    keywords: 'tây du, tây du ký, tôn ngộ không, đại thánh, bảo tượng quốc, bạch hổ lĩnh, bác học hồng từ, trạng nguyên, tể tướng, yêu vương',
-    promptContent: `# VAI TRÒ
-Bạn là chuyên gia dịch thuật phụ đề phim Tây Du Ký & Ngoại truyện Yêu vương.
+    keywords: 'tây du, tây du ký, tôn ngộ không, đại thánh, bảo tượng quốc, bạch hổ lĩnh, bác học hồng từ, trạng nguyên, tể tướng, yêu vương, linh sơn, phật môn',
+    promptContent: `Thể loại: Phim Tây Du Ký / Ngoại truyện yêu vương (Âm mưu / Bàn cờ thế lực).
 
-# QUY TẮC CỐ ĐỊNH TÂY DU KÝ:
-1. 大王 = Đại Vương (vua yêu quái). KHÔNG dịch "Bệ hạ".
-2. 宝象国 = Bảo Tượng Quốc. TUYỆT ĐỐI KHÔNG dịch thành "Bảo Hướng".
-3. 博学鸿词科 = Khoa thi Bác Học Hồng Từ.
-4. Sửa lỗi ASR Whisper nghe nhầm:
-   - 薄雪红磁壳 → 博学鸿词科
-   - 烧大的竹子 → 稍大的卒子 (quân tốt nhỉnh hơn)
-   - 魂水 → 浑水 (nước đục)
-   - 彩相 → 宰相 (Tể tướng)
-   - 状怨 → 状元 (Trạng nguyên)
+QUY TẮC XƯNG HÔ:
+- 大王 = Đại Vương (vua yêu quái). KHÔNG dịch "Bệ hạ".
+- 陛下 = Bệ hạ (chỉ dùng cho vua loài người ở triều đình).
+- Yêu quái gọi chủ: Đại vương, Chủ nhân.
+- Thần tiên gọi nhau: Đại Thánh, Tiền bối, Đạo hữu.
+- 奴家 = Thiếp / Tiểu nữ (yêu nữ xưng hô với Đại vương).
+- 猴子 / 泼猴 = Khỉ con / Yêu hầu (cách yêu vương gọi Tôn Ngộ Không).
 
-5. SUBTITLE FORMAT:
-   - Văn phong cổ phong súc tích.
-   - CHỈ trả về bản dịch tiếng Việt, KHÔNG giải thích rườm rà.`,
+ĐỊA DANH & NHÂN VẬT TÂY DU:
+- 宝象国 = Bảo Tượng Quốc (KHÔNG dịch "Bảo Hướng")
+- 白虎岭 = Bạch Hổ Lĩnh
+- 花果山 = Hoa Quả Sơn
+- 金角大王 = Kim Giác Đại Vương
+- 银角大王 = Ngân Giác Đại Vương
+- 佛门 / 天庭 / 灵山 = Phật Môn / Thiên Đình / Linh Sơn
+- 功德 / 气运 = Công đức / Khí vận
+
+TỪ ĐIỂN KHOA CỬ & THÀNH NGỮ:
+- 博学鸿词科 = Khoa thi Bác Học Hồng Từ
+- 状元 = Trạng nguyên
+- 宰相 = Tể tướng
+- 春秋 = Xuân Thu (kinh điển)
+- 周礼 = Chu Lễ (kinh điển)
+- 趟浑水 = Dính vào vũng nước đục (thành ngữ: can thiệp vào chuyện rắc rối)
+- 过河帅 = Tướng qua sông (quân tốt qua sông hóa Tướng trên bàn cờ)
+
+SỬA LỖI ĐỒNG ÂM ASR THƯỜNG GẶP:
+- 薄雪红磁壳 → 博学鸿词科 (Bác Học Hồng Từ)
+- 烧大的竹子 → 稍大的卒子 (quân tốt nhỉnh hơn)
+- 魂水 → 浑水 (nước đục)
+- 家详 → 可想 (nhớ)
+- 彩相 → 宰相 (Tể tướng)
+- 状怨 → 状元 (Trạng nguyên)
+- 贺物器 → 货物 (món hàng - Vd: 行走的货物 = món hàng biết đi)
+- 练画 → 炼化 (luyện hóa pháp bảo/tu vi)
+- 天先 → 天仙 (cảnh giới Thiên Tiên)`,
     isAutoUpdate: false,
   },
   {
@@ -116,34 +141,78 @@ Bạn là chuyên gia dịch thuật phụ đề phim Tây Du Ký & Ngoại truy
     isGlobal: true,
     genreKey: 'coTrang',
     name: '👑 Cổ trang Triều đình',
-    keywords: 'cổ trang, triều đình, hoàng đế, thừa tướng, hàn lâm, tri chế cáo, muối sắt, trà ngựa, điền phú, hoàng thượng, bệ hạ, trẫm',
-    promptContent: `Thể loại: Phim cổ trang triều đình / cung đấu.
+    keywords: 'cổ trang, triều đình, hoàng đế, thừa tướng, hàn lâm, tri chế cáo, muối sắt, trà ngựa, điền phú, hoàng thượng, bệ hạ, trẫm, thượng thư, thị lang, tấu chương',
+    promptContent: `Thể loại: Phim cổ trang triều đình / cung đấu / quan trường.
 
-QUY TẮC XƯNG HÔ (BẮT BUỘC):
-- Hoàng đế xưng: Trẫm. Gọi thần tử: Khanh, Ái khanh.
-- Thần tử xưng: Thần (nam), Thần thiếp (nữ phi tần). Gọi vua: Bệ hạ, Hoàng thượng.
-- Thái hậu: Ai gia (tự xưng), gọi vua: Hoàng đế.
-- Hoàng hậu: Bổn cung (tự xưng).
-- Công chúa: Bổn công chúa.
-- Quan lại gọi nhau: Đại nhân, Tiên sinh.
-- TUYỆT ĐỐI KHÔNG dùng "anh/cô/tôi/bạn".
+---
 
-TỪ ĐIỂN CHỨC TƯỚC & THUẬT NGỮ:
-- 丞相 = Thừa tướng
-- 翰林 = Hàn Lâm
+## 1. QUY TẮC XƯNG HÔ (BẮT BUỘC)
+- **Hoàng đế:** Tự xưng "Trẫm". Gọi thần tử: "Khanh", "Ái khanh". Gọi phi tần: "Ái phi", "Nàng".
+- **Thần tử (Quan lại):** Tự xưng "Thần" (nam), "Vi thần", "Hạ quan" (với quan cấp cao hơn), "Ti chức" (võ quan). Gọi vua: "Bệ hạ", "Hoàng thượng".
+- **Hậu cung & Hoàng thất:**
+  - Thái hậu: "Ai gia" (tự xưng) → gọi vua: "Hoàng đế" / "Hoàng nhi".
+  - Hoàng hậu: "Bổn cung" (tự xưng).
+  - Phi tần: "Thần thiếp", "Tần thiếp" (tự xưng) → gọi nhau ngoài mặt: "Tỷ tỷ / Muội muội".
+  - Thái tử / Hoàng tử: "Bổn vương", "Bổn thái tử" → gọi vua/mẹ: "Nhi thần", "Phụ hoàng", "Mẫu hậu".
+  - Công chúa: "Bổn công chúa".
+- **Nội quan / Người hầu:**
+  - Thái giám / Cung nữ: Tự xưng "Nô tài", "Nô tỳ" → gọi chủ: "Chủ tử", "Nương nương", "Bệ hạ".
+- **Quan lại giao tiếp:** Gọi nhau bằng "Đại nhân", "Tiên sinh", "Lão sư".
+- **TUYỆT ĐỐI KHÔNG** dùng đại từ hiện đại: "anh / cô / tôi / bạn / cậu / tớ".
+
+---
+
+## 2. TỪ ĐIỂN CHỨC TƯỚC & THUẬT NGỮ TRIỀU ĐÌNH
+
+### A. Chức tước & Cơ quan Triều đình
+- 丞相 / 宰相 = Thừa tướng / Tể tướng
+- 六部 = Lục bộ (Lại, Hộ, Lễ, Binh, Hình, Công - 吏户礼兵刑工)
+- 尚书 = Thượng thư (đứng đầu một Bộ)
+- 侍郎 = Thị lang (cấp phó trong Bộ)
+- 御史大夫 / 御史 = Ngự sử đại phu / Ngự sử
+- 翰林 / 翰林院 = Hàn Lâm / Hàn Lâm Viện
 - 知制诰 = Tri chế cáo
 - 权知户部事 = Quyền tri Hộ bộ sự
+- 钦差 = Khâm sai / Khâm sai đại thần
+
+### B. Chính sách, Kinh tế & Văn bản
+- 圣旨 / 诏书 = Thánh chỉ / Chiếu thư
+- 奏折 / 奏章 = Tấu chương / Tấu chiết
 - 盐铁专卖 = Độc quyền muối sắt
 - 茶马互市 = Giao thương Trà - Ngựa
 - 田赋 = Thuế ruộng / Điền phú
+- 科举 = Khoa cử
 
-SỬA LỖI ĐỒNG ÂM ASR THƯỜNG GẶP:
-- 汉林 → 翰林 (Hàn Lâm)
-- 知智告 → 知制诰 (Tri chế cáo)
-- 全支户部士 → 权知户部事 (Quyền tri Hộ bộ sự)
-- 严帖专媚 → 盐铁专卖 (Độc quyền muối sắt)
-- 查马户士 → 茶马互市 (Giao thương Trà Ngựa)
-- 天父 → 田赋 (Thuế ruộng)`,
+### C. Cung đấu, Hình phạt & Đình chiến
+- 冷宫 = Lãnh cung
+- 请安 = Thỉnh an
+- 赐死 = Tứ tử (ban cho cái chết)
+- 诛九族 / 株连九族 = Tru di cửu tộc / Chu di cửu tộc
+- 流放 = Lưu đày (đày đi biên cương)
+- 贬为庶民 = Giáng làm thứ dân
+- 斩立决 = Chém lập tức / Trảm lập quyết
+- 欺君之罪 = Tội khi quân (lừa dối vua)
+
+---
+
+## 3. SỬA LỖI ĐỒNG ÂM ASR THƯỜNG GẶP (QUAN TRỌNG)
+Whisper AI hay nghe nhầm từ Hán cổ sang từ hiện đại. BUỘC PHẢI tự động suy luận và sửa các lỗi sau trước khi dịch:
+
+- **Lỗi Quan chức & Chính sách:**
+  - 汉林 → 翰林 (Hàn Lâm)
+  - 知智告 → 知制诰 (Tri chế cáo)
+  - 全支户部士 → 权知户部事 (Quyền tri Hộ bộ sự)
+  - 严帖专媚 → 盐铁专卖 (Độc quyền muối sắt)
+  - 查马户士 → 茶马互市 (Giao thương Trà - Ngựa)
+  - 天父 → 田赋 (Thuế ruộng / Điền phú)
+  - 科技 / 客机 → 科举 (Khoa cử - TUYỆT ĐỐI KHÔNG dịch là "khoa học công nghệ")
+- **Lỗi Triều đình & Cung đấu:**
+  - 甚至 → 圣旨 (Thánh chỉ)
+  - 走着 / 奏者 → 奏折 (Tấu chương)
+  - 酒足 / 九足 → 九族 (Cửu tộc - vd: Tru di cửu tộc)
+  - 市民 → 庶民 (Thứ dân - KHÔNG dịch là "thị dân/người thành phố")
+  - 成以为 / 人以为 → 臣以为 (Thần cho rằng / Thần thiết nghĩ)
+  - 本工 / 本公 → 本宫 (Bổn cung)`,
     isAutoUpdate: false,
   },
   {
@@ -151,17 +220,77 @@ SỬA LỖI ĐỒNG ÂM ASR THƯỜNG GẶP:
     isGlobal: true,
     genreKey: 'xuyenKhong',
     name: '⚡ Xuyên không',
-    keywords: 'xuyên không, hệ thống, kpi, hiện đại về cổ đại, xuyên qua',
-    promptContent: `Thể loại: Phim xuyên không (nhân vật hiện đại xuyên về thời cổ đại).
+    keywords: 'xuyên không, hệ thống, kpi, hiện đại về cổ đại, xuyên qua, xuyên thư, bàn tay vàng, ký chủ, trà xanh, vả mặt',
+    promptContent: `# THỂ LOẠI & NGỮ CẢNH
+- Thể loại: Phim Xuyên không / Xuyên thư / Cổ trang kết hợp hiện đại / Hệ thống (System).
+- Đặc trưng: Nhân vật từ thế giới hiện đại xuyên về thời cổ đại, thường xuyên có sự giao thoa giữa từ ngữ công sở/internet hiện đại và văn phong quan trường/cổ phong.
 
-QUY TẮC XƯNG HÔ KÉP:
-- Khi giao tiếp triều đình / quan lại / vua: Dùng xưng hô cổ phong (Bệ hạ, Thần, Khanh, Tiểu nữ).
-- Khi suy nghĩ nội tâm / chửi thầm / nhắc thuật ngữ hiện đại: Giữ nguyên đại từ hiện đại (Tôi, Anh, Hệ thống, KPI, Tài khoản, CEO).
-- Khi nói chuyện riêng với người cùng xuyên không: Dùng xưng hô hiện đại.
+---
 
-GHI CHÚ:
-- Phân biệt rõ ngữ cảnh mỗi câu thoại để chọn đúng hệ xưng hô.
-- Các thuật ngữ hiện đại giữ nguyên tiếng Việt phổ thông, không cổ phong hóa.`,
+## 1. QUY TẮC XƯNG HÔ KÉP (DUAL TONE SWITCHING - BẮT BUỘC)
+Bạn BUỘC PHẢI phân tích ngữ cảnh của từng dòng thoại để chọn hệ xưng hô chính xác:
+
+- **Hệ Cổ phong (Giao tiếp công khai thời cổ đại):**
+  - Khi nói chuyện với Vua / Quan lại / Người cổ đại: Sử dụng nghiêm ngặt văn phong cổ trang ("Bệ hạ", "Thần", "Khanh", "Tiểu nữ", "Đại nhân", "Bổn cung", "Vương gia").
+- **Hệ Hiện đại (Nội tâm / Chửi thầm / Giao tiếp riêng):**
+  - Khi độc thoại nội tâm, suy nghĩ trong đầu, hoặc chửi thầm: Dùng đại từ hiện đại ("Tôi", "Anh", "Cô", "Tên kia", "Lão già này").
+  - Khi trò chuyện với Hệ thống (System) hoặc người đồng hương cùng xuyên không: Dùng "Tôi - Hệ thống", "Tôi - Cậu/Anh/Cô", "Ký chủ".
+- **Hệ Pha trộn (Hài hước cố ý):**
+  - Khi nhân vật cố tình dùng từ ngữ hiện đại giữa triều đình để gây hài hoặc nói móc, giữ nguyên thuật ngữ hiện đại nhưng kết hợp danh xưng cổ phong.
+  - *Ví dụ:* "Bệ hạ, ngài giao cho thần cái KPI này thật sự quá áp lực rồi!" / "Vương gia, ngài đừng có PUA tiểu nữ nữa!"
+
+---
+
+## 2. TỪ ĐIỂN THUẬT NGỮ HIỆN ĐẠI & HỆ THỐNG (GLOSSARY)
+TUYỆT ĐỐI KHÔNG cổ phong hóa hoặc Hán-Việt hóa các khái niệm hiện đại/game dưới đây:
+
+### A. Thuật ngữ Hệ thống / Game / Xuyên thư
+- 系统 = Hệ thống
+- 宿主 = Ký chủ (nhân vật được hệ thống ràng buộc)
+- 金手指 = Bàn tay vàng (thủ thuật gian lận / năng lực đặc biệt)
+- 任务 = Nhiệm vụ
+- 攻略 = Công lược (chinh phục mục tiêu/nhân vật)
+- 好感度 = Độ hảo cảm / Chỉ số thiện cảm
+- 穿书 = Xuyên thư (xuyên vào tiểu thuyết)
+- 重生 = Trùng sinh / Tái sinh
+- 炮灰 = Pháo hối (nhân vật hy sinh / làm nền)
+- 绿茶 = Trà xanh
+- 白莲花 = Bạch liên hoa
+- 打脸 = Vả mặt (lật ngược tình thế khiến kẻ khinh thường mình xấu hổ)
+
+### B. Thuật ngữ Công sở / Kinh doanh / Internet (Giữ nguyên tiếng Việt/Anh phổ thông)
+- KPI / 业绩 = KPI / Chỉ số công việc
+- PPT / 幻灯片 = PPT / Slide thuyết trình
+- 加班 / OT = Tăng ca / OT
+- 社畜 = Súc vật công sở / Dân văn phòng làm thuê
+- 霸总 / CEO = Bá tổng / CEO / Tổng tài
+- PUA / CPU = Thao túng tâm lý / PUA
+- 粉丝 = Fan / Người hâm mộ
+- 流量 = Lưu lượng / Traffic
+
+---
+
+## 3. SỬA LỖI ĐỒNG ÂM ASR ĐẶC THÙ XUYÊN KHÔNG (QUAN TRỌNG)
+Whisper AI cực kỳ dễ nhận diện sai khi từ ngữ hiện đại hoặc từ tiếng Anh bị xen vào giữa câu nói tiếng Trung cổ trang. Bạn BUỘC PHẢI suy luận theo ngữ cảnh Xuyên không để tự sửa các lỗi sau:
+
+- **Lỗi Hệ thống & Thuật ngữ Xuyên không:**
+  - 谨守旨 / 仅手指 → 金手指 (Bàn tay vàng - TUYỆT ĐỐI KHÔNG dịch thành "tuân thủ thánh chỉ")
+  - 传输 / 穿衣 → 穿书 (Xuyên thư / Xuyên vào sách)
+  - 诉主 / 俗主 → 宿主 (Ký chủ)
+  - 工业 / 攻列 → 攻略 (Công lược - KHÔNG dịch là "công nghiệp")
+  - 跑腿 / 泡灰 → 炮灰 (Pháo hối)
+- **Lỗi Thuật ngữ Công sở & Tiếng Anh xen kẽ:**
+  - K P I (hay bị ASR dịch thành chữ Hán đồng âm như \`开辟爱\` / \`凯皮哀\`) → KPI
+  - P T T / P P T (hay bị ASR nhận diện nhầm thành \`婆婆体\` / \`皮皮踢\`) → PPT / Slide
+  - 批斗 / 脾肺 → PUA / CPU (Thao túng tâm lý)
+  - 蛇处 / 摄出 → 社畜 (Dân làm thuê công sở)
+
+---
+
+## 4. QUY TẮC PHỤ ĐỀ (SUBTITLE CONSTRAINTS)
+- **Ngắn gọn, súc tích:** Tối ưu số lượng từ để người xem đọc kịp trong 1-3 giây.
+- **Tính liền mạch:** Nếu một câu thoại có cả phần đối thoại cổ phong lẫn độc thoại nội tâm hiện đại (ví dụ: "[Nghĩ thầm] Tên hoàng đế điên rồi! [Nói] Thần tuân chỉ!"), hãy thể hiện rõ phần nội tâm bằng ngoặc đơn \`(...)\` hoặc ngoặc vuông \`[...]\` nếu video gốc có hiệu ứng âm thanh suy nghĩ.
+- **Chỉ xuất kết quả:** Chỉ trả về văn bản tiếng Việt của dòng phụ đề, KHÔNG kèm giải thích hay chú thích.`,
     isAutoUpdate: false,
   },
   {
@@ -169,17 +298,84 @@ GHI CHÚ:
     isGlobal: true,
     genreKey: 'doThi',
     name: '🏙️ Đô thị hiện đại',
-    keywords: 'đô thị, hiện đại, tổng tài, giám đốc, tình cảm, công sở',
-    promptContent: `Thể loại: Phim đô thị / tình cảm / hành động hiện đại.
+    keywords: 'đô thị, hiện đại, tổng tài, giám đốc, tình cảm, công sở, hào môn, xem mắt, hợp đồng hôn nhân, vệ sĩ, bắt cóc',
+    promptContent: `# THỂ LOẠI & NGỮ CẢNH
+- Thể loại: Phim Đô thị hiện đại / Tình cảm / Hào môn thương trường / Hành động.
+- Văn phong: Tự nhiên, đời thường, hiện đại. Tránh dùng từ ngữ Hán-Việt cổ phong hoặc dịch quá cứng nhắc theo ngữ pháp tiếng Trung. Giữ nguyên tên riêng thương hiệu, tập đoàn, công ty nếu có.
 
-QUY TẮC XƯNG HÔ:
-- Xưng hô bình thường: Anh/Em, Tôi/Bạn, Cậu/Tớ.
-- Cấp trên/cấp dưới: Giám đốc, Tổng giám đốc, Sếp.
-- Gia đình: Ba/Mẹ, Ông/Bà, Anh/Chị.
+---
 
-GHI CHÚ:
-- Dịch tự nhiên theo văn phong đời thường, tránh cứng nhắc.
-- Giữ nguyên tên riêng thương hiệu, công ty nếu có.`,
+## 1. QUY TẮC XƯNG HÔ ĐỘNG (DYNAMIC PRONOUN SWITCHING - BẮT BUỘC)
+Tiếng Việt hiện đại thay đổi đại từ xưng hô rất mạnh theo mức độ thân thiết và diễn biến cảm xúc. Bạn BUỘC PHẢI căn cứ vào ngữ cảnh để chọn cặp xưng hô:
+
+- **Tình cảm / Nam nữ chính:**
+  - Mới quen / Công việc / Đối đầu: **Tôi - Cô / Tôi - Anh / Tôi - Cậu**.
+  - Đã hẹn hò / Thân thiết / Vợ chồng: **Anh - Em**.
+  - Cãi vã gay gắt / Chia tay / Xé rách mặt: **Tôi - Anh / Tôi - Cô**, thậm chí **Tôi - Người** hoặc **Tao - Mày** (nếu đối đầu gay gắt ở tuyến nhân vật giang hồ/phản diện).
+- **Công sở / Thương trường:**
+  - Cấp trên - Cấp dưới: **Tôi - Cậu/Cô** (Sếp xưng), **Tôi/Em - Sếp/Giám đốc/Tổng giám đốc** (Cấp dưới xưng).
+  - Đồng nghiệp ngang hàng: **Tôi - Bạn / Cậu - Tớ / Anh - Em** (tùy tuổi tác).
+- **Hành động / Hắc đạo / Ngầm:**
+  - Đàn anh giang hồ / Lão đại: **Đại ca / Lão đại / Sếp** → gọi đàn em: **Cậu / Mày / Tụi bây**.
+  - Kẻ thù / Đối đầu trực diện: **Tao - Mày / Các người**.
+- **Gia đình / Hào môn:**
+  - Bố mẹ - Con cái: **Bố/Ba/Mẹ - Con**.
+  - Ông bà - Cháu: **Ông/Bà - Cháu**.
+  - Anh chị em: **Anh/Chị - Em**.
+
+---
+
+## 2. TỪ ĐIỂN THUẬT NGỮ ĐÔ THỊ & HÀNH ĐỘNG (GLOSSARY)
+
+### A. Thương trường / Công sở / Hào môn
+- 总裁 / 霸总 = Tổng giám đốc / Tổng tài
+- 董事长 = Chủ tịch / Chủ tịch hội đồng quản trị
+- 董事会 = Hội đồng quản trị
+- 股份 / 股权 = Cổ phần / Cổ quyền
+- 收购 / 并购 = Thâu tóm / Sáp nhập (M&A)
+- 合作协议 / 合同 = Thỏa thuận hợp tác / Hợp đồng
+- 违约金 = Tiền bồi thường hợp đồng / Tiền vi phạm hợp đồng
+- 豪门 / 世家 = Hào môn / Gia tộc lớn
+
+### B. Tình cảm / Gia đấu đô thị
+- 契约婚姻 = Hôn nhân hợp đồng / Hợp đồng hôn nhân
+- 相亲 = Xem mắt
+- 小三 / 第五者 = Tiểu tam / Kẻ thứ ba
+- 绿茶 = Trà xanh
+- 闪婚 = Cưới chớp nhoáng / Cưới thần tốc
+- 隐婚 = Kết hôn bí mật
+
+### C. Hành động / Hình sự / Hắc đạo
+- 卧底 = Tay trong / Cảnh sát ngầm / Nội gián
+- 黑道 / 江湖 = Hắc đạo / Giang hồ / Thế giới ngầm
+- 赎金 = Tiền chuộc
+- 绑架 = Bắt cóc
+- 证据 = Bằng chứng / Chứng cứ
+- 保镖 = Vệ sĩ
+- 走私 = Buôn lậu
+
+---
+
+## 3. SỬA LỖI ĐỒNG ÂM ASR THƯỜNG GẶP (HOMOPHONE CORRECTION)
+Whisper AI dễ nghe nhầm các thuật ngữ thương mại và hành động tiếng Trung thành từ đồng âm thông thường. BUỘC PHẢI tự động suy luận và sửa các lỗi sau trước khi dịch:
+
+- **Lỗi Thương trường / Hợp đồng:**
+  - 骨粉 / 鼓粉 → 股份 (Cổ phần - TUYỆT ĐỐI KHÔNG dịch là "bột xương")
+  - 懂事会 → 董事会 (Hội đồng quản trị - KHÔNG dịch là "hội những người hiểu chuyện")
+  - 挟意 / 邪意 → 协议 (Thỏa thuận / Hợp đồng)
+  - 种菜 / 总财 → 总裁 (Tổng tài / Tổng giám đốc - KHÔNG dịch là "trồng rau")
+- **Lỗi Hành động / Hắc đạo:**
+  - 握底 / 卧地 → 卧底 (Tay trong / Cảnh sát ngầm - KHÔNG dịch là "nằm bò ra đất")
+  - 熟金 / 蜀金 → 赎金 (Tiền chuộc - KHÔNG dịch là "vàng chín")
+  - 保标 → 保镖 (Vệ sĩ)
+  - 挣扎 / 郑聚 → 证据 (Bằng chứng / Chứng cứ)
+
+---
+
+## 4. QUY TẮC PHỤ ĐỀ (SUBTITLE CONSTRAINTS)
+- **Ngắn gọn, nhịp điệu nhanh:** Phim hành động và đô thị có nhịp thoại nhanh, cần ưu tiên câu văn ngắn gọn, súc tích (1-3 giây/câu).
+- **Văn nói tự nhiên:** Sử dụng các từ đệm, từ nối tiếng Việt tự nhiên trong hội thoại (nhé, đâu, đấy, chứ, kìa) để lời thoại không bị giống văn dịch máy.
+- **Chỉ xuất kết quả:** Chỉ trả về văn bản tiếng Việt của phụ đề, KHÔNG kèm giải thích hay chú thích.`,
     isAutoUpdate: false,
   }
 ];
@@ -187,18 +383,23 @@ GHI CHÚ:
 // 1. Lấy danh sách từ điển (gồm Global + Team)
 export async function getDubDictionariesAction(teamId: number) {
   try {
-    const list = await db
+    let list = await db
       .select()
       .from(dubDictionaries)
       .where(or(isNull(dubDictionaries.teamId), eq(dubDictionaries.teamId, teamId)));
     
-    // Nếu chưa có Global dictionaries nào trong DB, tự động seed
-    if (list.filter(d => d.isGlobal).length === 0) {
-      await db.insert(dubDictionaries).values(DEFAULT_SYSTEM_DICTIONARIES);
-      return await db
-        .select()
-        .from(dubDictionaries)
-        .where(or(isNull(dubDictionaries.teamId), eq(dubDictionaries.teamId, teamId)));
+    const globals = list.filter(d => d.isGlobal);
+    // Nếu chưa có hoặc chưa đủ 5 Global dictionaries hệ thống, tự động seed / bổ sung
+    if (globals.length < DEFAULT_SYSTEM_DICTIONARIES.length) {
+      const existingKeys = new Set(globals.map(g => g.genreKey));
+      const missingDefaults = DEFAULT_SYSTEM_DICTIONARIES.filter(d => !existingKeys.has(d.genreKey));
+      if (missingDefaults.length > 0) {
+        await db.insert(dubDictionaries).values(missingDefaults);
+        list = await db
+          .select()
+          .from(dubDictionaries)
+          .where(or(isNull(dubDictionaries.teamId), eq(dubDictionaries.teamId, teamId)));
+      }
     }
 
     return list;
