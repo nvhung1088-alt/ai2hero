@@ -457,6 +457,18 @@ def process_task(token, task):
             
             asr_start_time = time.time()
             
+            # --- Tích hợp AI Pipeline: Trích xuất initial_prompt từ translateContext ---
+            initial_prompt = None
+            translate_ctx = task.get("translateContext", "")
+            if translate_ctx:
+                import re
+                # Bắt các từ Hán tự trước dấu '=' trong bảng từ điển (Ví dụ: 燕琼 = Yến Quỳnh)
+                matches = re.findall(r'([一-龥]+)\s*=', translate_ctx)
+                if matches:
+                    # Whisper initial_prompt giới hạn ở ~224 tokens, nên ta chỉ lấy max 30 từ
+                    initial_prompt = ", ".join(matches[:30])
+                    print(Fore.CYAN + f"[-] Đã tiêm {len(matches[:30])} từ vựng chuyên ngành vào Whisper initial_prompt.")
+
             transcribe_kwargs = {
                 "beam_size": beam_size,
                 "vad_filter": True,
@@ -464,6 +476,8 @@ def process_task(token, task):
             }
             if vad_params:
                 transcribe_kwargs["vad_parameters"] = vad_params
+            if initial_prompt:
+                transcribe_kwargs["initial_prompt"] = initial_prompt
 
             try:
                 segments, info = model.transcribe(whisper_input_audio, **transcribe_kwargs)
@@ -574,8 +588,17 @@ def process_task(token, task):
                     batch_segs = segments_to_translate[i:i+BATCH_SIZE]
                     texts = [seg['text'] for seg in batch_segs]
                     
+                    # Trích xuất Sliding Window Context (3 câu cuối của đoạn trước)
+                    prev_context = []
+                    if translated_count > 0 and i == 0:
+                        # Lấy từ translated_segments (batch trước đó được lưu)
+                        prev_context = [seg['text'] for seg in translated_segments[-3:]]
+                    elif i > 0:
+                        # Lấy từ segments_to_translate
+                        prev_context = [seg['text'] for seg in segments_to_translate[max(0, i-3):i]]
+
                     try:
-                        payload = {"taskId": task_id, "texts": texts}
+                        payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
                         res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=90)
                         if res.status_code == 200:
                             data = res.json()

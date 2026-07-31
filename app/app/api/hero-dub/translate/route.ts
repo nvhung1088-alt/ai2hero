@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { taskId, text, texts: inputTexts } = body;
+    const { taskId, text, texts: inputTexts, previousContext } = body;
 
     let texts = inputTexts;
     if (!texts && text) {
@@ -148,17 +148,22 @@ QUY TẮC PHONG CÁCH & ĐẠI TỪ XƯƠNG HÔ (BẮT BUỘC):
      * Khi giao tiếp với Vua/Mẫu hậu/Quan lại triều đình ➔ Phải dùng xưng hô triều đình (Bệ hạ, Thần, Tiểu nữ, Khanh).
      * Khi suy nghĩ nội tâm, chửi thầm, hoặc nhắc tới thuật ngữ hiện đại ➔ Giữ nguyên đại từ hiện đại (Tôi, Anh, Hệ thống, KPI, Tài khoản).
 
-3. ĐỊNH DẠNG ĐẦU RA JSON BẮT BUỘC:
-   - Trả về duy nhất đối tượng JSON với key (0, 1, 2...) giữ nguyên như input. Value là chuỗi tiếng Việt đã dịch.
+3. ĐỊNH DẠNG ĐẦU RA JSON BẮT BUỘC (2 BƯỚC SUY LUẬN):
+   - Trả về duy nhất đối tượng JSON với key (0, 1, 2...) giữ nguyên như input. 
+   - Với mỗi key, value phải là một đối tượng chứa 2 trường: "asr_correction" (sửa lỗi đồng âm tiếng Trung nếu có, nếu không lỗi thì giữ nguyên) và "vi_translation" (bản dịch tiếng Việt chuẩn xác).
    - Số lượng key trong output PHẢI BẰNG ĐÚNG số lượng key trong input. KHÔNG ĐƯỢC GỘP HOẶC BỎ BỚT KEY.
    - KHÔNG được thêm bất kỳ giải thích hay markdown nào ngoài đối tượng JSON.
 
 VÍ DỤ:
-Input: {"0":"我是狼王","1":"我不能输"}
-Output: {"0":"Tôi là Sói Vương","1":"Tôi không được thua"}`;
+Input: {"0":"这薄雪红磁壳很难考"}
+Output: {"0": {"asr_correction": "这博学鸿词科很难考", "vi_translation": "Khoa thi Bác Học Hồng Từ này rất khó đỗ"}}`;
 
     if (task.translateContext && task.translateContext.trim()) {
       systemMessage += `\n\nBỐI CẢNH & TỪ ĐIỂN PHIM DO NGƯỜI DÙNG CUNG CẤP (BẮT BUỘC TUÂN THỦ 100%):\n${task.translateContext.trim()}`;
+    }
+
+    if (previousContext && Array.isArray(previousContext) && previousContext.length > 0) {
+      systemMessage += `\n\n[READ_ONLY_CONTEXT] Dưới đây là 3 câu hội thoại cuối cùng của đoạn trước đó để bạn nắm mạch truyện (TUYỆT ĐỐI KHÔNG DỊCH CHÚNG, CHỈ ĐỌC ĐỂ HIỂU NGỮ CẢNH CHUYỂN TIẾP):\n${previousContext.join('\n')}`;
     }
 
     const userMessage = `Dịch đối tượng JSON phụ đề sau sang tiếng Việt:\n${jsonInput}`;
@@ -210,8 +215,12 @@ Output: {"0":"Tôi là Sói Vương","1":"Tôi không được thua"}`;
           const key = i.toString();
           if (parsed[key]) {
             let val = parsed[key];
-            if (typeof val === 'object' && val.message && val.message.content) {
-              val = val.message.content;
+            if (typeof val === 'object' && val !== null) {
+              if (val.vi_translation) {
+                val = val.vi_translation;
+              } else if (val.message && val.message.content) {
+                val = val.message.content;
+              }
             }
             tempTexts.push(typeof val === 'string' ? val.trim() : texts[i]);
           } else {
