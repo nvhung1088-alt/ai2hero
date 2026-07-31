@@ -23,11 +23,6 @@ export default function HeroDubSidebarMenu({ teamId }: SidebarMenuProps) {
       icon: History
     },
     {
-      name: 'Kho Từ Điển AI',
-      href: `/hero-dub/t/${teamId}/dictionaries`,
-      icon: BookOpen
-    },
-    {
       name: 'Hướng dẫn Worker',
       href: `/hero-dub/t/${teamId}/guide`,
       icon: HelpCircle
@@ -36,6 +31,11 @@ export default function HeroDubSidebarMenu({ teamId }: SidebarMenuProps) {
       name: 'Quản lý Thương hiệu',
       href: `/hero-dub/t/${teamId}/projects`,
       icon: FolderOpen
+    },
+    {
+      name: 'Kho Từ Điển AI',
+      href: `/hero-dub/t/${teamId}/dictionaries`,
+      icon: BookOpen
     }
   ];
 
