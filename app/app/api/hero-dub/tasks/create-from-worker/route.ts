@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       const ttsEnabled = config.ttsEnabled ?? config.tts_enabled ?? false;
       const ttsEngine = config.ttsEngine || config.tts_engine;
       const ttsVoice = config.ttsVoice || config.tts_voice;
-      const ttsSpeed = config.ttsSpeed || config.tts_speed;
+      const ttsSpeed = config.ttsSpeed || config.tts_speed || '1.2';
       const bgVolume = config.bgVolume || config.bg_volume;
       const ttsVolume = config.ttsVolume || config.tts_volume;
       const outputFolder = config.outputFolder || config.output_folder;

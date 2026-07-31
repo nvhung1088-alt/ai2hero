@@ -145,7 +145,7 @@ export async function createDubTaskAction(data: {
         ttsEnabled: data.ttsEnabled ?? false,
         ttsEngine: data.ttsEngine || 'edge-tts',
         ttsVoice: data.ttsVoice || null,
-        ttsSpeed: data.ttsSpeed || '1.3',
+        ttsSpeed: data.ttsSpeed || '1.2',
         bgVolume: data.bgVolume,
         ttsVolume: data.ttsVolume,
         outputFolder: data.outputFolder,

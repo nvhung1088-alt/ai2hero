@@ -123,7 +123,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [ttsEngine, setTtsEngine] = useState('edge-tts');
   const [ttsVoice, setTtsVoice] = useState('vi-VN-HoaiMyNeural');
-  const [ttsSpeed, setTtsSpeed] = useState('1.3');
+  const [ttsSpeed, setTtsSpeed] = useState('1.2');
   const [bgVolume, setBgVolume] = useState('1.0');
   const [ttsVolume, setTtsVolume] = useState('1.5');
   const [outputFolder, setOutputFolder] = useState('');

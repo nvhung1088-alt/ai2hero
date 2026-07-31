@@ -2382,7 +2382,7 @@ export const dubTasks = pgTable('dub_tasks', {
   ttsEngine: varchar('tts_engine', { length: 30 }).notNull().default('edge-tts'), // 'edge-tts' | 'connect-hub'
   ttsVoice: varchar('tts_voice', { length: 100 }), // voice model name
   ttsEnabled: boolean('tts_enabled').notNull().default(false),
-  ttsSpeed: varchar('tts_speed', { length: 10 }).notNull().default('1.3'),
+  ttsSpeed: varchar('tts_speed', { length: 10 }).notNull().default('1.2'),
   bgVolume: varchar('bg_volume', { length: 20 }),
   ttsVolume: varchar('tts_volume', { length: 20 }),
   
