@@ -67,10 +67,6 @@ export default function DictionariesClient({
   };
 
   const handleOpenEdit = (dict: DubDictionary) => {
-    if (dict.isGlobal) {
-      alert('Từ điển hệ thống không thể sửa trực tiếp. Bạn có thể tạo từ điển mới dành riêng cho Team!');
-      return;
-    }
     setSelectedDict(dict);
     setFormName(dict.name);
     setFormKeywords(dict.keywords);
@@ -257,15 +253,15 @@ export default function DictionariesClient({
                       </div>
                     </div>
 
-                    {!dict.isGlobal && (
-                      <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
-                        <button
-                          onClick={() => handleOpenEdit(dict)}
-                          className="p-1.5 text-gray-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition"
-                          title="Sửa"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
+                    <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
+                      <button
+                        onClick={() => handleOpenEdit(dict)}
+                        className="p-1.5 text-gray-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition"
+                        title="Chỉnh sửa Template"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      {!dict.isGlobal && (
                         <button
                           onClick={() => handleDelete(dict.id)}
                           className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition"
@@ -273,8 +269,8 @@ export default function DictionariesClient({
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   {/* Keywords Badge */}

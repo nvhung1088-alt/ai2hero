@@ -579,7 +579,7 @@ export async function createDubDictionaryAction(data: {
   }
 }
 
-// 3. Cập nhật từ điển
+// 3. Cập nhật từ điển (hỗ trợ cả Global lẫn Team)
 export async function updateDubDictionaryAction(data: {
   id: number;
   teamId: number;
@@ -598,7 +598,15 @@ export async function updateDubDictionaryAction(data: {
         isAutoUpdate: data.isAutoUpdate ?? true,
         updatedAt: new Date(),
       })
-      .where(and(eq(dubDictionaries.id, data.id), eq(dubDictionaries.teamId, data.teamId)))
+      .where(
+        and(
+          eq(dubDictionaries.id, data.id),
+          or(
+            eq(dubDictionaries.teamId, data.teamId),
+            isNull(dubDictionaries.teamId)
+          )
+        )
+      )
       .returning();
 
     revalidatePath(`/hero-dub/t/${data.teamId}/dictionaries`);
@@ -614,7 +622,15 @@ export async function deleteDubDictionaryAction(id: number, teamId: number) {
   try {
     await db
       .delete(dubDictionaries)
-      .where(and(eq(dubDictionaries.id, id), eq(dubDictionaries.teamId, teamId)));
+      .where(
+        and(
+          eq(dubDictionaries.id, id),
+          or(
+            eq(dubDictionaries.teamId, teamId),
+            isNull(dubDictionaries.teamId)
+          )
+        )
+      );
 
     revalidatePath(`/hero-dub/t/${teamId}/dictionaries`);
     return { success: true };
