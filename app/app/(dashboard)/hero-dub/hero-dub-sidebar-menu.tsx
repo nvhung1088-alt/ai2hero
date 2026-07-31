@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, HelpCircle, FolderOpen, History } from 'lucide-react';
+import { LayoutDashboard, HelpCircle, FolderOpen, History, BookOpen } from 'lucide-react';
 
 interface SidebarMenuProps {
   teamId: number;
@@ -21,6 +21,11 @@ export default function HeroDubSidebarMenu({ teamId }: SidebarMenuProps) {
       name: 'Lịch sử hoạt động',
       href: `/hero-dub/t/${teamId}/history`,
       icon: History
+    },
+    {
+      name: 'Kho Từ Điển AI',
+      href: `/hero-dub/t/${teamId}/dictionaries`,
+      icon: BookOpen
     },
     {
       name: 'Hướng dẫn Worker',
