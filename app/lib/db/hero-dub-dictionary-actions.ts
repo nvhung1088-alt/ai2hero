@@ -297,15 +297,46 @@ Ví dụ: {"matchedId": 1, "reason": "Có xuất hiện từ Đại Vương, Ti�
     if (!jsonMatch) return autoDetectDictionaryAction(teamId, transcript30Lines);
 
     const parsed = JSON.parse(jsonMatch[0]);
-    if (parsed.matchedId) {
-      const found = dicts.find(d => d.id === parsed.matchedId);
-      if (found) return found;
-    }
-
     return autoDetectDictionaryAction(teamId, transcript30Lines);
   } catch (error) {
     console.error('Failed to detect genre by transcript AI:', error);
     return autoDetectDictionaryAction(teamId, transcript30Lines);
+  }
+}
+
+// 5b. Auto-Detect Dictionary dựa trên Title / Description (Fallback)
+export async function autoDetectDictionaryAction(teamId: number, textToAnalyze: string) {
+  try {
+    if (!textToAnalyze || textToAnalyze.trim().length === 0) {
+      return null;
+    }
+
+    const dicts = await getDubDictionariesAction(teamId);
+    const lowerText = textToAnalyze.toLowerCase();
+
+    let bestMatch: DubDictionary | null = null;
+    let maxMatchCount = 0;
+
+    for (const dict of dicts) {
+      const kwList = dict.keywords.toLowerCase().split(',').map(k => k.trim()).filter(Boolean);
+      let matchCount = 0;
+
+      for (const kw of kwList) {
+        if (lowerText.includes(kw)) {
+          matchCount++;
+        }
+      }
+
+      if (matchCount > maxMatchCount) {
+        maxMatchCount = matchCount;
+        bestMatch = dict;
+      }
+    }
+
+    return bestMatch;
+  } catch (error) {
+    console.error('Failed to auto-detect dictionary:', error);
+    return null;
   }
 }
 
