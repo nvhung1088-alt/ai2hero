@@ -125,9 +125,27 @@ export default function DubTaskTable({
                   <td className="py-3 pr-3 max-w-[320px]">
                     <div className="flex gap-3 items-center">
                       {(() => {
-                        const thumbUrl = task.sourceThumbnailUrl ? (task.sourceThumbnailUrl.startsWith('http') || task.sourceThumbnailUrl.startsWith('data:') ? task.sourceThumbnailUrl : `/api/hero-dub/stream?path=${encodeURIComponent(task.sourceThumbnailUrl)}`) : null;
+                        let thumbPath = task.sourceThumbnailUrl;
+                        if (!thumbPath && task.sourceUrl && typeof task.sourceUrl === 'string') {
+                          thumbPath = task.sourceUrl.replace(/\.(mp4|mkv|mov|avi|webm)$/i, '.jpeg');
+                        }
+                        const thumbUrl = thumbPath ? (thumbPath.startsWith('http') || thumbPath.startsWith('data:') ? thumbPath : `/api/hero-dub/stream?path=${encodeURIComponent(thumbPath)}`) : null;
                         return thumbUrl ? (
-                          <img src={thumbUrl} alt="" className="w-16 h-10 object-cover rounded-md border border-white/10 shrink-0" />
+                          <img 
+                            src={thumbUrl} 
+                            alt="" 
+                            className="w-16 h-10 object-cover rounded-md border border-white/10 shrink-0 bg-black/40" 
+                            onError={(e) => {
+                              // If .jpeg fails, try .jpg fallback
+                              const target = e.currentTarget;
+                              if (thumbPath && thumbPath.endsWith('.jpeg')) {
+                                const jpgPath = thumbPath.replace(/\.jpeg$/, '.jpg');
+                                target.src = `/api/hero-dub/stream?path=${encodeURIComponent(jpgPath)}`;
+                              } else {
+                                target.style.display = 'none';
+                              }
+                            }}
+                          />
                         ) : (
                           <div className="w-16 h-10 rounded-md bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
                             <Video className="h-4 w-4 text-gray-500" />
@@ -135,9 +153,15 @@ export default function DubTaskTable({
                         );
                       })()}
                       <div className="flex flex-col gap-1 min-w-0">
-                        <span className="font-extrabold text-white truncate group-hover:text-amber-400 transition-colors" title={task.sourceTitle || task.taskTitle || task.sourceUrl}>
-                          {task.sourceTitle || task.taskTitle || 'Chưa đặt tên tác vụ'}
-                        </span>
+                        {(() => {
+                          const rawTitle = task.sourceTitle || task.taskTitle || task.sourceUrl || '';
+                          const cleanTitle = rawTitle ? rawTitle.split(/[/\\]/).pop() || rawTitle : 'Chưa đặt tên tác vụ';
+                          return (
+                            <span className="font-extrabold text-white truncate group-hover:text-amber-400 transition-colors" title={cleanTitle}>
+                              {cleanTitle}
+                            </span>
+                          );
+                        })()}
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <button 
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigator.clipboard.writeText(String(task.id)); showToast('Đã copy ID tác vụ', 'success'); }}

@@ -258,9 +258,26 @@ export default function HistoryClient({ teamId }: HistoryClientProps) {
                       <div className="flex flex-col gap-2">
                         <div className="flex gap-3 items-center max-w-[320px]">
                           {(() => {
-                            const thumbUrl = task.sourceThumbnailUrl ? (task.sourceThumbnailUrl.startsWith('http') || task.sourceThumbnailUrl.startsWith('data:') ? task.sourceThumbnailUrl : `/api/hero-dub/stream?path=${encodeURIComponent(task.sourceThumbnailUrl)}`) : null;
+                            let thumbPath = task.sourceThumbnailUrl;
+                            if (!thumbPath && task.sourceUrl && typeof task.sourceUrl === 'string') {
+                              thumbPath = task.sourceUrl.replace(/\.(mp4|mkv|mov|avi|webm)$/i, '.jpeg');
+                            }
+                            const thumbUrl = thumbPath ? (thumbPath.startsWith('http') || thumbPath.startsWith('data:') ? thumbPath : `/api/hero-dub/stream?path=${encodeURIComponent(thumbPath)}`) : null;
                             return thumbUrl ? (
-                              <img src={thumbUrl} alt="" className="w-16 h-10 object-cover rounded-md border border-white/10 shrink-0" />
+                              <img 
+                                src={thumbUrl} 
+                                alt="" 
+                                className="w-16 h-10 object-cover rounded-md border border-white/10 shrink-0 bg-black/40" 
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  if (thumbPath && thumbPath.endsWith('.jpeg')) {
+                                    const jpgPath = thumbPath.replace(/\.jpeg$/, '.jpg');
+                                    target.src = `/api/hero-dub/stream?path=${encodeURIComponent(jpgPath)}`;
+                                  } else {
+                                    target.style.display = 'none';
+                                  }
+                                }}
+                              />
                             ) : (
                               <div className="w-16 h-10 rounded-md bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
                                 <Video className="h-4 w-4 text-gray-500" />
@@ -268,9 +285,15 @@ export default function HistoryClient({ teamId }: HistoryClientProps) {
                             );
                           })()}
                           <div className="flex flex-col gap-1 min-w-0">
-                            <span className="font-bold text-white truncate group-hover:text-amber-400 transition-colors" title={task.taskTitle || task.sourceUrl}>
-                              {task.taskTitle || task.sourceTitle || 'Tác vụ #' + task.id}
-                            </span>
+                            {(() => {
+                              const rawTitle = task.sourceTitle || task.taskTitle || task.sourceUrl || '';
+                              const cleanTitle = rawTitle ? rawTitle.split(/[/\\]/).pop() || rawTitle : 'Tác vụ #' + task.id;
+                              return (
+                                <span className="font-bold text-white truncate group-hover:text-amber-400 transition-colors" title={cleanTitle}>
+                                  {cleanTitle}
+                                </span>
+                              );
+                            })()}
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {getPlatformLabel(task.sourceUrl.includes(':\\') || task.sourceUrl.startsWith('/') ? 'local' : task.sourcePlatform)}
                               {task.durationSec ? (
