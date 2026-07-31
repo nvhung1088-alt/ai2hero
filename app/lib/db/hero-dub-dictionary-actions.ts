@@ -250,38 +250,201 @@ export async function deleteDubDictionaryAction(id: number, teamId: number) {
   }
 }
 
-// 5. Auto-Detect Dictionary phù hợp dựa trên Title / Description
-export async function autoDetectDictionaryAction(teamId: number, textToAnalyze: string) {
+// 5. Auto-Detect Dictionary dựa trên 30 dòng Transcript đầu tiên bằng Gemini AI
+export async function detectGenreByTranscriptAction(teamId: number, transcript30Lines: string) {
   try {
-    if (!textToAnalyze || textToAnalyze.trim().length === 0) {
+    if (!transcript30Lines || transcript30Lines.trim().length === 0) {
       return null;
     }
 
     const dicts = await getDubDictionariesAction(teamId);
-    const lowerText = textToAnalyze.toLowerCase();
+    if (dicts.length === 0) return null;
 
-    let bestMatch: DubDictionary | null = null;
-    let maxMatchCount = 0;
-
-    for (const dict of dicts) {
-      const kwList = dict.keywords.toLowerCase().split(',').map(k => k.trim()).filter(Boolean);
-      let matchCount = 0;
-
-      for (const kw of kwList) {
-        if (lowerText.includes(kw)) {
-          matchCount++;
-        }
-      }
-
-      if (matchCount > maxMatchCount) {
-        maxMatchCount = matchCount;
-        bestMatch = dict;
-      }
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      // Fallback về so khớp keyword nếu không có API key
+      return autoDetectDictionaryAction(teamId, transcript30Lines);
     }
 
-    return bestMatch;
+    const dictOptionsList = dicts.map(d => `- ID ${d.id} (${d.name}): GenreKey="${d.genreKey}", Keywords=[${d.keywords}]`).join('\n');
+
+    const prompt = `Bạn là chuyên gia phân tích kịch bản phim. Dưới đây là 30 câu thoại/phụ đề đầu tiên của một tập phim:
+
+--- TRANSCRIPT (30 CÂU ĐẦU) ---
+${transcript30Lines}
+-------------------------------
+
+Danh sách các thể loại / từ điển có sẵn:
+${dictOptionsList}
+
+Nhiệm vụ: Dựa vào nội dung, từ ngữ, xưng hô trong 30 câu thoại trên, hãy xác định xem tập phim này thuộc Thể loại / Từ điển nào phù hợp nhất trong danh sách.
+Chỉ trả về duy nhất JSON định dạng: {"matchedId": number_hoac_null, "reason": "lý do ngắn gọn"}
+Ví dụ: {"matchedId": 1, "reason": "Có xuất hiện từ Đại Vương, Tiên nhân, Tu vi"}`;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+
+    if (!res.ok) {
+      return autoDetectDictionaryAction(teamId, transcript30Lines);
+    }
+
+    const data = await res.json();
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return autoDetectDictionaryAction(teamId, transcript30Lines);
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (parsed.matchedId) {
+      const found = dicts.find(d => d.id === parsed.matchedId);
+      if (found) return found;
+    }
+
+    return autoDetectDictionaryAction(teamId, transcript30Lines);
   } catch (error) {
-    console.error('Failed to auto-detect dictionary:', error);
-    return null;
+    console.error('Failed to detect genre by transcript AI:', error);
+    return autoDetectDictionaryAction(teamId, transcript30Lines);
+  }
+}
+
+// 6. AI Tự động Xây dựng / Cải thiện nội dung Template (Nút "Sửa bằng AI")
+export async function generateTemplateByAIAction(nameOrGenre: string, customInstruction?: string) {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return { success: false, error: 'Thiếu GEMINI_API_KEY trong hệ thống' };
+    }
+
+    const prompt = `Bạn là chuyên gia dịch thuật phim Trung Quốc / Quốc tế chuyên nghiệp.
+Hãy xây dựng một BỘ QUY TẮC DỊCH THUẬT & TỪ ĐIỂN SỬA LỖI ĐỒNG ÂM ASR cho thể loại phim: "${nameOrGenre}".
+${customInstruction ? `Yêu cầu bổ sung của người dùng: "${customInstruction}"` : ''}
+
+Định dạng mẫu cần tạo (Viết bằng Tiếng Việt rõ ràng, dễ đọc, chuẩn Markdown):
+
+Thể loại: [Tên thể loại]
+
+QUY TẮC XƯNG HÔ:
+- [Quy tắc 1]
+- [Quy tắc 2]
+
+TỪ ĐIỂN THUẬT NGỮ & ĐỊA DANH:
+- [Hán tự gốc] = [Nghĩa dịch chuẩn tiếng Việt]
+
+SỬA LỖI ĐỒNG ÂM ASR THƯỜNG GẶP (Whisper nghe nhầm):
+- [Hán tự sai đồng âm] → [Hán tự đúng] ([Nghĩa tiếng Việt])
+
+Vui lòng chỉ xuất trực tiếp nội dung bộ quy tắc trên, không thêm lời chào hay giải thích ngoài.`;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+
+    if (!res.ok) {
+      return { success: false, error: 'Lỗi khi kết nối với Gemini AI' };
+    }
+
+    const data = await res.json();
+    const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return { success: true, content: generatedText.trim() };
+  } catch (error: any) {
+    console.error('Failed to generate template by AI:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// 7. VÒNG LẶP AI TỰ HỌC (Phương án B): Đánh giá sau dịch & Tự động lưu từ mới vào DB
+export async function evaluateAndLearnAction(dictionaryId: number, rawAsrText: string, llmTranslatedText: string) {
+  try {
+    const [dict] = await db
+      .select()
+      .from(dubDictionaries)
+      .where(eq(dubDictionaries.id, dictionaryId));
+
+    if (!dict) return { success: false, error: 'Dictionary not found' };
+
+    // Tăng số lần sử dụng
+    await db
+      .update(dubDictionaries)
+      .set({
+        usageCount: dict.usageCount + 1,
+        updatedAt: new Date()
+      })
+      .where(eq(dubDictionaries.id, dictionaryId));
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return { success: true, learnedCount: 0 };
+
+    const prompt = `Bạn là Trợ lý AI Kiểm duyệt Chất lượng Phụ đề (QC Auditor).
+Dưới đây là một đoạn thoại ASR (gốc từ Whisper AI) và Bản Dịch Tiếng Việt tương ứng:
+
+--- ASR GỐC ---
+${rawAsrText.slice(0, 2000)}
+
+--- BẢN DỊCH ---
+${llmTranslatedText.slice(0, 2000)}
+
+Nhiệm vụ:
+1. Đánh giá chất lượng bản dịch trên thang điểm từ 0 đến 100 (Score).
+2. Phát hiện các từ Whisper AI nghe nhầm đồng âm (Homophones) hoặc thuật ngữ mới chưa có trong ngữ cảnh.
+3. Xuất danh sách các quy tắc sửa sai đồng âm mới (nếu có).
+
+Trả về JSON duy nhất:
+{
+  "scoreDelta": number (+5 nếu bản dịch xuất sắc, 0 nếu ổn, -10 nếu có lỗi nặng),
+  "newRules": [
+    "- [Từ Hán tự sai ASR] → [Từ Hán tự đúng] ([Nghĩa tiếng Việt])"
+  ]
+}`;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+
+    if (!res.ok) return { success: true, learnedCount: 0 };
+
+    const data = await res.json();
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { success: true, learnedCount: 0 };
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const scoreDelta = typeof parsed.scoreDelta === 'number' ? parsed.scoreDelta : 0;
+    const newRules: string[] = Array.isArray(parsed.newRules) ? parsed.newRules : [];
+
+    // Tính điểm mới (trong khoảng 0 -> 100)
+    const newScore = Math.min(100, Math.max(0, dict.evaluationScore + scoreDelta));
+
+    let updatedPromptContent = dict.promptContent;
+    let learnedCount = 0;
+
+    if (newRules.length > 0 && dict.isAutoUpdate) {
+      const appendBlock = `\n\n# TỰ ĐỘNG HỌC TỪ PHIÊN DỊCH (${new Date().toLocaleDateString('vi-VN')}):\n` + newRules.join('\n');
+      updatedPromptContent += appendBlock;
+      learnedCount = newRules.length;
+    }
+
+    await db
+      .update(dubDictionaries)
+      .set({
+        evaluationScore: newScore,
+        promptContent: updatedPromptContent,
+        updatedAt: new Date()
+      })
+      .where(eq(dubDictionaries.id, dictionaryId));
+
+    if (dict.teamId) {
+      revalidatePath(`/hero-dub/t/${dict.teamId}/dictionaries`);
+    }
+
+    return { success: true, newScore, learnedCount };
+  } catch (error: any) {
+    console.error('Failed to evaluate and learn for dictionary:', error);
+    return { success: false, error: error.message };
   }
 }

@@ -20,7 +20,8 @@ import { DubDictionary } from '@/lib/db/schema';
 import {
   createDubDictionaryAction,
   updateDubDictionaryAction,
-  deleteDubDictionaryAction
+  deleteDubDictionaryAction,
+  generateTemplateByAIAction
 } from '@/lib/db/hero-dub-dictionary-actions';
 
 interface DictionariesClientProps {
@@ -40,6 +41,9 @@ export default function DictionariesClient({
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [customAiPrompt, setCustomAiPrompt] = useState('');
+  const [showAiModal, setShowAiModal] = useState(false);
 
   // Form State
   const [formName, setFormName] = useState('');
@@ -74,6 +78,26 @@ export default function DictionariesClient({
     setFormGenreKey(dict.genreKey);
     setIsEditing(true);
     setIsCreating(false);
+  };
+
+  const handleGenerateAI = async () => {
+    if (!formName) {
+      alert('Vui lòng nhập Tên Bộ Từ Điển / Thể loại trước!');
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const res = await generateTemplateByAIAction(formName, customAiPrompt);
+      if (res.success && res.content) {
+        setFormPrompt(res.content);
+        setShowAiModal(false);
+        setCustomAiPrompt('');
+      } else {
+        alert(res.error || 'AI tạo thất bại');
+      }
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -152,7 +176,7 @@ export default function DictionariesClient({
               <BookOpen className="w-7 h-7 text-amber-500" /> Kho Từ Điển & Xưng Hô AI
             </h1>
             <p className="text-xs text-gray-400">
-              Quản lý các mẫu quy tắc xưng hô, dịch thuật ngữ & sửa lỗi ASR đồng âm theo từng thể loại phim.
+              Quản lý các mẫu quy tắc xưng hô, dịch thuật ngữ & tự động bắt lỗi ASR đồng âm với vòng lặp AI tự học.
             </p>
           </div>
 
@@ -189,83 +213,100 @@ export default function DictionariesClient({
 
         {/* Main Grid List */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDicts.map((dict) => (
-            <div
-              key={dict.id}
-              className={`relative bg-gradient-to-b from-white/5 to-white/[0.02] border rounded-2xl p-5 flex flex-col justify-between transition hover:border-amber-500/40 group ${
-                dict.isGlobal ? 'border-white/10' : 'border-amber-500/30'
-              }`}
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
+          {filteredDicts.map((dict) => {
+            const score = dict.evaluationScore ?? 100;
+            const scoreColor = score >= 80 ? 'text-green-400 border-green-500/30 bg-green-500/10' : score >= 50 ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' : 'text-red-400 border-red-500/30 bg-red-500/10';
+
+            return (
+              <div
+                key={dict.id}
+                className={`relative bg-gradient-to-b from-white/5 to-white/[0.02] border rounded-2xl p-5 flex flex-col justify-between transition hover:border-amber-500/40 group ${
+                  dict.isGlobal ? 'border-white/10' : 'border-amber-500/30'
+                }`}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-sm text-white group-hover:text-amber-400 transition">
+                          {dict.name}
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/5 text-gray-400 border border-white/5">
+                          {dict.isGlobal ? (
+                            <>
+                              <Globe className="w-3 h-3 text-blue-400" /> Mẫu hệ thống
+                            </>
+                          ) : (
+                            <>
+                              <UserCheck className="w-3 h-3 text-amber-400" /> Dành riêng cho Team
+                            </>
+                          )}
+                        </span>
+
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${scoreColor}`}>
+                          Score: {score}/100
+                        </span>
+
+                        {(dict.usageCount ?? 0) > 0 && (
+                          <span className="text-[10px] text-gray-500">
+                            (Dùng {dict.usageCount} lần)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {!dict.isGlobal && (
+                      <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
+                        <button
+                          onClick={() => handleOpenEdit(dict)}
+                          className="p-1.5 text-gray-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition"
+                          title="Sửa"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(dict.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition"
+                          title="Xóa"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Keywords Badge */}
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-sm text-white group-hover:text-amber-400 transition">
-                        {dict.name}
-                      </h3>
+                    <div className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 uppercase">
+                      <Tag className="w-3 h-3 text-amber-400" /> Từ khóa nhận diện tự động:
                     </div>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/5 text-gray-400 border border-white/5">
-                      {dict.isGlobal ? (
-                        <>
-                          <Globe className="w-3 h-3 text-blue-400" /> Mẫu hệ thống
-                        </>
-                      ) : (
-                        <>
-                          <UserCheck className="w-3 h-3 text-amber-400" /> Dành riêng cho Team
-                        </>
-                      )}
-                    </span>
-                  </div>
-
-                  {!dict.isGlobal && (
-                    <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
-                      <button
-                        onClick={() => handleOpenEdit(dict)}
-                        className="p-1.5 text-gray-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition"
-                        title="Sửa"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(dict.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition"
-                        title="Xóa"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    <div className="flex flex-wrap gap-1">
+                      {dict.keywords.split(',').map((kw, idx) => (
+                        <span
+                          key={idx}
+                          className="bg-amber-500/10 text-amber-300 text-[10px] px-2 py-0.5 rounded-md border border-amber-500/20"
+                        >
+                          {kw.trim()}
+                        </span>
+                      ))}
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* Keywords Badge */}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 uppercase">
-                    <Tag className="w-3 h-3 text-amber-400" /> Từ khóa nhận diện tự động:
+                  {/* Prompt Preview */}
+                  <div className="space-y-1 pt-2 border-t border-white/5">
+                    <div className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 uppercase">
+                      <FileText className="w-3 h-3 text-blue-400" /> Nội dung Prompt & Thuật ngữ:
+                    </div>
+                    <pre className="text-[11px] text-gray-300 bg-black/40 p-2.5 rounded-xl border border-white/5 font-mono whitespace-pre-wrap max-h-36 overflow-y-auto">
+                      {dict.promptContent}
+                    </pre>
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    {dict.keywords.split(',').map((kw, idx) => (
-                      <span
-                        key={idx}
-                        className="bg-amber-500/10 text-amber-300 text-[10px] px-2 py-0.5 rounded-md border border-amber-500/20"
-                      >
-                        {kw.trim()}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Prompt Preview */}
-                <div className="space-y-1 pt-2 border-t border-white/5">
-                  <div className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 uppercase">
-                    <FileText className="w-3 h-3 text-blue-400" /> Nội dung Prompt & Thuật ngữ:
-                  </div>
-                  <pre className="text-[11px] text-gray-300 bg-black/40 p-2.5 rounded-xl border border-white/5 font-mono whitespace-pre-wrap max-h-36 overflow-y-auto">
-                    {dict.promptContent}
-                  </pre>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Modal Thêm/Sửa từ điển */}
@@ -313,13 +354,19 @@ export default function DictionariesClient({
                     onChange={(e) => setFormKeywords(e.target.value)}
                     className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
                   />
-                  <p className="text-[10px] text-gray-500">
-                    Khi tiêu đề hoặc mô tả video chứa các từ khóa này, AI sẽ tự động kích hoạt bộ từ điển này.
-                  </p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-gray-300">Nội dung Quy tắc Xưng hô & Thuật ngữ (Prompt Content)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-gray-300">Nội dung Quy tắc Xưng hô & Thuật ngữ (Prompt Content)</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAiModal(true)}
+                      className="flex items-center gap-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-amber-500/30 transition"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-400" /> 🤖 AI Xây dựng lại Template
+                    </button>
+                  </div>
                   <textarea
                     rows={8}
                     required
@@ -350,6 +397,49 @@ export default function DictionariesClient({
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal AI Build Template */}
+        {showAiModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="bg-[#121215] border border-amber-500/30 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl p-5 space-y-4">
+              <h3 className="text-sm font-bold text-amber-400 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" /> AI Viết lại / Chi tiết hóa Template
+              </h3>
+              <p className="text-[11px] text-gray-400">
+                AI sẽ tự động soạn thảo bộ quy tắc xưng hô, thuật ngữ và sửa lỗi đồng âm ASR cực kỳ chi tiết dựa trên tên thể loại: <b className="text-white">"{formName || 'Chưa đặt tên'}"</b>.
+              </p>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-gray-300">Yêu cầu bổ sung cho AI (Tùy chọn):</label>
+                <textarea
+                  rows={3}
+                  placeholder="Ví dụ: Tập trung kỹ vào các chức danh quan lại thời Minh, hoặc bổ sung xưng hô vợ chồng cổ đại..."
+                  value={customAiPrompt}
+                  onChange={(e) => setCustomAiPrompt(e.target.value)}
+                  className="w-full bg-black/50 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAiModal(false)}
+                  className="px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 text-xs"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  disabled={aiLoading}
+                  onClick={handleGenerateAI}
+                  className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs flex items-center gap-1.5"
+                >
+                  {aiLoading ? 'Đang tạo...' : '🪄 Bắt đầu tạo bằng AI'}
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -2555,6 +2555,8 @@ export const dubDictionaries = pgTable('dub_dictionaries', {
   genreKey: varchar('genre_key', { length: 50 }).notNull().default('custom'), // xianxia, tayDuKy, coTrang, xuyenKhong, doThi, custom
   keywords: text('keywords').notNull(), // Các từ khóa để auto-detect (cách nhau bởi phẩy)
   promptContent: text('prompt_content').notNull(), // Nội dung xưng hô + thuật ngữ + ASR correction
+  evaluationScore: integer('evaluation_score').notNull().default(100), // Thang điểm 0 - 100
+  usageCount: integer('usage_count').notNull().default(0), // Số lần được áp dụng
   isAutoUpdate: boolean('is_auto_update').notNull().default(true),
   isGlobal: boolean('is_global').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
