@@ -55,20 +55,25 @@ export async function POST(request: Request) {
       const ttsVolume = config.ttsVolume || config.tts_volume;
       const outputFolder = config.outputFolder || config.output_folder;
 
-      // Auto-detect matching image thumbnail file in same folder
-      let sourceThumbnailUrl: string | undefined = undefined;
-      try {
-        const parsedPath = path.parse(filePath);
-        const possibleExts = ['.jpeg', '.jpg', '.png', '.webp', '.JPEG', '.JPG', '.PNG', '.WEBP'];
-        for (const ext of possibleExts) {
-          const imgPath = path.join(parsedPath.dir, `${parsedPath.name}${ext}`);
-          if (fs.existsSync(imgPath)) {
-            sourceThumbnailUrl = imgPath;
-            break;
+      // Auto-detect matching image thumbnail file in same folder and convert to Base64 Data URI
+      let sourceThumbnailUrl: string | undefined = body.thumbnailBase64 || body.thumbnailUrl || undefined;
+      if (!sourceThumbnailUrl) {
+        try {
+          const parsedPath = path.parse(filePath);
+          const possibleExts = ['.jpeg', '.jpg', '.png', '.webp', '.JPEG', '.JPG', '.PNG', '.WEBP'];
+          for (const ext of possibleExts) {
+            const imgPath = path.join(parsedPath.dir, `${parsedPath.name}${ext}`);
+            if (fs.existsSync(imgPath)) {
+              const imgBuffer = fs.readFileSync(imgPath);
+              const extLower = ext.toLowerCase();
+              const mimeType = extLower.includes('png') ? 'image/png' : extLower.includes('webp') ? 'image/webp' : 'image/jpeg';
+              sourceThumbnailUrl = `data:${mimeType};base64,${imgBuffer.toString('base64')}`;
+              break;
+            }
           }
+        } catch (e) {
+          console.error('[create-from-worker] Thumbnail check error:', e);
         }
-      } catch (e) {
-        console.error('[create-from-worker] Thumbnail check error:', e);
       }
 
       const result = await createDubTaskAction({

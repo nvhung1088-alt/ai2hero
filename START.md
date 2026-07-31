@@ -160,6 +160,9 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính từ 1.018 dòng xuống còn ~350 dòng, giảm bớt 65% code dư thừa giúp UI render nhanh hơn và tối ưu bảo trì. Verify build 100% không lỗi.
 
+- **2026-07-31 (hero-dub - Base64 Data URI Thumbnail Encoding for Cloud Vercel)**:
+  - 🖼️ **Chuyển Đổi Ảnh Sang Base64 Data URI**: Khi Worker nộp video, API tự động mã hóa file ảnh local cùng tên (`video1.jpeg`) thành chuỗi Base64 Data URI và lưu trực tiếp vào CSDL. Đảm bảo hiển thị ảnh poster mượt mà 100% trên Vercel Cloud Server mà không bị lỗi 404 hay khung đen xì.
+
 - **2026-07-31 (hero-dub - Automatic Fallback Thumbnail Rendering & Dynamic Clean Title)**:
   - 🖼️ **Tự Động Fallback Hiển Thị Ảnh Thumbnail**: Cập nhật `DubTaskTable` & `HistoryClient` tự động suy luận và tìm file ảnh local cùng tên (`.jpeg` / `.jpg`) trực tiếp trên máy client kể cả khi `sourceThumbnailUrl` trong DB bị null từ các tác vụ cũ.
   - 🏷️ **Tự Động Rút Gọn Tiêu Đề Đường Dẫn**: Bổ sung bộ lọc tự động trích xuất tên file basename ngắn gọn (`video1.mp4`) từ các tiêu đề cũ bị dán nguyên đường dẫn đĩa C (`C:\Users\ADMIN\...`), đảm bảo bảng hiển thị gọn gàng 100%.
