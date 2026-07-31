@@ -145,6 +145,11 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp tính năng **Dịch & Redesign Thumbnail bằng AI** (Connect Hub Vision + Image Gen): Cho phép chọn AI Model và Ngôn ngữ đích (Việt, Anh, Hàn, Nhật, Thái...), tự động đọc text trên ảnh bìa gốc, dịch thuật, tạo lại thumbnail mới và tải lên R2 cloud storage kèm Modal Preview so sánh 2 ảnh trực quan trên Dashboard.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- **2026-07-31 (hero-dub - Auto-Dictionary System & Dedicated Management UI)**:
+  - 📚 **Cơ sở dữ liệu Từ điển (`dub_dictionaries`)**: Thêm bảng DB lưu trữ mẫu quy tắc xưng hô, từ điển chuyên ngành & sửa lỗi đồng âm ASR. Seed sẵn 5 bộ mẫu chuẩn (Tiên hiệp, Tây Du Ký, Cổ trang triều đình, Xuyên không, Đô thị hiện đại).
+  - 🤖 **Auto-Detect AI & Dropdown UI**: Tích hợp nút **AI Auto-Detect** và Dropdown mẫu từ điển trong `<DubTaskForm>`. Tự động phân tích Tiêu đề/URL video để áp dụng bối cảnh dịch thuật chuẩn xác mà không phụ thuộc vào thao tác thủ công của user.
+  - 🎨 **Trang Quản lý Từ điển (`/hero-dub/t/[teamId]/dictionaries`)**: Xây dựng giao diện riêng cho phép xem, tìm kiếm, tạo mới, chỉnh sửa từ điển cá nhân hóa của Team.
+
 - **2026-07-30 (hero-dub - Modular Component Refactor & UI Clean Code)**:
   - 🧩 **Shared UI Helpers**: Tạo `_shared/dub-ui-helpers.tsx` tập trung 3 hàm helper pure `formatTime`, `getStatusBadge`, `getPlatformLabel`, dùng chung giữa Dashboard và History, gỡ bỏ 100% code trùng lặp.
   - 🧩 **Modular Component Splitting**: Tách file khổng lồ `dashboard-client.tsx` (2.072 dòng) thành 4 sub-component chuyên biệt (`dub-guide-panel.tsx`, `dub-worker-panel.tsx`, `dub-task-form.tsx`, `dub-task-table.tsx`).

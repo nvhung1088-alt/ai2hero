@@ -15,9 +15,16 @@ import {
   Play,
   Check,
   Plus,
-  X
+  X,
+  BookOpen,
+  Sparkles
 } from 'lucide-react';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
+import {
+  getDubDictionariesAction,
+  autoDetectDictionaryAction
+} from '@/lib/db/hero-dub-dictionary-actions';
+import { DubDictionary } from '@/lib/db/schema';
 
 interface DubTaskFormProps {
   isOpen?: boolean;
@@ -167,7 +174,39 @@ export default function DubTaskForm({
   handleDeleteScanProject,
   teamId,
 }: DubTaskFormProps) {
+  const [dbDictionaries, setDbDictionaries] = React.useState<DubDictionary[]>([]);
+  const [selectedDictId, setSelectedDictId] = React.useState<string>('');
+  const [isDetectingDict, setIsDetectingDict] = React.useState(false);
+
+  React.useEffect(() => {
+    if (teamId) {
+      getDubDictionariesAction(teamId).then(res => setDbDictionaries(res || []));
+    }
+  }, [teamId]);
+
+  const handleAutoDetectDict = async () => {
+    if (!taskTitle && !localFilePaths) {
+      showToast('Vui lòng nhập Tiêu đề hoặc URL/Đường dẫn để AI tự nhận diện!', 'error');
+      return;
+    }
+    setIsDetectingDict(true);
+    try {
+      const textToMatch = `${taskTitle} ${localFilePaths}`;
+      const matched = await autoDetectDictionaryAction(teamId, textToMatch);
+      if (matched) {
+        setTranslateContext(matched.promptContent);
+        setSelectedDictId(String(matched.id));
+        showToast(`AI đã tự động khớp từ điển: "${matched.name}"`, 'success');
+      } else {
+        showToast('Không tìm thấy từ điển khớp tự động. Bạn có thể chọn danh mục thủ công.', 'info');
+      }
+    } finally {
+      setIsDetectingDict(false);
+    }
+  };
+
   if (!isOpen) return null;
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
@@ -557,22 +596,69 @@ export default function DubTaskForm({
 
         {/* Bối cảnh & Từ điển phim */}
         <div className="space-y-2 col-span-1 md:col-span-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <label htmlFor="translateContext" className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1.5">
               <span>📝 Bối cảnh & Từ điển phim</span>
-              <span className="text-[9px] text-amber-400/80 font-normal lowercase">(tùy chọn - định hướng xưng hô & từ điển nhân vật)</span>
+              <span className="text-[9px] text-amber-400/80 font-normal lowercase">(định hướng xưng hô & sửa lỗi ASR đồng âm)</span>
             </label>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleAutoDetectDict}
+                disabled={isDetectingDict || creatingTask}
+                className="flex items-center gap-1 text-[10px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold px-2 py-1 rounded-lg border border-amber-500/30 transition"
+              >
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                {isDetectingDict ? 'Đang AI Detect...' : 'AI Auto-Detect'}
+              </button>
+
+              <Link
+                href={`/hero-dub/t/${teamId}/dictionaries`}
+                target="_blank"
+                className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-amber-400 underline transition"
+              >
+                <BookOpen className="w-3 h-3" /> Kho Từ Điển <ExternalLink className="w-2.5 h-2.5" />
+              </Link>
+            </div>
           </div>
-          <textarea
-            id="translateContext"
-            rows={2}
-            value={translateContext}
-            onChange={(e) => setTranslateContext(e.target.value)}
-            disabled={creatingTask}
-            placeholder="Ví dụ:&#10;• Phim cổ trang triều đình. Nhân vật: Yến Quỳnh (xưng Thần), Hoàng đế (xưng Trẫm).&#10;• Phim tu tiên. Nhân vật: Tiêu Viêm, Dược Lão. Thuật ngữ: Đấu Khí, Đan Dược."
-            className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/55 resize-none font-mono"
-          />
+
+          <div className="flex gap-2">
+            <select
+              value={selectedDictId}
+              onChange={(e) => {
+                const dictId = e.target.value;
+                setSelectedDictId(dictId);
+                const found = dbDictionaries.find(d => String(d.id) === dictId);
+                if (found) {
+                  setTranslateContext(found.promptContent);
+                } else if (!dictId) {
+                  setTranslateContext('');
+                }
+              }}
+              disabled={creatingTask}
+              className="w-1/3 bg-black/40 border border-white/5 rounded-xl px-2.5 py-2 text-xs text-amber-300 font-medium focus:outline-none focus:border-amber-500/55 cursor-pointer"
+            >
+              <option value="">-- Chọn Mẫu Từ Điển --</option>
+              {dbDictionaries.map((dict) => (
+                <option key={dict.id} value={dict.id}>
+                  {dict.name} {dict.isGlobal ? '(Mẫu chuẩn)' : '(Team)'}
+                </option>
+              ))}
+            </select>
+
+            <textarea
+              id="translateContext"
+              rows={3}
+              value={translateContext}
+              onChange={(e) => setTranslateContext(e.target.value)}
+              disabled={creatingTask}
+              placeholder="Chọn Mẫu Từ Điển hoặc nhấn 'AI Auto-Detect' để hệ thống tự động điền bối cảnh & xưng hô..."
+              className="flex-1 bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/55 resize-none font-mono"
+            />
+          </div>
         </div>
+
 
         {/* Lồng tiếng AI (TTS) */}
         <div className="space-y-3 pt-2 border-t border-white/5">

@@ -2543,7 +2543,29 @@ export const downloaderCookiesRelations = relations(downloaderCookies, ({ one })
   team: one(teams, { fields: [downloaderCookies.teamId], references: [teams.id] }),
 }));
 
-export const downloaderSettingsRelations = relations(downloaderSettings, ({ one }) => ({
-  team: one(teams, { fields: [downloaderSettings.teamId], references: [teams.id] }),
+
+// ============================================================
+// DUB DICTIONARIES TABLE
+// ============================================================
+
+export const dubDictionaries = pgTable('dub_dictionaries', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').references(() => teams.id, { onDelete: 'cascade' }), // null = Global / System template
+  name: varchar('name', { length: 100 }).notNull(),
+  genreKey: varchar('genre_key', { length: 50 }).notNull().default('custom'), // xianxia, tayDuKy, coTrang, xuyenKhong, doThi, custom
+  keywords: text('keywords').notNull(), // Các từ khóa để auto-detect (cách nhau bởi phẩy)
+  promptContent: text('prompt_content').notNull(), // Nội dung xưng hô + thuật ngữ + ASR correction
+  isAutoUpdate: boolean('is_auto_update').notNull().default(true),
+  isGlobal: boolean('is_global').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const dubDictionariesRelations = relations(dubDictionaries, ({ one }) => ({
+  team: one(teams, { fields: [dubDictionaries.teamId], references: [teams.id] }),
 }));
+
+export type DubDictionary = typeof dubDictionaries.$inferSelect;
+export type NewDubDictionary = typeof dubDictionaries.$inferInsert;
+
 
