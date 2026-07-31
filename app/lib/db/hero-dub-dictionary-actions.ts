@@ -377,6 +377,145 @@ Whisper AI dễ nghe nhầm các thuật ngữ thương mại và hành động 
 - **Văn nói tự nhiên:** Sử dụng các từ đệm, từ nối tiếng Việt tự nhiên trong hội thoại (nhé, đâu, đấy, chứ, kìa) để lời thoại không bị giống văn dịch máy.
 - **Chỉ xuất kết quả:** Chỉ trả về văn bản tiếng Việt của phụ đề, KHÔNG kèm giải thích hay chú thích.`,
     isAutoUpdate: false,
+  },
+  {
+    teamId: null,
+    isGlobal: true,
+    genreKey: 'danQuoc',
+    name: '🕵️ Dân Quốc / Thượng Hải / Tình báo',
+    keywords: 'dân quốc, thượng hải, quân phiệt, tình báo, đốc quân, đại soái, thiếu soái, tô giới, quân thống, nội gián, điệp viên, bách lạc môn',
+    promptContent: `# THỂ LOẠI & NGỮ CẢNH
+- Thể loại: Phim Dân Quốc / Thượng Hải những năm 1920-1940 / Quân phiệt / Tình báo gián điệp.
+- Văn phong: Trang trọng, hơi nhuốm màu cổ điển nhưng mang hơi thở quân sự, chính trị, thương trường Thượng Hải xưa.
+
+---
+
+## 1. QUY TẮC XƯNG HÔ DÂN QUỐC (BẮT BUỘC)
+- **Quân phiệt / Sĩ quan cấp cao:**
+  - \`大帅 / 督军\` → Đại soái / Đốc quân (Xưng: Tôi/Bản tọa/Bản tướng).
+  - \`少帅\` → Thiếu soái / Thiếu tư lệnh.
+  - Cấp dưới gọi cấp trên: **Trường quan / Sếp / Tư lệnh / Thiếu soái** → tự xưng: **Tôi / Thuộc hạ / Ti chức**.
+- **Hào môn Thượng Hải / Giang hồ:**
+  - \`二爷 / 三爷\` → Nhị gia / Tam gia (Ông trùm/Cậu hai, Cậu ba).
+  - \`夫人 / 少奶奶\` → Phu nhân / Thiếu phu nhân / Thiếu nãi nãi.
+  - Người hầu gọi chủ: **Nhị gia / Phu nhân / Thiếu gia** → tự xưng: **Tôi / Con / Nô tài**.
+- **Tình báo / Đồng chí:**
+  - Ngụy trang ngoài xã hội: **Anh - Tôi / Ông - Tôi / Tiên sinh - Thưa ông**.
+  - Nội bộ tổ chức: **Đồng chí / Chỉ huy / Tổ trưởng**.
+
+---
+
+## 2. TỪ ĐIỂN THUẬT NGỮ DÂN QUỐC & TÌNH BÁO
+- 租界 = Tô giới (khu vực do nước ngoài quản lý tại Thượng Hải)
+- 洋行 = Dương hàng (công ty/thương hiệu phương Tây)
+- 军火 = Quân hỏa (vũ khí / đạn dược)
+- 军统 / 中统 = Quân thống / Trung thống (cơ quan tình báo)
+- 卧底 / 特工 = Nội gián / Đặc công / Điệp viên
+- 情报 = Tình báo / Thông tin mật
+- 堂口 = Đường khẩu (chi nhánh bang hội giang hồ)
+- 大乐门 / 百乐门 = Bách Lạc Môn / Vũ trường xưa
+- 刺杀 = Ám sát / Thích sát
+
+---
+
+## 3. SỬA LỖI ĐỒNG ÂM ASR DÂN QUỐC
+- 少帅 (Shàoshuài) → hay nhầm thành 少税 / 烧帅 → Thiếu soái / Thiếu tư lệnh
+- 租界 (Zūjiè) → hay nhầm thành 租借 (cho mượn) → Tô giới (TUYỆT ĐỐI KHÔNG dịch là "cho mượn")
+- 军火 (Jūnhuǒ) → hay nhầm thành 均火 → Vũ khí / Quân hỏa
+- 军统 (Jūntǒng) → hay nhầm thành 均同 → Quân thống
+- 长官 (Zhǎngguān) → hay nhầm thành 掌握 → Trường quan / Sếp / Chỉ huy`,
+    isAutoUpdate: false,
+  },
+  {
+    teamId: null,
+    isGlobal: true,
+    genreKey: 'linhDi',
+    name: '👻 Linh Dị / Đạo Mộ / Phong Thủy',
+    keywords: 'linh dị, đạo mộ, trộm mộ, phong thủy, trừ tà, cương thi, mạc kim hiệu úy, bánh ú, oán khí, quỷ đả tường, tịch tà',
+    promptContent: `# THỂ LOẠI & NGỮ CẢNH
+- Thể loại: Phim Linh Dị / Đạo Mộ (trộm mộ) / Phong Thủy / Trừ Tà / Huyền Nghi Trinh Thám.
+- Văn phong: Bí ẩn, kỳ bí, xen lẫn thuật ngữ đạo giáo, phong thủy và lóng giang hồ.
+
+---
+
+## 1. QUY TẮC XƯNG HÔ
+- **Đạo sĩ / Thầy phong thủy / Sư phụ:**
+  - Người ngoài gọi: **Đạo trưởng / Tiên sinh / Đại sư / Sư phụ**.
+  - Đệ tử gọi sư phụ: **Sư phụ / Sư tôn** → tự xưng: **Đệ tử / Con**.
+- **Đoàn thám hiểm / Trộm mộ:**
+  - Xưng hô giang hồ: **Lão đại / Anh - Tôi / Mày - Tao / Cậu - Tớ** (tùy mức độ thân thiết).
+
+---
+
+## 2. TỪ ĐIỂN THUẬT NGỮ ĐẠO MỘ & LINH DỊ
+- 摸金校尉 = Mạc Kim Hiệu Úy (chỉ đạo tặc trộm mộ có kỹ thuật phong thủy)
+- 搬山 / 卸岭 = Ban Sơn / Tả Lĩnh (các môn phái đạo mộ)
+- 风水 / 寻龙诀 = Phong thủy / Tầm Long Quyết
+- 煞气 / 怨气 = Sát khí / Oán khí
+- 厉鬼 / 游魂 = Lệ quỷ / Du hồn
+- 僵尸 = Cương thi
+- 粽子 = Bánh ú / Cương thi (TỪ LÓNG ĐẠO MỘ: chỉ xác chết lâu năm sống dậy trong mộ)
+- 辟邪 = Tịch tà / Trừ tà
+- 开棺 = Khai quan (mở quan tài)
+- 阵眼 = Trận nhãn (mắt trận, điểm cốt lõi phá bùa chú/phong thủy)
+- 鬼打墙 = Quỷ đả tường (hiện tượng ma đưa lối, đi lạc chỗ cũ không lối ra)
+
+---
+
+## 3. SỬA LỖI ĐỒNG ÂM & LÓNG ASR (CỰC KỲ QUAN TRỌNG)
+- 粽子 (Zòngzi) → ASR nghe đúng chữ "粽子" nhưng LLM thường dịch nghĩa đen là "Bánh ú/Bánh chưng". **BẮT BUỘC dịch là "Cương thi", "Xác sống", hoặc giữ lóng "Bánh ú" (nhưng theo nghĩa quái vật trong mộ)**.
+- 煞气 (Shàqì) → hay nhầm thành 杀气 (sát khí giết chóc) → Sát khí (khí âm tà) / Oán khí.
+- 辟邪 (Bìxié) → hay nhầm thành 必需 (cần thiết) → Trừ tà / Tịch tà.
+- 摸金 (Mōjīn) → hay nhầm thành 摸今 → Mạc kim (trộm mộ theo phong thủy).
+- 鬼打墙 (Guǐ dǎ qiáng) → KHÔNG dịch là "quỷ đánh tường" → Ma đưa lối / Quỷ đả tường.`,
+    isAutoUpdate: false,
+  },
+  {
+    teamId: null,
+    isGlobal: true,
+    genreKey: 'eSports',
+    name: '🎮 Thanh Xuân / E-Sports / Học Đường',
+    keywords: 'thanh xuân, học đường, esports, thể thao điện tử, học bá, hoa khôi, nam thần, gánh team, leo rank, cao khảo, học trưởng, combat',
+    promptContent: `# THỂ LOẠI & NGỮ CẢNH
+- Thể loại: Phim Thanh Xuân Vườn Trường / E-sports (Thể thao điện tử) / Ngôn tình giới trẻ.
+- Văn phong: Trẻ trung, năng động, đời thường, chuẩn ngôn ngữ giới trẻ/game thủ hiện đại.
+
+---
+
+## 1. QUY TẮC XƯNG HÔ HỌC ĐƯỜNG & GAME
+- **Bạn bè lớp học:**
+  - Bình thường: **Cậu - Tớ / Cậu - Mình / Bạn - Mình**.
+  - Con trai thân thiết: **Mày - Tao / Ông - Tôi**.
+- **Tiền bối / Đàn anh đàn chị:**
+  - \`学长 / 学姐\` → Học trưởng / Học tỷ → Dịch tự nhiên: **Anh / Chị / Đàn anh / Đàn chị** (xưng: **Em**).
+- **Đội tuyển E-sports:**
+  - \`队长\` → Đội trưởng / Captain.
+  - \`教练\` → Huấn luyện viên / Coach.
+  - Các thành viên: **Anh - Em / Cậu - Tớ / Mày - Tao** (tùy ngữ cảnh lúc thi đấu hay sinh hoạt).
+
+---
+
+## 2. TỪ ĐIỂN THUẬT NGỮ HỌC ĐƯỜNG & E-SPORTS
+- 学霸 / 学渣 = Học bá / Học tra (Học sinh giỏi đỉnh cao / Học sinh kém)
+- 校草 / 校花 = Nam thần trường học / Hoa khôi trường học
+- 高考 = Cao khảo (Kỳ thi Đại học)
+- 社团 = Câu lạc bộ (trường học)
+- 开黑 = Chơi game cùng nhau / Leo rank tổ đội
+- 打野 / 辅助 / ADC = Đi rừng / Hỗ trợ / Xạ thủ (vị trí trong game MOBA)
+- 团战 = Giao tranh tổng / Combat
+- 带飞 / 躺赢 = Gánh team (Cân team) / Thắng ké (Nằm yên cũng thắng)
+- 掉分 / 上分 = Tụt rank / Leo rank
+- MVP = MVP (Người chơi xuất sắc nhất trận)
+
+---
+
+## 3. SỬA LỖI ĐỒNG ÂM ASR GIỚI TRẺ / E-SPORTS
+- 学霸 (Xuébà) → hay nhầm thành 学爸 → Học bá / Học thần
+- 开黑 (Kāihēi) → hay nhầm thành 开回 → Bắt cặp leo rank / Chơi game chung (KHÔNG dịch là "mở màu đen")
+- 高考 (Gāokǎo) → KHÔNG dịch là "thi cao đẳng" → Kỳ thi Đại học
+- 团战 (Tuánzhàn) → hay nhầm thành 团队 → Combat / Giao tranh tổng
+- 带飞 (Dàifēi) → hay nhầm thành 带非 → Gánh team / Cân team (KHÔNG dịch là "dẫn đi bay")`,
+    isAutoUpdate: false,
   }
 ];
 
