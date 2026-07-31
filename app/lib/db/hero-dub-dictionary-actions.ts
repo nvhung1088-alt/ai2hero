@@ -391,8 +391,8 @@ export async function getDubDictionariesAction(teamId: number) {
     const globals = list.filter(d => d.isGlobal);
     // Nếu chưa có hoặc chưa đủ 5 Global dictionaries hệ thống, tự động seed / bổ sung
     if (globals.length < DEFAULT_SYSTEM_DICTIONARIES.length) {
-      const existingKeys = new Set(globals.map(g => g.genreKey));
-      const missingDefaults = DEFAULT_SYSTEM_DICTIONARIES.filter(d => !existingKeys.has(d.genreKey));
+      const existingKeys = new Set(globals.map(g => g.genreKey || ''));
+      const missingDefaults = DEFAULT_SYSTEM_DICTIONARIES.filter(d => !existingKeys.has(d.genreKey || ''));
       if (missingDefaults.length > 0) {
         await db.insert(dubDictionaries).values(missingDefaults);
         list = await db
