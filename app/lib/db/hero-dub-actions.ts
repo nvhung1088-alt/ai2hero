@@ -70,6 +70,7 @@ export async function createDubTaskAction(data: {
   bgVolume?: string;
   ttsVolume?: string;
   outputFolder?: string;
+  translateContext?: string;
   projectId?: number;
   scanConfigId?: number;
   brandingEnabled?: boolean;
@@ -115,6 +116,9 @@ export async function createDubTaskAction(data: {
       if (data.taskTitle && existing.sourceTitle !== data.taskTitle) {
         updatePayload.sourceTitle = data.taskTitle;
       }
+      if (data.translateContext && existing.translateContext !== data.translateContext) {
+        updatePayload.translateContext = data.translateContext;
+      }
       if (Object.keys(updatePayload).length > 0) {
         await db
           .update(dubTasks)
@@ -149,6 +153,7 @@ export async function createDubTaskAction(data: {
         bgVolume: data.bgVolume,
         ttsVolume: data.ttsVolume,
         outputFolder: data.outputFolder,
+        translateContext: data.translateContext || null,
         status: 'pending',
         progress: '0',
         dedupeKey,

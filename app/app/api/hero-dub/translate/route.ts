@@ -85,9 +85,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'taskId and texts (array) are required' }, { status: 400 });
     }
 
-    // 1. Get task to find the LLM model
+    // 1. Get task to find the LLM model and translation context
     const [task] = await db
-      .select({ llmModel: dubTasks.llmModel })
+      .select({ 
+        llmModel: dubTasks.llmModel,
+        translateContext: dubTasks.translateContext,
+      })
       .from(dubTasks)
       .where(and(eq(dubTasks.id, taskId), eq(dubTasks.teamId, auth.teamId)))
       .limit(1);
@@ -128,15 +131,18 @@ export async function POST(request: Request) {
     texts.forEach((t: string, i: number) => { inputObj[i.toString()] = t; });
     const jsonInput = JSON.stringify(inputObj);
 
-    const systemMessage = `Bạn là một biên dịch viên phụ đề phim điện ảnh chuyên nghiệp. Nhiệm vụ duy nhất của bạn là dịch phụ đề từ tiếng Trung Quốc sang tiếng Việt mượt mà, thoát ý, cô đọng, đúng bối cảnh phim.
+    let systemMessage = `Bạn là một biên dịch viên phụ đề phim điện ảnh chuyên nghiệp. Nhiệm vụ duy nhất của bạn là dịch phụ đề từ tiếng Trung Quốc sang tiếng Việt mượt mà, thoát ý, cô đọng, đúng bối cảnh phim.
 
 QUY TẮC PHONG CÁCH & ĐẠI TỪ XƯƠNG HÔ (BẮT BUỘC):
 1. TRAU CHUỐT & CÔ ĐỌNG: 
    - Tuyệt đối KHÔNG dịch thô từ-nối-từ (word-by-word) làm câu bị cứng nhắc hoặc tối nghĩa.
    - Dịch theo văn phong nói tự nhiên, cô đọng, mượt mà chuẩn lồng tiếng phim. Loại bỏ các từ đệm vô nghĩa.
 
-2. NHẬN DIỆN BỐI CẢNH & XUYÊN KHÔNG:
-   - TỰ ĐỘNG PHÂN TÍCH NGỮ CẢNH toàn bộ đoạn thoại để nhận diện thể loại phim (Cổ trang, Xuyên không, Đô thị, Tiên hiệp, Học đường...).
+2. QUY TẮC SỬA LỖI ĐỒNG ÂM ASR & XUYÊN KHÔNG (BẮT BUỘC — ÁP DỤNG MỌI THỂ LOẠI & NGÔN NGỮ):
+   - Nhận dạng giọng nói ASR thường mắc lỗi nghe nhầm âm (Homophone Errors) - phát âm giống nhau nhưng chữ viết sai nghĩa. Phải thực hiện 3 bước tư duy:
+     * Nhận diện Chủ đề: Phân tích toàn bộ đoạn thoại để xác định bối cảnh video (Cổ trang, Tu tiên, Đô thị, Y khoa, Game, Quân sự...).
+     * Soi lỗi Âm điệu: Nếu gặp từ/cụm từ vô lý trong ngữ cảnh phim nhưng phát âm tương tự một thuật ngữ chuyên môn đúng chủ đề ➔ Tự động khôi phục về thuật ngữ gốc trước khi dịch (Ví dụ cổ trang: "天父"➔"田赋" Thuế ruộng, "严帖专媚"➔"盐铁专卖" Độc quyền muối sắt, "查马户士"➔"茶马互市" Giao thương Trà Ngựa).
+     * Thống nhất Thực thể: Nếu một tên riêng (nhân vật, địa danh) xuất hiện dưới nhiều biến thể phát âm gần giống ➔ Quy tụ về 1 tên duy nhất xuyên suốt toàn bộ video. Không được để cùng 1 nhân vật mà đoạn đầu gọi "Yến Quỳnh", đoạn sau thành "Yến Ngư" hay "Diêm Cung".
    - Nếu là Phim Cổ Trang / Triều Đình: Dùng đại từ cổ phong (Trẫm, Bệ hạ, Thần, Khanh, Bổn vương, Tiên sinh). Tuyệt đối KHÔNG dùng "anh/cô/tôi/bạn".
    - Nếu là Phim Xuyên Không (Hiện đại về Cổ đại):
      * Khi giao tiếp với Vua/Mẫu hậu/Quan lại triều đình ➔ Phải dùng xưng hô triều đình (Bệ hạ, Thần, Tiểu nữ, Khanh).
@@ -150,6 +156,10 @@ QUY TẮC PHONG CÁCH & ĐẠI TỪ XƯƠNG HÔ (BẮT BUỘC):
 VÍ DỤ:
 Input: {"0":"我是狼王","1":"我不能输"}
 Output: {"0":"Tôi là Sói Vương","1":"Tôi không được thua"}`;
+
+    if (task.translateContext && task.translateContext.trim()) {
+      systemMessage += `\n\nBỐI CẢNH & TỪ ĐIỂN PHIM DO NGƯỜI DÙNG CUNG CẤP (BẮT BUỘC TUÂN THỦ 100%):\n${task.translateContext.trim()}`;
+    }
 
     const userMessage = `Dịch đối tượng JSON phụ đề sau sang tiếng Việt:\n${jsonInput}`;
 

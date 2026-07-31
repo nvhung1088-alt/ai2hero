@@ -48,6 +48,8 @@ interface DubTaskFormProps {
   setNoiseLevel: (_l: 'clean' | 'normal' | 'noisy') => void;
   subtitleMode: string;
   setSubtitleMode: (_mode: string) => void;
+  translateContext: string;
+  setTranslateContext: (_ctx: string) => void;
   
   selectedAiAppSlug: string;
   setSelectedAiAppSlug: (_slug: string) => void;
@@ -123,6 +125,8 @@ export default function DubTaskForm({
   setNoiseLevel,
   subtitleMode,
   setSubtitleMode,
+  translateContext,
+  setTranslateContext,
   selectedAiAppSlug,
   setSelectedAiAppSlug,
   selectedAiModel,
@@ -549,6 +553,25 @@ export default function DubTaskForm({
             <option value="burn_subtitle">Burn phụ đề cứng (Mặc định)</option>
             <option value="srt_only">Chỉ xuất file phụ đề SRT</option>
           </select>
+        </div>
+
+        {/* Bối cảnh & Từ điển phim */}
+        <div className="space-y-2 col-span-1 md:col-span-2">
+          <div className="flex items-center justify-between">
+            <label htmlFor="translateContext" className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1.5">
+              <span>📝 Bối cảnh & Từ điển phim</span>
+              <span className="text-[9px] text-amber-400/80 font-normal lowercase">(tùy chọn - định hướng xưng hô & từ điển nhân vật)</span>
+            </label>
+          </div>
+          <textarea
+            id="translateContext"
+            rows={2}
+            value={translateContext}
+            onChange={(e) => setTranslateContext(e.target.value)}
+            disabled={creatingTask}
+            placeholder="Ví dụ:&#10;• Phim cổ trang triều đình. Nhân vật: Yến Quỳnh (xưng Thần), Hoàng đế (xưng Trẫm).&#10;• Phim tu tiên. Nhân vật: Tiêu Viêm, Dược Lão. Thuật ngữ: Đấu Khí, Đan Dược."
+            className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/55 resize-none font-mono"
+          />
         </div>
 
         {/* Lồng tiếng AI (TTS) */}

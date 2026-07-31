@@ -54,6 +54,7 @@ export async function POST(request: Request) {
       const bgVolume = config.bgVolume || config.bg_volume;
       const ttsVolume = config.ttsVolume || config.tts_volume;
       const outputFolder = config.outputFolder || config.output_folder;
+      const translateContext = config.translateContext || config.translate_context;
 
       // Auto-detect matching image thumbnail file in same folder and convert to Base64 Data URI
       let sourceThumbnailUrl: string | undefined = body.thumbnailBase64 || body.thumbnailUrl || undefined;
@@ -88,6 +89,7 @@ export async function POST(request: Request) {
         translateEngine: aiAppSlug && aiModel ? 'connect-hub' : 'google-free',
         llmModel: aiAppSlug && aiModel ? `${aiAppSlug}|${aiModel}` : undefined,
         subtitleMode,
+        translateContext,
         ttsEnabled,
         ttsEngine,
         ttsVoice,

@@ -2343,6 +2343,7 @@ export const dubScanConfigs = pgTable('dub_scan_configs', {
   bgVolume: varchar('bg_volume', { length: 20 }),
   ttsVolume: varchar('tts_volume', { length: 20 }),
   outputFolder: text('output_folder'),
+  translateContext: text('translate_context'),
   aiAppSlug: varchar('ai_app_slug', { length: 100 }),
   aiModel: varchar('ai_model', { length: 100 }),
   lastScanAt: timestamp('last_scan_at'),
@@ -2385,6 +2386,7 @@ export const dubTasks = pgTable('dub_tasks', {
   ttsSpeed: varchar('tts_speed', { length: 10 }).notNull().default('1.2'),
   bgVolume: varchar('bg_volume', { length: 20 }),
   ttsVolume: varchar('tts_volume', { length: 20 }),
+  translateContext: text('translate_context'),
   
   // === Branding ===
   projectId: integer('project_id').references(() => dubProjects.id, { onDelete: 'set null' }),

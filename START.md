@@ -160,6 +160,10 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🧩 **Modular Component Splitting**: Tách file nguyên khối `downloader-dashboard-client.tsx` (1.018 dòng) thành 4 sub-component (`downloader-project-sidebar.tsx`, `downloader-worker-guide.tsx`, `downloader-video-table.tsx`, `downloader-thumbnail-modal.tsx`).
   - 🚀 **Performance & Maintainability**: Rút gọn file chính từ 1.018 dòng xuống còn ~350 dòng, giảm bớt 65% code dư thừa giúp UI render nhanh hơn và tối ưu bảo trì. Verify build 100% không lỗi.
 
+- **2026-07-31 (hero-dub - Generic ASR Homophone Deduction & Custom Project Context Glossary)**:
+  - 🧠 **Meta-Prompt Suy Luận Âm Điệu ASR Tổng Quát**: Nâng cấp `translate/route.ts` với bộ quy tắc 3 bước tư duy tổng quát (Nhận diện chủ đề ➔ Soi lỗi phát âm đồng âm ASR ➔ Thống nhất thực thể tên riêng). Giải quyết triệt để vấn đề ASR nghe nhầm từ cổ trang/chuyên ngành và đổi tên nhân vật giữa chừng cho mọi thể loại phim (Cổ trang, Tiên hiệp, Đô thị, Y khoa...) và mọi ngôn ngữ.
+  - 📝 **Ô "Bối cảnh & Từ điển Phim"**: Thêm cột `translateContext` vào DB schema (`dubScanConfigs`, `dubTasks`), Server Actions, API Worker và giao diện `<DubTaskForm>`. Cho phép người dùng ghi chú tự do định hướng xưng hô và từ điển nhân vật tùy chỉnh cho từng dự án.
+
 - **2026-07-31 (hero-dub - Base64 Data URI Thumbnail Encoding for Cloud Vercel)**:
   - 🖼️ **Chuyển Đổi Ảnh Sang Base64 Data URI**: Khi Worker nộp video, API tự động mã hóa file ảnh local cùng tên (`video1.jpeg`) thành chuỗi Base64 Data URI và lưu trực tiếp vào CSDL. Đảm bảo hiển thị ảnh poster mượt mà 100% trên Vercel Cloud Server mà không bị lỗi 404 hay khung đen xì.
 

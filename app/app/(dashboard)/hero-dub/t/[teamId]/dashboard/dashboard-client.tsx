@@ -118,6 +118,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
   const [sttPreset, setSttPreset] = useState<'fast' | 'balanced' | 'quality'>('balanced');
   const [noiseLevel, setNoiseLevel] = useState<'clean' | 'normal' | 'noisy'>('normal');
   const [subtitleMode, setSubtitleMode] = useState('burn_subtitle');
+  const [translateContext, setTranslateContext] = useState('');
 
   // TTS State
   const [ttsEnabled, setTtsEnabled] = useState(false);
@@ -310,6 +311,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
     bgVolume: string;
     ttsVolume: string;
     outputFolder?: string;
+    translateContext?: string;
     aiAppSlug: string;
     aiModel: string;
     isActive: boolean;
@@ -406,6 +408,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
           bgVolume: c.bgVolume,
           ttsVolume: c.ttsVolume,
           outputFolder: c.outputFolder,
+          translateContext: c.translateContext || '',
           aiAppSlug: c.aiAppSlug || '',
           aiModel: c.aiModel || '',
           lastScanAt: c.lastScanAt ? new Date(c.lastScanAt).getTime() : undefined,
@@ -635,6 +638,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
             bgVolume: ttsEnabled ? bgVolume : undefined,
             ttsVolume: ttsEnabled ? ttsVolume : undefined,
             outputFolder: outputFolder.trim() || undefined,
+            translateContext: translateContext.trim() || undefined,
             ...taskBranding,
           });
 
@@ -733,6 +737,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
         bgVolume: bgVolume || undefined,
         ttsVolume: ttsVolume || undefined,
         outputFolder: outputFolder.trim() || undefined,
+        translateContext: translateContext.trim() || undefined,
         aiAppSlug: selectedAiAppSlug || undefined,
         aiModel: selectedAiModel || undefined,
       });
@@ -777,6 +782,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
     setTaskTitle(p.name);
     setScanFolderPath(p.folderPath);
     setOutputFolder(p.outputFolder || '');
+    setTranslateContext(p.translateContext || '');
     setScanInterval(p.intervalMinutes);
     setSourceLang(p.sourceLang);
     setTargetLang(p.targetLang);
@@ -1000,6 +1006,8 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
         setNoiseLevel={setNoiseLevel}
         subtitleMode={subtitleMode}
         setSubtitleMode={setSubtitleMode}
+        translateContext={translateContext}
+        setTranslateContext={setTranslateContext}
         selectedAiAppSlug={selectedAiAppSlug}
         setSelectedAiAppSlug={setSelectedAiAppSlug}
         selectedAiModel={selectedAiModel}

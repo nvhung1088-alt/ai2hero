@@ -34,6 +34,7 @@ export async function saveDubScanConfigAction(data: {
   bgVolume?: string;
   ttsVolume?: string;
   outputFolder?: string;
+  translateContext?: string;
   aiAppSlug?: string;
   aiModel?: string;
   isActive?: boolean;
@@ -57,6 +58,7 @@ export async function saveDubScanConfigAction(data: {
           bgVolume: data.bgVolume,
           ttsVolume: data.ttsVolume,
           outputFolder: data.outputFolder,
+          translateContext: data.translateContext,
           aiAppSlug: data.aiAppSlug,
           aiModel: data.aiModel,
           isActive: data.isActive !== undefined ? data.isActive : true,
@@ -80,6 +82,7 @@ export async function saveDubScanConfigAction(data: {
         bgVolume: data.bgVolume,
         ttsVolume: data.ttsVolume,
         outputFolder: data.outputFolder,
+        translateContext: data.translateContext,
         aiAppSlug: data.aiAppSlug,
         aiModel: data.aiModel,
         isActive: data.isActive !== undefined ? data.isActive : true,
