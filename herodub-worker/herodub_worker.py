@@ -1146,18 +1146,40 @@ if __name__ == '__main__':
     output_folder = task.get("outputFolder")
     if output_folder and os.path.isdir(output_folder):
         try:
-            timestamp = int(time.time())
-            base_name = f"dubbed_{task_id}_{timestamp}"
+            # Lấy tên gốc của video
+            raw_source = source_url or task.get("sourceTitle") or f"video_{task_id}"
+            if raw_source.startswith("http://") or raw_source.startswith("https://"):
+                base_name = task.get("sourceTitle") or os.path.splitext(os.path.basename(raw_source))[0]
+            else:
+                base_name = os.path.splitext(os.path.basename(raw_source))[0]
             
+            if not base_name or base_name.strip() == "":
+                base_name = f"video_{task_id}"
+
             dest_video = os.path.join(output_folder, f"{base_name}.mp4")
             dest_srt = os.path.join(output_folder, f"{base_name}.srt")
             
             shutil.copy2(final_output_path, dest_video)
             shutil.copy2(vi_srt_abs_path, dest_srt)
             
+            # Tự động tìm và copy ảnh thumbnail trùng tên trong thư mục gốc
+            if source_url and not (source_url.startswith("http://") or source_url.startswith("https://")):
+                source_dir = os.path.dirname(source_url)
+                if os.path.isdir(source_dir):
+                    for ext in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
+                        thumb_src = os.path.join(source_dir, f"{base_name}{ext}")
+                        if os.path.exists(thumb_src):
+                            thumb_dest = os.path.join(output_folder, f"{base_name}{ext}")
+                            try:
+                                shutil.copy2(thumb_src, thumb_dest)
+                                print(Fore.CYAN + f"[-] Da copy anh thumbnail: {os.path.basename(thumb_dest)}")
+                            except Exception as thumb_err:
+                                print(Fore.YELLOW + f"[!] Khong the copy thumbnail: {thumb_err}")
+                            break
+            
             final_output_path = dest_video
             vi_srt_abs_path = dest_srt
-            print(Fore.CYAN + f"[-] Da luu ket qua vao: {output_folder}")
+            print(Fore.CYAN + f"[-] Da luu ket qua vao: {output_folder} voi ten: {base_name}")
         except Exception as e:
             print(Fore.YELLOW + f"[!] Khong the luu vao thu muc dich {output_folder}: {e}")
 
