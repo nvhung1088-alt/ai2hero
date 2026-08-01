@@ -11,6 +11,11 @@ from pathlib import Path
 if sys.platform.startswith('win'):
     sys.stdout.reconfigure(encoding='utf-8')
 
+WORKER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 AI2HeroWorker/1.0",
+    "Accept": "application/json"
+}
+
 def parse_args():
     parser = argparse.ArgumentParser(description="HeroDrive Python Local Worker")
     parser.add_argument("--project", type=int, help="ID của Dự án Quét (Tùy chọn)")
@@ -135,7 +140,7 @@ def main():
             else:
                 api_url = f"{server_url}/api/hero-drive/worker?action=get_all_tasks"
 
-            res = requests.get(api_url, timeout=15)
+            res = requests.get(api_url, headers=WORKER_HEADERS, timeout=15)
             if res.status_code == 200:
                 data = res.json()
                 if data.get("success"):
@@ -168,7 +173,7 @@ def main():
                             if items:
                                 print(f"🔍 [{now_str}] Quét [{mapping_name}]: Phát hiện {len(items)} nhóm bài đăng ở local ({local_folder})")
                                 sync_url = f"{server_url}/api/hero-drive/worker?action=sync"
-                                requests.post(sync_url, json={
+                                requests.post(sync_url, headers=WORKER_HEADERS, json={
                                     "mappingId": mapping_id,
                                     "items": items
                                 }, timeout=15)
@@ -218,7 +223,7 @@ def main():
                                         print(f"❌ Lỗi xóa file local: {ex}")
 
                                 complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
-                                requests.post(complete_url, json={
+                                requests.post(complete_url, headers=WORKER_HEADERS, json={
                                     "fileId": file_id,
                                     "driveFileId": drive_file_id,
                                     "status": "completed"
@@ -226,12 +231,16 @@ def main():
                             else:
                                 print(f"❌ [{now_str}] Lỗi upload: {err_msg}")
                                 complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
-                                requests.post(complete_url, json={
+                                requests.post(complete_url, headers=WORKER_HEADERS, json={
                                     "fileId": file_id,
                                     "status": "failed",
                                     "error": err_msg
                                 }, timeout=15)
 
+            elif res.status_code == 403:
+                print(f"⚠️ [{now_str}] Máy chủ tạm thời bận (HTTP 403 - Tạm dừng 20s để Vercel nhả cờ bảo vệ)...")
+                time.sleep(20)
+                continue
             else:
                 print(f"⚠️ [{now_str}] Máy chủ trả về HTTP {res.status_code}")
 
