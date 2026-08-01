@@ -133,6 +133,50 @@ export async function toggleDriveFolderMappingAction(id: number, projectId: numb
   }
 }
 
+export async function updateDriveFolderMappingAction(id: number, data: {
+  name?: string;
+  localFolderPath?: string;
+  connectionId?: number | null;
+  targetFolderId?: string | null;
+  targetFolderName?: string | null;
+  deleteAfterUpload?: boolean;
+  scanInterval?: number;
+}) {
+  try {
+    const [updated] = await db
+      .update(driveFolderMappings)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(driveFolderMappings.id, id))
+      .returning();
+
+    return { success: true, data: updated };
+  } catch (error: any) {
+    console.error('Error updating folder mapping:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function triggerImmediateScanAction(id: number) {
+  try {
+    const [updated] = await db
+      .update(driveFolderMappings)
+      .set({
+        lastScanAt: new Date(),
+        status: 'scanning',
+        updatedAt: new Date(),
+      })
+      .where(eq(driveFolderMappings.id, id))
+      .returning();
+
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function deleteDriveFolderMappingAction(id: number, projectId: number) {
   try {
     await db
