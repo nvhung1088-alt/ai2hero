@@ -378,7 +378,7 @@ async function handleGetStreamLink(token: string, input: any) {
     name: meta.name,
     mimeType: meta.mimeType,
     size: meta.size,
-    directStreamUrl: `https://www.googleapis.com/drive/v3/files/${meta.id}?alt=media`,
+    directStreamUrl: `https://drive.google.com/uc?export=download&id=${meta.id}`,
     webContentLink: meta.webContentLink || `https://drive.google.com/uc?export=download&id=${meta.id}`,
     webViewLink: meta.webViewLink || `https://drive.google.com/file/d/${meta.id}/view`,
     authHeader: `Bearer ${token}`

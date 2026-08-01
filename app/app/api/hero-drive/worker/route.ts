@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'fileId required' }, { status: 400 });
       }
 
-      const streamLink = driveFileId ? `https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media` : null;
+      const streamLink = driveFileId ? `https://drive.google.com/uc?export=download&id=${driveFileId}` : null;
 
       const [updatedFile] = await db
         .update(driveFiles)

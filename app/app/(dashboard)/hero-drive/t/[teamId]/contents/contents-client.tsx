@@ -154,25 +154,33 @@ export default function ContentsClient({
                             </div>
                           </div>
 
-                          {file.streamLink && (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => copyToClipboard(file.streamLink)}
-                                className="flex items-center gap-1 px-2.5 py-1 bg-purple-600/20 text-purple-400 border border-purple-500/30 hover:bg-purple-600/30 rounded text-xs transition-colors"
-                              >
-                                <Copy className="w-3 h-3" />
-                                Copy Link Stream
-                              </button>
-                              <a
-                                href={file.streamLink}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="p-1 text-slate-400 hover:text-slate-200"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </a>
-                            </div>
-                          )}
+                          {(() => {
+                            const cleanLink = file.driveFileId
+                              ? `https://drive.google.com/uc?export=download&id=${file.driveFileId}`
+                              : (file.streamLink && file.streamLink.includes('googleapis.com') 
+                                  ? `https://drive.google.com/uc?export=download&id=${file.driveFileId || ''}` 
+                                  : file.streamLink);
+
+                            return cleanLink ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => copyToClipboard(cleanLink)}
+                                  className="flex items-center gap-1 px-2.5 py-1 bg-purple-600/20 text-purple-400 border border-purple-500/30 hover:bg-purple-600/30 rounded text-xs transition-colors"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                  Copy Link Stream
+                                </button>
+                                <a
+                                  href={cleanLink}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="p-1 text-slate-400 hover:text-slate-200"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       ))
                     ) : (

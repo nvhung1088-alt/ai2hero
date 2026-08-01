@@ -479,27 +479,35 @@ export default function DriveDashboardClient({
                               )}
                             </td>
                             <td className="py-3 px-4 text-right">
-                              {file.streamLink ? (
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <button
-                                    onClick={() => copyToClipboard(file.streamLink)}
-                                    className="px-2.5 py-1 bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/30 rounded text-[11px] font-medium transition-colors inline-flex items-center gap-1"
-                                  >
-                                    <Copy className="w-3 h-3" />
-                                    Copy Link Stream
-                                  </button>
-                                  <a
-                                    href={file.streamLink}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="p-1 text-slate-400 hover:text-slate-200"
-                                  >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                  </a>
-                                </div>
-                              ) : (
-                                <span className="text-slate-600 text-[11px]">Chưa có link</span>
-                              )}
+                              {(() => {
+                                const cleanLink = file.driveFileId
+                                  ? `https://drive.google.com/uc?export=download&id=${file.driveFileId}`
+                                  : (file.streamLink && file.streamLink.includes('googleapis.com') 
+                                      ? `https://drive.google.com/uc?export=download&id=${file.driveFileId || ''}` 
+                                      : file.streamLink);
+
+                                return cleanLink ? (
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      onClick={() => copyToClipboard(cleanLink)}
+                                      className="px-2.5 py-1 bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/30 rounded text-[11px] font-medium transition-colors inline-flex items-center gap-1"
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                      Copy Link Stream
+                                    </button>
+                                    <a
+                                      href={cleanLink}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="p-1 text-slate-400 hover:text-slate-200"
+                                    >
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                    </a>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-600 text-[11px]">Chưa có link</span>
+                                );
+                              })()}
                             </td>
                           </tr>
                         ))}
