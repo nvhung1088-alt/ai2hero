@@ -300,8 +300,13 @@ export default function DriveDashboardClient({
                               {mapping.targetFolderName || mapping.targetFolderId || 'Mặc định (Root)'}
                             </span>
                           </p>
-                          <p className="text-[11px] text-slate-500">
-                            🔑 Tài khoản Drive: {conn ? conn.name : 'Mặc định'}
+                          <p className="text-[11px] text-slate-400">
+                            🔑 Tài khoản Drive:{' '}
+                            <span className="text-slate-200 font-medium">
+                              {conn
+                                ? (conn.credentials?.accountEmail || conn.credentials?.email || conn.name || `Tài khoản #${conn.id}`)
+                                : 'Mặc định'}
+                            </span>
                           </p>
                         </div>
                       </div>
@@ -538,11 +543,18 @@ export default function DriveDashboardClient({
                     onChange={(e) => setNewConnectionId(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500"
                   >
-                    {googleDriveConnections.map((conn) => (
-                      <option key={conn.id} value={conn.id}>
-                        {conn.name} ({conn.connectorSlug})
-                      </option>
-                    ))}
+                    {googleDriveConnections.map((conn) => {
+                      const creds = conn.credentials || {};
+                      const email = creds.accountEmail || creds.email || creds.userEmail;
+                      const label = email
+                        ? `✉️ ${email} (${conn.name || `Drive #${conn.id}`})`
+                        : (conn.name || conn.connectionName || `Tài khoản Drive #${conn.id}`);
+                      return (
+                        <option key={conn.id} value={conn.id}>
+                          {label}
+                        </option>
+                      );
+                    })}
                   </select>
                 ) : (
                   <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400">

@@ -13,6 +13,14 @@ export const googleDriveConnector: ConnectorDefinition = {
   },
   authFields: [
     {
+      name: 'accountEmail',
+      label: 'Địa chỉ Gmail đại diện',
+      type: 'text',
+      required: false,
+      placeholder: 'example@gmail.com',
+      helpText: 'Nhập địa chỉ Gmail của tài khoản này (Ví dụ: account@gmail.com) để dễ chọn đúng tài khoản khi gán thư mục quét'
+    },
+    {
       name: 'clientId',
       label: 'Client ID',
       type: 'text',
