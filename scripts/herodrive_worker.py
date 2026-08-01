@@ -4,6 +4,7 @@ import time
 import argparse
 import requests
 import json
+from datetime import datetime
 from pathlib import Path
 
 # Fix encoding cho Windows console
@@ -78,6 +79,7 @@ def upload_file_to_google_drive(access_token, file_path, file_name, target_folde
     if file_name.endswith(('.jpg', '.jpeg')): file_mime = "image/jpeg"
     elif file_name.endswith('.png'): file_mime = "image/png"
     elif file_name.endswith('.mp4'): file_mime = "video/mp4"
+    elif file_name.endswith('.srt'): file_mime = "text/plain"
     elif file_name.endswith('.txt'): file_mime = "text/plain"
 
     try:
@@ -104,10 +106,12 @@ def main():
     print("🚀 ===============================================")
     print("🚀 KHỞI CHẠY HERODRIVE PYTHON WORKER (GLOBAL SYNC)")
     print(f"🌐 Máy chủ kết nối: {server_url}")
-    print("⚡ Trạng thái: Đang sẵn sàng quét toàn bộ thư mục local...")
+    print("⚡ Trạng thái: Đang kết nối máy chủ và kiểm tra thư mục quét...")
     print("🚀 ===============================================")
 
     while True:
+        now_str = datetime.now().strftime("%H:%M:%S")
+
         try:
             # Lấy toàn bộ task đang hoạt động
             if project_id:
@@ -125,16 +129,22 @@ def main():
                     mapping_tokens = data.get("mappingTokens", {})
                     pending_files = data.get("files", [])
 
-                    # 1. Quét từng local folder mapping và sync
-                    for m in mappings:
-                        local_folder = m.get("localFolderPath")
-                        mapping_id = m.get("id")
-                        mapping_name = m.get("name", "Thư mục Quét")
+                    if not mappings:
+                        print(f"📡 [{now_str}] Chưa có Thư mục Quét nào được kích hoạt trên Web (Chờ {interval}s)...")
+                    else:
+                        # 1. Quét từng local folder mapping và sync
+                        for m in mappings:
+                            local_folder = m.get("localFolderPath")
+                            mapping_id = m.get("id")
+                            mapping_name = m.get("name", "Thư mục Quét")
 
-                        if local_folder and os.path.exists(local_folder):
+                            if not local_folder or not os.path.exists(local_folder):
+                                print(f"⚠️ [{now_str}] Thư mục local chưa tồn tại trên máy tính: {local_folder}")
+                                continue
+
                             items = scan_and_group_local_folder(local_folder)
                             if items:
-                                print(f"🔍 Quét [{mapping_name}]: Phát hiện {len(items)} nhóm bài đăng ở local: {local_folder}")
+                                print(f"🔍 [{now_str}] Quét [{mapping_name}]: Phát hiện {len(items)} nhóm bài đăng ở local ({local_folder})")
                                 sync_url = f"{server_url}/api/hero-drive/worker?action=sync"
                                 requests.post(sync_url, json={
                                     "mappingId": mapping_id,
@@ -143,37 +153,40 @@ def main():
 
                     # 2. Upload Pending Files
                     if pending_files:
-                        print(f"📦 Có {len(pending_files)} tệp đính kèm đang chờ upload...")
+                        print(f"📦 [{now_str}] Có {len(pending_files)} tệp đính kèm đang chờ upload...")
                         for file_item in pending_files:
                             file_id = file_item.get("id")
                             local_path = file_item.get("localPath")
                             file_name = file_item.get("fileName")
 
-                            if not os.path.exists(local_path):
+                            if not local_path or not os.path.exists(local_path):
+                                print(f"⚠️ [{now_str}] Không tìm thấy file local: {local_path}")
                                 continue
 
-                            # Tìm mapping token info
-                            token_info = {}
-                            for m_id_str, t_info in mapping_tokens.items():
-                                if t_info.get("accessToken"):
-                                    token_info = t_info
-                                    break
+                            access_token = file_item.get("accessToken")
+                            target_folder_id = file_item.get("targetFolderId")
+                            delete_after_upload = file_item.get("deleteAfterUpload", False)
 
-                            access_token = token_info.get("accessToken")
-                            target_folder_id = token_info.get("targetFolderId")
-                            delete_after_upload = token_info.get("deleteAfterUpload", False)
+                            # Fallback nếu chưa có trong file_item
+                            if not access_token:
+                                for m_id_str, t_info in mapping_tokens.items():
+                                    if t_info.get("accessToken"):
+                                        access_token = t_info.get("accessToken")
+                                        target_folder_id = t_info.get("targetFolderId")
+                                        delete_after_upload = t_info.get("deleteAfterUpload", False)
+                                        break
 
                             if not access_token:
-                                print(f"⚠️ Chưa có Access Token cho file: {file_name}")
+                                print(f"⚠️ [{now_str}] Chưa có Access Token cho file: {file_name}")
                                 continue
 
-                            print(f"⏳ Uploading: {file_name} ...")
+                            print(f"⏳ [{now_str}] Uploading: {file_name} ...")
                             success, drive_file_id, err_msg = upload_file_to_google_drive(
                                 access_token, local_path, file_name, target_folder_id
                             )
 
                             if success:
-                                print(f"✅ Tải thành công! Drive ID: {drive_file_id}")
+                                print(f"✅ [{now_str}] Tải thành công! Drive ID: {drive_file_id}")
                                 if delete_after_upload:
                                     try:
                                         os.remove(local_path)
@@ -188,16 +201,22 @@ def main():
                                     "status": "completed"
                                 }, timeout=15)
                             else:
-                                print(f"❌ Lỗi upload: {err_msg}")
+                                print(f"❌ [{now_str}] Lỗi upload: {err_msg}")
                                 complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
                                 requests.post(complete_url, json={
                                     "fileId": file_id,
                                     "status": "failed",
                                     "error": err_msg
                                 }, timeout=15)
+                    else:
+                        if mappings:
+                            print(f"📡 [{now_str}] Đã kiểm tra {len(mappings)} thư mục quét. Chưa có file mới cần upload (Chờ {interval}s)...")
+
+            else:
+                print(f"⚠️ [{now_str}] Máy chủ trả về HTTP {res.status_code}")
 
         except Exception as e:
-            print(f"⚠️ Lỗi kết nối Worker Loop: {e}")
+            print(f"⚠️ [{now_str}] Lỗi kết nối Worker Loop: {e}")
 
         time.sleep(interval)
 
