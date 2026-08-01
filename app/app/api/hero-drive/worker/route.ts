@@ -165,7 +165,25 @@ export async function GET(req: NextRequest) {
         });
       }
 
+      // Lấy Access Token cho từng mapping
       const mappingTokens: Record<number, { accessToken: string | null; targetFolderId: string | null; deleteAfterUpload: boolean }> = {};
+
+      // Lấy kết nối Google Drive mặc định (nếu mapping chưa gán)
+      let defaultAccessToken: string | null = null;
+      const allDriveConns = await db.query.connectHubConnections.findMany({
+        where: eq(connectHubConnections.appSlug, 'google-drive'),
+      });
+
+      for (const conn of allDriveConns as any[]) {
+        const creds = conn.credentials || (conn.encryptedCredentials ? JSON.parse(conn.encryptedCredentials) : null);
+        if (creds) {
+          const res = await runGoogleDrive(creds, 'get_about', {});
+          if (res.success && res.data && res.data.accessToken) {
+            defaultAccessToken = res.data.accessToken;
+            break;
+          }
+        }
+      }
 
       for (const m of mappings) {
         let accessToken = null;
@@ -180,18 +198,33 @@ export async function GET(req: NextRequest) {
             }
           }
         }
+
         mappingTokens[m.id] = {
-          accessToken,
+          accessToken: accessToken || defaultAccessToken,
           targetFolderId: m.targetFolderId || null,
           deleteAfterUpload: m.deleteAfterUpload,
         };
       }
 
+      const filesWithTokens = pendingFiles.map((file) => {
+        const content = contents.find((c) => c.id === file.contentId);
+        const mappingId = content?.mappingId;
+        const tokenInfo = mappingId ? mappingTokens[mappingId] : null;
+
+        return {
+          ...file,
+          mappingId,
+          accessToken: tokenInfo?.accessToken || defaultAccessToken,
+          targetFolderId: tokenInfo?.targetFolderId || null,
+          deleteAfterUpload: tokenInfo?.deleteAfterUpload || false,
+        };
+      });
+
       return NextResponse.json({
         success: true,
         mappings,
         mappingTokens,
-        files: pendingFiles,
+        files: filesWithTokens,
       });
     }
 
