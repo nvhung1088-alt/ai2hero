@@ -11,7 +11,7 @@ export function DriveWorkerGuide({ teamId }: WorkerGuideProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const commandText = 'python scripts/herodrive_worker.py';
+  const commandText = 'cd /d "C:\\Users\\ADMIN\\OneDrive\\Desktop\\Ai2Hero" && python scripts/herodrive_worker.py';
 
   const handleCopyCommand = () => {
     navigator.clipboard.writeText(commandText);
@@ -53,9 +53,9 @@ export function DriveWorkerGuide({ teamId }: WorkerGuideProps) {
                   Cài đặt & Khởi chạy Worker
                 </div>
                 <div className="text-xs text-slate-400 leading-relaxed space-y-1">
-                  <p>1. Mở thư mục <strong>Ai2Hero</strong> tại: <code className="bg-slate-900 px-1 py-0.5 rounded text-blue-400">C:\Users\ADMIN\OneDrive\Desktop\Ai2Hero</code></p>
-                  <p>2. Click vào thanh địa chỉ (Address bar) phía trên cùng của thư mục, gõ <strong>cmd</strong> và nhấn Enter.</p>
-                  <p>3. Dán câu lệnh dưới đây vào màn hình đen vừa hiện ra và nhấn Enter để khởi chạy!</p>
+                  <p>1. Copy toàn bộ câu lệnh thần thánh 1-dòng bên dưới.</p>
+                  <p>2. Bấm phím <strong>Windows + R</strong> ➔ gõ <strong>cmd</strong> ➔ nhấn Enter để mở Terminal từ bất kỳ vị trí nào.</p>
+                  <p>3. Dán câu lệnh vào màn hình đen và nhấn Enter để khởi chạy Worker lập tức!</p>
                 </div>
 
                 <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 font-mono text-xs text-slate-300 flex items-center justify-between gap-4 group">
