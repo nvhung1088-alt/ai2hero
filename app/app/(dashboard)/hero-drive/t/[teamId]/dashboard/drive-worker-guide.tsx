@@ -11,7 +11,7 @@ export function DriveWorkerGuide({ teamId }: WorkerGuideProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const commandText = 'cd OneDrive\\Desktop\\Ai2Hero && python scripts/herodrive_worker.py';
+  const commandText = 'python scripts/herodrive_worker.py';
 
   const handleCopyCommand = () => {
     navigator.clipboard.writeText(commandText);
