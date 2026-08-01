@@ -149,6 +149,52 @@ export async function GET(req: NextRequest) {
   const configIdStr = searchParams.get('configId');
 
   try {
+    // 2.5 GET ALL TASKS FOR GLOBAL WORKER
+    if (action === 'get_all_tasks' || !action || (action === 'get_project_tasks' && !projectIdStr)) {
+      const mappings = await db.query.driveFolderMappings.findMany({
+        where: eq(driveFolderMappings.isActive, true),
+      });
+
+      const contents = await db.query.driveContents.findMany();
+      let pendingFiles: any[] = [];
+      if (contents.length > 0) {
+        const contentIds = contents.map((c) => c.id);
+        pendingFiles = await db.query.driveFiles.findMany({
+          where: and(eq(driveFiles.status, 'pending'), inArray(driveFiles.contentId, contentIds)),
+          limit: 20,
+        });
+      }
+
+      const mappingTokens: Record<number, { accessToken: string | null; targetFolderId: string | null; deleteAfterUpload: boolean }> = {};
+
+      for (const m of mappings) {
+        let accessToken = null;
+        if (m.connectionId) {
+          const conn: any = await db.query.connectHubConnections.findFirst({
+            where: eq(connectHubConnections.id, m.connectionId),
+          });
+          if (conn && conn.credentials) {
+            const res = await runGoogleDrive(conn.credentials as any, 'get_about', {});
+            if (res.success && res.data && res.data.accessToken) {
+              accessToken = res.data.accessToken;
+            }
+          }
+        }
+        mappingTokens[m.id] = {
+          accessToken,
+          targetFolderId: m.targetFolderId || null,
+          deleteAfterUpload: m.deleteAfterUpload,
+        };
+      }
+
+      return NextResponse.json({
+        success: true,
+        mappings,
+        mappingTokens,
+        files: pendingFiles,
+      });
+    }
+
     // 3. GET TASKS FOR PROJECT
     if (action === 'get_project_tasks' && projectIdStr) {
       const projectId = parseInt(projectIdStr);
