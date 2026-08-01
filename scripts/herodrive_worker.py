@@ -16,8 +16,36 @@ def parse_args():
     parser.add_argument("--project", type=int, help="ID của Dự án Quét (Tùy chọn)")
     parser.add_argument("--config", type=int, help="ID của Cấu hình quét (Tùy chọn)")
     parser.add_argument("--server", type=str, default="https://www.ai2hero.com", help="URL máy chủ AI2Hero")
-    parser.add_argument("--interval", type=int, default=10, help="Thời gian giãn cách quét (giây)")
+    parser.add_argument("--interval", type=int, default=10, help="Thời gian giãn cách quét mặc định (giây)")
     return parser.parse_args()
+
+def parse_interval_to_seconds(val):
+    if not val:
+        return 10
+    val_str = str(val).strip().lower()
+    if val_str.endswith('s'):
+        try: return max(5, int(val_str[:-1]))
+        except: return 10
+    elif val_str.endswith('m'):
+        try: return max(5, int(val_str[:-1]) * 60)
+        except: return 10
+    elif val_str.endswith('h'):
+        try: return max(5, int(val_str[:-1]) * 3600)
+        except: return 10
+    try:
+        return max(5, int(val_str))
+    except:
+        return 10
+
+def format_seconds_human(seconds):
+    if seconds < 60:
+        return f"{seconds} giây"
+    elif seconds < 3600:
+        mins = seconds // 60
+        return f"{mins} phút ({seconds}s)"
+    else:
+        hours = seconds // 3600
+        return f"{hours} giờ ({seconds}s)"
 
 def get_file_type(extension):
     ext = extension.lower()
@@ -101,7 +129,7 @@ def main():
     server_url = args.server.rstrip('/')
     project_id = args.project
     config_id = args.config
-    interval = args.interval
+    default_interval = args.interval
 
     print("🚀 ===============================================")
     print("🚀 KHỞI CHẠY HERODRIVE PYTHON WORKER (GLOBAL SYNC)")
@@ -111,6 +139,7 @@ def main():
 
     while True:
         now_str = datetime.now().strftime("%H:%M:%S")
+        next_sleep = default_interval
 
         try:
             # Lấy toàn bộ task đang hoạt động
@@ -129,8 +158,16 @@ def main():
                     mapping_tokens = data.get("mappingTokens", {})
                     pending_files = data.get("files", [])
 
+                    # Tính thời gian chờ động theo cài đặt scanInterval từ Web
+                    if mappings:
+                        intervals = [parse_interval_to_seconds(m.get("scanInterval")) for m in mappings if m.get("scanInterval")]
+                        if intervals:
+                            next_sleep = min(intervals)
+
+                    human_next_sleep = format_seconds_human(next_sleep)
+
                     if not mappings:
-                        print(f"📡 [{now_str}] Chưa có Thư mục Quét nào được kích hoạt trên Web (Chờ {interval}s)...")
+                        print(f"📡 [{now_str}] Chưa có Thư mục Quét nào được kích hoạt trên Web (Chờ {human_next_sleep})...")
                     else:
                         # 1. Quét từng local folder mapping và sync
                         for m in mappings:
@@ -211,7 +248,7 @@ def main():
                                 }, timeout=15)
                     else:
                         if mappings:
-                            print(f"📡 [{now_str}] Đã kiểm tra {len(mappings)} thư mục quét. Chưa có file mới cần upload (Chờ {interval}s)...")
+                            print(f"📡 [{now_str}] Đã kiểm tra {len(mappings)} thư mục quét. Chưa có file mới cần upload. Lượt quét tiếp theo sau: {human_next_sleep}...")
 
             else:
                 print(f"⚠️ [{now_str}] Máy chủ trả về HTTP {res.status_code}")
@@ -219,7 +256,7 @@ def main():
         except Exception as e:
             print(f"⚠️ [{now_str}] Lỗi kết nối Worker Loop: {e}")
 
-        time.sleep(interval)
+        time.sleep(next_sleep)
 
 if __name__ == "__main__":
     main()
