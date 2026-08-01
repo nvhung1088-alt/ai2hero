@@ -190,11 +190,12 @@ export async function GET(req: NextRequest) {
 
       for (const conn of allDriveConns as any[]) {
         const creds = parseCredentials(conn);
-        if (creds && (creds.refreshToken || creds.accessToken)) {
+        if (creds) {
           try {
             const res = await runGoogleDrive(creds, 'get_about', {});
-            if (res.success && res.data && res.data.accessToken) {
-              defaultAccessToken = res.data.accessToken;
+            const token = res?.accessToken || res?.data?.accessToken;
+            if (res && res.success && token) {
+              defaultAccessToken = token;
               break;
             }
           } catch (e) {}
@@ -211,8 +212,9 @@ export async function GET(req: NextRequest) {
           if (creds) {
             try {
               const res = await runGoogleDrive(creds, 'get_about', {});
-              if (res.success && res.data && res.data.accessToken) {
-                accessToken = res.data.accessToken;
+              const token = res?.accessToken || res?.data?.accessToken;
+              if (res && res.success && token) {
+                accessToken = token;
               }
             } catch (e) {}
           }

@@ -138,6 +138,7 @@ async function handleGetAbout(token: string) {
 
   return {
     success: true,
+    accessToken: token,
     user: data.user,
     storageQuota: {
       ...data.storageQuota,
