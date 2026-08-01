@@ -16,11 +16,13 @@ import {
   File,
   FolderOpen,
   FolderSync,
-  Plus,
   Play,
   Pause,
+  Clock,
+  History,
+  CheckCircle2,
   AlertCircle,
-  Terminal,
+  Timer,
 } from 'lucide-react';
 import {
   createDriveProjectAction,
@@ -28,10 +30,11 @@ import {
   getDriveFolderMappings,
   createDriveFolderMappingAction,
   deleteDriveFolderMappingAction,
+  toggleDriveFolderMappingAction,
+  getFolderMappingHistoryAction,
   getDriveContentsWithFilesByProject,
 } from '@/lib/db/hero-drive-actions';
 import DriveProjectSidebar from './drive-project-sidebar';
-import Link from 'next/link';
 
 interface DashboardProps {
   user: any;
@@ -56,6 +59,11 @@ export default function DriveDashboardClient({
   const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false);
   const [expandedContentIds, setExpandedContentIds] = useState<number[]>([]);
 
+  // History Modal
+  const [historyMapping, setHistoryMapping] = useState<any | null>(null);
+  const [historyContents, setHistoryContents] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+
   // Modals
   const [isProjectModalOpen, setIsProjectModalOpen] = useState<boolean>(false);
   const [newProjectName, setNewProjectName] = useState<string>('');
@@ -70,6 +78,7 @@ export default function DriveDashboardClient({
   const [newTargetFolderId, setNewTargetFolderId] = useState<string>('');
   const [newTargetFolderName, setNewTargetFolderName] = useState<string>('');
   const [newDeleteAfterUpload, setNewDeleteAfterUpload] = useState<boolean>(false);
+  const [newScanInterval, setNewScanInterval] = useState<number>(10);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -145,6 +154,7 @@ export default function DriveDashboardClient({
       targetFolderId: newTargetFolderId || null,
       targetFolderName: newTargetFolderName || null,
       deleteAfterUpload: newDeleteAfterUpload,
+      scanInterval: newScanInterval,
     });
 
     if (res.success && res.data) {
@@ -158,6 +168,20 @@ export default function DriveDashboardClient({
     setIsSubmitting(false);
   };
 
+  const handleToggleMapping = async (id: number, currentActive: boolean) => {
+    if (!selectedProjectId) return;
+    const res = await toggleDriveFolderMappingAction(id, selectedProjectId, !currentActive);
+    if (res.success) {
+      setMappings(
+        mappings.map((m) =>
+          m.id === id
+            ? { ...m, isActive: !currentActive, status: !currentActive ? 'idle' : 'paused' }
+            : m
+        )
+      );
+    }
+  };
+
   const handleDeleteMapping = async (id: number) => {
     if (!confirm('Xóa thư mục quét này?')) return;
     if (!selectedProjectId) return;
@@ -165,6 +189,17 @@ export default function DriveDashboardClient({
     if (res.success) {
       setMappings(mappings.filter((m) => m.id !== id));
     }
+  };
+
+  // Open History Modal
+  const handleOpenHistory = async (mapping: any) => {
+    setHistoryMapping(mapping);
+    setIsLoadingHistory(true);
+    const res = await getFolderMappingHistoryAction(mapping.id);
+    if (res.success && res.data) {
+      setHistoryContents(res.data);
+    }
+    setIsLoadingHistory(false);
   };
 
   const toggleExpandContent = (id: number) => {
@@ -191,6 +226,12 @@ export default function DriveDashboardClient({
       default:
         return <File className="w-4 h-4 text-slate-400" />;
     }
+  };
+
+  const formatLastScanTime = (dateStr?: string) => {
+    if (!dateStr) return 'Chưa quét lần nào';
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + date.toLocaleDateString('vi-VN');
   };
 
   return (
@@ -267,22 +308,62 @@ export default function DriveDashboardClient({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {mappings.map((mapping) => {
                     const conn = googleDriveConnections.find((c) => c.id === mapping.connectionId);
+                    const connEmail = conn?.credentials?.accountEmail || conn?.credentials?.email || conn?.name;
+
                     return (
                       <div
                         key={mapping.id}
-                        className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl space-y-2.5 relative group hover:border-slate-700 transition-colors"
+                        className={`p-4 bg-slate-900/50 border rounded-xl space-y-3 relative group transition-all ${
+                          mapping.isActive
+                            ? 'border-slate-800 hover:border-slate-700'
+                            : 'border-slate-800/50 bg-slate-950/40 opacity-75'
+                        }`}
                       >
+                        {/* Header Mapping Card */}
                         <div className="flex items-start justify-between">
-                          <h3 className="font-semibold text-sm text-slate-200">{mapping.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-sm text-slate-200">{mapping.name}</h3>
+
+                            {/* Badge Trạng thái */}
+                            <span
+                              className={`px-2 py-0.5 text-[10px] rounded border font-medium flex items-center gap-1 ${
+                                !mapping.isActive
+                                  ? 'bg-slate-800 text-slate-400 border-slate-700'
+                                  : mapping.status === 'uploading'
+                                  ? 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse'
+                                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              }`}
+                            >
+                              {mapping.isActive
+                                ? mapping.status === 'uploading'
+                                  ? 'Đang upload'
+                                  : 'Đang hoạt động'
+                                : 'Đã tạm dừng'}
+                            </span>
+                          </div>
+
                           <div className="flex items-center gap-1.5">
-                            {mapping.deleteAfterUpload && (
-                              <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded font-medium">
-                                Tự xóa đĩa C
-                              </span>
-                            )}
+                            {/* Nút Play / Pause */}
+                            <button
+                              onClick={() => handleToggleMapping(mapping.id, mapping.isActive)}
+                              className={`p-1.5 rounded-lg border transition-colors ${
+                                mapping.isActive
+                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                              }`}
+                              title={mapping.isActive ? 'Tạm dừng quét' : 'Kích hoạt lại'}
+                            >
+                              {mapping.isActive ? (
+                                <Pause className="w-3.5 h-3.5 fill-emerald-400" />
+                              ) : (
+                                <Play className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+
+                            {/* Nút Xóa */}
                             <button
                               onClick={() => handleDeleteMapping(mapping.id)}
-                              className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
+                              className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg border border-transparent hover:border-rose-500/20 transition-colors"
                               title="Xóa mapping"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -290,6 +371,7 @@ export default function DriveDashboardClient({
                           </div>
                         </div>
 
+                        {/* Details Info */}
                         <div className="space-y-1 text-xs">
                           <p className="text-slate-400 font-mono break-all line-clamp-1">
                             💻 Máy tính: <span className="text-slate-200">{mapping.localFolderPath}</span>
@@ -300,14 +382,41 @@ export default function DriveDashboardClient({
                               {mapping.targetFolderName || mapping.targetFolderId || 'Mặc định (Root)'}
                             </span>
                           </p>
-                          <p className="text-[11px] text-slate-400">
+                          <p className="text-slate-400">
                             🔑 Tài khoản Drive:{' '}
                             <span className="text-slate-200 font-medium">
-                              {conn
-                                ? (conn.credentials?.accountEmail || conn.credentials?.email || conn.name || `Tài khoản #${conn.id}`)
-                                : 'Mặc định'}
+                              {connEmail ? `✉️ ${connEmail}` : 'Mặc định'}
                             </span>
                           </p>
+                        </div>
+
+                        {/* Badges & Actions Footer */}
+                        <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-500 flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              {formatLastScanTime(mapping.lastScanAt)}
+                            </span>
+                            <span className="text-amber-400 flex items-center gap-1">
+                              <Timer className="w-3 h-3" />
+                              {mapping.scanInterval || 10}s/lần
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {mapping.deleteAfterUpload && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded font-medium">
+                                Tự xóa đĩa C
+                              </span>
+                            )}
+                            <button
+                              onClick={() => handleOpenHistory(mapping)}
+                              className="flex items-center gap-1 text-blue-400 hover:underline text-[11px] font-medium"
+                            >
+                              <History className="w-3 h-3" />
+                              Lịch sử Upload
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -437,6 +546,94 @@ export default function DriveDashboardClient({
           </div>
         )}
       </div>
+
+      {/* Modal: History Log Modal */}
+      {historyMapping && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="font-bold text-base text-slate-100 flex items-center gap-2">
+                  <History className="w-4 h-4 text-blue-400" />
+                  Lịch Sử Upload — {historyMapping.name}
+                </h3>
+                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                  Folder máy tính: {historyMapping.localFolderPath}
+                </p>
+              </div>
+              <button
+                onClick={() => setHistoryMapping(null)}
+                className="text-slate-400 hover:text-slate-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
+              {isLoadingHistory ? (
+                <div className="p-8 text-center text-slate-500">Đang tải lịch sử upload...</div>
+              ) : historyContents.length === 0 ? (
+                <div className="p-8 text-center text-slate-500">Chưa có lịch sử file nào.</div>
+              ) : (
+                historyContents.map((c) => (
+                  <div
+                    key={c.id}
+                    className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2"
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+                      <span className="font-semibold text-slate-200">{c.baseName}</span>
+                      <span className="text-[10px] text-slate-400">
+                        {new Date(c.createdAt).toLocaleString('vi-VN')}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {c.files &&
+                        c.files.map((f: any) => (
+                          <div
+                            key={f.id}
+                            className="flex items-center justify-between p-2 bg-slate-900/60 rounded border border-slate-800/80 text-[11px]"
+                          >
+                            <div className="flex items-center gap-2">
+                              {getFileIcon(f.fileType)}
+                              <span className="text-slate-300">{f.fileName}</span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`px-1.5 py-0.5 text-[9px] rounded font-medium ${
+                                  f.status === 'completed'
+                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                }`}
+                              >
+                                {f.status}
+                              </span>
+                              {historyMapping.deleteAfterUpload && f.status === 'completed' && (
+                                <span className="text-amber-400 text-[10px]">
+                                  (Đã xóa file đĩa C)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex items-center justify-end border-t border-slate-800 pt-3">
+              <button
+                onClick={() => setHistoryMapping(null)}
+                className="px-4 py-1.5 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 font-medium"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Create Project */}
       {isProjectModalOpen && (
@@ -574,6 +771,20 @@ export default function DriveDashboardClient({
                   onChange={(e) => setNewTargetFolderId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 font-mono focus:outline-none focus:border-blue-500"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-medium text-slate-300">Chu kỳ quét (Thời gian giãn cách):</label>
+                <select
+                  value={newScanInterval}
+                  onChange={(e) => setNewScanInterval(parseInt(e.target.value))}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500"
+                >
+                  <option value={10}>10 giây / lần (Nhanh)</option>
+                  <option value={30}>30 giây / lần</option>
+                  <option value={60}>1 phút / lần</option>
+                  <option value={300}>5 phút / lần</option>
+                </select>
               </div>
 
               <div className="pt-1">

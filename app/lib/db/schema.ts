@@ -2596,6 +2596,8 @@ export const driveFolderMappings = pgTable('drive_folder_mappings', {
   targetFolderName: varchar('target_folder_name', { length: 255 }),
   deleteAfterUpload: boolean('delete_after_upload').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
+  scanInterval: integer('scan_interval').notNull().default(10),
+  status: varchar('status', { length: 20 }).notNull().default('idle'),
   lastScanAt: timestamp('last_scan_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

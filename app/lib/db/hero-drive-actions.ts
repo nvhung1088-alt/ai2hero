@@ -90,6 +90,7 @@ export async function createDriveFolderMappingAction(data: {
   targetFolderId?: string | null;
   targetFolderName?: string | null;
   deleteAfterUpload: boolean;
+  scanInterval?: number;
 }) {
   try {
     const [newMapping] = await db
@@ -102,13 +103,32 @@ export async function createDriveFolderMappingAction(data: {
         targetFolderId: data.targetFolderId || null,
         targetFolderName: data.targetFolderName || null,
         deleteAfterUpload: data.deleteAfterUpload,
+        scanInterval: data.scanInterval || 10,
         isActive: true,
+        status: 'idle',
       })
       .returning();
 
     return { success: true, data: newMapping };
   } catch (error: any) {
     console.error('Error creating folder mapping:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function toggleDriveFolderMappingAction(id: number, projectId: number, isActive: boolean) {
+  try {
+    await db
+      .update(driveFolderMappings)
+      .set({
+        isActive,
+        status: isActive ? 'idle' : 'paused',
+        updatedAt: new Date(),
+      })
+      .where(and(eq(driveFolderMappings.id, id), eq(driveFolderMappings.projectId, projectId)));
+
+    return { success: true };
+  } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
@@ -121,6 +141,35 @@ export async function deleteDriveFolderMappingAction(id: number, projectId: numb
 
     return { success: true };
   } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getFolderMappingHistoryAction(mappingId: number) {
+  try {
+    const contents = await db
+      .select()
+      .from(driveContents)
+      .where(eq(driveContents.mappingId, mappingId))
+      .orderBy(desc(driveContents.createdAt));
+
+    const result = await Promise.all(
+      contents.map(async (content) => {
+        const files = await db
+          .select()
+          .from(driveFiles)
+          .where(eq(driveFiles.contentId, content.id))
+          .orderBy(driveFiles.fileName);
+        return {
+          ...content,
+          files,
+        };
+      })
+    );
+
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error('Error fetching mapping history:', error);
     return { success: false, error: error.message };
   }
 }
