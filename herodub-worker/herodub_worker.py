@@ -1199,6 +1199,15 @@ if __name__ == '__main__':
         "resultSrtUrl": vi_srt_abs_path
     }, headers=headers)
 
+    # 5. AUTO CLEANUP WORKSPACE (Tự động xóa dọn dẹp giải phóng ổ đĩa)
+    try:
+        abs_workspace = os.path.abspath(workspace)
+        if os.path.exists(abs_workspace) and "workspace" in abs_workspace:
+            shutil.rmtree(abs_workspace, ignore_errors=True)
+            print(Fore.CYAN + f"[-] Da tu dong don dep giai phong dung luong o dia: {abs_workspace}")
+    except Exception as clean_err:
+        print(Fore.YELLOW + f"[!] Khong the xoa thu muc tam: {clean_err}")
+
 
 import threading
 
