@@ -12,7 +12,8 @@ if sys.platform.startswith('win'):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="HeroDrive Python Local Worker")
-    parser.add_argument("--config", type=int, required=True, help="ID của Cấu hình quét (drive_scan_configs.id)")
+    parser.add_argument("--project", type=int, help="ID của Dự án Quét (drive_projects.id)")
+    parser.add_argument("--config", type=int, help="ID của Cấu hình quét đơn lẻ (drive_scan_configs.id)")
     parser.add_argument("--server", type=str, default="https://www.ai2hero.com", help="URL máy chủ AI2Hero (VD: https://www.ai2hero.com hoặc http://localhost:3000)")
     parser.add_argument("--interval", type=int, default=10, help="Thời gian giãn cách quét (giây)")
     return parser.parse_args()
@@ -29,7 +30,6 @@ def get_file_type(extension):
 
 def scan_and_group_local_folder(folder_path):
     if not os.path.exists(folder_path):
-        print(f"❌ Thư mục không tồn tại: {folder_path}")
         return []
 
     grouped = {}
@@ -80,12 +80,11 @@ def upload_file_to_google_drive(access_token, file_path, file_name, target_folde
     elif file_name.endswith('.mp4'): file_mime = "video/mp4"
     elif file_name.endswith('.txt'): file_mime = "text/plain"
 
-    files = {
-        "data": ("metadata", json.dumps(metadata), "application/json; charset=UTF-8"),
-        "file": (file_name, open(file_path, "rb"), file_mime)
-    }
-
     try:
+        files = {
+            "data": ("metadata", json.dumps(metadata), "application/json; charset=UTF-8"),
+            "file": (file_name, open(file_path, "rb"), file_mime)
+        }
         response = requests.post(url, headers=headers, files=files, timeout=300)
         if response.status_code == 200:
             res_data = response.json()
@@ -98,74 +97,148 @@ def upload_file_to_google_drive(access_token, file_path, file_name, target_folde
 def main():
     args = parse_args()
     server_url = args.server.rstrip('/')
+    project_id = args.project
     config_id = args.config
     interval = args.interval
 
-    print(f"🚀 Khởi chạy HeroDrive Local Worker [Config ID: {config_id}]")
+    if not project_id and not config_id:
+        print("❌ Vui lòng truyền --project <ID_DU_AN> hoặc --config <ID_CAU_HINH>")
+        return
+
+    mode_str = f"Project ID: {project_id}" if project_id else f"Config ID: {config_id}"
+    print(f"🚀 Khởi chạy HeroDrive Python Worker [{mode_str}]")
     print(f"🌐 Máy chủ kết nối: {server_url}")
 
     while True:
         try:
-            # 1. Lấy danh sách file pending & Access Token
-            api_get_url = f"{server_url}/api/hero-drive/worker?action=get_pending_files&configId={config_id}"
-            res = requests.get(api_get_url, timeout=15)
+            # === MODE 1: DU AN (PROJECT) ===
+            if project_id:
+                api_url = f"{server_url}/api/hero-drive/worker?action=get_project_tasks&projectId={project_id}"
+                res = requests.get(api_url, timeout=15)
+                if res.status_code == 200:
+                    data = res.json()
+                    if data.get("success"):
+                        mappings = data.get("mappings", [])
+                        mapping_tokens = data.get("mappingTokens", {})
+                        pending_files = data.get("files", [])
 
-            if res.status_code == 200:
-                data = res.json()
-                if data.get("success"):
-                    access_token = data.get("accessToken")
-                    target_folder_id = data.get("targetFolderId")
-                    delete_after_upload = data.get("deleteAfterUpload", False)
-                    pending_files = data.get("files", [])
+                        # 1. Quét từng local folder mapping và sync
+                        for m in mappings:
+                            local_folder = m.get("localFolderPath")
+                            mapping_id = m.get("id")
+                            if local_folder and os.path.exists(local_folder):
+                                items = scan_and_group_local_folder(local_folder)
+                                if items:
+                                    sync_url = f"{server_url}/api/hero-drive/worker?action=sync"
+                                    requests.post(sync_url, json={
+                                        "projectId": project_id,
+                                        "mappingId": mapping_id,
+                                        "items": items
+                                    }, timeout=15)
 
-                    if pending_files and access_token:
-                        print(f"📦 Tìm thấy {len(pending_files)} file cần tải lên Google Drive...")
+                        # 2. UploadPending Files
+                        if pending_files:
+                            print(f"📦 Có {len(pending_files)} tệp đính kèm đang chờ upload...")
+                            for file_item in pending_files:
+                                file_id = file_item.get("id")
+                                local_path = file_item.get("localPath")
+                                file_name = file_item.get("fileName")
 
-                        for file_item in pending_files:
-                            file_id = file_item.get("id")
-                            local_path = file_item.get("localPath")
-                            file_name = file_item.get("fileName")
+                                if not os.path.exists(local_path):
+                                    continue
 
-                            if not os.path.exists(local_path):
-                                print(f"⚠️ File không tồn tại ở local: {local_path}")
-                                continue
+                                # Tìm mapping info tương ứng
+                                token_info = {}
+                                for m_id_str, t_info in mapping_tokens.items():
+                                    token_info = t_info
+                                    break
 
-                            print(f"⏳ Đang tải file lên Google Drive: {file_name} ...")
-                            success, drive_file_id, err_msg = upload_file_to_google_drive(
-                                access_token, local_path, file_name, target_folder_id
-                            )
+                                access_token = token_info.get("accessToken")
+                                target_folder_id = token_info.get("targetFolderId")
+                                delete_after_upload = token_info.get("deleteAfterUpload", False)
 
-                            if success:
-                                print(f"✅ Tải lên thành công! Drive File ID: {drive_file_id}")
-                                
-                                # Xóa file local nếu cài đặt
-                                if delete_after_upload:
-                                    try:
-                                        os.remove(local_path)
-                                        print(f"🗑️ Đã xóa file đĩa C: {local_path}")
-                                    except Exception as ex:
-                                        print(f"❌ Không thể xóa file local: {ex}")
+                                if not access_token:
+                                    print(f"⚠️ Chưa có Access Token cho file: {file_name}")
+                                    continue
 
-                                # Báo cáo hoàn tất
-                                complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
-                                requests.post(complete_url, json={
-                                    "fileId": file_id,
-                                    "driveFileId": drive_file_id,
-                                    "status": "completed"
-                                }, timeout=15)
+                                print(f"⏳ Uploading: {file_name} ...")
+                                success, drive_file_id, err_msg = upload_file_to_google_drive(
+                                    access_token, local_path, file_name, target_folder_id
+                                )
 
-                            else:
-                                print(f"❌ Lỗi tải file lên Drive: {err_msg}")
-                                complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
-                                requests.post(complete_url, json={
-                                    "fileId": file_id,
-                                    "status": "failed",
-                                    "error": err_msg
-                                }, timeout=15)
+                                if success:
+                                    print(f"✅ Tải thành công! Drive ID: {drive_file_id}")
+                                    if delete_after_upload:
+                                        try:
+                                            os.remove(local_path)
+                                            print(f"🗑️ Đã xóa file đĩa C: {local_path}")
+                                        except Exception as ex:
+                                            print(f"❌ Lỗi xóa file local: {ex}")
 
-            # 2. Quét thư mục local và sync danh sách mới lên Server
-            # Để đơn giản, ta quét thư mục và gửi sync payload
-            # (Giả định worker biết folder_path từ API hoặc lần quét trước)
+                                    complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
+                                    requests.post(complete_url, json={
+                                        "fileId": file_id,
+                                        "driveFileId": drive_file_id,
+                                        "status": "completed"
+                                    }, timeout=15)
+                                else:
+                                    print(f"❌ Lỗi upload: {err_msg}")
+                                    complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
+                                    requests.post(complete_url, json={
+                                        "fileId": file_id,
+                                        "status": "failed",
+                                        "error": err_msg
+                                    }, timeout=15)
+
+            # === MODE 2: CAU HINH DON LE (CONFIG) ===
+            elif config_id:
+                api_url = f"{server_url}/api/hero-drive/worker?action=get_pending_files&configId={config_id}"
+                res = requests.get(api_url, timeout=15)
+                if res.status_code == 200:
+                    data = res.json()
+                    if data.get("success"):
+                        access_token = data.get("accessToken")
+                        target_folder_id = data.get("targetFolderId")
+                        delete_after_upload = data.get("deleteAfterUpload", False)
+                        pending_files = data.get("files", [])
+
+                        if pending_files and access_token:
+                            for file_item in pending_files:
+                                file_id = file_item.get("id")
+                                local_path = file_item.get("localPath")
+                                file_name = file_item.get("fileName")
+
+                                if not os.path.exists(local_path):
+                                    continue
+
+                                print(f"⏳ Uploading: {file_name} ...")
+                                success, drive_file_id, err_msg = upload_file_to_google_drive(
+                                    access_token, local_path, file_name, target_folder_id
+                                )
+
+                                if success:
+                                    print(f"✅ Tải thành công! Drive ID: {drive_file_id}")
+                                    if delete_after_upload:
+                                        try:
+                                            os.remove(local_path)
+                                            print(f"🗑️ Đã xóa file đĩa C: {local_path}")
+                                        except Exception as ex:
+                                            print(f"❌ Lỗi xóa file local: {ex}")
+
+                                    complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
+                                    requests.post(complete_url, json={
+                                        "fileId": file_id,
+                                        "driveFileId": drive_file_id,
+                                        "status": "completed"
+                                    }, timeout=15)
+                                else:
+                                    print(f"❌ Lỗi upload: {err_msg}")
+                                    complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
+                                    requests.post(complete_url, json={
+                                        "fileId": file_id,
+                                        "status": "failed",
+                                        "error": err_msg
+                                    }, timeout=15)
 
         except Exception as e:
             print(f"⚠️ Lỗi kết nối Worker Loop: {e}")

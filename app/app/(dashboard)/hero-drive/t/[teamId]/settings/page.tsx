@@ -1,10 +1,9 @@
 import { getUser, getTeamForUser } from '@/lib/db/queries';
 import { redirect } from 'next/navigation';
-import { getDriveProjects } from '@/lib/db/hero-drive-actions';
 import { getConnectionsByTeam } from '@/lib/db/connect-hub-queries';
-import DriveDashboardClient from './dashboard-client';
+import DriveSettingsClient from './drive-settings-client';
 
-export default async function HeroDriveDashboardPage({
+export default async function HeroDriveSettingsPage({
   params,
 }: {
   params: Promise<{ teamId: string }>;
@@ -18,19 +17,14 @@ export default async function HeroDriveDashboardPage({
   const team = await getTeamForUser();
   if (!team || team.id !== teamId) redirect('/dashboard');
 
-  const projectsRes = await getDriveProjects(teamId);
-  const projects = projectsRes.success ? projectsRes.data || [] : [];
-
   const rawConnections = await getConnectionsByTeam(teamId);
   const googleDriveConnections = (rawConnections || []).filter(
     (c: any) => c.connectorSlug === 'google-drive' || c.appSlug === 'google-drive'
   );
 
   return (
-    <DriveDashboardClient
-      user={user}
-      team={team}
-      initialProjects={projects}
+    <DriveSettingsClient
+      teamId={teamId}
       googleDriveConnections={googleDriveConnections}
     />
   );

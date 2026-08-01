@@ -1,10 +1,131 @@
 'use server';
+
 import { db } from './drizzle';
-import { driveScanConfigs, driveContents, driveFiles, DriveScanConfig, DriveContent, DriveFile } from './schema';
+import {
+  driveProjects,
+  driveFolderMappings,
+  driveScanConfigs,
+  driveContents,
+  driveFiles,
+} from './schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-// === CONFIG ACTIONS ===
+// === PROJECT ACTIONS ===
+
+export async function getDriveProjects(teamId: number) {
+  try {
+    const projects = await db
+      .select()
+      .from(driveProjects)
+      .where(eq(driveProjects.teamId, teamId))
+      .orderBy(desc(driveProjects.createdAt));
+    return { success: true, data: projects };
+  } catch (error: any) {
+    console.error('Error fetching drive projects:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function createDriveProjectAction(data: {
+  teamId: number;
+  userId: number;
+  name: string;
+  description?: string;
+}) {
+  try {
+    const [newProject] = await db
+      .insert(driveProjects)
+      .values({
+        teamId: data.teamId,
+        userId: data.userId,
+        name: data.name,
+        description: data.description || null,
+        status: 'active',
+      })
+      .returning();
+
+    revalidatePath(`/hero-drive/t/${data.teamId}/dashboard`);
+    return { success: true, data: newProject };
+  } catch (error: any) {
+    console.error('Error creating drive project:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteDriveProjectAction(id: number, teamId: number) {
+  try {
+    await db
+      .delete(driveProjects)
+      .where(and(eq(driveProjects.id, id), eq(driveProjects.teamId, teamId)));
+
+    revalidatePath(`/hero-drive/t/${teamId}/dashboard`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// === FOLDER MAPPING ACTIONS ===
+
+export async function getDriveFolderMappings(projectId: number) {
+  try {
+    const mappings = await db
+      .select()
+      .from(driveFolderMappings)
+      .where(eq(driveFolderMappings.projectId, projectId))
+      .orderBy(desc(driveFolderMappings.createdAt));
+    return { success: true, data: mappings };
+  } catch (error: any) {
+    console.error('Error fetching folder mappings:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function createDriveFolderMappingAction(data: {
+  projectId: number;
+  name: string;
+  localFolderPath: string;
+  connectionId?: number | null;
+  targetFolderId?: string | null;
+  targetFolderName?: string | null;
+  deleteAfterUpload: boolean;
+}) {
+  try {
+    const [newMapping] = await db
+      .insert(driveFolderMappings)
+      .values({
+        projectId: data.projectId,
+        name: data.name,
+        localFolderPath: data.localFolderPath,
+        connectionId: data.connectionId || null,
+        targetFolderId: data.targetFolderId || null,
+        targetFolderName: data.targetFolderName || null,
+        deleteAfterUpload: data.deleteAfterUpload,
+        isActive: true,
+      })
+      .returning();
+
+    return { success: true, data: newMapping };
+  } catch (error: any) {
+    console.error('Error creating folder mapping:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteDriveFolderMappingAction(id: number, projectId: number) {
+  try {
+    await db
+      .delete(driveFolderMappings)
+      .where(and(eq(driveFolderMappings.id, id), eq(driveFolderMappings.projectId, projectId)));
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// === LEGACY SCAN CONFIG ACTIONS ===
 
 export async function getDriveScanConfigs(teamId: number) {
   try {
@@ -15,78 +136,18 @@ export async function getDriveScanConfigs(teamId: number) {
       .orderBy(desc(driveScanConfigs.createdAt));
     return { success: true, data: configs };
   } catch (error: any) {
-    console.error('Error fetching drive scan configs:', error);
     return { success: false, error: error.message };
   }
 }
 
-export async function createDriveScanConfigAction(data: {
-  teamId: number;
-  userId: number;
-  name: string;
-  localFolderPath: string;
-  connectionId?: number | null;
-  targetFolderId?: string | null;
-  deleteAfterUpload: boolean;
-}) {
-  try {
-    const [newConfig] = await db
-      .insert(driveScanConfigs)
-      .values({
-        teamId: data.teamId,
-        userId: data.userId,
-        name: data.name,
-        localFolderPath: data.localFolderPath,
-        connectionId: data.connectionId || null,
-        targetFolderId: data.targetFolderId || null,
-        deleteAfterUpload: data.deleteAfterUpload,
-        isActive: true,
-      })
-      .returning();
+// === CONTENTS & FILES ACTIONS ===
 
-    revalidatePath(`/hero-drive/t/${data.teamId}/dashboard`);
-    return { success: true, data: newConfig };
-  } catch (error: any) {
-    console.error('Error creating drive scan config:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-export async function toggleDriveScanConfigAction(id: number, teamId: number, isActive: boolean) {
-  try {
-    await db
-      .update(driveScanConfigs)
-      .set({ isActive, updatedAt: new Date() })
-      .where(and(eq(driveScanConfigs.id, id), eq(driveScanConfigs.teamId, teamId)));
-
-    revalidatePath(`/hero-drive/t/${teamId}/dashboard`);
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
-export async function deleteDriveScanConfigAction(id: number, teamId: number) {
-  try {
-    await db
-      .delete(driveScanConfigs)
-      .where(and(eq(driveScanConfigs.id, id), eq(driveScanConfigs.teamId, teamId)));
-
-    revalidatePath(`/hero-drive/t/${teamId}/dashboard`);
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
-// === CONTENT & FILES ACTIONS ===
-
-export async function getDriveContentsWithFiles(configId: number) {
+export async function getDriveContentsWithFilesByProject(projectId: number) {
   try {
     const contents = await db
       .select()
       .from(driveContents)
-      .where(eq(driveContents.configId, configId))
+      .where(eq(driveContents.projectId, projectId))
       .orderBy(desc(driveContents.createdAt));
 
     const result = await Promise.all(

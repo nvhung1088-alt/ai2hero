@@ -2575,6 +2575,32 @@ export type NewDubDictionary = typeof dubDictionaries.$inferInsert;
 // HERO DRIVE MODULE TABLES
 // ============================================================
 
+export const driveProjects = pgTable('drive_projects', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  status: varchar('status', { length: 20 }).notNull().default('active'), // 'active' | 'paused' | 'completed'
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const driveFolderMappings = pgTable('drive_folder_mappings', {
+  id: serial('id').primaryKey(),
+  projectId: integer('project_id').notNull().references(() => driveProjects.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  localFolderPath: text('local_folder_path').notNull(),
+  connectionId: integer('connection_id'),
+  targetFolderId: varchar('target_folder_id', { length: 255 }),
+  targetFolderName: varchar('target_folder_name', { length: 255 }),
+  deleteAfterUpload: boolean('delete_after_upload').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
+  lastScanAt: timestamp('last_scan_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 export const driveScanConfigs = pgTable('drive_scan_configs', {
   id: serial('id').primaryKey(),
   teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
@@ -2593,7 +2619,9 @@ export const driveScanConfigs = pgTable('drive_scan_configs', {
 export const driveContents = pgTable('drive_contents', {
   id: serial('id').primaryKey(),
   teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
-  configId: integer('config_id').notNull().references(() => driveScanConfigs.id, { onDelete: 'cascade' }),
+  configId: integer('config_id').references(() => driveScanConfigs.id, { onDelete: 'cascade' }),
+  projectId: integer('project_id').references(() => driveProjects.id, { onDelete: 'cascade' }),
+  mappingId: integer('mapping_id').references(() => driveFolderMappings.id, { onDelete: 'cascade' }),
   baseName: varchar('base_name', { length: 255 }).notNull(),
   status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'uploading' | 'completed' | 'failed'
   totalFiles: integer('total_files').notNull().default(0),
@@ -2618,6 +2646,18 @@ export const driveFiles = pgTable('drive_files', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+export const driveProjectsRelations = relations(driveProjects, ({ one, many }) => ({
+  team: one(teams, { fields: [driveProjects.teamId], references: [teams.id] }),
+  user: one(users, { fields: [driveProjects.userId], references: [users.id] }),
+  mappings: many(driveFolderMappings),
+  contents: many(driveContents),
+}));
+
+export const driveFolderMappingsRelations = relations(driveFolderMappings, ({ one, many }) => ({
+  project: one(driveProjects, { fields: [driveFolderMappings.projectId], references: [driveProjects.id] }),
+  contents: many(driveContents),
+}));
+
 export const driveScanConfigsRelations = relations(driveScanConfigs, ({ one, many }) => ({
   team: one(teams, { fields: [driveScanConfigs.teamId], references: [teams.id] }),
   user: one(users, { fields: [driveScanConfigs.userId], references: [users.id] }),
@@ -2626,6 +2666,8 @@ export const driveScanConfigsRelations = relations(driveScanConfigs, ({ one, man
 
 export const driveContentsRelations = relations(driveContents, ({ one, many }) => ({
   config: one(driveScanConfigs, { fields: [driveContents.configId], references: [driveScanConfigs.id] }),
+  project: one(driveProjects, { fields: [driveContents.projectId], references: [driveProjects.id] }),
+  mapping: one(driveFolderMappings, { fields: [driveContents.mappingId], references: [driveFolderMappings.id] }),
   files: many(driveFiles),
 }));
 
@@ -2633,12 +2675,17 @@ export const driveFilesRelations = relations(driveFiles, ({ one }) => ({
   content: one(driveContents, { fields: [driveFiles.contentId], references: [driveContents.id] }),
 }));
 
+export type DriveProject = typeof driveProjects.$inferSelect;
+export type NewDriveProject = typeof driveProjects.$inferInsert;
+export type DriveFolderMapping = typeof driveFolderMappings.$inferSelect;
+export type NewDriveFolderMapping = typeof driveFolderMappings.$inferInsert;
 export type DriveScanConfig = typeof driveScanConfigs.$inferSelect;
 export type NewDriveScanConfig = typeof driveScanConfigs.$inferInsert;
 export type DriveContent = typeof driveContents.$inferSelect;
 export type NewDriveContent = typeof driveContents.$inferInsert;
 export type DriveFile = typeof driveFiles.$inferSelect;
 export type NewDriveFile = typeof driveFiles.$inferInsert;
+
 
 
 
