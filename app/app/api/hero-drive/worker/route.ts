@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });
   } catch (error: any) {
     console.error('Worker API error:', error);
-    return { success: false, error: error.message };
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 

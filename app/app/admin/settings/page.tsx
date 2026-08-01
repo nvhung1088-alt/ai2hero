@@ -39,6 +39,7 @@ const AVAILABLE_APPS = [
   { id: 'hero-film', name: 'HeroFilm' },
   { id: 'hero-dub', name: 'HeroDub' },
   { id: 'hero-downloader', name: 'Hero Downloader' },
+  { id: 'hero-drive', name: 'HeroDrive' },
 ];
 
 export default function AdminSettingsPage() {

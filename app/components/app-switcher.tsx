@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { LayoutGrid, MessageSquare, Plug, Users, FileBarChart, MonitorPlay, DownloadCloud } from 'lucide-react';
+import { LayoutGrid, MessageSquare, Plug, Users, FileBarChart, MonitorPlay, DownloadCloud, HardDrive } from 'lucide-react';
 
 const APP_LINKS = [
   { id: 'social', name: 'Social Hero', desc: 'Bảng tin nội bộ', icon: MessageSquare, href: '/', color: 'text-blue-400', bg: 'bg-blue-500/10' },
@@ -11,6 +11,7 @@ const APP_LINKS = [
   { id: 'hero-report', name: 'Hero Report', desc: 'Báo cáo thông minh', icon: FileBarChart, href: '/hero-report/dashboard', color: 'text-orange-400', bg: 'bg-orange-500/10' },
   { id: 'herovideodownload', name: 'Video Downloader', desc: 'Tải video HD', icon: MonitorPlay, href: '/herovideodownload/dashboard', color: 'text-pink-400', bg: 'bg-pink-500/10' },
   { id: 'hero-downloader', name: 'Hero Downloader', desc: 'Quét & Tải hàng loạt', icon: DownloadCloud, href: '/hero-downloader/dashboard', color: 'text-teal-400', bg: 'bg-teal-500/10' },
+  { id: 'hero-drive', name: 'HeroDrive', desc: 'Đồng bộ Google Drive', icon: HardDrive, href: '/hero-drive/dashboard', color: 'text-blue-500', bg: 'bg-blue-600/10' },
 ];
 
 export function AppSwitcher() {
