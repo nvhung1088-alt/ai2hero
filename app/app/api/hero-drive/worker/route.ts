@@ -27,6 +27,15 @@ function parseCredentials(conn: any) {
   return null;
 }
 
+function parseIntervalToSeconds(val: any): number {
+  if (!val) return 10;
+  const str = String(val).trim().toLowerCase();
+  if (str.endsWith('s')) return parseInt(str.slice(0, -1)) || 10;
+  if (str.endsWith('m')) return (parseInt(str.slice(0, -1)) || 1) * 60;
+  if (str.endsWith('h')) return (parseInt(str.slice(0, -1)) || 1) * 3600;
+  return parseInt(str) || 10;
+}
+
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const action = searchParams.get('action');
@@ -241,9 +250,29 @@ export async function GET(req: NextRequest) {
         };
       });
 
+      const mappingsWithScanStatus = mappings.map((m) => {
+        const intervalSec = parseIntervalToSeconds(m.scanInterval);
+        let shouldScan = true;
+        let remainingSeconds = 0;
+
+        if (m.lastScanAt && m.status !== 'scanning') {
+          const elapsedSec = (Date.now() - new Date(m.lastScanAt).getTime()) / 1000;
+          if (elapsedSec < intervalSec) {
+            shouldScan = false;
+            remainingSeconds = Math.ceil(intervalSec - elapsedSec);
+          }
+        }
+
+        return {
+          ...m,
+          shouldScan,
+          remainingSeconds,
+        };
+      });
+
       return NextResponse.json({
         success: true,
-        mappings,
+        mappings: mappingsWithScanStatus,
         mappingTokens,
         files: filesWithTokens,
       });

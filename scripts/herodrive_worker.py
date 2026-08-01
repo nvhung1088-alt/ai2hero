@@ -16,36 +16,22 @@ def parse_args():
     parser.add_argument("--project", type=int, help="ID của Dự án Quét (Tùy chọn)")
     parser.add_argument("--config", type=int, help="ID của Cấu hình quét (Tùy chọn)")
     parser.add_argument("--server", type=str, default="https://www.ai2hero.com", help="URL máy chủ AI2Hero")
-    parser.add_argument("--interval", type=int, default=10, help="Thời gian giãn cách quét mặc định (giây)")
+    parser.add_argument("--interval", type=int, default=10, help="Thời gian giãn cách kiểm tra polling (giây)")
     return parser.parse_args()
 
-def parse_interval_to_seconds(val):
-    if not val:
-        return 10
-    val_str = str(val).strip().lower()
-    if val_str.endswith('s'):
-        try: return max(5, int(val_str[:-1]))
-        except: return 10
-    elif val_str.endswith('m'):
-        try: return max(5, int(val_str[:-1]) * 60)
-        except: return 10
-    elif val_str.endswith('h'):
-        try: return max(5, int(val_str[:-1]) * 3600)
-        except: return 10
-    try:
-        return max(5, int(val_str))
-    except:
-        return 10
-
 def format_seconds_human(seconds):
+    if not seconds or seconds <= 0:
+        return "vài giây"
     if seconds < 60:
         return f"{seconds} giây"
     elif seconds < 3600:
         mins = seconds // 60
-        return f"{mins} phút ({seconds}s)"
+        secs = seconds % 60
+        return f"{mins} phút {secs}s"
     else:
         hours = seconds // 3600
-        return f"{hours} giờ ({seconds}s)"
+        mins = (seconds % 3600) // 60
+        return f"{hours} giờ {mins} phút"
 
 def get_file_type(extension):
     ext = extension.lower()
@@ -129,17 +115,16 @@ def main():
     server_url = args.server.rstrip('/')
     project_id = args.project
     config_id = args.config
-    default_interval = args.interval
+    poll_interval = args.interval
 
     print("🚀 ===============================================")
-    print("🚀 KHỞI CHẠY HERODRIVE PYTHON WORKER (GLOBAL SYNC)")
+    print("🚀 KHỞI CHẠY HERODRIVE PYTHON WORKER (SMART POLLING)")
     print(f"🌐 Máy chủ kết nối: {server_url}")
-    print("⚡ Trạng thái: Đang kết nối máy chủ và kiểm tra thư mục quét...")
+    print("⚡ Trạng thái: Đang kết nối máy chủ và kiểm tra lịch quét...")
     print("🚀 ===============================================")
 
     while True:
         now_str = datetime.now().strftime("%H:%M:%S")
-        next_sleep = default_interval
 
         try:
             # Lấy toàn bộ task đang hoạt động
@@ -158,27 +143,27 @@ def main():
                     mapping_tokens = data.get("mappingTokens", {})
                     pending_files = data.get("files", [])
 
-                    # Tính thời gian chờ động theo cài đặt scanInterval từ Web
-                    if mappings:
-                        intervals = [parse_interval_to_seconds(m.get("scanInterval")) for m in mappings if m.get("scanInterval")]
-                        if intervals:
-                            next_sleep = min(intervals)
-
-                    human_next_sleep = format_seconds_human(next_sleep)
-
                     if not mappings:
-                        print(f"📡 [{now_str}] Chưa có Thư mục Quét nào được kích hoạt trên Web (Chờ {human_next_sleep})...")
+                        print(f"📡 [{now_str}] Chưa có Thư mục Quét nào được kích hoạt trên Web...")
                     else:
-                        # 1. Quét từng local folder mapping và sync
+                        # 1. Quét từng local folder mapping nếu đến lượt hoặc bấm Quét Ngay
                         for m in mappings:
                             local_folder = m.get("localFolderPath")
                             mapping_id = m.get("id")
                             mapping_name = m.get("name", "Thư mục Quét")
+                            should_scan = m.get("shouldScan", True)
+                            remaining = m.get("remainingSeconds", 0)
 
                             if not local_folder or not os.path.exists(local_folder):
                                 print(f"⚠️ [{now_str}] Thư mục local chưa tồn tại trên máy tính: {local_folder}")
                                 continue
 
+                            if not should_scan:
+                                rem_str = format_seconds_human(remaining)
+                                print(f"⏳ [{now_str}] [{mapping_name}]: Lần quét tới sau {rem_str}. (Sẵn sàng nhận nút 'Quét Ngay' từ Web...)")
+                                continue
+
+                            # Nếu đến lượt quét hoặc có lệnh Quét Ngay
                             items = scan_and_group_local_folder(local_folder)
                             if items:
                                 print(f"🔍 [{now_str}] Quét [{mapping_name}]: Phát hiện {len(items)} nhóm bài đăng ở local ({local_folder})")
@@ -246,9 +231,6 @@ def main():
                                     "status": "failed",
                                     "error": err_msg
                                 }, timeout=15)
-                    else:
-                        if mappings:
-                            print(f"📡 [{now_str}] Đã kiểm tra {len(mappings)} thư mục quét. Chưa có file mới cần upload. Lượt quét tiếp theo sau: {human_next_sleep}...")
 
             else:
                 print(f"⚠️ [{now_str}] Máy chủ trả về HTTP {res.status_code}")
@@ -256,7 +238,7 @@ def main():
         except Exception as e:
             print(f"⚠️ [{now_str}] Lỗi kết nối Worker Loop: {e}")
 
-        time.sleep(next_sleep)
+        time.sleep(poll_interval)
 
 if __name__ == "__main__":
     main()
