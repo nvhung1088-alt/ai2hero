@@ -2,73 +2,54 @@
 
 import { useState, useEffect } from 'react';
 import {
-  HardDrive,
+  FolderOpen,
   FolderPlus,
   Trash2,
   RefreshCw,
   Copy,
   ExternalLink,
-  ChevronDown,
-  ChevronRight,
   FileVideo,
   FileImage,
   FileText,
   File,
-  FolderOpen,
-  FolderSync,
-  Play,
   Pause,
+  Play,
   Clock,
-  History,
+  Timer,
   CheckCircle2,
   AlertCircle,
-  Timer,
+  HardDrive,
 } from 'lucide-react';
 import {
-  createDriveProjectAction,
-  deleteDriveProjectAction,
-  getDriveFolderMappings,
   createDriveFolderMappingAction,
   deleteDriveFolderMappingAction,
   toggleDriveFolderMappingAction,
   getFolderMappingHistoryAction,
-  getDriveContentsWithFilesByProject,
 } from '@/lib/db/hero-drive-actions';
-import DriveProjectSidebar from './drive-project-sidebar';
+import MappingSidebar from './mapping-sidebar';
 
 interface DashboardProps {
   user: any;
   team: any;
-  initialProjects: any[];
+  initialMappings: any[];
   googleDriveConnections: any[];
 }
 
 export default function DriveDashboardClient({
   user,
   team,
-  initialProjects,
+  initialMappings,
   googleDriveConnections,
 }: DashboardProps) {
-  const [projects, setProjects] = useState<any[]>(initialProjects);
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(
-    initialProjects.length > 0 ? initialProjects[0].id : null
+  const [mappings, setMappings] = useState<any[]>(initialMappings);
+  const [selectedMappingId, setSelectedMappingId] = useState<number | null>(
+    initialMappings.length > 0 ? initialMappings[0].id : null
   );
 
-  const [mappings, setMappings] = useState<any[]>([]);
-  const [contents, setContents] = useState<any[]>([]);
-  const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false);
-  const [expandedContentIds, setExpandedContentIds] = useState<number[]>([]);
-
-  // History Modal
-  const [historyMapping, setHistoryMapping] = useState<any | null>(null);
-  const [historyContents, setHistoryContents] = useState<any[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+  const [mappingContents, setMappingContents] = useState<any[]>([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState<boolean>(false);
 
   // Modals
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState<boolean>(false);
-  const [newProjectName, setNewProjectName] = useState<string>('');
-  const [newProjectDesc, setNewProjectDesc] = useState<string>('');
-
   const [isMappingModalOpen, setIsMappingModalOpen] = useState<boolean>(false);
   const [newMappingName, setNewMappingName] = useState<string>('');
   const [newLocalPath, setNewLocalPath] = useState<string>('');
@@ -79,75 +60,37 @@ export default function DriveDashboardClient({
   const [newTargetFolderName, setNewTargetFolderName] = useState<string>('');
   const [newDeleteAfterUpload, setNewDeleteAfterUpload] = useState<boolean>(false);
   const [newScanInterval, setNewScanInterval] = useState<number>(10);
-
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Fetch Mappings & Contents when selectedProjectId changes
-  const fetchProjectDetails = async (projectId: number) => {
-    setIsLoadingDetails(true);
-    const [mapRes, contentRes] = await Promise.all([
-      getDriveFolderMappings(projectId),
-      getDriveContentsWithFilesByProject(projectId),
-    ]);
-
-    if (mapRes.success && mapRes.data) setMappings(mapRes.data);
-    if (contentRes.success && contentRes.data) setContents(contentRes.data);
-
-    setIsLoadingDetails(false);
+  // Fetch Files for selectedMappingId
+  const fetchMappingFiles = async (mappingId: number) => {
+    setIsLoadingFiles(true);
+    const res = await getFolderMappingHistoryAction(mappingId);
+    if (res.success && res.data) {
+      setMappingContents(res.data);
+    }
+    setIsLoadingFiles(false);
   };
 
   useEffect(() => {
-    if (selectedProjectId) {
-      fetchProjectDetails(selectedProjectId);
+    if (selectedMappingId) {
+      fetchMappingFiles(selectedMappingId);
     } else {
-      setMappings([]);
-      setContents([]);
+      setMappingContents([]);
     }
-  }, [selectedProjectId]);
+  }, [selectedMappingId]);
 
-  // Handle Create Project
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newProjectName) return;
-
-    setIsSubmitting(true);
-    const res = await createDriveProjectAction({
-      teamId: team.id,
-      userId: user.id,
-      name: newProjectName,
-      description: newProjectDesc,
-    });
-
-    if (res.success && res.data) {
-      setProjects([res.data, ...projects]);
-      setSelectedProjectId(res.data.id);
-      setIsProjectModalOpen(false);
-      setNewProjectName('');
-      setNewProjectDesc('');
-    }
-    setIsSubmitting(false);
-  };
-
-  const handleDeleteProject = async (id: number) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa dự án này cùng toàn bộ cấu hình thư mục?')) return;
-    const res = await deleteDriveProjectAction(id, team.id);
-    if (res.success) {
-      const nextProjects = projects.filter((p) => p.id !== id);
-      setProjects(nextProjects);
-      if (selectedProjectId === id) {
-        setSelectedProjectId(nextProjects.length > 0 ? nextProjects[0].id : null);
-      }
-    }
-  };
-
-  // Handle Create Folder Mapping
+  // Create Mapping
   const handleCreateMapping = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProjectId || !newMappingName || !newLocalPath) return;
+    if (!newMappingName || !newLocalPath) return;
+
+    // Default dummy projectId for compatibility
+    const defaultProjectId = 1;
 
     setIsSubmitting(true);
     const res = await createDriveFolderMappingAction({
-      projectId: selectedProjectId,
+      projectId: defaultProjectId,
       name: newMappingName,
       localFolderPath: newLocalPath,
       connectionId: newConnectionId ? parseInt(newConnectionId) : null,
@@ -158,7 +101,9 @@ export default function DriveDashboardClient({
     });
 
     if (res.success && res.data) {
-      setMappings([res.data, ...mappings]);
+      const nextMappings = [res.data, ...mappings];
+      setMappings(nextMappings);
+      setSelectedMappingId(res.data.id);
       setIsMappingModalOpen(false);
       setNewMappingName('');
       setNewLocalPath('');
@@ -169,8 +114,8 @@ export default function DriveDashboardClient({
   };
 
   const handleToggleMapping = async (id: number, currentActive: boolean) => {
-    if (!selectedProjectId) return;
-    const res = await toggleDriveFolderMappingAction(id, selectedProjectId, !currentActive);
+    const defaultProjectId = 1;
+    const res = await toggleDriveFolderMappingAction(id, defaultProjectId, !currentActive);
     if (res.success) {
       setMappings(
         mappings.map((m) =>
@@ -183,37 +128,26 @@ export default function DriveDashboardClient({
   };
 
   const handleDeleteMapping = async (id: number) => {
-    if (!confirm('Xóa thư mục quét này?')) return;
-    if (!selectedProjectId) return;
-    const res = await deleteDriveFolderMappingAction(id, selectedProjectId);
+    if (!confirm('Bạn có chắc muốn xóa thư mục quét này?')) return;
+    const defaultProjectId = 1;
+    const res = await deleteDriveFolderMappingAction(id, defaultProjectId);
     if (res.success) {
-      setMappings(mappings.filter((m) => m.id !== id));
+      const nextMappings = mappings.filter((m) => m.id !== id);
+      setMappings(nextMappings);
+      if (selectedMappingId === id) {
+        setSelectedMappingId(nextMappings.length > 0 ? nextMappings[0].id : null);
+      }
     }
-  };
-
-  // Open History Modal
-  const handleOpenHistory = async (mapping: any) => {
-    setHistoryMapping(mapping);
-    setIsLoadingHistory(true);
-    const res = await getFolderMappingHistoryAction(mapping.id);
-    if (res.success && res.data) {
-      setHistoryContents(res.data);
-    }
-    setIsLoadingHistory(false);
-  };
-
-  const toggleExpandContent = (id: number) => {
-    setExpandedContentIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Đã copy link trực tiếp!');
+    alert('Đã copy link trực tiếp thành công!');
   };
 
-  const activeProject = projects.find((p) => p.id === selectedProjectId);
+  const activeMapping = mappings.find((m) => m.id === selectedMappingId);
+  const activeConn = googleDriveConnections.find((c) => c.id === activeMapping?.connectionId);
+  const activeEmail = activeConn?.credentials?.accountEmail || activeConn?.credentials?.email || activeConn?.name;
 
   const getFileIcon = (fileType: string) => {
     switch (fileType) {
@@ -236,462 +170,197 @@ export default function DriveDashboardClient({
 
   return (
     <div className="flex-1 flex flex-col lg:flex-row min-h-screen bg-slate-950 text-slate-100">
-      {/* Sidebar Projects */}
-      <DriveProjectSidebar
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        onSelectProject={(id) => setSelectedProjectId(id)}
-        onCreateProjectClick={() => setIsProjectModalOpen(true)}
-        onDeleteProject={handleDeleteProject}
+      {/* Sidebar Folder Mappings */}
+      <MappingSidebar
+        mappings={mappings}
+        selectedMappingId={selectedMappingId}
+        onSelectMapping={(id) => setSelectedMappingId(id)}
+        onCreateMappingClick={() => setIsMappingModalOpen(true)}
+        onDeleteMapping={handleDeleteMapping}
+        onToggleMapping={handleToggleMapping}
+        googleDriveConnections={googleDriveConnections}
       />
 
-      {/* Main Content Area */}
+      {/* Main View: Files & Details of Selected Folder Mapping */}
       <div className="flex-1 p-6 space-y-6">
-        {activeProject ? (
+        {activeMapping ? (
           <div className="space-y-6">
-            {/* Top Toolbar */}
+            {/* Header Selected Mapping */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-4">
               <div>
-                <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <FolderSync className="w-5 h-5 text-blue-400" />
-                  {activeProject.name}
-                </h1>
-                {activeProject.description && (
-                  <p className="text-xs text-slate-400 mt-1">{activeProject.description}</p>
-                )}
+                <div className="flex items-center gap-3">
+                  <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                    <FolderOpen className="w-5 h-5 text-blue-400" />
+                    {activeMapping.name}
+                  </h1>
+                  <span
+                    className={`px-2 py-0.5 text-xs rounded border font-medium ${
+                      activeMapping.isActive
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}
+                  >
+                    {activeMapping.isActive ? 'Đang chạy quét' : 'Đã tạm dừng'}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 mt-2 font-mono">
+                  <span>💻 Máy tính: <strong className="text-slate-200">{activeMapping.localFolderPath}</strong></span>
+                  <span>☁️ Drive Target: <strong className="text-blue-400">{activeMapping.targetFolderName || activeMapping.targetFolderId || 'Root'}</strong></span>
+                  <span>🔑 Tài khoản: <strong className="text-slate-200">{activeEmail ? `✉️ ${activeEmail}` : 'Mặc định'}</strong></span>
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => selectedProjectId && fetchProjectDetails(selectedProjectId)}
-                  className="p-2 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg text-xs text-slate-300 flex items-center gap-1.5 transition-colors"
+                  onClick={() => handleToggleMapping(activeMapping.id, activeMapping.isActive)}
+                  className={`px-3 py-2 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-colors ${
+                    activeMapping.isActive
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                      : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                  }`}
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDetails ? 'animate-spin' : ''}`} />
-                  Làm mới
+                  {activeMapping.isActive ? (
+                    <>
+                      <Pause className="w-3.5 h-3.5 fill-emerald-400" /> Tạm dừng quét
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5" /> Tiếp tục quét
+                    </>
+                  )}
                 </button>
 
                 <button
-                  onClick={() => setIsMappingModalOpen(true)}
-                  className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 shadow-lg shadow-blue-500/20"
+                  onClick={() => selectedMappingId && fetchMappingFiles(selectedMappingId)}
+                  className="p-2 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg text-xs text-slate-300 flex items-center gap-1.5 transition-colors"
                 >
-                  <FolderPlus className="w-4 h-4" />+ Thêm Thư Mục Quét (Mapping)
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingFiles ? 'animate-spin' : ''}`} />
+                  Làm mới
                 </button>
               </div>
             </div>
 
-            {/* Block 1: Folder Mappings (N Cặp Thư Mục Quét/Lưu) */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <FolderOpen className="w-4 h-4 text-emerald-400" />
-                  Cấu hình Thư mục Quét máy tính & Google Drive ({mappings.length})
-                </h2>
+            {/* Config Meta Bar */}
+            <div className="p-4 bg-slate-900/40 border border-slate-800/80 rounded-xl flex flex-wrap items-center justify-between gap-4 text-xs">
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1.5 text-slate-400">
+                  <Clock className="w-4 h-4 text-blue-400" />
+                  Cập nhật gần nhất: <strong className="text-slate-200">{formatLastScanTime(activeMapping.lastScanAt)}</strong>
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-400">
+                  <Timer className="w-4 h-4" />
+                  Chu kỳ quét: <strong className="text-amber-300">{activeMapping.scanInterval || 10} giây/lần</strong>
+                </span>
               </div>
 
-              {mappings.length === 0 ? (
-                <div className="p-6 border border-slate-800/80 rounded-xl bg-slate-900/30 text-center">
-                  <FolderOpen className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-slate-400">
-                    Chưa có cấu hình thư mục quét nào trong dự án này
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1 mb-3">
-                    Thêm cặp thư mục (Đĩa C ➔ Thư mục Google Drive) để máy tính bắt đầu quét upload.
-                  </p>
-                  <button
-                    onClick={() => setIsMappingModalOpen(true)}
-                    className="px-3 py-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-medium hover:bg-blue-600/30 transition-colors"
-                  >
-                    + Thêm Thư mục Quét
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {mappings.map((mapping) => {
-                    const conn = googleDriveConnections.find((c) => c.id === mapping.connectionId);
-                    const connEmail = conn?.credentials?.accountEmail || conn?.credentials?.email || conn?.name;
-
-                    return (
-                      <div
-                        key={mapping.id}
-                        className={`p-4 bg-slate-900/50 border rounded-xl space-y-3 relative group transition-all ${
-                          mapping.isActive
-                            ? 'border-slate-800 hover:border-slate-700'
-                            : 'border-slate-800/50 bg-slate-950/40 opacity-75'
-                        }`}
-                      >
-                        {/* Header Mapping Card */}
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-sm text-slate-200">{mapping.name}</h3>
-
-                            {/* Badge Trạng thái */}
-                            <span
-                              className={`px-2 py-0.5 text-[10px] rounded border font-medium flex items-center gap-1 ${
-                                !mapping.isActive
-                                  ? 'bg-slate-800 text-slate-400 border-slate-700'
-                                  : mapping.status === 'uploading'
-                                  ? 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse'
-                                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                              }`}
-                            >
-                              {mapping.isActive
-                                ? mapping.status === 'uploading'
-                                  ? 'Đang upload'
-                                  : 'Đang hoạt động'
-                                : 'Đã tạm dừng'}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5">
-                            {/* Nút Play / Pause */}
-                            <button
-                              onClick={() => handleToggleMapping(mapping.id, mapping.isActive)}
-                              className={`p-1.5 rounded-lg border transition-colors ${
-                                mapping.isActive
-                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
-                              }`}
-                              title={mapping.isActive ? 'Tạm dừng quét' : 'Kích hoạt lại'}
-                            >
-                              {mapping.isActive ? (
-                                <Pause className="w-3.5 h-3.5 fill-emerald-400" />
-                              ) : (
-                                <Play className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-
-                            {/* Nút Xóa */}
-                            <button
-                              onClick={() => handleDeleteMapping(mapping.id)}
-                              className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg border border-transparent hover:border-rose-500/20 transition-colors"
-                              title="Xóa mapping"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Details Info */}
-                        <div className="space-y-1 text-xs">
-                          <p className="text-slate-400 font-mono break-all line-clamp-1">
-                            💻 Máy tính: <span className="text-slate-200">{mapping.localFolderPath}</span>
-                          </p>
-                          <p className="text-slate-400 font-mono break-all line-clamp-1">
-                            ☁️ Google Drive Target:{' '}
-                            <span className="text-blue-400 font-semibold">
-                              {mapping.targetFolderName || mapping.targetFolderId || 'Mặc định (Root)'}
-                            </span>
-                          </p>
-                          <p className="text-slate-400">
-                            🔑 Tài khoản Drive:{' '}
-                            <span className="text-slate-200 font-medium">
-                              {connEmail ? `✉️ ${connEmail}` : 'Mặc định'}
-                            </span>
-                          </p>
-                        </div>
-
-                        {/* Badges & Actions Footer */}
-                        <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-500 flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              {formatLastScanTime(mapping.lastScanAt)}
-                            </span>
-                            <span className="text-amber-400 flex items-center gap-1">
-                              <Timer className="w-3 h-3" />
-                              {mapping.scanInterval || 10}s/lần
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {mapping.deleteAfterUpload && (
-                              <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded font-medium">
-                                Tự xóa đĩa C
-                              </span>
-                            )}
-                            <button
-                              onClick={() => handleOpenHistory(mapping)}
-                              className="flex items-center gap-1 text-blue-400 hover:underline text-[11px] font-medium"
-                            >
-                              <History className="w-3 h-3" />
-                              Lịch sử Upload
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+              {activeMapping.deleteAfterUpload && (
+                <span className="px-2 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg font-medium text-[11px]">
+                  ✓ Tự động xóa file máy tính sau khi up
+                </span>
               )}
             </div>
 
-            {/* Block 2: Contents Table (Gom nhóm theo baseName) */}
-            <div className="space-y-3 pt-2 border-t border-slate-800">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Danh sách Bài Đăng (Contents) ({contents.length})
-                </h2>
-              </div>
+            {/* List Files in selected Folder Mapping */}
+            <div className="space-y-3">
+              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Danh sách File & Bài đăng trong Thư mục này
+              </h2>
 
-              {isLoadingDetails ? (
+              {isLoadingFiles ? (
                 <div className="p-8 text-center text-slate-500 text-xs">
-                  Đang tải danh sách bài đăng...
+                  Đang tải danh sách file...
                 </div>
-              ) : contents.length === 0 ? (
-                <div className="p-6 text-center border border-slate-800/80 rounded-xl bg-slate-950/40 text-slate-400 text-xs">
-                  Chưa có bài đăng nào được quét ở dự án này.
+              ) : mappingContents.length === 0 ? (
+                <div className="p-8 border border-slate-800/80 rounded-xl bg-slate-900/20 text-center text-xs text-slate-500">
+                  Chưa có file nào được quét trong thư mục này. Bật Python Worker để bắt đầu upload.
                 </div>
               ) : (
-                <div className="space-y-2.5">
-                  {contents.map((content) => {
-                    const isExpanded = expandedContentIds.includes(content.id);
-                    const isDone = content.status === 'completed';
-
-                    return (
-                      <div
-                        key={content.id}
-                        className="bg-slate-900/40 border border-slate-800/80 rounded-xl overflow-hidden"
-                      >
-                        <div
-                          onClick={() => toggleExpandContent(content.id)}
-                          className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-900/70 transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            {isExpanded ? (
-                              <ChevronDown className="w-4 h-4 text-slate-400" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-slate-400" />
-                            )}
-                            <div>
-                              <h4 className="font-semibold text-xs text-slate-200">{content.baseName}</h4>
-                              <p className="text-[11px] text-slate-500">
-                                Đã tải: {content.uploadedFiles} / {content.totalFiles} tệp đính kèm
-                              </p>
-                            </div>
-                          </div>
-
-                          <span
-                            className={`px-2 py-0.5 text-[10px] rounded border font-medium ${
-                              isDone
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                            }`}
-                          >
-                            {isDone ? 'Đã hoàn tất' : 'Đang xử lý'}
+                <div className="space-y-3">
+                  {mappingContents.map((content) => (
+                    <div
+                      key={content.id}
+                      className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl space-y-3"
+                    >
+                      <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-sm text-slate-200">{content.baseName}</h4>
+                          <span className="text-[11px] text-slate-400 font-normal">
+                            ({content.uploadedFiles}/{content.totalFiles} files)
                           </span>
                         </div>
+                        <span
+                          className={`px-2 py-0.5 text-[10px] rounded border font-medium ${
+                            content.status === 'completed'
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                          }`}
+                        >
+                          {content.status === 'completed' ? 'Hoàn tất' : 'Đang xử lý'}
+                        </span>
+                      </div>
 
-                        {/* Collapsible Files List */}
-                        {isExpanded && (
-                          <div className="border-t border-slate-800/80 p-3 bg-slate-950/60 space-y-2">
-                            {content.files && content.files.length > 0 ? (
-                              content.files.map((file: any) => (
-                                <div
-                                  key={file.id}
-                                  className="flex items-center justify-between p-2 bg-slate-900/90 border border-slate-800 rounded-lg text-xs"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    {getFileIcon(file.fileType)}
-                                    <div>
-                                      <p className="font-medium text-slate-300">{file.fileName}</p>
-                                      <p className="text-[10px] text-slate-500">
-                                        {(file.fileSize / (1024 * 1024)).toFixed(2)} MB • Status:{' '}
-                                        <span className="text-slate-400">{file.status}</span>
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  {file.streamLink && (
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        onClick={() => copyToClipboard(file.streamLink)}
-                                        className="flex items-center gap-1 px-2.5 py-1 bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/30 rounded text-[11px] font-medium transition-colors"
-                                      >
-                                        <Copy className="w-3 h-3" />
-                                        Copy Link Stream
-                                      </button>
-                                      <a
-                                        href={file.streamLink}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="p-1 text-slate-400 hover:text-slate-200"
-                                      >
-                                        <ExternalLink className="w-3.5 h-3.5" />
-                                      </a>
-                                    </div>
-                                  )}
+                      <div className="space-y-2">
+                        {content.files && content.files.length > 0 ? (
+                          content.files.map((file: any) => (
+                            <div
+                              key={file.id}
+                              className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800/80 rounded-lg text-xs"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                {getFileIcon(file.fileType)}
+                                <div>
+                                  <p className="font-medium text-slate-200">{file.fileName}</p>
+                                  <p className="text-[10px] text-slate-500">
+                                    {(file.fileSize / (1024 * 1024)).toFixed(2)} MB • Status:{' '}
+                                    <span className="text-slate-400">{file.status}</span>
+                                  </p>
                                 </div>
-                              ))
-                            ) : (
-                              <p className="text-[11px] text-slate-500 text-center py-1">
-                                Không có tệp đính kèm.
-                              </p>
-                            )}
-                          </div>
+                              </div>
+
+                              {file.streamLink && (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => copyToClipboard(file.streamLink)}
+                                    className="flex items-center gap-1 px-2 py-1 bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/30 rounded text-[11px] font-medium transition-colors"
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                    Copy Link Stream
+                                  </button>
+                                  <a
+                                    href={file.streamLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="p-1 text-slate-400 hover:text-slate-200"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-[11px] text-slate-500 text-center py-1">
+                            Chưa có file chi tiết.
+                          </p>
                         )}
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           </div>
         ) : (
           <div className="p-12 text-center border border-slate-800/80 rounded-xl bg-slate-900/20">
-            <HardDrive className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-            <p className="text-base font-medium text-slate-400">Hãy chọn 1 Dự án bên trái</p>
+            <FolderOpen className="w-10 h-10 text-slate-700 mx-auto mb-3" />
+            <p className="text-base font-medium text-slate-400">Hãy chọn 1 Thư mục Quét bên trái</p>
             <p className="text-xs text-slate-500 mt-1">
-              Hoặc bấm nút "+" ở Sidebar để tạo Dự án Quét mới.
+              Hoặc bấm nút "+ Mới" ở Sidebar để thêm Thư mục Quét máy tính & Drive.
             </p>
           </div>
         )}
       </div>
-
-      {/* Modal: History Log Modal */}
-      {historyMapping && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="font-bold text-base text-slate-100 flex items-center gap-2">
-                  <History className="w-4 h-4 text-blue-400" />
-                  Lịch Sử Upload — {historyMapping.name}
-                </h3>
-                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                  Folder máy tính: {historyMapping.localFolderPath}
-                </p>
-              </div>
-              <button
-                onClick={() => setHistoryMapping(null)}
-                className="text-slate-400 hover:text-slate-200"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
-              {isLoadingHistory ? (
-                <div className="p-8 text-center text-slate-500">Đang tải lịch sử upload...</div>
-              ) : historyContents.length === 0 ? (
-                <div className="p-8 text-center text-slate-500">Chưa có lịch sử file nào.</div>
-              ) : (
-                historyContents.map((c) => (
-                  <div
-                    key={c.id}
-                    className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2"
-                  >
-                    <div className="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
-                      <span className="font-semibold text-slate-200">{c.baseName}</span>
-                      <span className="text-[10px] text-slate-400">
-                        {new Date(c.createdAt).toLocaleString('vi-VN')}
-                      </span>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      {c.files &&
-                        c.files.map((f: any) => (
-                          <div
-                            key={f.id}
-                            className="flex items-center justify-between p-2 bg-slate-900/60 rounded border border-slate-800/80 text-[11px]"
-                          >
-                            <div className="flex items-center gap-2">
-                              {getFileIcon(f.fileType)}
-                              <span className="text-slate-300">{f.fileName}</span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`px-1.5 py-0.5 text-[9px] rounded font-medium ${
-                                  f.status === 'completed'
-                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                }`}
-                              >
-                                {f.status}
-                              </span>
-                              {historyMapping.deleteAfterUpload && f.status === 'completed' && (
-                                <span className="text-amber-400 text-[10px]">
-                                  (Đã xóa file đĩa C)
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="flex items-center justify-end border-t border-slate-800 pt-3">
-              <button
-                onClick={() => setHistoryMapping(null)}
-                className="px-4 py-1.5 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 font-medium"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Create Project */}
-      {isProjectModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-base text-slate-100">Tạo Dự Án Mới</h3>
-              <button
-                onClick={() => setIsProjectModalOpen(false)}
-                className="text-slate-400 hover:text-slate-200"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateProject} className="space-y-4 text-xs">
-              <div className="space-y-1">
-                <label className="font-medium text-slate-300">Tên Dự án (Chiến dịch):</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="VD: Kênh Phim Ngắn Youtube 2026"
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-medium text-slate-300">Mô tả dự án (Tùy chọn):</label>
-                <textarea
-                  placeholder="Ghi chú thêm về dự án này..."
-                  value={newProjectDesc}
-                  onChange={(e) => setNewProjectDesc(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 h-20"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsProjectModalOpen(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 font-medium"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 font-medium disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Đang tạo...' : 'Tạo Dự Án'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Modal: Create Folder Mapping */}
       {isMappingModalOpen && (
@@ -766,7 +435,7 @@ export default function DriveDashboardClient({
                 </label>
                 <input
                   type="text"
-                  placeholder="VD: 1a2b3c4d5e..."
+                  placeholder="VD: 1-xeC7Mqq_15_zE9o-BJ4hUW_WDMfpS6D..."
                   value={newTargetFolderId}
                   onChange={(e) => setNewTargetFolderId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 font-mono focus:outline-none focus:border-blue-500"

@@ -1,10 +1,11 @@
 import { getUser, getTeamForUser } from '@/lib/db/queries';
 import { redirect } from 'next/navigation';
-import { getDriveProjects } from '@/lib/db/hero-drive-actions';
-import { getConnectionsByTeam } from '@/lib/db/connect-hub-queries';
+import { db } from '@/lib/db/drizzle';
+import { driveFolderMappings, connectHubConnections } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import DriveDashboardClient from './dashboard-client';
 
-export default async function HeroDriveDashboardPage({
+export default async function DriveDashboardPage({
   params,
 }: {
   params: Promise<{ teamId: string }>;
@@ -18,20 +19,28 @@ export default async function HeroDriveDashboardPage({
   const team = await getTeamForUser();
   if (!team || team.id !== teamId) redirect('/dashboard');
 
-  const projectsRes = await getDriveProjects(teamId);
-  const projects = projectsRes.success ? projectsRes.data || [] : [];
+  // Fetch all folder mappings for team
+  const mappings = await db
+    .select()
+    .from(driveFolderMappings)
+    .orderBy(desc(driveFolderMappings.createdAt));
 
-  const rawConnections = await getConnectionsByTeam(teamId);
-  const googleDriveConnections = (rawConnections || []).filter(
-    (c: any) => c.connectorSlug === 'google-drive' || c.appSlug === 'google-drive'
+  // Fetch all Google Drive Connections from Connect Hub
+  const googleDriveConnections = await db
+    .select()
+    .from(connectHubConnections)
+    .where(eq(connectHubConnections.teamId, teamId));
+
+  const driveConns = googleDriveConnections.filter(
+    (c) => c.appSlug === 'google-drive'
   );
 
   return (
     <DriveDashboardClient
       user={user}
       team={team}
-      initialProjects={projects}
-      googleDriveConnections={googleDriveConnections}
+      initialMappings={mappings}
+      googleDriveConnections={driveConns}
     />
   );
 }

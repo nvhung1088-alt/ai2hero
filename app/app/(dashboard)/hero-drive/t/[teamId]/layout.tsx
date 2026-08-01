@@ -1,7 +1,7 @@
 import { getUser, getTeamForUser } from '@/lib/db/queries';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { HardDrive, LayoutDashboard, Settings, ArrowLeft } from 'lucide-react';
+import { HardDrive, FolderOpen, Layers, Settings, ArrowLeft } from 'lucide-react';
 import TopHeader from '@/components/top-header';
 
 export default async function HeroDriveLayout({
@@ -55,15 +55,24 @@ export default async function HeroDriveLayout({
               </Link>
             </div>
 
-            {/* Navigation Menu */}
+            {/* Navigation Menu (3 Tab) */}
             <nav className="space-y-1">
               <Link
                 href={`/hero-drive/t/${team.id}/dashboard`}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-500/10 text-blue-400 font-medium transition-colors"
               >
-                <LayoutDashboard className="h-4 w-4" />
-                <span className="text-sm">Dự án Quét Upload</span>
+                <FolderOpen className="h-4 w-4" />
+                <span className="text-sm">Thư Mục Quét Upload</span>
               </Link>
+
+              <Link
+                href={`/hero-drive/t/${team.id}/contents`}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-white/5 hover:text-gray-200 font-medium transition-colors"
+              >
+                <Layers className="h-4 w-4 text-purple-400" />
+                <span className="text-sm">Quản Lý Bài Đăng (MXH)</span>
+              </Link>
+
               <Link
                 href={`/hero-drive/t/${team.id}/settings`}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-white/5 hover:text-gray-200 font-medium transition-colors"
