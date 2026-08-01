@@ -145,6 +145,12 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp tính năng **Dịch & Redesign Thumbnail bằng AI** (Connect Hub Vision + Image Gen): Cho phép chọn AI Model và Ngôn ngữ đích (Việt, Anh, Hàn, Nhật, Thái...), tự động đọc text trên ảnh bìa gốc, dịch thuật, tạo lại thumbnail mới và tải lên R2 cloud storage kèm Modal Preview so sánh 2 ảnh trực quan trên Dashboard.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- **2026-08-01 (connect-hub - Google Drive Connector Definition & Real Runner Implementation)**:
+  - 📁 **Google Drive Definition (`google-drive.ts`)**: Nâng cấp định nghĩa Connector Google Drive với 7 Actions chuẩn (`get_about`, `list_files`, `upload_file`, `create_folder`, `get_stream_link`, `get_file_metadata`, `delete_file`).
+  - 🔑 **Cấu hình OAuth 2.0 & Setup Guide**: Bổ sung authFields (`clientId`, `clientSecret`, `refreshToken`, `defaultFolderId`) và hướng dẫn lấy token từ Google Cloud Console & OAuth Playground.
+  - ⚙️ **Google Drive Runner Real API (`runners/google-drive.ts`)**: Viết 100% logic gọi API thực tế hỗ trợ tự động đổi Refresh Token lấy Access Token tươi (`https://oauth2.googleapis.com/token`), Multipart Upload (từ URL/Base64), bốc tách Direct Stream Link cho YouTube/Facebook API, và AbortController timeout 60s.
+  - 🌐 **Đăng ký Ready Slug (`registry.ts`)**: Đăng ký `'google-drive'` vào mảng `READY_SLUGS` hiển thị trên Connect Hub Catalog.
+
 - **2026-07-31 (hero-dub - Auto-Dictionary System & Dedicated Management UI)**:
   - 📚 **Cơ sở dữ liệu Từ điển (`dub_dictionaries`)**: Thêm bảng DB lưu trữ mẫu quy tắc xưng hô, từ điển chuyên ngành & sửa lỗi đồng âm ASR. Seed sẵn 5 bộ mẫu chuẩn (Tiên hiệp, Tây Du Ký, Cổ trang triều đình, Xuyên không, Đô thị hiện đại).
   - 🤖 **Auto-Detect AI & Dropdown UI**: Tích hợp nút **AI Auto-Detect** và Dropdown mẫu từ điển trong `<DubTaskForm>`. Tự động phân tích Tiêu đề/URL video để áp dụng bối cảnh dịch thuật chuẩn xác mà không phụ thuộc vào thao tác thủ công của user.

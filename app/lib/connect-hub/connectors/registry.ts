@@ -97,7 +97,8 @@ const READY_SLUGS = [
   'viettel-ai',
   'google-tts',
   'elevenlabs',
-  'postiz'
+  'postiz',
+  'google-drive'
 ];
 
 // Combine manual and generated connectors. Manual configuration overrides generated ones.
