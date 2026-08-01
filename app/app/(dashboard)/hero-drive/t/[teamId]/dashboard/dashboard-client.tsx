@@ -32,6 +32,7 @@ import {
   getFolderMappingHistoryAction,
 } from '@/lib/db/hero-drive-actions';
 import MappingSidebar from './mapping-sidebar';
+import { DriveWorkerGuide } from './drive-worker-guide';
 
 interface DashboardProps {
   user: any;
@@ -265,8 +266,12 @@ export default function DriveDashboardClient({
       />
 
       {/* Main View: File Table & Detailed Folder Settings */}
-      <div className="flex-1 p-6 space-y-6">
-        {activeMapping ? (
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Banner Hướng dẫn Worker */}
+        <DriveWorkerGuide teamId={team.id} />
+
+        <div className="flex-1 p-6 space-y-6">
+          {activeMapping ? (
           <div className="space-y-6">
             {/* Header Selected Mapping */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-4">
@@ -514,6 +519,7 @@ export default function DriveDashboardClient({
             </p>
           </div>
         )}
+      </div>
       </div>
 
       {/* Modal: Create or Edit Folder Mapping */}
