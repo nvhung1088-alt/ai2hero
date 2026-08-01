@@ -145,6 +145,13 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp tính năng **Dịch & Redesign Thumbnail bằng AI** (Connect Hub Vision + Image Gen): Cho phép chọn AI Model và Ngôn ngữ đích (Việt, Anh, Hàn, Nhật, Thái...), tự động đọc text trên ảnh bìa gốc, dịch thuật, tạo lại thumbnail mới và tải lên R2 cloud storage kèm Modal Preview so sánh 2 ảnh trực quan trên Dashboard.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- **2026-08-01 (hero-drive - Complete HeroDrive MVP with Content Grouping & Auto Local Purge)**:
+  - 🗄️ **Database Migration (`schema.ts`)**: Khởi tạo 3 bảng DB mới (`drive_scan_configs`, `drive_contents`, `drive_files`), thiết lập quan hệ Drizzle ORM và đẩy migration thành công lên Supabase Cloud (`drizzle-kit push`).
+  - ⚙️ **Backend Actions & API Routes (`hero-drive-actions.ts`, `/api/hero-drive/worker`)**: Viết Server Actions CRUD cấu hình quét và 3 API Endpoints (`sync`, `get_pending_files`, `file_complete`) hỗ trợ cấp Access Token Google Drive tươi cho Worker.
+  - 🖥️ **Web Dashboard UI (`/hero-drive/t/[teamId]/dashboard`)**: Xây dựng giao diện Split-Pane Obsidian Glassmorphism cho phép tạo cấu hình quét (kèm toggle chọn *Tự động xóa file trên đĩa C*), gom nhóm bài đăng theo `baseName` và bốc tách Direct Stream Link cho YouTube/Facebook.
+  - 🐍 **Python Local Worker (`herodrive_worker.py`)**: Viết script Python tự động quét file local, gom nhóm các file cùng tên, gọi Google Drive Multipart Upload API và giải phóng đĩa C sau khi upload thành công.
+  - 📱 **Đăng ký App Registry (`apps-registry.ts`)**: Đăng ký `hero-drive` vào danh mục ứng dụng chính của AI2Hero.
+
 - **2026-08-01 (connect-hub - Google Drive Connector Definition & Real Runner Implementation)**:
   - 📁 **Google Drive Definition (`google-drive.ts`)**: Nâng cấp định nghĩa Connector Google Drive với 7 Actions chuẩn (`get_about`, `list_files`, `upload_file`, `create_folder`, `get_stream_link`, `get_file_metadata`, `delete_file`).
   - 🔑 **Cấu hình OAuth 2.0 & Setup Guide**: Bổ sung authFields (`clientId`, `clientSecret`, `refreshToken`, `defaultFolderId`) và hướng dẫn lấy token từ Google Cloud Console & OAuth Playground.

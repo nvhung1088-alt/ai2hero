@@ -2571,3 +2571,74 @@ export type DubDictionary = typeof dubDictionaries.$inferSelect;
 export type NewDubDictionary = typeof dubDictionaries.$inferInsert;
 
 
+// ============================================================
+// HERO DRIVE MODULE TABLES
+// ============================================================
+
+export const driveScanConfigs = pgTable('drive_scan_configs', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  localFolderPath: text('local_folder_path').notNull(),
+  connectionId: integer('connection_id'),
+  targetFolderId: varchar('target_folder_id', { length: 255 }),
+  deleteAfterUpload: boolean('delete_after_upload').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
+  lastScanAt: timestamp('last_scan_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const driveContents = pgTable('drive_contents', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  configId: integer('config_id').notNull().references(() => driveScanConfigs.id, { onDelete: 'cascade' }),
+  baseName: varchar('base_name', { length: 255 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'uploading' | 'completed' | 'failed'
+  totalFiles: integer('total_files').notNull().default(0),
+  uploadedFiles: integer('uploaded_files').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const driveFiles = pgTable('drive_files', {
+  id: serial('id').primaryKey(),
+  contentId: integer('content_id').notNull().references(() => driveContents.id, { onDelete: 'cascade' }),
+  fileName: varchar('file_name', { length: 255 }).notNull(),
+  fileExtension: varchar('file_extension', { length: 20 }),
+  fileType: varchar('file_type', { length: 50 }), // 'video' | 'image' | 'text' | 'other'
+  fileSize: bigint('file_size', { mode: 'number' }),
+  localPath: text('local_path').notNull(),
+  driveFileId: varchar('drive_file_id', { length: 255 }),
+  streamLink: text('stream_link'),
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'uploading' | 'completed' | 'failed' | 'deleted_local'
+  error: text('error'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const driveScanConfigsRelations = relations(driveScanConfigs, ({ one, many }) => ({
+  team: one(teams, { fields: [driveScanConfigs.teamId], references: [teams.id] }),
+  user: one(users, { fields: [driveScanConfigs.userId], references: [users.id] }),
+  contents: many(driveContents),
+}));
+
+export const driveContentsRelations = relations(driveContents, ({ one, many }) => ({
+  config: one(driveScanConfigs, { fields: [driveScanConfigs.id], references: [driveScanConfigs.id] }),
+  files: many(driveFiles),
+}));
+
+export const driveFilesRelations = relations(driveFiles, ({ one }) => ({
+  content: one(driveContents, { fields: [driveFiles.contentId], references: [driveContents.id] }),
+}));
+
+export type DriveScanConfig = typeof driveScanConfigs.$inferSelect;
+export type NewDriveScanConfig = typeof driveScanConfigs.$inferInsert;
+export type DriveContent = typeof driveContents.$inferSelect;
+export type NewDriveContent = typeof driveContents.$inferInsert;
+export type DriveFile = typeof driveFiles.$inferSelect;
+export type NewDriveFile = typeof driveFiles.$inferInsert;
+
+
+

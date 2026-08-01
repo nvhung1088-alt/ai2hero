@@ -290,6 +290,30 @@ export const APPS: AppDefinition[] = [
       'Tránh bị chặn do sử dụng cookie thật'
     ],
     targetUsers: 'Content Creators, Video Editors, Data Miners.'
+  },
+  {
+    id: 'hero-drive',
+    name: 'HeroDrive',
+    description: 'Tự động quét thư mục máy tính, tải file lên Google Drive và dọn dẹp file local.',
+    icon: 'HardDrive',
+    path: '/hero-drive/dashboard',
+    status: 'beta',
+    tier: 'free',
+    category: 'management',
+    color: 'from-blue-500 to-indigo-600',
+    slogan: 'Tự động hóa đồng bộ & lưu trữ Google Drive',
+    longDesc: 'Quản lý nhiều thư mục trên máy tính, tự động gom nhóm file cùng tên thành bộ Content (bài đăng), tải lên Google Drive và tùy chọn tự động xóa file máy tính.',
+    features: [
+      'Gom nhóm file cùng tên thành 1 bộ Content (Video, Ảnh, Txt)',
+      'Tự động tải lên Google Drive thông qua Connect Hub API',
+      'Tùy chọn tự động xóa file trên máy tính sau khi up thành công',
+      'Lấy link Stream trực tiếp dùng cho YouTube / Facebook'
+    ],
+    benefits: [
+      'Giải phóng dung lượng ổ đĩa tự động',
+      'Tự động hóa luồng lưu trữ và chuẩn bị dữ liệu đăng mạng xã hội'
+    ],
+    targetUsers: 'Content Creators, Video Editors, Chuỗi cửa hàng, MMO Teams.'
   }
 ];
 
