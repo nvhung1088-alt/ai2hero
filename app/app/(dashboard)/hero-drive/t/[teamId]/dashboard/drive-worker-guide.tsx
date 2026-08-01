@@ -53,8 +53,8 @@ export function DriveWorkerGuide({ teamId }: WorkerGuideProps) {
                   Cài đặt & Khởi chạy Worker
                 </div>
                 <div className="text-xs text-slate-400 leading-relaxed space-y-1">
-                  <p>1. Copy toàn bộ câu lệnh bên dưới.</p>
-                  <p>2. Mở thư mục dự án <strong>Ai2Hero</strong>, click vào thanh địa chỉ (Address bar) phía trên cùng của thư mục, gõ <strong>cmd</strong> và nhấn Enter.</p>
+                  <p>1. Mở thư mục <strong>Ai2Hero</strong> tại: <code className="bg-slate-900 px-1 py-0.5 rounded text-blue-400">C:\Users\ADMIN\OneDrive\Desktop\Ai2Hero</code></p>
+                  <p>2. Click vào thanh địa chỉ (Address bar) phía trên cùng của thư mục, gõ <strong>cmd</strong> và nhấn Enter.</p>
                   <p>3. Dán câu lệnh dưới đây vào màn hình đen vừa hiện ra và nhấn Enter để khởi chạy!</p>
                 </div>
 
