@@ -263,6 +263,11 @@ export async function GET(req: NextRequest) {
           }
         }
 
+        if (m.status === 'scanning' || !m.lastScanAt) {
+          shouldScan = true;
+          remainingSeconds = 0;
+        }
+
         return {
           ...m,
           shouldScan,

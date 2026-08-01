@@ -164,7 +164,7 @@ export async function triggerImmediateScanAction(id: number) {
     const [updated] = await db
       .update(driveFolderMappings)
       .set({
-        lastScanAt: new Date(),
+        lastScanAt: null,
         status: 'scanning',
         updatedAt: new Date(),
       })
