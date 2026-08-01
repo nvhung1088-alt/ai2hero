@@ -78,6 +78,15 @@ export const MVP_POLLING_MAP: Record<string, MVPPollingConfig> = {
     pauseWhenHidden: true,
     maxBackoffMultiplier: 3,
   },
+  'hero-drive': {
+    appId: 'hero-drive',
+    appName: 'HeroDrive (Quét & Tải folder)',
+    normalIntervalMs: 20000,
+    ecoIntervalMs: 40000,
+    emergencyIntervalMs: 60000,
+    pauseWhenHidden: true,
+    maxBackoffMultiplier: 4,
+  },
 };
 
 // Cờ quản lý Mode toàn cục (lưu vào localStorage & RAM)

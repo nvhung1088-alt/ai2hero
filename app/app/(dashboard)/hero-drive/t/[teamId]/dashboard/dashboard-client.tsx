@@ -33,6 +33,8 @@ import {
 } from '@/lib/db/hero-drive-actions';
 import MappingSidebar from './mapping-sidebar';
 import { DriveWorkerGuide } from './drive-worker-guide';
+import { PollingBanner } from '@/components/polling-banner';
+import { useRouter } from 'next/navigation';
 
 interface DashboardProps {
   user: any;
@@ -47,6 +49,7 @@ export default function DriveDashboardClient({
   initialMappings,
   googleDriveConnections,
 }: DashboardProps) {
+  const router = useRouter();
   const [mappings, setMappings] = useState<any[]>(initialMappings);
   const [selectedMappingId, setSelectedMappingId] = useState<number | null>(
     initialMappings.length > 0 ? initialMappings[0].id : null
@@ -269,6 +272,11 @@ export default function DriveDashboardClient({
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Banner Hướng dẫn Worker */}
         <DriveWorkerGuide teamId={team.id} />
+
+        {/* System Traffic Control Polling Banner */}
+        <div className="px-6 pt-2">
+          <PollingBanner appName="HeroDrive" intervalMinutes={60} onRefresh={() => router.refresh()} />
+        </div>
 
         <div className="flex-1 p-6 space-y-6">
           {activeMapping ? (
