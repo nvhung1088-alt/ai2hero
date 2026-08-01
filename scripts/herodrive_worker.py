@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument("--project", type=int, help="ID của Dự án Quét (Tùy chọn)")
     parser.add_argument("--config", type=int, help="ID của Cấu hình quét (Tùy chọn)")
     parser.add_argument("--server", type=str, default="https://www.ai2hero.com", help="URL máy chủ AI2Hero")
-    parser.add_argument("--interval", type=int, default=10, help="Thời gian giãn cách kiểm tra polling (giây)")
+    parser.add_argument("--interval", type=int, default=60, help="Thời gian giãn cách kiểm tra polling (giây)")
     return parser.parse_args()
 
 def format_seconds_human(seconds):
@@ -120,11 +120,12 @@ def main():
     server_url = args.server.rstrip('/')
     project_id = args.project
     config_id = args.config
-    poll_interval = args.interval
+    poll_interval = max(30, args.interval) # Tối thiểu 30-60s để tiết kiệm Vercel Quota
 
     print("🚀 ===============================================")
-    print("🚀 KHỞI CHẠY HERODRIVE PYTHON WORKER (SMART POLLING)")
+    print("🚀 KHỞI CHẠY HERODRIVE PYTHON WORKER (SMART POLLING 60S)")
     print(f"🌐 Máy chủ kết nối: {server_url}")
+    print(f"⏱️ Nhịp Polling tiết kiệm Vercel Free: {poll_interval}s / 1 lần")
     print("⚡ Trạng thái: Đang kết nối máy chủ và kiểm tra lịch quét...")
     print("🚀 ===============================================")
 
@@ -132,7 +133,6 @@ def main():
         now_str = datetime.now().strftime("%H:%M:%S")
 
         try:
-            # Lấy toàn bộ task đang hoạt động
             if project_id:
                 api_url = f"{server_url}/api/hero-drive/worker?action=get_project_tasks&projectId={project_id}"
             elif config_id:
@@ -151,7 +151,9 @@ def main():
                     if not mappings:
                         print(f"📡 [{now_str}] Chưa có Thư mục Quét nào được kích hoạt trên Web...")
                     else:
-                        # 1. Quét từng local folder mapping nếu đến lượt hoặc bấm Quét Ngay
+                        print(f"📡 [{now_str}] Đang theo dõi {len(mappings)} thư mục quét:")
+                        
+                        # 1. Quét từng local folder mapping
                         for m in mappings:
                             local_folder = m.get("localFolderPath")
                             mapping_id = m.get("id")
@@ -159,19 +161,20 @@ def main():
                             should_scan = m.get("shouldScan", True)
                             remaining = m.get("remainingSeconds", 0)
 
-                            if not local_folder or not os.path.exists(local_folder):
-                                print(f"⚠️ [{now_str}] Thư mục local chưa tồn tại trên máy tính: {local_folder}")
-                                continue
-
                             if not should_scan:
                                 rem_str = format_seconds_human(remaining)
-                                print(f"⏳ [{now_str}] [{mapping_name}]: Lần quét tới sau {rem_str}. (Sẵn sàng nhận nút 'Quét Ngay' từ Web...)")
+                                print(f"   ⏳ [{mapping_name}]: Lần quét tới sau {rem_str}")
                                 continue
 
-                            # Nếu đến lượt quét hoặc có lệnh Quét Ngay
+                            print(f"   ⚡ [{mapping_name}]: Tiến hành quét local folder ({local_folder})...")
+
+                            if not local_folder or not os.path.exists(local_folder):
+                                print(f"   ⚠️ [{mapping_name}]: Thư mục local không tồn tại: {local_folder}")
+                                continue
+
                             items = scan_and_group_local_folder(local_folder)
                             if items:
-                                print(f"🔍 [{now_str}] Quét [{mapping_name}]: Phát hiện {len(items)} nhóm bài đăng ở local ({local_folder})")
+                                print(f"   🔍 Phát hiện {len(items)} nhóm bài đăng ở local")
                                 sync_url = f"{server_url}/api/hero-drive/worker?action=sync"
                                 requests.post(sync_url, headers=WORKER_HEADERS, json={
                                     "mappingId": mapping_id,
@@ -194,7 +197,6 @@ def main():
                             target_folder_id = file_item.get("targetFolderId")
                             delete_after_upload = file_item.get("deleteAfterUpload", False)
 
-                            # Fallback nếu chưa có trong file_item
                             if not access_token:
                                 for m_id_str, t_info in mapping_tokens.items():
                                     if t_info.get("accessToken"):
@@ -205,7 +207,6 @@ def main():
 
                             if not access_token:
                                 print(f"⚠️ [{now_str}] Chưa có Access Token Google Drive cho file: {file_name}")
-                                print(f"👉 Vui lòng dán Client ID, Client Secret & Refresh Token vào Connect Hub tại https://www.ai2hero.com/hero-drive/settings")
                                 continue
 
                             print(f"⏳ [{now_str}] Uploading: {file_name} ...")
@@ -238,8 +239,8 @@ def main():
                                 }, timeout=15)
 
             elif res.status_code == 403:
-                print(f"⚠️ [{now_str}] Máy chủ tạm thời bận (HTTP 403 - Tạm dừng 20s để Vercel nhả cờ bảo vệ)...")
-                time.sleep(20)
+                print(f"⚠️ [{now_str}] Máy chủ tạm thời bận (HTTP 403 - Nghỉ 30s)...")
+                time.sleep(30)
                 continue
             else:
                 print(f"⚠️ [{now_str}] Máy chủ trả về HTTP {res.status_code}")
