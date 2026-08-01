@@ -1153,6 +1153,12 @@ if __name__ == '__main__':
             else:
                 base_name = os.path.splitext(os.path.basename(raw_source))[0]
             
+            # Làm sạch tên file (xóa ký tự cấm Windows & giới hạn độ dài an toàn < 180 ký tự)
+            import re
+            base_name = re.sub(r'[\\/:*?"<>|]', '_', base_name).strip()
+            if len(base_name) > 180:
+                base_name = base_name[:180]
+                
             if not base_name or base_name.strip() == "":
                 base_name = f"video_{task_id}"
 
