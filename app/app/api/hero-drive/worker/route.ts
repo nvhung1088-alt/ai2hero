@@ -10,6 +10,22 @@ import {
 } from '@/lib/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { runGoogleDrive } from '@/lib/connect-hub/connectors/runners/google-drive';
+import { decryptField } from '@/lib/sim-crypto';
+
+function parseCredentials(conn: any) {
+  if (!conn) return null;
+  if (conn.credentials && typeof conn.credentials === 'object') return conn.credentials;
+  if (conn.encryptedCredentials) {
+    try {
+      const decrypted = decryptField(conn.encryptedCredentials);
+      if (decrypted) return JSON.parse(decrypted);
+    } catch (e) {}
+    try {
+      return JSON.parse(conn.encryptedCredentials);
+    } catch (e) {}
+  }
+  return null;
+}
 
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -175,13 +191,15 @@ export async function GET(req: NextRequest) {
       });
 
       for (const conn of allDriveConns as any[]) {
-        const creds = conn.credentials || (conn.encryptedCredentials ? JSON.parse(conn.encryptedCredentials) : null);
+        const creds = parseCredentials(conn);
         if (creds) {
-          const res = await runGoogleDrive(creds, 'get_about', {});
-          if (res.success && res.data && res.data.accessToken) {
-            defaultAccessToken = res.data.accessToken;
-            break;
-          }
+          try {
+            const res = await runGoogleDrive(creds, 'get_about', {});
+            if (res.success && res.data && res.data.accessToken) {
+              defaultAccessToken = res.data.accessToken;
+              break;
+            }
+          } catch (e) {}
         }
       }
 
@@ -191,11 +209,14 @@ export async function GET(req: NextRequest) {
           const conn: any = await db.query.connectHubConnections.findFirst({
             where: eq(connectHubConnections.id, m.connectionId),
           });
-          if (conn && conn.credentials) {
-            const res = await runGoogleDrive(conn.credentials as any, 'get_about', {});
-            if (res.success && res.data && res.data.accessToken) {
-              accessToken = res.data.accessToken;
-            }
+          const creds = parseCredentials(conn);
+          if (creds) {
+            try {
+              const res = await runGoogleDrive(creds, 'get_about', {});
+              if (res.success && res.data && res.data.accessToken) {
+                accessToken = res.data.accessToken;
+              }
+            } catch (e) {}
           }
         }
 
