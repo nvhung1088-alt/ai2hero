@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (mappingId) {
-        await db.update(driveFolderMappings).set({ lastScanAt: new Date() }).where(eq(driveFolderMappings.id, mappingId));
+        await db.update(driveFolderMappings).set({ lastScanAt: new Date(), status: 'idle' }).where(eq(driveFolderMappings.id, mappingId));
       } else if (configId) {
         await db.update(driveScanConfigs).set({ lastScanAt: new Date() }).where(eq(driveScanConfigs.id, configId));
       }

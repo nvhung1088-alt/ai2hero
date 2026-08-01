@@ -120,7 +120,7 @@ def main():
     server_url = args.server.rstrip('/')
     project_id = args.project
     config_id = args.config
-    poll_interval = max(30, args.interval) # Tối thiểu 30-60s để tiết kiệm Vercel Quota
+    poll_interval = max(30, args.interval)
 
     print("🚀 ===============================================")
     print("🚀 KHỞI CHẠY HERODRIVE PYTHON WORKER (SMART POLLING 60S)")
@@ -175,11 +175,15 @@ def main():
                             items = scan_and_group_local_folder(local_folder)
                             if items:
                                 print(f"   🔍 Phát hiện {len(items)} nhóm bài đăng ở local")
-                                sync_url = f"{server_url}/api/hero-drive/worker?action=sync"
-                                requests.post(sync_url, headers=WORKER_HEADERS, json={
-                                    "mappingId": mapping_id,
-                                    "items": items
-                                }, timeout=15)
+                            else:
+                                print(f"   ✅ Quét hoàn tất, thư mục hiện chưa có file mới")
+
+                            # Luôn gửi sync để Server cập nhật lastScanAt = now và status = 'idle'
+                            sync_url = f"{server_url}/api/hero-drive/worker?action=sync"
+                            requests.post(sync_url, headers=WORKER_HEADERS, json={
+                                "mappingId": mapping_id,
+                                "items": items
+                            }, timeout=15)
 
                     # 2. Upload Pending Files
                     if pending_files:
