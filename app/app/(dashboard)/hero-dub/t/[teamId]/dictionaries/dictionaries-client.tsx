@@ -250,6 +250,10 @@ export default function DictionariesClient({
                             (Dùng {dict.usageCount} lần)
                           </span>
                         )}
+
+                        <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                          Cập nhật: {dict.updatedAt ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(dict.updatedAt)) : ''}
+                        </span>
                       </div>
                     </div>
 
