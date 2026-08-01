@@ -144,6 +144,9 @@ export default function MappingSidebar({
                       ☁️ {connEmail ? `✉️ ${connEmail}` : 'Mặc định'}
                     </p>
                   )}
+                  <p className="text-[10px] text-emerald-400/80 truncate pt-0.5 font-sans">
+                    ⏱️ Quét gần nhất: {mapping.lastScanAt ? new Date(mapping.lastScanAt).toLocaleTimeString('vi-VN') + ' ' + new Date(mapping.lastScanAt).toLocaleDateString('vi-VN') : 'Chưa quét'}
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-[10px]">

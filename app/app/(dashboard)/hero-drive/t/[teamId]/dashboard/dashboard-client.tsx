@@ -292,7 +292,7 @@ export default function DriveDashboardClient({
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 mt-2 font-mono">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400 mt-2.5 font-mono bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80">
                   <span>💻 Máy tính: <strong className="text-slate-200">{activeMapping.localFolderPath}</strong></span>
                   {activeMapping.targetFolderId ? (
                     <a
@@ -309,6 +309,8 @@ export default function DriveDashboardClient({
                     <span>☁️ Drive Target: <strong className="text-blue-400">Root (Thư mục gốc)</strong></span>
                   )}
                   <span>🔑 Tài khoản: <strong className="text-slate-200">{activeEmail ? `✉️ ${activeEmail}` : 'Mặc định'}</strong></span>
+                  <span>⏱️ Quét gần nhất: <strong className="text-emerald-400">{activeMapping.lastScanAt ? new Date(activeMapping.lastScanAt).toLocaleTimeString('vi-VN') + ' ' + new Date(activeMapping.lastScanAt).toLocaleDateString('vi-VN') : 'Chưa quét lần nào'}</strong></span>
+                  <span>⏳ Lịch cài đặt: <strong className="text-amber-400">{activeMapping.scanInterval || '10s'}/lần</strong></span>
                 </div>
               </div>
 
