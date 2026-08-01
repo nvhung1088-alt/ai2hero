@@ -19,16 +19,15 @@ interface DriveCreds {
 /**
  * Trao đổi Refresh Token lấy Access Token mới nhất từ Google OAuth 2.0
  */
-async function getValidAccessToken(creds: DriveCreds): Promise<string> {
-  // Ưu tiên access token có sẵn nếu được cấp trực tiếp
-  const directToken = creds.accessToken || creds.access_token;
-  if (directToken && !creds.refreshToken) {
+async function getValidAccessToken(creds: any): Promise<string> {
+  const directToken = creds.accessToken || creds.AccessToken || creds.access_token;
+  const refreshToken = creds.refreshToken || creds.RefreshToken || creds.refresh_token;
+  const clientId = creds.clientId || creds.ClientId || creds.client_id;
+  const clientSecret = creds.clientSecret || creds.ClientSecret || creds.client_secret;
+
+  if (directToken && !refreshToken) {
     return directToken;
   }
-
-  const refreshToken = creds.refreshToken;
-  const clientId = creds.clientId;
-  const clientSecret = creds.clientSecret;
 
   if (!refreshToken) {
     if (directToken) return directToken;
@@ -76,12 +75,12 @@ async function getValidAccessToken(creds: DriveCreds): Promise<string> {
 }
 
 export async function runGoogleDrive(
-  creds: DriveCreds,
+  creds: any,
   action: string,
   input: Record<string, any> = {}
 ): Promise<any> {
   const token = await getValidAccessToken(creds);
-  const defaultFolder = creds.defaultFolderId;
+  const defaultFolder = creds.defaultFolderId || creds.DefaultFolderId || creds.default_folder_id;
 
   switch (action) {
     case 'get_about':
