@@ -186,13 +186,11 @@ export async function GET(req: NextRequest) {
 
       // Lấy kết nối Google Drive mặc định (nếu mapping chưa gán)
       let defaultAccessToken: string | null = null;
-      const allDriveConns = await db.query.connectHubConnections.findMany({
-        where: eq(connectHubConnections.appSlug, 'google-drive'),
-      });
+      const allDriveConns = await db.query.connectHubConnections.findMany();
 
       for (const conn of allDriveConns as any[]) {
         const creds = parseCredentials(conn);
-        if (creds) {
+        if (creds && (creds.refreshToken || creds.accessToken)) {
           try {
             const res = await runGoogleDrive(creds, 'get_about', {});
             if (res.success && res.data && res.data.accessToken) {

@@ -177,7 +177,8 @@ def main():
                                         break
 
                             if not access_token:
-                                print(f"⚠️ [{now_str}] Chưa có Access Token cho file: {file_name}")
+                                print(f"⚠️ [{now_str}] Chưa có Access Token Google Drive cho file: {file_name}")
+                                print(f"👉 Vui lòng dán Client ID, Client Secret & Refresh Token vào Connect Hub tại https://www.ai2hero.com/hero-drive/settings")
                                 continue
 
                             print(f"⏳ [{now_str}] Uploading: {file_name} ...")
