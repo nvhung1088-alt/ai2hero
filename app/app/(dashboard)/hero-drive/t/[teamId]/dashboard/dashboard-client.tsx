@@ -294,7 +294,20 @@ export default function DriveDashboardClient({
 
                 <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 mt-2 font-mono">
                   <span>💻 Máy tính: <strong className="text-slate-200">{activeMapping.localFolderPath}</strong></span>
-                  <span>☁️ Drive Target: <strong className="text-blue-400">{activeMapping.targetFolderName || activeMapping.targetFolderId || 'Root'}</strong></span>
+                  {activeMapping.targetFolderId ? (
+                    <a
+                      href={`https://drive.google.com/drive/u/0/folders/${activeMapping.targetFolderId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-400 hover:text-blue-300 underline font-semibold inline-flex items-center gap-1 transition-colors"
+                      title="Bấm để mở trực tiếp thư mục này trên Google Drive"
+                    >
+                      ☁️ Drive Target: {activeMapping.targetFolderName || activeMapping.targetFolderId}
+                      <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+                    </a>
+                  ) : (
+                    <span>☁️ Drive Target: <strong className="text-blue-400">Root (Thư mục gốc)</strong></span>
+                  )}
                   <span>🔑 Tài khoản: <strong className="text-slate-200">{activeEmail ? `✉️ ${activeEmail}` : 'Mặc định'}</strong></span>
                 </div>
               </div>

@@ -10,6 +10,7 @@ import {
   Play,
   Clock,
   HardDrive,
+  ExternalLink,
 } from 'lucide-react';
 
 interface MappingSidebarProps {
@@ -126,9 +127,23 @@ export default function MappingSidebar({
 
                 <div className="space-y-0.5 text-[11px] text-slate-400 font-mono">
                   <p className="truncate">💻 {mapping.localFolderPath}</p>
-                  <p className="truncate text-blue-400/90">
-                    ☁️ {connEmail ? `✉️ ${connEmail}` : 'Mặc định'}
-                  </p>
+                  {mapping.targetFolderId ? (
+                    <a
+                      href={`https://drive.google.com/drive/u/0/folders/${mapping.targetFolderId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="truncate text-blue-400 hover:underline flex items-center gap-1"
+                      title="Mở thư mục Google Drive"
+                    >
+                      ☁️ {mapping.targetFolderName || mapping.targetFolderId}
+                      <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                    </a>
+                  ) : (
+                    <p className="truncate text-blue-400/90">
+                      ☁️ {connEmail ? `✉️ ${connEmail}` : 'Mặc định'}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-[10px]">
