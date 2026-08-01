@@ -2625,7 +2625,7 @@ export const driveScanConfigsRelations = relations(driveScanConfigs, ({ one, man
 }));
 
 export const driveContentsRelations = relations(driveContents, ({ one, many }) => ({
-  config: one(driveScanConfigs, { fields: [driveScanConfigs.id], references: [driveScanConfigs.id] }),
+  config: one(driveScanConfigs, { fields: [driveContents.configId], references: [driveScanConfigs.id] }),
   files: many(driveFiles),
 }));
 

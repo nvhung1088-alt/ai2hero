@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { driveScanConfigs, driveContents, driveFiles, connectHubConnections } from '@/lib/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
-import { executeConnectorAction } from '@/lib/connect-hub/connectors/engine';
+import { runGoogleDrive } from '@/lib/connect-hub/connectors/runners/google-drive';
 
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -173,14 +173,14 @@ export async function GET(req: NextRequest) {
       // Đổi Access Token thông qua Connect Hub
       let accessToken = null;
       if (config.connectionId) {
-        const conn = await db.query.connectHubConnections.findFirst({
+        const conn: any = await db.query.connectHubConnections.findFirst({
           where: eq(connectHubConnections.id, config.connectionId),
         });
 
         if (conn && conn.credentials) {
           const creds = conn.credentials as any;
           // Gọi runner get_about để tự động xin fresh accessToken
-          const res = await executeConnectorAction('google-drive', 'get_about', creds, {});
+          const res = await runGoogleDrive(creds, 'get_about', {});
           if (res.success && res.data && res.data.accessToken) {
             accessToken = res.data.accessToken;
           }

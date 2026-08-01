@@ -1,7 +1,7 @@
 import { getUser, getTeamForUser } from '@/lib/db/queries';
 import { redirect } from 'next/navigation';
 import { getDriveScanConfigs } from '@/lib/db/hero-drive-actions';
-import { getConnectHubConnections } from '@/lib/db/connect-hub-actions';
+import { getConnectionsByTeam } from '@/lib/db/connect-hub-queries';
 import DriveDashboardClient from './dashboard-client';
 
 export default async function HeroDriveDashboardPage({
@@ -17,7 +17,7 @@ export default async function HeroDriveDashboardPage({
     redirect('/sign-in');
   }
 
-  const team = await getTeamForUser(user.id);
+  const team = await getTeamForUser();
   if (!team || team.id !== teamId) {
     redirect('/dashboard');
   }
@@ -25,10 +25,10 @@ export default async function HeroDriveDashboardPage({
   const configsRes = await getDriveScanConfigs(teamId);
   const configs = configsRes.success ? configsRes.data || [] : [];
 
-  const connectionsRes = await getConnectHubConnections(teamId);
-  const connections = connectionsRes.success
-    ? (connectionsRes.data || []).filter((c: any) => c.connectorSlug === 'google-drive')
-    : [];
+  const rawConnections = await getConnectionsByTeam(teamId);
+  const connections = (rawConnections || []).filter(
+    (c: any) => c.connectorSlug === 'google-drive' || c.appSlug === 'google-drive'
+  );
 
   return (
     <DriveDashboardClient
