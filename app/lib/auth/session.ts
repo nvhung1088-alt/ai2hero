@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import { NewUser } from '@/lib/db/schema';
+import type { NewUser } from '@/lib/db/schema';
 
 const authSecret = process.env.AUTH_SECRET;
 if (!authSecret) {
