@@ -13,8 +13,4 @@ const nextConfig: NextConfig = {
   }
 };
 
-export default withSentryConfig(nextConfig, {
-  silent: true,
-  widenClientFileUpload: true,
-  autoInstrumentMiddleware: false,
-});
+export default nextConfig;
