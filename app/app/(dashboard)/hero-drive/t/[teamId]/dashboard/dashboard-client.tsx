@@ -443,7 +443,7 @@ export default function DriveDashboardClient({
                   <AlertCircle className="w-8 h-8 text-slate-600 mx-auto" />
                   <p className="text-slate-400 font-medium">Chưa phát hiện file nào trong thư mục máy tính này.</p>
                   <p className="text-slate-500 max-w-md mx-auto text-[11px]">
-                    Hãy đảm bảo bạn đã mở Python Worker dưới máy tính (lệnh: <code>python scripts/herodrive_worker.py</code>) và đặt file vào đường dẫn <code>{activeMapping.localFolderPath}</code>.
+                    Hãy đảm bảo bạn đã mở Python Worker dưới máy tính (sử dụng 1 trong 2 lệnh ở phần hướng dẫn trên) và đặt file vào đường dẫn <code>{activeMapping.localFolderPath}</code>.
                   </p>
                 </div>
               ) : (

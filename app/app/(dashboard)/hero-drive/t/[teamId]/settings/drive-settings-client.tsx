@@ -136,10 +136,15 @@ export default function DriveSettingsClient({
           Hướng dẫn nâng cấp Python Worker cho Đa Dự Án
         </h3>
         <p className="text-slate-300">
-          Khi bạn tạo nhiều Dự án và chọn đúng tài khoản Gmail/Drive cho từng thư mục quét, bạn khởi chạy Python Worker bằng lệnh:
+          Khi bạn tạo nhiều Dự án và chọn đúng tài khoản Gmail/Drive cho từng thư mục quét, bạn khởi chạy Python Worker bằng 1 trong 2 lệnh (khuyên dùng máy chủ mới):
         </p>
-        <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 font-mono text-blue-400">
-          python scripts/herodrive_worker.py --project &lt;ID_DU_AN&gt;
+        <div className="space-y-2">
+          <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 font-mono text-blue-400">
+            python scripts/herodrive_worker.py --server https://ai2hero-flax.vercel.app --project &lt;ID_DU_AN&gt;
+          </div>
+          <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 font-mono text-amber-400">
+            python scripts/herodrive_worker.py --server https://www.ai2hero.com --project &lt;ID_DU_AN&gt;
+          </div>
         </div>
       </div>
     </div>

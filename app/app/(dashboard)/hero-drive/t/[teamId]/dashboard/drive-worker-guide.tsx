@@ -53,28 +53,53 @@ export function DriveWorkerGuide({ teamId }: WorkerGuideProps) {
                   Cài đặt & Khởi chạy Worker
                 </div>
                 <div className="text-xs text-slate-400 leading-relaxed space-y-1">
-                  <p>1. Copy toàn bộ câu lệnh thần thánh 1-dòng bên dưới.</p>
-                  <p>2. Bấm phím <strong>Windows + R</strong> ➔ gõ <strong>cmd</strong> ➔ nhấn Enter để mở Terminal từ bất kỳ vị trí nào.</p>
+                  <p>1. Copy toàn bộ câu lệnh bên dưới (chọn 1 trong 2 máy chủ để chạy).</p>
+                  <p>2. Bấm phím <strong>Windows + R</strong> ➔ gõ <strong>cmd</strong> ➔ nhấn Enter để mở Terminal.</p>
                   <p>3. Dán câu lệnh vào màn hình đen và nhấn Enter để khởi chạy Worker lập tức!</p>
                 </div>
 
-                <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 font-mono text-xs text-slate-300 flex items-center justify-between gap-4 group">
-                  <p className="break-all text-blue-400 font-semibold">{commandText}</p>
-                  <button 
-                    onClick={handleCopyCommand} 
-                    className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors shrink-0 flex items-center gap-1 text-[11px]" 
-                    title="Copy lệnh"
-                  >
-                    {copied ? (
-                      <>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Đã copy!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" /> Copy
-                      </>
-                    )}
-                  </button>
+                <div className="space-y-2 mt-2">
+                  <p className="text-[11px] text-emerald-400 font-medium">Lựa chọn 1: Máy chủ mới (Khuyên dùng - Đã fix lỗi Database)</p>
+                  <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 font-mono text-xs text-slate-300 flex items-center justify-between gap-4 group">
+                    <p className="break-all text-blue-400 font-semibold">cd /d "C:\Users\ADMIN\OneDrive\Desktop\Ai2Hero" && python scripts/herodrive_worker.py --server https://ai2hero-flax.vercel.app</p>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText('cd /d "C:\\Users\\ADMIN\\OneDrive\\Desktop\\Ai2Hero" && python scripts/herodrive_worker.py --server https://ai2hero-flax.vercel.app');
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }} 
+                      className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors shrink-0 flex items-center gap-1 text-[11px]" 
+                      title="Copy lệnh"
+                    >
+                      {copied ? (
+                        <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Đã copy!</>
+                      ) : (
+                        <><Copy className="w-3.5 h-3.5" /> Copy</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 mt-3">
+                  <p className="text-[11px] text-amber-400 font-medium">Lựa chọn 2: Máy chủ cũ (www.ai2hero.com)</p>
+                  <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 font-mono text-xs text-slate-300 flex items-center justify-between gap-4 group">
+                    <p className="break-all text-amber-400 font-semibold">cd /d "C:\Users\ADMIN\OneDrive\Desktop\Ai2Hero" && python scripts/herodrive_worker.py --server https://www.ai2hero.com</p>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText('cd /d "C:\\Users\\ADMIN\\OneDrive\\Desktop\\Ai2Hero" && python scripts/herodrive_worker.py --server https://www.ai2hero.com');
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }} 
+                      className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors shrink-0 flex items-center gap-1 text-[11px]" 
+                      title="Copy lệnh"
+                    >
+                      {copied ? (
+                        <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Đã copy!</>
+                      ) : (
+                        <><Copy className="w-3.5 h-3.5" /> Copy</>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
 
