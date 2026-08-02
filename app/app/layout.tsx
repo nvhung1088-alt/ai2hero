@@ -30,32 +30,46 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const hasSession = cookieStore.has('session');
+  try {
+    const cookieStore = await cookies();
+    const hasSession = cookieStore.has('session');
 
-  const rawFallback: Record<string, any> = {
-    '/api/user': hasSession ? await getUser() : null,
-    '/api/team': hasSession ? await getTeamForUser() : null
-  };
-  
-  // Serialize fallback to strip any Date objects for RSC payload
-  const fallback = JSON.parse(JSON.stringify(rawFallback));
+    const rawFallback: Record<string, any> = {
+      '/api/user': hasSession ? await getUser() : null,
+      '/api/team': hasSession ? await getTeamForUser() : null
+    };
+    
+    // Serialize fallback to strip any Date objects for RSC payload
+    const fallback = JSON.parse(JSON.stringify(rawFallback));
 
-  return (
-    <html
-      lang="vi"
-      translate="no"
-      className={`bg-white dark:bg-gray-950 text-black dark:text-white ${fontSans.className}`}
-      suppressHydrationWarning={true}
-    >
-      <body className="min-h-[100dvh] bg-gray-50" suppressHydrationWarning={true}>
-        <NextTopLoader color="#f97316" showSpinner={false} />
-        <SWRConfig value={{ fallback }}>
-          <ToastProvider>
-            {children}
-          </ToastProvider>
-        </SWRConfig>
-      </body>
-    </html>
-  );
+    return (
+      <html
+        lang="vi"
+        translate="no"
+        className={`bg-white dark:bg-gray-950 text-black dark:text-white ${fontSans.className}`}
+        suppressHydrationWarning={true}
+      >
+        <body className="min-h-[100dvh] bg-gray-50" suppressHydrationWarning={true}>
+          <NextTopLoader color="#f97316" showSpinner={false} />
+          <SWRConfig value={{ fallback }}>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </SWRConfig>
+        </body>
+      </html>
+    );
+  } catch (err: any) {
+    return (
+      <html lang="vi">
+        <body>
+          <div style={{ padding: '2rem', color: 'red', background: '#ffebee' }}>
+            <h2>Layout Error</h2>
+            <pre>{err.message || String(err)}</pre>
+            <pre style={{ fontSize: '0.8rem', marginTop: '1rem' }}>{err.stack}</pre>
+          </div>
+        </body>
+      </html>
+    );
+  }
 }
