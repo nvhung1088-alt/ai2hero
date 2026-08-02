@@ -2,7 +2,7 @@ import { desc, and, eq, isNull, inArray, sql, lt, or } from 'drizzle-orm';
 import { db } from './drizzle';
 import { activityLogs, teamMembers, teams, users, systemSettings, feedPosts, feedComments, feedLikes, invitations, feedStories } from './schema';
 import { cookies } from 'next/headers';
-import { verifyToken } from '@/lib/auth/session';
+import { verifyToken } from '@/lib/auth/jwt';
 import { getActiveTeamCookie } from '@/lib/team-cookie';
 
 export async function getUser() {
