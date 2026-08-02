@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { signToken, verifyToken } from '@/lib/auth/jwt';
+import { signToken, verifyToken } from '@/lib/auth/jwt-edge';
 
 const protectedRoutes = ['/dashboard', '/admin', '/sim', '/profile', '/friends', '/messages', '/settings'];
 
