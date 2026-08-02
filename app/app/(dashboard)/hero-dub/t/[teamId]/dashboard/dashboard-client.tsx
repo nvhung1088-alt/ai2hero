@@ -441,6 +441,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
     if (!pairingExpiresAt) return;
 
     const timer = setInterval(() => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       const diff = Math.max(0, Math.floor((new Date(pairingExpiresAt).getTime() - Date.now()) / 1000));
       setPairingTimeLeft(diff);
       if (diff === 0) {

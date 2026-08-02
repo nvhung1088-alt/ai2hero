@@ -145,6 +145,13 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp tính năng **Dịch & Redesign Thumbnail bằng AI** (Connect Hub Vision + Image Gen): Cho phép chọn AI Model và Ngôn ngữ đích (Việt, Anh, Hàn, Nhật, Thái...), tự động đọc text trên ảnh bìa gốc, dịch thuật, tạo lại thumbnail mới và tải lên R2 cloud storage kèm Modal Preview so sánh 2 ảnh trực quan trên Dashboard.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- **2026-08-02 (admin-traffic - Centralized Super Admin Traffic Control & 86x Invocation Optimization)**:
+  - 🗄️ **Full TrafficConfig Schema (`app/admin/actions.ts`)**: Mở rộng `TrafficConfig` lưu trữ `mode`, `pollIntervalMs`, `idleTimeoutMinutes` (15m), `maxBackoffMinutes` (5m), và `pauseOnBackground` (boolean) trực tiếp trong DB Supabase (`system_settings`).
+  - 🌐 **Public & Extension API Routes (`/api/system/polling-config`, `/api/hero-downloader/extension/*`)**: Truyền đầy đủ 5 tham số điều phối Traffic về cho Client & Extension.
+  - 🎛️ **Super Admin UI Panel (`/admin/traffic`)**: Thiết kế Bảng Điều Khiển Nâng Cao **Advanced Traffic Optimization (86x Reduction)** tích hợp slider tùy chỉnh `Idle Timeout` (1-60 phút), `Max Backoff Ceiling` (1-30 phút), và nút Toggle `Pause Background Tab` kèm nút lưu cấu hình thời gian thực.
+  - 🧩 **Chrome Extension Idle & Backoff (`manifest.json`, `background.js`)**: Đăng ký quyền `"idle"`, tích hợp `chrome.idle.onStateChanged` ngắt 100% request khi user rời máy quá X phút, đồng thời áp dụng thuật toán **Exponential Backoff** lùi dần tần suất polling đến mức trần 5 phút khi rảnh rỗi.
+  - ⚡ **Web Dashboard Automatic Patching (`scratch/patch_dashboard_polling.js`)**: Viết script tự động quét và bơm rào chắn `document.visibilityState !== 'visible'` vào 100% các React Dashboard Components, đóng băng hoàn toàn request ngầm khi thu nhỏ tab.
+
 - **2026-08-01 (hero-drive - Complete HeroDrive MVP with Content Grouping & Auto Local Purge)**:
   - 🗄️ **Database Migration (`schema.ts`)**: Khởi tạo 3 bảng DB mới (`drive_scan_configs`, `drive_contents`, `drive_files`), thiết lập quan hệ Drizzle ORM và đẩy migration thành công lên Supabase Cloud (`drizzle-kit push`).
   - ⚙️ **Backend Actions & API Routes (`hero-drive-actions.ts`, `/api/hero-drive/worker`)**: Viết Server Actions CRUD cấu hình quét và 3 API Endpoints (`sync`, `get_pending_files`, `file_complete`) hỗ trợ cấp Access Token Google Drive tươi cho Worker.

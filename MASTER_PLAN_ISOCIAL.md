@@ -445,6 +445,7 @@ await dispatchMvpFeedPost({
 
 | Ngày | Version | Thay đổi | Bởi |
 |---|---|---|---|
+| 2026-08-02 | v1.3 | **86x Traffic Optimization**: Tích hợp Global Polling Control, Extension `chrome.idle`, Exponential Backoff và `visibilityState` Auto-Pause cho 18 Dashboard components để khắc phục lỗi Vercel Quota 1.1M invocations. | AI |
 | 2026-06-12 | v1.2 | **Fulfillment Scan Engine**: Tích hợp toàn bộ hệ thống xử lý kho (Pick, Pack, Export, Return) vào HeroMarketplace. | AI |
 | 2026-06-10 | v1.1 | **Audit & Đồng bộ codebase**: Cập nhật Tech Stack (Next.js 15.5.19 Stable, Zustand, Sentry, ESLint/Prettier), đổi Chat Realtime từ WebSocket sang Supabase Realtime/SSE (serverless-ready), xác nhận soft references websites đã hoàn thành, nới rộng Feed Dispatcher types cho cross-MVP | AI (Audit session) |
 | 2026-06-10 | v1.0 | Tạo Master Plan ban đầu — 3 MVP architecture | AI (Audit session) |

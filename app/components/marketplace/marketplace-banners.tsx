@@ -12,6 +12,7 @@ export function MarketplaceBanners() {
 
   useEffect(() => {
     const timer = setInterval(() => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 3000);
     return () => clearInterval(timer);

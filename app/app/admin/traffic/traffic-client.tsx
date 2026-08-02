@@ -17,6 +17,8 @@ import {
   Sliders,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getGlobalPollingModeAction, setGlobalPollingModeAction } from '@/app/admin/actions';
+import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 import {
   MVP_POLLING_MAP,
   getGlobalPollingMode,
@@ -36,11 +38,24 @@ interface TrafficClientProps {
 
 export function TrafficClientComponent({ user }: TrafficClientProps) {
   const [currentMode, setCurrentMode] = useState<PollingMode>('normal');
+  const [idleTimeoutMinutes, setIdleTimeoutMinutes] = useState<number>(15);
+  const [maxBackoffMinutes, setMaxBackoffMinutes] = useState<number>(5);
+  const [pauseOnBackground, setPauseOnBackground] = useState<boolean>(true);
   const [telemetry, setTelemetry] = useState<Record<string, PollingTelemetryStats>>({});
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
-  const refreshStats = () => {
-    setCurrentMode(getGlobalPollingMode());
+  const refreshStats = async () => {
+    try {
+      const res = await getGlobalPollingModeAction();
+      if (res && res.mode) {
+        setCurrentMode(res.mode);
+        setGlobalPollingMode(res.mode);
+        if (typeof res.idleTimeoutMinutes === 'number') setIdleTimeoutMinutes(res.idleTimeoutMinutes);
+        if (typeof res.maxBackoffMinutes === 'number') setMaxBackoffMinutes(res.maxBackoffMinutes);
+        if (typeof res.pauseOnBackground === 'boolean') setPauseOnBackground(res.pauseOnBackground);
+      }
+    } catch (e) {}
     setTelemetry(getPollingTelemetry());
     setLastRefreshed(new Date());
   };
@@ -51,9 +66,43 @@ export function TrafficClientComponent({ user }: TrafficClientProps) {
     return () => clearInterval(interval);
   }, []);
 
-  const handleModeSelect = (mode: PollingMode) => {
-    setGlobalPollingMode(mode);
-    setCurrentMode(mode);
+  const handleModeSelect = async (mode: PollingMode) => {
+    setIsUpdating(true);
+    try {
+      const res = await setGlobalPollingModeAction({ mode });
+      if (res.success && res.config) {
+        setCurrentMode(res.config.mode);
+        setGlobalPollingMode(res.config.mode);
+        showToast(res.message, 'success');
+      } else if (res.error) {
+        showToast(res.error, 'error');
+      }
+    } catch (e: any) {
+      showToast(e.message || 'Lỗi khi cập nhật mode', 'error');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveAdvancedConfig = async () => {
+    setIsUpdating(true);
+    try {
+      const res = await setGlobalPollingModeAction({
+        mode: currentMode,
+        idleTimeoutMinutes,
+        maxBackoffMinutes,
+        pauseOnBackground,
+      });
+      if (res.success) {
+        showToast('Đã lưu cấu hình nâng cao Super Admin (Tối ưu 86x) thành công!', 'success');
+      } else if (res.error) {
+        showToast(res.error, 'error');
+      }
+    } catch (e: any) {
+      showToast(e.message || 'Lỗi khi lưu cấu hình nâng cao', 'error');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleClearTelemetry = () => {
@@ -281,6 +330,104 @@ export function TrafficClientComponent({ user }: TrafficClientProps) {
             <p className="text-[11px] text-gray-400 mt-1">
               Chế độ sinh tồn khẩn cấp khi Vercel sắp ngắt dịch vụ hoặc bị tràn quota.
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ADVANCED OPTIMIZATION CONTROLS (86x REDUCTION) */}
+      <div className="bg-gradient-to-br from-gray-900/90 via-slate-900/80 to-gray-950/90 border border-emerald-500/30 rounded-2xl p-6 backdrop-blur-xl space-y-6 shadow-xl shadow-emerald-500/5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/10 pb-4 gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Activity className="w-5 h-5 text-emerald-400" />
+              Advanced Traffic Optimization (Thiết Lập Tối Ưu Giảm 86 Lần Traffic)
+            </h2>
+            <p className="text-xs text-gray-400 mt-1">
+              Trung tâm kiểm soát Idle Detection, Exponential Backoff và Tự động ngắt Background Tab ngầm.
+            </p>
+          </div>
+          <Button
+            onClick={handleSaveAdvancedConfig}
+            disabled={isUpdating}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            Lưu Cấu Hình Tối Ưu
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Setting 1: Idle Timeout */}
+          <div className="bg-gray-950/60 border border-white/5 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                <Clock className="w-4 h-4" /> Idle Timeout (Extension)
+              </label>
+              <span className="text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
+                {idleTimeoutMinutes} Phút
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-400">
+              Tự động ĐÓNG BĂNG request Extension khi user không tương tác chuột/phím sau số phút quy định.
+            </p>
+            <input
+              type="range"
+              min="1"
+              max="60"
+              value={idleTimeoutMinutes}
+              onChange={(e) => setIdleTimeoutMinutes(Number(e.target.value))}
+              className="w-full accent-emerald-500 bg-gray-800 cursor-pointer"
+            />
+          </div>
+
+          {/* Setting 2: Max Backoff Minutes */}
+          <div className="bg-gray-950/60 border border-white/5 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
+                <TrendingDown className="w-4 h-4" /> Max Backoff Ceiling
+              </label>
+              <span className="text-xs font-mono font-bold bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded border border-blue-500/30">
+                {maxBackoffMinutes} Phút
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-400">
+              Trần thời gian lùi tối đa khi hệ thống nhàn rỗi (0 tasks) để tránh spam API liên tục.
+            </p>
+            <input
+              type="range"
+              min="1"
+              max="30"
+              value={maxBackoffMinutes}
+              onChange={(e) => setMaxBackoffMinutes(Number(e.target.value))}
+              className="w-full accent-blue-500 bg-gray-800 cursor-pointer"
+            />
+          </div>
+
+          {/* Setting 3: Pause On Background Tab */}
+          <div className="bg-gray-950/60 border border-white/5 rounded-xl p-4 space-y-3 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                <PauseCircle className="w-4 h-4" /> Pause Background Tab
+              </label>
+              <button
+                onClick={() => setPauseOnBackground(!pauseOnBackground)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  pauseOnBackground ? 'bg-amber-500' : 'bg-gray-700'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    pauseOnBackground ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-400">
+              Ngắt 100% request Polling trên Web Dashboard khi người dùng chuyển sang tab trình duyệt khác.
+            </p>
+            <div className="text-[10px] font-semibold text-amber-300/80 bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20">
+              Trạng thái: {pauseOnBackground ? 'ĐANG KÍCH HOẠT (Khuyên dùng)' : 'ĐÃ TẮT'}
+            </div>
           </div>
         </div>
       </div>

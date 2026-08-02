@@ -83,6 +83,7 @@ export default function FulfillmentClient({ teamId, initialOrders }: { teamId: s
   // ---------- TIMER EFFECT ----------
   useEffect(() => {
     const t = setInterval(() => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       setPickActive(prev => prev.map(p => p.isDone ? p : { ...p, timer: p.timer + 1 }));
       if (packOrder && isRecording) {
         setPackTimer(p => p + 1);

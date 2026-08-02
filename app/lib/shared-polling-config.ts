@@ -173,3 +173,9 @@ export function clearPollingTelemetry(): void {
     localStorage.removeItem(TELEMETRY_STORAGE_KEY);
   }
 }
+
+export function shouldPauseBackgroundPoll(): boolean {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+  return document.visibilityState !== 'visible';
+}
+

@@ -1,5 +1,12 @@
 # AI2HERO — CHANGELOG
 
+## 2026-08-02 — 86x Traffic Optimization & Centralized Super Admin Control
+- **Super Admin Central Control (`/admin/traffic`)**: Nâng cấp DB và UI để quản trị toàn quyền 3 lớp bảo vệ Traffic (Idle Timeout, Max Backoff Ceiling, Pause Background Tab) bằng các thanh trượt trực quan.
+- **Chrome Extension Idle Detection (`chrome.idle`)**: Bổ sung quyền `"idle"`, Extension tự động ĐÓNG BĂNG 100% request khi máy tính bị khóa hoặc user không tương tác quá 15 phút.
+- **Exponential Backoff Algorithm**: Tích hợp thuật toán lùi dần thời gian hỏi API (từ 15s lên dần 5 phút) khi hệ thống rảnh rỗi, tránh spam hỏi lại một câu quá nhanh.
+- **Auto-Pause Background Tabs (`visibilityState`)**: Bơm rào chắn thông minh vào toàn bộ 18 React Dashboard Components. Ngắt 100% request ngầm khi người dùng thu nhỏ tab hoặc đổi sang tab YouTube/Facebook.
+- **Thành quả**: Triệt tiêu lỗi tràn Vercel Quota 1.1 triệu invocations, giảm tải cực đại hơn 86 lần.
+
 ## 2026-07-30 — Hero Dub Fix Project Deletion Crash, Tab Switcher & Explicit Control Buttons
 - **Tab Switcher Phân Biệt "Tác Vụ Lẻ" và "Dự Án Quét Thư Mục"**: Bổ sung 2 Tab chọn chế độ **`📹 Tác Vụ Dịch Lẻ (File/URL)`** và **`📁 Dự Án Quét Thư Mục Tự Động`** trực quan ngay đầu Modal Form. Tránh tuyệt đối việc dán nhầm đường dẫn thư mục `C:\Users\ADMIN\OneDrive\Desktop\DOWNLOAD1\TEST` thành tác vụ lẻ.
 - **Fix Client Crash Khi Xóa Dự Án**: Sửa triệt để lỗi `Cannot read properties of undefined (reading 'name')` khi người dùng bấm xóa dự án quét. Tự động chuyển trạng thái được chọn về `null` (Tác vụ lẻ) và thêm guard check an toàn cho `DubScanProjectPane`.

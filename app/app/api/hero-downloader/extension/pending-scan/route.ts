@@ -33,6 +33,23 @@ function getScanIntervalMs(intervalStr: string): number {
   return 60 * 60 * 1000;
 }
 
+import { systemSettings } from '@/lib/db/schema';
+
+async function getPollingConfig() {
+  try {
+    const res = await db.select().from(systemSettings).where(eq(systemSettings.key, 'global_polling_mode')).limit(1);
+    if (res.length > 0 && res[0].value) {
+      const val = res[0].value as any;
+      const mode = (val?.mode as 'normal' | 'eco' | 'emergency') || 'normal';
+      const pollIntervalMs = val?.pollIntervalMs || (mode === 'emergency' ? 60000 : mode === 'eco' ? 30000 : 15000);
+      const idleTimeoutMinutes = typeof val?.idleTimeoutMinutes === 'number' ? val.idleTimeoutMinutes : 15;
+      const maxBackoffMinutes = typeof val?.maxBackoffMinutes === 'number' ? val.maxBackoffMinutes : 5;
+      return { mode, pollIntervalMs, idleTimeoutMinutes, maxBackoffMinutes };
+    }
+  } catch (e) {}
+  return { mode: 'normal', pollIntervalMs: 15000, idleTimeoutMinutes: 15, maxBackoffMinutes: 5 };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const token = extractBearerToken(req);
@@ -44,6 +61,8 @@ export async function GET(req: NextRequest) {
     if (!auth.success || !auth.teamId) {
       return NextResponse.json({ success: false, error: auth.error || 'Token không hợp lệ' }, { status: 401, headers: corsHeaders });
     }
+
+    const pollingConfig = await getPollingConfig();
 
     // Lấy tất cả dự án active của Douyin & Bilibili
     const allProjects = await db
@@ -144,7 +163,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       projects: formattedProjects,
-      pendingVideos
+      pendingVideos,
+      pollingMode: pollingConfig.mode,
+      pollIntervalMs: pollingConfig.pollIntervalMs,
+      idleTimeoutMinutes: pollingConfig.idleTimeoutMinutes,
+      maxBackoffMinutes: pollingConfig.maxBackoffMinutes,
     }, { headers: corsHeaders });
   } catch (err: any) {
     console.error('Pending-scan API error:', err);

@@ -215,6 +215,16 @@ def run_worker_loop(token):
             poll_interval = 15
         else:
             poll_interval = 30
+
+        try:
+            if 'res' in locals() and res and res.status_code == 200:
+                res_data = res.json()
+                if isinstance(res_data, dict) and res_data.get("pollIntervalMs"):
+                    server_interval = int(res_data.get("pollIntervalMs")) // 1000
+                    if server_interval > poll_interval:
+                        poll_interval = server_interval
+        except Exception:
+            pass
             
         time.sleep(poll_interval)
 

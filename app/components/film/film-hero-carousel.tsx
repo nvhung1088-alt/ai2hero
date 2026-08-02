@@ -10,6 +10,7 @@ export function FilmHeroCarousel({ featuredSeries }: { featuredSeries: any[] }) 
   useEffect(() => {
     if (!featuredSeries || featuredSeries.length <= 1) return;
     const interval = setInterval(() => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       setCurrentIndex((prev) => (prev + 1) % featuredSeries.length);
     }, 6000);
     return () => clearInterval(interval);

@@ -1343,14 +1343,17 @@ def poll_tasks(token):
                 process_task(token, task)
                 print(Fore.GREEN + "\nWorker dang chay ngam, san sang nhan nhiem vu tiep theo...")
             else:
-                time.sleep(4)
+                poll_interval = 15.0
+                if isinstance(data, dict) and data.get("pollIntervalMs"):
+                    poll_interval = float(data.get("pollIntervalMs")) / 1000.0
+                time.sleep(poll_interval)
                 
         except requests.exceptions.ConnectionError:
-            print(Fore.YELLOW + "Khong the ket noi toi Server. Dang thu lai sau 10s...")
-            time.sleep(10)
+            print(Fore.YELLOW + "Khong the ket noi toi Server. Dang thu lai sau 15s...")
+            time.sleep(15)
         except Exception as e:
             print(Fore.RED + f"Loi vong lap poll: {str(e)}")
-            time.sleep(5)
+            time.sleep(15)
 
 import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler

@@ -22,6 +22,7 @@ export default function PairingWidget({ teamId, userId }: PairingWidgetProps) {
     if (!expiresAt) return;
 
     const timer = setInterval(() => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       const diff = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000));
       setTimeLeft(diff);
       if (diff === 0) {

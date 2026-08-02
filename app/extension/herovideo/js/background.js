@@ -1088,8 +1088,37 @@ async function getApiBase() {
     });
 }
 
-setInterval(async () => {
-    if (isExtractingSyncing) return;
+let isUserIdle = false;
+let configuredIdleMinutes = 15;
+let configuredMaxBackoffMinutes = 5;
+
+if (chrome.idle && chrome.idle.onStateChanged) {
+    try {
+        chrome.idle.setDetectionInterval(configuredIdleMinutes * 60);
+        chrome.idle.onStateChanged.addListener((newState) => {
+            if (newState === 'idle' || newState === 'locked') {
+                isUserIdle = true;
+                console.log('[AI2Hero] User is idle/locked. Pausing extension polling.');
+            } else if (newState === 'active') {
+                isUserIdle = false;
+                console.log('[AI2Hero] User is active. Resuming extension polling.');
+            }
+        });
+    } catch(e) {}
+}
+
+let extractPollDelay = 15000;
+
+async function pollPendingExtractLoop() {
+    if (isUserIdle) {
+        setTimeout(pollPendingExtractLoop, 60000);
+        return;
+    }
+
+    if (isExtractingSyncing) {
+        setTimeout(pollPendingExtractLoop, extractPollDelay);
+        return;
+    }
     isExtractingSyncing = true;
     
     try {
@@ -1098,6 +1127,7 @@ setInterval(async () => {
         ]);
         if (!storage.herovideo_token) {
             isExtractingSyncing = false;
+            setTimeout(pollPendingExtractLoop, 30000);
             return;
         }
         
@@ -1114,20 +1144,41 @@ setInterval(async () => {
         );
         if (!res.ok) {
             isExtractingSyncing = false;
+            setTimeout(pollPendingExtractLoop, extractPollDelay);
             return;
         }
         const data = await res.json();
+
+        if (data && data.idleTimeoutMinutes && chrome.idle && chrome.idle.setDetectionInterval) {
+            if (data.idleTimeoutMinutes !== configuredIdleMinutes) {
+                configuredIdleMinutes = data.idleTimeoutMinutes;
+                try { chrome.idle.setDetectionInterval(configuredIdleMinutes * 60); } catch(e){}
+            }
+        }
+        if (data && data.maxBackoffMinutes) {
+            configuredMaxBackoffMinutes = data.maxBackoffMinutes;
+        }
+
         if (data && data.success && data.tasks && data.tasks.length > 0) {
+            extractPollDelay = data.pollIntervalMs || 5000;
             for (const task of data.tasks.slice(0, 3)) {
                 await openHiddenTabForExtract(task, storage, apiBase);
             }
+        } else {
+            const baseDelay = data.pollIntervalMs || 15000;
+            const maxDelay = configuredMaxBackoffMinutes * 60000;
+            extractPollDelay = Math.min(Math.max(extractPollDelay * 1.5, baseDelay), maxDelay);
         }
     } catch(e) {
         console.error("[AI2Hero] Polling failed:", e);
     } finally {
         isExtractingSyncing = false;
+        setTimeout(pollPendingExtractLoop, extractPollDelay);
     }
-}, 5000);
+}
+
+// Start recursive polling loop for pending extract
+pollPendingExtractLoop();
 
 async function openHiddenTabForExtract(task, storage, apiBase) {
     const { id: videoId, videoUrl } = task;
@@ -1241,8 +1292,18 @@ async function checkWorkerAndDownload(videoId, directMp4Url, token, apiBase) {
 let isScanningSyncing = false;
 const scanningTabs = new Map(); // tabId -> {projectId, timeout, apiBase, token}
 
-setInterval(async () => {
-    if (isScanningSyncing) return;
+let scanPollDelay = 20000;
+
+async function pollPendingScanLoop() {
+    if (isUserIdle) {
+        setTimeout(pollPendingScanLoop, 60000);
+        return;
+    }
+
+    if (isScanningSyncing) {
+        setTimeout(pollPendingScanLoop, scanPollDelay);
+        return;
+    }
     isScanningSyncing = true;
     
     try {
@@ -1251,6 +1312,7 @@ setInterval(async () => {
         ]);
         if (!storage.herovideo_token) {
             isScanningSyncing = false;
+            setTimeout(pollPendingScanLoop, 30000);
             return;
         }
         
@@ -1267,20 +1329,31 @@ setInterval(async () => {
         );
         if (!res.ok) {
             isScanningSyncing = false;
+            setTimeout(pollPendingScanLoop, scanPollDelay);
             return;
         }
         const data = await res.json();
+
         if (data && data.success && data.projects && data.projects.length > 0) {
+            scanPollDelay = data.pollIntervalMs || 10000;
             // Process only 1 project at a time to prevent opening too many tabs
             const project = data.projects[0];
             await openTabForChannelScan(project, storage, apiBase);
+        } else {
+            const baseDelay = data.pollIntervalMs || 20000;
+            const maxDelay = configuredMaxBackoffMinutes * 60000;
+            scanPollDelay = Math.min(Math.max(scanPollDelay * 1.5, baseDelay), maxDelay);
         }
     } catch(e) {
         console.error("[AI2Hero] Channel polling failed:", e);
     } finally {
         isScanningSyncing = false;
+        setTimeout(pollPendingScanLoop, scanPollDelay);
     }
-}, 10000);
+}
+
+// Start recursive polling loop for channel scanning
+pollPendingScanLoop();
 function cleanUserUrl(url) {
     if (!url) return url;
     if (url.includes('douyin.com/user/') || url.includes('bilibili.com/')) {

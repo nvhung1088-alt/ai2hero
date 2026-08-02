@@ -32,7 +32,8 @@
     "alarms",
     "declarativeNetRequest",
     "scripting",
-    "sidePanel"
+    "sidePanel",
+    "idle"
   ],
   "commands": {
     "_execute_action": {},

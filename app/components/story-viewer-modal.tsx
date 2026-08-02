@@ -49,6 +49,7 @@ export function StoryViewerModal({ isOpen, onClose, stories, initialStoryIndex, 
     const step = (updateInterval / STORY_DURATION) * 100;
 
     progressIntervalRef.current = setInterval(() => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       setProgress((prev) => {
         if (prev + step >= 100) {
           handleNext();
