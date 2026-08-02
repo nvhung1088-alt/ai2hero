@@ -13,7 +13,7 @@ import {
   type NewTeam,
   type NewTeamMember
 } from '@/lib/db/schema';
-import { setSession } from '@/lib/auth/session';
+import { setSession } from '@/lib/auth/jwt';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
