@@ -28,7 +28,8 @@ import {
   socialPages,
   socialPageFollowers
 } from '@/lib/db/schema';
-import { comparePasswords, hashPassword, setSession } from '@/lib/auth/session';
+import { setSession } from '@/lib/auth/session';
+import { comparePasswords, hashPassword } from '@/lib/auth/password';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';

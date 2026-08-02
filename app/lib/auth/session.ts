@@ -1,4 +1,3 @@
-import { compare, hash } from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { NewUser } from '@/lib/db/schema';
@@ -8,18 +7,6 @@ if (!authSecret) {
   throw new Error('AUTH_SECRET environment variable is required');
 }
 const key = new TextEncoder().encode(authSecret);
-const SALT_ROUNDS = 10;
-
-export async function hashPassword(password: string) {
-  return hash(password, SALT_ROUNDS);
-}
-
-export async function comparePasswords(
-  plainTextPassword: string,
-  hashedPassword: string
-) {
-  return compare(plainTextPassword, hashedPassword);
-}
 
 type SessionData = {
   user: { id: number; role?: string; email: string; name?: string | null };

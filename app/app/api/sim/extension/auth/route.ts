@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { users, teams, teamMembers } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import { comparePasswords } from '@/lib/auth/session';
+import { comparePasswords } from '@/lib/auth/password';
 import { SignJWT } from 'jose';
 
 const authSecret = process.env.AUTH_SECRET;
