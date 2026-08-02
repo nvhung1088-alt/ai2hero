@@ -1,6 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import type { NewUser } from '@/lib/db/schema';
 
 const authSecret = process.env.AUTH_SECRET;
 if (!authSecret) {
@@ -34,7 +33,9 @@ export async function getSession() {
   return await verifyToken(session);
 }
 
-export async function setSession(user: NewUser) {
+type SessionUser = { id: number; role?: string; email: string; name?: string | null };
+
+export async function setSession(user: SessionUser) {
   const expiresInOneDay = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const session: SessionData = {
     user: { id: user.id!, role: user.role, email: user.email, name: user.name },
