@@ -20,7 +20,7 @@ cd "$WORKER_DIR" || exit
 
 # Download worker script
 echo "[INFO] Dang tai ma nguon Worker..."
-curl -s -L -o worker.py "https://www.ai2hero.com/uploads/herodub_worker.py?v=6"
+curl -s -L -o worker.py "https://ai2hero-flax.vercel.app/uploads/herodub_worker.py?v=8"
 
 if [ ! -f worker.py ]; then
     echo "[ERROR] Khong the tai ma nguon tu Server."

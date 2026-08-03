@@ -116,10 +116,10 @@ export default function HeroDubGuidePage() {
                     <p className="text-[11px] text-amber-500 font-medium mb-1.5">Lựa chọn 2: Máy chủ cũ (www.ai2hero.com)</p>
                     <div className="bg-black/80 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-amber-500/90 text-[11px]">
                       <span className="select-all overflow-x-auto whitespace-nowrap">
-                        {winCommand}
+                        curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat & herodub-setup.bat --server https://www.ai2hero.com
                       </span>
                       <button
-                        onClick={() => handleCopy(winCommand)}
+                        onClick={() => handleCopy('curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat & herodub-setup.bat --server https://www.ai2hero.com')}
                         className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
                         title="Sao chép"
                       >
@@ -187,10 +187,10 @@ export default function HeroDubGuidePage() {
                     <p className="text-[11px] text-amber-500 font-medium mb-1.5">Lựa chọn 2: Máy chủ cũ (www.ai2hero.com)</p>
                     <div className="bg-black/80 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-amber-500/90 text-[11px]">
                       <span className="select-all overflow-x-auto whitespace-nowrap">
-                        {macCommand}
+                        curl -o herodub-setup.sh https://ai2hero-flax.vercel.app/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh --server https://www.ai2hero.com
                       </span>
                       <button
-                        onClick={() => handleCopy(macCommand)}
+                        onClick={() => handleCopy('curl -o herodub-setup.sh https://ai2hero-flax.vercel.app/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh --server https://www.ai2hero.com')}
                         className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
                         title="Sao chép"
                       >
