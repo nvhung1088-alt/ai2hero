@@ -58,6 +58,8 @@ export default function DriveDashboardClient({
   const [rawFilesList, setRawFilesList] = useState<any[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState<boolean>(false);
   const [fileFilter, setFileFilter] = useState<string>('all'); // 'all' | 'completed' | 'uploading' | 'pending'
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const pageSize = 10;
 
   // Modals
   const [isMappingModalOpen, setIsMappingModalOpen] = useState<boolean>(false);
@@ -103,6 +105,7 @@ export default function DriveDashboardClient({
     } else {
       setRawFilesList([]);
     }
+    setCurrentPage(1); // Reset page on mapping change
   }, [selectedMappingId]);
 
   // Open Modal Create
@@ -229,6 +232,14 @@ export default function DriveDashboardClient({
     if (fileFilter === 'pending') return f.status === 'pending';
     return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredFiles.length / pageSize));
+  const paginatedFiles = filteredFiles.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [fileFilter]);
 
   const getFileIcon = (fileType: string) => {
     switch (fileType) {
@@ -461,7 +472,7 @@ export default function DriveDashboardClient({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/60">
-                        {filteredFiles.map((file) => (
+                        {paginatedFiles.map((file) => (
                           <tr key={file.id} className="hover:bg-slate-900/80 transition-colors">
                             <td className="py-3 px-4 font-medium text-slate-200">
                               <div className="flex items-center gap-2">
@@ -537,6 +548,48 @@ export default function DriveDashboardClient({
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Pagination Footer */}
+                  {filteredFiles.length > 0 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-800 bg-slate-950/40">
+                      <div className="text-slate-400">
+                        Hiển thị <strong className="text-slate-200">{(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredFiles.length)}</strong> trong tổng số <strong className="text-slate-200">{filteredFiles.length}</strong> file
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          disabled={currentPage === 1}
+                          onClick={() => setCurrentPage(1)}
+                          className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 rounded-lg text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Đầu
+                        </button>
+                        <button
+                          disabled={currentPage === 1}
+                          onClick={() => setCurrentPage((p) => p - 1)}
+                          className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 rounded-lg text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Trước
+                        </button>
+                        <span className="px-3 py-1.5 text-slate-300 bg-slate-900/50 border border-slate-800 rounded-lg font-medium">
+                          Trang {currentPage} / {totalPages}
+                        </span>
+                        <button
+                          disabled={currentPage === totalPages}
+                          onClick={() => setCurrentPage((p) => p + 1)}
+                          className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 rounded-lg text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Sau
+                        </button>
+                        <button
+                          disabled={currentPage === totalPages}
+                          onClick={() => setCurrentPage(totalPages)}
+                          className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 rounded-lg text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Cuối
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

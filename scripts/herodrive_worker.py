@@ -4,6 +4,7 @@ import time
 import argparse
 import requests
 import json
+import concurrent.futures
 from datetime import datetime
 from pathlib import Path
 
@@ -115,6 +116,66 @@ def upload_file_to_google_drive(access_token, file_path, file_name, target_folde
     except Exception as e:
         return False, None, str(e)
 
+def process_file_item(file_item, mapping_tokens, server_url, now_str):
+    file_id = file_item.get("id")
+    local_path = file_item.get("localPath")
+    file_name = file_item.get("fileName")
+
+    if not local_path or not os.path.exists(local_path):
+        print(f"⚠️ [{now_str}] Không tìm thấy file local: {local_path}")
+        return
+
+    access_token = file_item.get("accessToken")
+    target_folder_id = file_item.get("targetFolderId")
+    delete_after_upload = file_item.get("deleteAfterUpload", False)
+
+    if not access_token:
+        for m_id_str, t_info in mapping_tokens.items():
+            if t_info.get("accessToken"):
+                access_token = t_info.get("accessToken")
+                target_folder_id = t_info.get("targetFolderId")
+                delete_after_upload = t_info.get("deleteAfterUpload", False)
+                break
+
+    if not access_token:
+        print(f"⚠️ [{now_str}] Chưa có Access Token Google Drive cho file: {file_name}")
+        return
+
+    print(f"⏳ [{now_str}] Uploading: {file_name} ...")
+    success, drive_file_id, err_msg = upload_file_to_google_drive(
+        access_token, local_path, file_name, target_folder_id
+    )
+
+    if success:
+        print(f"✅ [{now_str}] Tải thành công! Drive ID: {drive_file_id}")
+        if delete_after_upload:
+            try:
+                os.remove(local_path)
+                print(f"🗑️ Đã xóa file đĩa C: {local_path}")
+            except Exception as ex:
+                print(f"❌ Lỗi xóa file local: {ex}")
+
+        complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
+        try:
+            requests.post(complete_url, headers=WORKER_HEADERS, json={
+                "fileId": file_id,
+                "driveFileId": drive_file_id,
+                "status": "completed"
+            }, timeout=120)
+        except Exception as e:
+            print(f"❌ [{now_str}] Lỗi cập nhật trạng thái completed: {e}")
+    else:
+        print(f"❌ [{now_str}] Lỗi upload {file_name}: {err_msg}")
+        complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
+        try:
+            requests.post(complete_url, headers=WORKER_HEADERS, json={
+                "fileId": file_id,
+                "status": "failed",
+                "error": err_msg
+            }, timeout=120)
+        except Exception as e:
+            print(f"❌ [{now_str}] Lỗi cập nhật trạng thái failed: {e}")
+
 def main():
     args = parse_args()
     server_url = args.server.rstrip('/')
@@ -209,59 +270,14 @@ def main():
                     # 2. Upload Pending Files
                     if pending_files:
                         print(f"📦 [{now_str}] Có {len(pending_files)} tệp đính kèm đang chờ upload...")
-                        for file_item in pending_files:
-                            file_id = file_item.get("id")
-                            local_path = file_item.get("localPath")
-                            file_name = file_item.get("fileName")
-
-                            if not local_path or not os.path.exists(local_path):
-                                print(f"⚠️ [{now_str}] Không tìm thấy file local: {local_path}")
-                                continue
-
-                            access_token = file_item.get("accessToken")
-                            target_folder_id = file_item.get("targetFolderId")
-                            delete_after_upload = file_item.get("deleteAfterUpload", False)
-
-                            if not access_token:
-                                for m_id_str, t_info in mapping_tokens.items():
-                                    if t_info.get("accessToken"):
-                                        access_token = t_info.get("accessToken")
-                                        target_folder_id = t_info.get("targetFolderId")
-                                        delete_after_upload = t_info.get("deleteAfterUpload", False)
-                                        break
-
-                            if not access_token:
-                                print(f"⚠️ [{now_str}] Chưa có Access Token Google Drive cho file: {file_name}")
-                                continue
-
-                            print(f"⏳ [{now_str}] Uploading: {file_name} ...")
-                            success, drive_file_id, err_msg = upload_file_to_google_drive(
-                                access_token, local_path, file_name, target_folder_id
-                            )
-
-                            if success:
-                                print(f"✅ [{now_str}] Tải thành công! Drive ID: {drive_file_id}")
-                                if delete_after_upload:
-                                    try:
-                                        os.remove(local_path)
-                                        print(f"🗑️ Đã xóa file đĩa C: {local_path}")
-                                    except Exception as ex:
-                                        print(f"❌ Lỗi xóa file local: {ex}")
-
-                                complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
-                                requests.post(complete_url, headers=WORKER_HEADERS, json={
-                                    "fileId": file_id,
-                                    "driveFileId": drive_file_id,
-                                    "status": "completed"
-                                }, timeout=120)
-                            else:
-                                print(f"❌ [{now_str}] Lỗi upload: {err_msg}")
-                                complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
-                                requests.post(complete_url, headers=WORKER_HEADERS, json={
-                                    "fileId": file_id,
-                                    "status": "failed",
-                                    "error": err_msg
-                                }, timeout=120)
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                            futures = [
+                                executor.submit(process_file_item, file_item, mapping_tokens, server_url, now_str)
+                                for file_item in pending_files
+                            ]
+                            # Chờ tất cả hoàn thành
+                            for future in concurrent.futures.as_completed(futures):
+                                pass
 
             elif res.status_code == 403:
                 print(f"⚠️ [{now_str}] Máy chủ tạm thời bận (HTTP 403 - Nghỉ 30s)...")
