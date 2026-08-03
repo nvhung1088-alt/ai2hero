@@ -19,7 +19,7 @@ const $maybeKey = $("<div></div>");
 const $tips = $("#Tips");
 const $down = $("#down");
 const $mergeDown = $("#mergeDown");
-const AI2HERO_API_BASE = "https://www.ai2hero.com";
+const AI2HERO_API_BASE = "https://ai2hero-flax.vercel.app";
 // 储存所有资源数据
 const allData = new Map([
     [true, new Map()],  // 当前页面
@@ -1463,14 +1463,14 @@ function base64ToHex(base64) {
         return new Promise((resolve) => {
             chrome.tabs.query({}, function(tabs) {
                 const dashboardTab = tabs.find(t => 
-                    t.url && (t.url.includes('ai2hero.com') || t.url.includes('localhost'))
+                    t.url && (t.url.includes('ai2hero.com') || t.url.includes('vercel.app') || t.url.includes('localhost'))
                     && (t.url.includes('/hero-downloader') || t.url.includes('/herovideodownload'))
                 );
                 if (dashboardTab) {
                     const url = new URL(dashboardTab.url);
                     resolve(url.origin);
                 } else {
-                    resolve('https://www.ai2hero.com'); // Fallback production
+                    resolve('https://ai2hero-flax.vercel.app'); // Fallback production
                 }
             });
         });

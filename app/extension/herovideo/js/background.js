@@ -1073,8 +1073,8 @@ async function getApiBase() {
                                     resolve('http://localhost:3000');
                                     return;
                                 }
-                            } else if (url.hostname.includes('ai2hero.com')) {
-                                resolve('https://www.ai2hero.com');
+                            } else if (url.hostname.includes('ai2hero.com') || url.hostname.includes('vercel.app')) {
+                                resolve(url.origin);
                                 return;
                             }
                         } catch(e) {}
@@ -1083,7 +1083,7 @@ async function getApiBase() {
             } catch (err) {
                 console.error("Error querying tabs:", err);
             }
-            resolve('https://www.ai2hero.com');
+            resolve('https://ai2hero-flax.vercel.app');
         });
     });
 }

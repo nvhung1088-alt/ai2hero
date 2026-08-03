@@ -1,6 +1,7 @@
 (function () {
     function isAllowedAi2HeroOrigin(origin) {
         return [
+            "https://ai2hero-flax.vercel.app",
             "https://www.ai2hero.com",
             "https://ai2hero.com",
             "http://localhost:3000"

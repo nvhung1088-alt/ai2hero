@@ -18,7 +18,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "93",
   "name": "Hero Video Assistant",
-  "homepage_url": "https://ai2hero.com",
+  "homepage_url": "https://ai2hero-flax.vercel.app",
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true

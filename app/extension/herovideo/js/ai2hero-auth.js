@@ -12,7 +12,7 @@ $(document).ready(function() {
     function getApiBase() {
         return new Promise((resolve) => {
             chrome.storage.local.get(['herovideo_api_base'], function(result) {
-                resolve(result.herovideo_api_base || 'https://www.ai2hero.com');
+                resolve(result.herovideo_api_base || 'https://ai2hero-flax.vercel.app');
             });
         });
     }
@@ -23,7 +23,7 @@ $(document).ready(function() {
             $('#hero-api-env').val(result.herovideo_api_base);
         } else {
             // Default to production
-            chrome.storage.local.set({ 'herovideo_api_base': 'https://www.ai2hero.com' });
+            chrome.storage.local.set({ 'herovideo_api_base': 'https://ai2hero-flax.vercel.app' });
         }
     });
 
