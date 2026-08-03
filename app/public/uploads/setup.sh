@@ -49,4 +49,4 @@ fi
 
 # Run
 echo "[INFO] Dang khoi dong HeroDub Worker (Phase 2)..."
-python worker.py
+python worker.py "$@"

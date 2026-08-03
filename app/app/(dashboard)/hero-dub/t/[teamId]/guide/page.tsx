@@ -89,24 +89,46 @@ export default function HeroDubGuidePage() {
               <span className="h-7 w-7 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
                 2
               </span>
-              <div className="space-y-2 w-full">
+              <div className="space-y-4 w-full">
                 <h3 className="text-sm font-extrabold text-white">Copy và dán lệnh sau để tự động tải & chạy</h3>
                 <p className="text-xs text-gray-400 leading-relaxed font-medium mb-3">
-                  Copy câu lệnh dưới đây, dán (Ctrl+V hoặc Click chuột phải) vào cửa sổ đen CMD và nhấn <b>Enter</b>:
+                  Copy câu lệnh dưới đây, dán (Ctrl+V hoặc Click chuột phải) vào cửa sổ đen CMD và nhấn <b>Enter</b> (chọn 1 trong 2 máy chủ):
                 </p>
-                
-                <div className="bg-black/80 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-amber-400 text-xs">
-                  <span className="select-all overflow-x-auto whitespace-nowrap">
-                    {winCommand}
-                  </span>
-                  <button
-                    onClick={() => handleCopy(winCommand)}
-                    className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
-                    title="Sao chép"
-                  >
-                    {copiedText ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
-                  </button>
+
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[11px] text-green-400 font-medium mb-1.5">Lựa chọn 1: Máy chủ mới (Khuyên dùng - ai2hero-flax.vercel.app)</p>
+                    <div className="bg-black border border-white/10 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-green-400/90 text-[11px]">
+                      <span className="select-all overflow-x-auto whitespace-nowrap">
+                        curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat & herodub-setup.bat --server https://ai2hero-flax.vercel.app
+                      </span>
+                      <button
+                        onClick={() => handleCopy('curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat & herodub-setup.bat --server https://ai2hero-flax.vercel.app')}
+                        className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                        title="Sao chép"
+                      >
+                        {copiedText ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] text-amber-500 font-medium mb-1.5">Lựa chọn 2: Máy chủ cũ (www.ai2hero.com)</p>
+                    <div className="bg-black/80 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-amber-500/90 text-[11px]">
+                      <span className="select-all overflow-x-auto whitespace-nowrap">
+                        {winCommand}
+                      </span>
+                      <button
+                        onClick={() => handleCopy(winCommand)}
+                        className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                        title="Sao chép"
+                      >
+                        {copiedText ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
+                
                 <p className="text-[11px] text-gray-500 italic mt-2">
                   * Lệnh này sẽ tự động tải file setup mới nhất và chạy ngay lập tức tại thư mục hiện tại.
                 </p>
@@ -138,24 +160,46 @@ export default function HeroDubGuidePage() {
               <span className="h-7 w-7 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
                 2
               </span>
-              <div className="space-y-2 w-full">
+              <div className="space-y-4 w-full">
                 <h3 className="text-sm font-extrabold text-white">Copy và dán lệnh cài đặt tự động</h3>
                 <p className="text-xs text-gray-400 font-medium mb-3">
-                  Copy và dán duy nhất một dòng lệnh sau vào Terminal và nhấn <b>Enter</b>:
+                  Copy và dán duy nhất một dòng lệnh sau vào Terminal và nhấn <b>Enter</b> (chọn 1 trong 2 máy chủ):
                 </p>
                 
-                <div className="bg-black/80 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-amber-400 text-xs">
-                  <span className="select-all overflow-x-auto whitespace-nowrap">
-                    {macCommand}
-                  </span>
-                  <button
-                    onClick={() => handleCopy(macCommand)}
-                    className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
-                    title="Sao chép"
-                  >
-                    {copiedText ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
-                  </button>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[11px] text-green-400 font-medium mb-1.5">Lựa chọn 1: Máy chủ mới (Khuyên dùng - ai2hero-flax.vercel.app)</p>
+                    <div className="bg-black border border-white/10 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-green-400/90 text-[11px]">
+                      <span className="select-all overflow-x-auto whitespace-nowrap">
+                        curl -o herodub-setup.sh https://ai2hero-flax.vercel.app/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh --server https://ai2hero-flax.vercel.app
+                      </span>
+                      <button
+                        onClick={() => handleCopy('curl -o herodub-setup.sh https://ai2hero-flax.vercel.app/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh --server https://ai2hero-flax.vercel.app')}
+                        className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                        title="Sao chép"
+                      >
+                        {copiedText ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] text-amber-500 font-medium mb-1.5">Lựa chọn 2: Máy chủ cũ (www.ai2hero.com)</p>
+                    <div className="bg-black/80 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-amber-500/90 text-[11px]">
+                      <span className="select-all overflow-x-auto whitespace-nowrap">
+                        {macCommand}
+                      </span>
+                      <button
+                        onClick={() => handleCopy(macCommand)}
+                        className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                        title="Sao chép"
+                      >
+                        {copiedText ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
               </div>
             </div>
 

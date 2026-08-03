@@ -68,4 +68,4 @@ echo ==============================================
 echo [OK] Dang khoi dong HeroDub Worker...
 echo [!]  Vui long de cua so nay mo de Worker hoat dong.
 echo ==============================================
-python herodub_worker.py
+python herodub_worker.py %*

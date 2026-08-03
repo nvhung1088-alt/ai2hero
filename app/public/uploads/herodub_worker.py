@@ -26,7 +26,12 @@ except ImportError:
 # ---------------------------------------------------------
 # CAU HINH MVP WORKER
 # ---------------------------------------------------------
-API_BASE_URL = "https://www.ai2hero.com/api/hero-dub"
+import argparse
+parser = argparse.ArgumentParser(description="HeroDub Local Worker")
+parser.add_argument("--server", type=str, default="https://www.ai2hero.com", help="URL máy chủ AI2Hero")
+args, unknown = parser.parse_known_args()
+
+API_BASE_URL = f"{args.server.rstrip('/')}/api/hero-dub"
 CONFIG_FILE = "config.json"
 WORKSPACE_DIR = "workspace"
 

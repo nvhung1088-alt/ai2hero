@@ -70,29 +70,54 @@ export default function DubGuidePanel({
         <span className="h-7 w-7 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
           1
         </span>
-        <div className="space-y-2 w-full">
+        <div className="space-y-4 w-full">
           <h3 className="text-sm font-extrabold text-white">Tải và khởi chạy tự động</h3>
           {guideOs === 'windows' ? (
             <p className="text-xs text-gray-400 leading-relaxed font-medium mb-3">
-              Nhấn phím <kbd className="bg-white/10 px-1 py-0.5 rounded border border-white/5">Win + R</kbd> gõ <code className="text-amber-400 font-mono bg-black/40 px-1 rounded">cmd</code> rồi dán lệnh dưới đây vào cửa sổ đen (nhấn Enter):
+              Nhấn phím <kbd className="bg-white/10 px-1 py-0.5 rounded border border-white/5">Win + R</kbd> gõ <code className="text-amber-400 font-mono bg-black/40 px-1 rounded">cmd</code> rồi dán lệnh dưới đây vào cửa sổ đen (chọn 1 trong 2 máy chủ):
             </p>
           ) : (
             <p className="text-xs text-gray-400 leading-relaxed font-medium mb-3">
-              Mở ứng dụng <kbd className="bg-white/10 px-1 py-0.5 rounded border border-white/5 text-amber-400">Terminal</kbd> và dán dòng lệnh dưới đây (nhấn Enter):
+              Mở ứng dụng <kbd className="bg-white/10 px-1 py-0.5 rounded border border-white/5 text-amber-400">Terminal</kbd> và dán dòng lệnh dưới đây (chọn 1 trong 2 máy chủ):
             </p>
           )}
 
-          <div className="bg-black border border-white/10 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-amber-400 text-xs shadow-inner">
-            <span className="select-all overflow-x-auto whitespace-nowrap">
-              {guideOs === 'windows' ? winCmd : macCmd}
-            </span>
-            <button
-              onClick={handleCopyGuideCommand}
-              className="p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
-              title="Sao chép lệnh"
-            >
-              {guideCopied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
-            </button>
+          <div className="space-y-3">
+            <div>
+              <p className="text-[11px] text-green-400 font-medium mb-1.5">Lựa chọn 1: Máy chủ mới (Khuyên dùng - ai2hero-flax.vercel.app)</p>
+              <div className="bg-black border border-white/10 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-green-400/90 text-[11px] shadow-inner">
+                <span className="select-all overflow-x-auto whitespace-nowrap">
+                  {guideOs === 'windows' ? 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat & herodub-setup.bat --server https://ai2hero-flax.vercel.app' : 'curl -o herodub-setup.sh https://ai2hero-flax.vercel.app/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh --server https://ai2hero-flax.vercel.app'}
+                </span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(guideOs === 'windows' ? 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat & herodub-setup.bat --server https://ai2hero-flax.vercel.app' : 'curl -o herodub-setup.sh https://ai2hero-flax.vercel.app/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh --server https://ai2hero-flax.vercel.app');
+                    setGuideCopied(true);
+                    setTimeout(() => setGuideCopied(false), 2000);
+                  }}
+                  className="p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                  title="Sao chép lệnh"
+                >
+                  {guideCopied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] text-amber-500 font-medium mb-1.5">Lựa chọn 2: Máy chủ cũ (www.ai2hero.com)</p>
+              <div className="bg-black border border-white/10 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-amber-500/90 text-[11px] shadow-inner">
+                <span className="select-all overflow-x-auto whitespace-nowrap">
+                  {guideOs === 'windows' ? winCmd : macCmd}
+                </span>
+                <button
+                  onClick={handleCopyGuideCommand}
+                  className="p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                  title="Sao chép lệnh"
+                >
+                  {guideCopied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
