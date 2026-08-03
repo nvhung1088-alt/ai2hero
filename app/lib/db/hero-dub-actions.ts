@@ -223,11 +223,28 @@ export async function getDubTasksAction(
       .offset(offset);
 
     const [countResult] = await db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({
+        total: sql<number>`count(*)::int`,
+        processing: sql<number>`count(*) filter (where ${dubTasks.status} in ('assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'processing', 'dubbing'))::int`,
+        pending: sql<number>`count(*) filter (where ${dubTasks.status} in ('pending', 'queued'))::int`,
+        completed: sql<number>`count(*) filter (where ${dubTasks.status} in ('completed', 'done'))::int`,
+        failed: sql<number>`count(*) filter (where ${dubTasks.status} in ('failed', 'error', 'cancelled', 'paused'))::int`,
+      })
       .from(dubTasks)
       .where(and(...conditions));
 
-    return { success: true, tasks, totalCount: countResult?.count || 0 };
+    return {
+      success: true,
+      tasks,
+      totalCount: countResult?.total || 0,
+      taskStats: {
+        total: countResult?.total || 0,
+        processing: countResult?.processing || 0,
+        pending: countResult?.pending || 0,
+        completed: countResult?.completed || 0,
+        failed: countResult?.failed || 0,
+      }
+    };
   } catch (error: any) {
     console.error('[hero-dub-actions] getDubTasksAction error:', error);
     return { error: 'Lỗi lấy danh sách tác vụ: ' + error.message };

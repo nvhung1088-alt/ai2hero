@@ -66,6 +66,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
   const [loading, setLoading] = useState(true);
   const [taskPage, setTaskPage] = useState(1);
   const [taskTotalCount, setTaskTotalCount] = useState(0);
+  const [taskStats, setTaskStats] = useState<{ total: number; processing: number; pending: number; completed: number; failed: number }>({ total: 0, processing: 0, pending: 0, completed: 0, failed: 0 });
   const [selectedScanConfigId, setSelectedScanConfigId] = useState<number | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const TASKS_PER_PAGE = 20;
@@ -384,6 +385,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
       if (tasksRes.success && tasksRes.tasks) {
         setTasks(tasksRes.tasks);
         setTaskTotalCount(tasksRes.totalCount || 0);
+        if (tasksRes.taskStats) setTaskStats(tasksRes.taskStats);
       }
       if (workersRes.success && workersRes.workers) {
         setWorkers(workersRes.workers);
@@ -1092,6 +1094,7 @@ export default function DashboardClient({ teamId, userId, connectedAiApps, conne
               taskPage={taskPage}
               setTaskPage={setTaskPage}
               taskTotalCount={taskTotalCount}
+              taskStats={taskStats}
               tasksPerPage={TASKS_PER_PAGE}
               refreshData={refreshData}
               handleRetryTask={handleRetryTask}

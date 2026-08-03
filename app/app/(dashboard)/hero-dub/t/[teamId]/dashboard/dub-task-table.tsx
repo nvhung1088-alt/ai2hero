@@ -26,6 +26,7 @@ interface DubTaskTableProps {
   taskPage: number;
   setTaskPage: (_page: number) => void;
   taskTotalCount: number;
+  taskStats?: { total: number; processing: number; pending: number; completed: number; failed: number };
   tasksPerPage: number;
   refreshData: (showLoading?: boolean, page?: number) => void;
   handleRetryTask: (_taskId: number) => void;
@@ -49,6 +50,7 @@ export default function DubTaskTable({
   taskPage,
   setTaskPage,
   taskTotalCount,
+  taskStats,
   tasksPerPage,
   refreshData,
   handleRetryTask,
@@ -62,15 +64,16 @@ export default function DubTaskTable({
 }: DubTaskTableProps) {
   const [taskFilter, setTaskFilter] = useState<string>('all');
 
-  const isProcessingStatus = (status: string) => ['processing', 'downloading', 'dubbing', 'rendering'].includes(status);
+  const isProcessingStatus = (status: string) => ['processing', 'downloading', 'dubbing', 'rendering', 'assigned', 'transcribing', 'translating', 'tts', 'burning', 'uploading'].includes(status);
   const isPendingStatus = (status: string) => ['pending', 'queued'].includes(status);
   const isCompletedStatus = (status: string) => ['completed', 'done'].includes(status);
   const isFailedStatus = (status: string) => ['failed', 'error', 'cancelled', 'paused'].includes(status);
 
-  const processingCount = tasks.filter((t) => isProcessingStatus(t.status)).length;
-  const pendingCount = tasks.filter((t) => isPendingStatus(t.status)).length;
-  const completedCount = tasks.filter((t) => isCompletedStatus(t.status)).length;
-  const failedCount = tasks.filter((t) => isFailedStatus(t.status)).length;
+  const displayTotalCount = taskStats?.total ?? taskTotalCount ?? tasks.length;
+  const processingCount = taskStats?.processing ?? tasks.filter((t) => isProcessingStatus(t.status)).length;
+  const pendingCount = taskStats?.pending ?? tasks.filter((t) => isPendingStatus(t.status)).length;
+  const completedCount = taskStats?.completed ?? tasks.filter((t) => isCompletedStatus(t.status)).length;
+  const failedCount = taskStats?.failed ?? tasks.filter((t) => isFailedStatus(t.status)).length;
 
   const statusPriority = (status: string) => {
     if (isProcessingStatus(status)) return 1;
@@ -139,7 +142,7 @@ export default function DubTaskTable({
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1 pb-2">
         <div className="p-3 bg-[#111622] border border-white/10 rounded-xl flex flex-col justify-between">
           <span className="text-[11px] text-gray-400 font-medium">Tổng số tác vụ</span>
-          <span className="text-lg font-bold text-gray-100 mt-1">{tasks.length}</span>
+          <span className="text-lg font-bold text-gray-100 mt-1">{displayTotalCount}</span>
         </div>
         <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col justify-between">
           <span className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
@@ -179,7 +182,7 @@ export default function DubTaskTable({
                 : 'bg-black/40 text-gray-400 border-white/10 hover:text-gray-200'
             }`}
           >
-            Tất cả ({tasks.length})
+            Tất cả ({displayTotalCount})
           </button>
           <button
             onClick={() => setTaskFilter('processing')}
