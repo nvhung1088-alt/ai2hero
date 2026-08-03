@@ -328,17 +328,15 @@ def process_task(token, task):
     workspace = f"workspace/task_{task_id}"
     os.makedirs(workspace, exist_ok=True)
     
-    # Copy/Download video vao workspace de tien xu ly
-    print(Fore.CYAN + "[-] Chuan bi video vao thu muc lam viec...")
+    print(Fore.CYAN + "[-] Chuan bi video (Doc truc tiep tu file goc)...")
     requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "downloading", "progress": 10}, headers=headers)
 
-    local_input = os.path.join(workspace, "input.mp4")
-    if not os.path.exists(local_input):
-        if not os.path.exists(source_url):
-            print(Fore.RED + f"[-] Loi: Khong tim thay file {source_url} tren may tinh!")
-            requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Khong tim thay file tren o cung: {source_url}"}, headers=headers)
-            return
-        shutil.copy2(source_url, local_input)
+    if not os.path.exists(source_url):
+        print(Fore.RED + f"[-] Loi: Khong tim thay file {source_url} tren may tinh!")
+        requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Khong tim thay file tren o cung: {source_url}"}, headers=headers)
+        return
+        
+    local_input = os.path.abspath(source_url)
 
     # 1. TRANSCRIBING
     duration_sec = 0
@@ -1016,13 +1014,13 @@ if __name__ == '__main__':
         
         has_dubbed = dubbed_audio_path is not None and os.path.exists("dubbed_audio.wav")
         
-        video = ffmpeg.input("input.mp4")
+        video = ffmpeg.input(local_input)
         video_sub = video.video.filter('subtitles', 'vi.srt', force_style="FontSize=20,PrimaryColour=&HFFFFFF,BackColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=10")
         
         if branding_enabled and logo_url and os.path.exists(logo_url):
             print(Fore.CYAN + "  -> Dang ap dung Logo (Watermark)...")
             try:
-                tw, th, tfps = get_video_props("input.mp4")
+                tw, th, tfps = get_video_props(local_input)
                 logo_w = max(50, int(tw * 0.15)) # 15% width
             except:
                 logo_w = 150 # fallback
