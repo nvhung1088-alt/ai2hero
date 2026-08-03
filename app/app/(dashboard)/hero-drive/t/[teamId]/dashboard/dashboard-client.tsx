@@ -225,13 +225,30 @@ export default function DriveDashboardClient({
   const activeConn = googleDriveConnections.find((c) => c.id === activeMapping?.connectionId);
   const activeEmail = activeConn?.credentials?.accountEmail || activeConn?.credentials?.email || activeConn?.name;
 
-  const filteredFiles = rawFilesList.filter((f) => {
-    if (fileFilter === 'all') return true;
-    if (fileFilter === 'completed') return f.status === 'completed';
-    if (fileFilter === 'uploading') return f.status === 'uploading';
-    if (fileFilter === 'pending') return f.status === 'pending';
-    return true;
-  });
+  const statusPriority: Record<string, number> = {
+    uploading: 1,
+    pending: 2,
+    completed: 3,
+    failed: 4,
+  };
+
+  const filteredFiles = rawFilesList
+    .filter((f) => {
+      if (fileFilter === 'all') return true;
+      if (fileFilter === 'completed') return f.status === 'completed';
+      if (fileFilter === 'uploading') return f.status === 'uploading';
+      if (fileFilter === 'pending') return f.status === 'pending';
+      if (fileFilter === 'failed') return f.status === 'failed';
+      return true;
+    })
+    .sort((a, b) => {
+      const pA = statusPriority[a.status] || 99;
+      const pB = statusPriority[b.status] || 99;
+      if (pA !== pB) return pA - pB;
+      const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
 
   const totalPages = Math.max(1, Math.ceil(filteredFiles.length / pageSize));
   const paginatedFiles = filteredFiles.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -402,45 +419,105 @@ export default function DriveDashboardClient({
               )}
             </div>
 
+            {/* Stats Cards Summary */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl flex flex-col justify-between">
+                <span className="text-[11px] text-slate-400 font-medium">Tổng số file</span>
+                <span className="text-lg font-bold text-slate-100 mt-1">{rawFilesList.length}</span>
+              </div>
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col justify-between">
+                <span className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3 animate-spin" /> Đang upload
+                </span>
+                <span className="text-lg font-bold text-amber-300 mt-1">
+                  {rawFilesList.filter((f) => f.status === 'uploading').length}
+                </span>
+              </div>
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl flex flex-col justify-between">
+                <span className="text-[11px] text-blue-400 font-medium flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> Chờ upload
+                </span>
+                <span className="text-lg font-bold text-blue-300 mt-1">
+                  {rawFilesList.filter((f) => f.status === 'pending').length}
+                </span>
+              </div>
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex flex-col justify-between">
+                <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Đã upload
+                </span>
+                <span className="text-lg font-bold text-emerald-300 mt-1">
+                  {rawFilesList.filter((f) => f.status === 'completed').length}
+                </span>
+              </div>
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex flex-col justify-between">
+                <span className="text-[11px] text-rose-400 font-medium flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> File lỗi
+                </span>
+                <span className="text-lg font-bold text-rose-300 mt-1">
+                  {rawFilesList.filter((f) => f.status === 'failed').length}
+                </span>
+              </div>
+            </div>
+
             {/* File Table Header & Filters */}
             <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
                   <HardDrive className="w-4 h-4 text-blue-400" />
                   Danh sách File trong Thư mục Quét ({filteredFiles.length})
                 </h2>
 
-                <div className="flex items-center gap-2 text-xs">
-                  <Filter className="w-3.5 h-3.5 text-slate-500" />
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <Filter className="w-3.5 h-3.5 text-slate-500 mr-1" />
                   <button
                     onClick={() => setFileFilter('all')}
-                    className={`px-2.5 py-1 rounded-lg border font-medium ${
+                    className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
                       fileFilter === 'all'
                         ? 'bg-blue-600/20 text-blue-400 border-blue-500/30'
-                        : 'bg-slate-900 text-slate-400 border-slate-800'
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
                     }`}
                   >
                     Tất cả ({rawFilesList.length})
                   </button>
                   <button
-                    onClick={() => setFileFilter('completed')}
-                    className={`px-2.5 py-1 rounded-lg border font-medium ${
-                      fileFilter === 'completed'
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                        : 'bg-slate-900 text-slate-400 border-slate-800'
-                    }`}
-                  >
-                    Đã upload ({rawFilesList.filter((f) => f.status === 'completed').length})
-                  </button>
-                  <button
                     onClick={() => setFileFilter('uploading')}
-                    className={`px-2.5 py-1 rounded-lg border font-medium ${
+                    className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
                       fileFilter === 'uploading'
                         ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                        : 'bg-slate-900 text-slate-400 border-slate-800'
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-amber-300'
                     }`}
                   >
-                    Đang upload ({rawFilesList.filter((f) => f.status === 'uploading').length})
+                    ⏳ Đang upload ({rawFilesList.filter((f) => f.status === 'uploading').length})
+                  </button>
+                  <button
+                    onClick={() => setFileFilter('pending')}
+                    className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                      fileFilter === 'pending'
+                        ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-blue-300'
+                    }`}
+                  >
+                    ⚡ Chờ upload ({rawFilesList.filter((f) => f.status === 'pending').length})
+                  </button>
+                  <button
+                    onClick={() => setFileFilter('completed')}
+                    className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                      fileFilter === 'completed'
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-emerald-300'
+                    }`}
+                  >
+                    ✅ Đã upload ({rawFilesList.filter((f) => f.status === 'completed').length})
+                  </button>
+                  <button
+                    onClick={() => setFileFilter('failed')}
+                    className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                      fileFilter === 'failed'
+                        ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-rose-300'
+                    }`}
+                  >
+                    ❌ Lỗi ({rawFilesList.filter((f) => f.status === 'failed').length})
                   </button>
                 </div>
               </div>
