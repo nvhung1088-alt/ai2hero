@@ -140,7 +140,7 @@ def main():
             else:
                 api_url = f"{server_url}/api/hero-drive/worker?action=get_all_tasks"
 
-            res = requests.get(api_url, headers=WORKER_HEADERS, timeout=15)
+            res = requests.get(api_url, headers=WORKER_HEADERS, timeout=120)
             if res.status_code == 200:
                 data = res.json()
                 if data.get("success"):
@@ -183,7 +183,7 @@ def main():
                             requests.post(sync_url, headers=WORKER_HEADERS, json={
                                 "mappingId": mapping_id,
                                 "items": items
-                            }, timeout=15)
+                            }, timeout=120)
 
                     # 2. Upload Pending Files
                     if pending_files:
@@ -232,7 +232,7 @@ def main():
                                     "fileId": file_id,
                                     "driveFileId": drive_file_id,
                                     "status": "completed"
-                                }, timeout=15)
+                                }, timeout=120)
                             else:
                                 print(f"❌ [{now_str}] Lỗi upload: {err_msg}")
                                 complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
@@ -240,7 +240,7 @@ def main():
                                     "fileId": file_id,
                                     "status": "failed",
                                     "error": err_msg
-                                }, timeout=15)
+                                }, timeout=120)
 
             elif res.status_code == 403:
                 print(f"⚠️ [{now_str}] Máy chủ tạm thời bận (HTTP 403 - Nghỉ 30s)...")
