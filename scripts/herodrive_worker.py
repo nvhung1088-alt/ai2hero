@@ -123,7 +123,7 @@ def process_file_item(file_item, mapping_tokens, server_url, now_str):
     file_name = file_item.get("fileName")
 
     if not local_path or not os.path.exists(local_path):
-        print(f"⚠️ [{now_str}] Không tìm thấy file local: {local_path}")
+        print(f"🧹 [{now_str}] Đã dọn dẹp file thiếu local khỏi Server: {file_name}")
         complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
         try:
             requests.post(complete_url, headers=WORKER_HEADERS, json={
