@@ -312,3 +312,35 @@ export async function cleanAndResetMappingAction(mappingId: number) {
     return { success: false, error: error.message };
   }
 }
+
+export async function retryFailedFilesAction(mappingId: number) {
+  try {
+    const contents = await db
+      .select({ id: driveContents.id })
+      .from(driveContents)
+      .where(eq(driveContents.mappingId, mappingId));
+
+    if (contents.length > 0) {
+      const contentIds = contents.map((c) => c.id);
+      await db
+        .update(driveFiles)
+        .set({
+          status: 'pending',
+          error: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            inArray(driveFiles.contentId, contentIds),
+            eq(driveFiles.status, 'failed')
+          )
+        );
+    }
+
+    revalidatePath('/hero-drive');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error retrying failed files action:', error);
+    return { success: false, error: error.message };
+  }
+}

@@ -22,6 +22,7 @@ import {
   AlertCircle,
   HardDrive,
   Filter,
+  RotateCcw,
 } from 'lucide-react';
 import {
   createDriveFolderMappingAction,
@@ -31,6 +32,7 @@ import {
   triggerImmediateScanAction,
   getFolderMappingHistoryAction,
   cleanAndResetMappingAction,
+  retryFailedFilesAction,
 } from '@/lib/db/hero-drive-actions';
 import MappingSidebar from './mapping-sidebar';
 import { DriveWorkerGuide } from './drive-worker-guide';
@@ -59,6 +61,7 @@ export default function DriveDashboardClient({
   const [rawFilesList, setRawFilesList] = useState<any[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState<boolean>(false);
   const [isCleaning, setIsCleaning] = useState<boolean>(false);
+  const [isRetrying, setIsRetrying] = useState<boolean>(false);
   const [fileFilter, setFileFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 10;
@@ -75,6 +78,25 @@ export default function DriveDashboardClient({
       alert('Có lỗi xảy ra khi dọn dẹp: ' + res.error);
     }
     setIsCleaning(false);
+  };
+
+  const handleRetryFailedFiles = async () => {
+    if (!selectedMappingId) return;
+    const failedCount = rawFilesList.filter((f) => f.status === 'failed').length;
+    if (failedCount === 0) {
+      alert('Hiện không có file bị lỗi nào cần thử lại!');
+      return;
+    }
+    if (!confirm(`Bạn có chắc muốn đưa ${failedCount} file lỗi quay trở lại Hàng chờ Upload không?`)) return;
+    setIsRetrying(true);
+    const res = await retryFailedFilesAction(selectedMappingId);
+    if (res.success) {
+      await fetchMappingFiles(selectedMappingId);
+      alert(`Đã đưa ${failedCount} file lỗi quay lại Hàng chờ Upload thành công! Worker sẽ tự động bốc lên tải lại.`);
+    } else {
+      alert('Có lỗi xảy ra khi chuyển file lỗi: ' + res.error);
+    }
+    setIsRetrying(false);
   };
 
   // Modals
@@ -405,6 +427,19 @@ export default function DriveDashboardClient({
                     </>
                   )}
                 </button>
+
+                {/* Nút Thử lại File Lỗi */}
+                {rawFilesList.some((f) => f.status === 'failed') && (
+                  <button
+                    onClick={handleRetryFailedFiles}
+                    disabled={isRetrying}
+                    title="Chuyển toàn bộ các file lỗi do rớt mạng quay lại Hàng chờ Upload"
+                    className="px-3 py-2 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 rounded-lg text-xs text-amber-300 flex items-center gap-1.5 font-medium transition-colors disabled:opacity-50"
+                  >
+                    <RotateCcw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+                    {isRetrying ? 'Đang chuyển...' : `Thử lại (${rawFilesList.filter((f) => f.status === 'failed').length}) file lỗi`}
+                  </button>
+                )}
 
                 {/* Nút Dọn Rác & Đếm 1:1 */}
                 <button
