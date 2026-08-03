@@ -58,7 +58,7 @@ def pair_device():
         payload = {"code": code}
         
         try:
-            res = requests.post(f"{api_base}/pair", json=payload)
+            res = requests.post(f"{api_base}/pair", json=payload, timeout=120)
             data = res.json()
             
             if res.status_code == 200 and data.get("success"):
@@ -80,7 +80,7 @@ def api_patch_update(token, action, payload):
     headers = {"Authorization": f"Bearer {token}"}
     payload["action"] = action
     try:
-        requests.patch(f"{API_BASE_URL}/update", json=payload, headers=headers)
+        requests.patch(f"{API_BASE_URL}/update", json=payload, headers=headers, timeout=120)
     except:
         pass
 
@@ -121,7 +121,7 @@ def run_worker_loop(token):
                     print(Fore.CYAN + "[Worker] Cho viec... (0 download)")
                 _last_heartbeat[0] = now
             
-            res = requests.get(url, headers={"Authorization": f"Bearer {token}"})
+            res = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=120)
             
             if res.status_code == 200:
                 data = res.json()
