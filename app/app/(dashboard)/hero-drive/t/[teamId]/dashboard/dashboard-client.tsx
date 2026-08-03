@@ -59,6 +59,9 @@ export default function DriveDashboardClient({
   const [rawFilesList, setRawFilesList] = useState<any[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState<boolean>(false);
   const [isCleaning, setIsCleaning] = useState<boolean>(false);
+  const [fileFilter, setFileFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const pageSize = 10;
 
   const handleCleanAndReset = async () => {
     if (!selectedMappingId) return;
