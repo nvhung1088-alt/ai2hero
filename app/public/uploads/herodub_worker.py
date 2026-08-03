@@ -1127,7 +1127,6 @@ if __name__ == '__main__':
     if output_folder and os.path.isdir(output_folder):
         try:
             # Lay ten file goc tu source_url, thay vi dung timestamp
-            import os
             original_basename = os.path.basename(source_url)
             original_name, _ = os.path.splitext(original_basename)
             
