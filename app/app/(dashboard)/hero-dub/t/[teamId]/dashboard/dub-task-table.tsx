@@ -126,29 +126,19 @@ export default function DubTaskTable({
                     <div className="flex gap-3 items-center">
                       {(() => {
                         let thumbPath = task.sourceThumbnailUrl;
-                        if (!thumbPath && task.sourceUrl && typeof task.sourceUrl === 'string') {
-                          thumbPath = task.sourceUrl.replace(/\.(mp4|mkv|mov|avi|webm)$/i, '.jpeg');
-                        }
-                        const thumbUrl = thumbPath ? (thumbPath.startsWith('http') || thumbPath.startsWith('data:') ? thumbPath : `/api/hero-dub/stream?path=${encodeURIComponent(thumbPath)}`) : null;
+                        const thumbUrl = thumbPath && (thumbPath.startsWith('http') || thumbPath.startsWith('data:')) ? thumbPath : null;
                         return thumbUrl ? (
                           <img 
                             src={thumbUrl} 
                             alt="" 
                             className="w-16 h-10 object-cover rounded-md border border-white/10 shrink-0 bg-black/40" 
                             onError={(e) => {
-                              // If .jpeg fails, try .jpg fallback
-                              const target = e.currentTarget;
-                              if (thumbPath && thumbPath.endsWith('.jpeg')) {
-                                const jpgPath = thumbPath.replace(/\.jpeg$/, '.jpg');
-                                target.src = `/api/hero-dub/stream?path=${encodeURIComponent(jpgPath)}`;
-                              } else {
-                                target.style.display = 'none';
-                              }
+                              e.currentTarget.style.display = 'none';
                             }}
                           />
                         ) : (
                           <div className="w-16 h-10 rounded-md bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                            <Video className="h-4 w-4 text-gray-500" />
+                            <Video className="h-4 w-4 text-purple-400" />
                           </div>
                         );
                       })()}

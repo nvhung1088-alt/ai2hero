@@ -32,7 +32,11 @@ export default function HeroFilmSidebarMenu({ teamId }: SidebarMenuProps) {
   useEffect(() => {
     fetchProgress();
     getTeamAutoTranslateAction(teamId).then(res => setAutoTranslate(res));
-    const interval = setInterval(fetchProgress, 5000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchProgress();
+      }
+    }, 60000);
     return () => clearInterval(interval);
   }, [teamId]);
 
