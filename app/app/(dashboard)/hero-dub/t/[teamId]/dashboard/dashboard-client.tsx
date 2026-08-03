@@ -57,16 +57,31 @@ interface DashboardClientProps {
   teamName: string;
   connectedAiApps?: { slug: string; name: string; models: any[] }[];
   connectedAiTtsApps?: { slug: string; name: string; voices: string[] }[];
+  initialTasks?: any[];
+  initialTotalCount?: number;
+  initialTaskStats?: { total: number; processing: number; pending: number; completed: number; failed: number };
+  initialProjects?: any[];
+  initialScanConfigs?: any[];
 }
 
-export default function DashboardClient({ teamId, userId, connectedAiApps, connectedAiTtsApps }: DashboardClientProps) {
-  const [tasks, setTasks] = useState<any[]>([]);
+export default function DashboardClient({
+  teamId,
+  userId,
+  connectedAiApps,
+  connectedAiTtsApps,
+  initialTasks = [],
+  initialTotalCount = 0,
+  initialTaskStats = { total: 0, processing: 0, pending: 0, completed: 0, failed: 0 },
+  initialProjects = [],
+  initialScanConfigs = []
+}: DashboardClientProps) {
+  const [tasks, setTasks] = useState<any[]>(initialTasks);
   const [workers, setWorkers] = useState<any[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<any[]>(initialProjects);
+  const [loading, setLoading] = useState(initialTasks.length === 0);
   const [taskPage, setTaskPage] = useState(1);
-  const [taskTotalCount, setTaskTotalCount] = useState(0);
-  const [taskStats, setTaskStats] = useState<{ total: number; processing: number; pending: number; completed: number; failed: number }>({ total: 0, processing: 0, pending: 0, completed: 0, failed: 0 });
+  const [taskTotalCount, setTaskTotalCount] = useState(initialTotalCount);
+  const [taskStats, setTaskStats] = useState(initialTaskStats);
   const [selectedScanConfigId, setSelectedScanConfigId] = useState<number | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const TASKS_PER_PAGE = 20;

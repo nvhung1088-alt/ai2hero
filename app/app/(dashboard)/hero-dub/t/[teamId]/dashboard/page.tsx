@@ -8,6 +8,9 @@ import DashboardClient from './dashboard-client';
 
 export const revalidate = 0;
 
+import { getDubTasksAction, getDubProjectsAction } from '@/lib/db/hero-dub-actions';
+import { getDubScanConfigsAction } from '@/lib/db/hero-dub-scan-actions';
+
 export default async function HeroDubDashboardPage({
   params
 }: {
@@ -40,6 +43,19 @@ export default async function HeroDubDashboardPage({
   if (!team) {
     redirect('/dashboard');
   }
+
+  // Pre-fetch initial data Server-Side for Instant 0s Load
+  const [tasksRes, projectsRes, scanConfigsRes] = await Promise.all([
+    getDubTasksAction(teamId, { limit: 20, offset: 0 }),
+    getDubProjectsAction(teamId),
+    getDubScanConfigsAction(teamId),
+  ]);
+
+  const initialTasks = tasksRes.success && tasksRes.tasks ? tasksRes.tasks : [];
+  const initialTotalCount = tasksRes.success ? (tasksRes.totalCount || 0) : 0;
+  const initialTaskStats = tasksRes.success && tasksRes.taskStats ? tasksRes.taskStats : { total: 0, processing: 0, pending: 0, completed: 0, failed: 0 };
+  const initialProjects = projectsRes.success && projectsRes.projects ? projectsRes.projects : [];
+  const initialScanConfigs = scanConfigsRes.success && scanConfigsRes.configs ? scanConfigsRes.configs : [];
 
   // Fetch connected AI apps
   const activeConnections = await db
@@ -87,6 +103,11 @@ export default async function HeroDubDashboardPage({
       teamName={team.name}
       connectedAiApps={connectedAiApps}
       connectedAiTtsApps={connectedAiTtsApps}
+      initialTasks={initialTasks}
+      initialTotalCount={initialTotalCount}
+      initialTaskStats={initialTaskStats}
+      initialProjects={initialProjects}
+      initialScanConfigs={initialScanConfigs}
     />
   );
 }

@@ -225,24 +225,30 @@ export async function getDubTasksAction(
     const [countResult] = await db
       .select({
         total: sql<number>`count(*)::int`,
-        processing: sql<number>`count(*) filter (where ${dubTasks.status} in ('assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'processing', 'dubbing'))::int`,
-        pending: sql<number>`count(*) filter (where ${dubTasks.status} in ('pending', 'queued'))::int`,
-        completed: sql<number>`count(*) filter (where ${dubTasks.status} in ('completed', 'done'))::int`,
+        processing: sql<number>`count(*) filter (where ${dubTasks.status} in ('assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'processing', 'dubbing', 'running', 'active'))::int`,
+        completed: sql<number>`count(*) filter (where ${dubTasks.status} in ('completed', 'done', 'finished', 'success'))::int`,
         failed: sql<number>`count(*) filter (where ${dubTasks.status} in ('failed', 'error', 'cancelled', 'paused'))::int`,
+        pending: sql<number>`count(*) filter (where ${dubTasks.status} in ('pending', 'queued', 'created', 'ready') or ${dubTasks.status} is null or ${dubTasks.status} not in ('assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'processing', 'dubbing', 'running', 'active', 'completed', 'done', 'finished', 'success', 'failed', 'error', 'cancelled', 'paused'))::int`,
       })
       .from(dubTasks)
       .where(and(...conditions));
 
+    const total = countResult?.total || 0;
+    const processing = countResult?.processing || 0;
+    const completed = countResult?.completed || 0;
+    const failed = countResult?.failed || 0;
+    const pending = countResult?.pending || (total - processing - completed - failed);
+
     return {
       success: true,
       tasks,
-      totalCount: countResult?.total || 0,
+      totalCount: total,
       taskStats: {
-        total: countResult?.total || 0,
-        processing: countResult?.processing || 0,
-        pending: countResult?.pending || 0,
-        completed: countResult?.completed || 0,
-        failed: countResult?.failed || 0,
+        total,
+        processing,
+        pending: pending < 0 ? 0 : pending,
+        completed,
+        failed,
       }
     };
   } catch (error: any) {

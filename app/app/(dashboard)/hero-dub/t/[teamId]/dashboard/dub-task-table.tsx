@@ -64,10 +64,10 @@ export default function DubTaskTable({
 }: DubTaskTableProps) {
   const [taskFilter, setTaskFilter] = useState<string>('all');
 
-  const isProcessingStatus = (status: string) => ['processing', 'downloading', 'dubbing', 'rendering', 'assigned', 'transcribing', 'translating', 'tts', 'burning', 'uploading'].includes(status);
-  const isPendingStatus = (status: string) => ['pending', 'queued'].includes(status);
-  const isCompletedStatus = (status: string) => ['completed', 'done'].includes(status);
+  const isProcessingStatus = (status: string) => ['processing', 'downloading', 'dubbing', 'rendering', 'assigned', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'running', 'active'].includes(status);
+  const isCompletedStatus = (status: string) => ['completed', 'done', 'finished', 'success'].includes(status);
   const isFailedStatus = (status: string) => ['failed', 'error', 'cancelled', 'paused'].includes(status);
+  const isPendingStatus = (status: string) => ['pending', 'queued', 'created', 'ready'].includes(status) || (!isProcessingStatus(status) && !isCompletedStatus(status) && !isFailedStatus(status));
 
   const displayTotalCount = taskStats?.total ?? taskTotalCount ?? tasks.length;
   const processingCount = taskStats?.processing ?? tasks.filter((t) => isProcessingStatus(t.status)).length;
