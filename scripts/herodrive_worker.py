@@ -103,16 +103,17 @@ def upload_file_to_google_drive(access_token, file_path, file_name, target_folde
     elif file_name.endswith('.txt'): file_mime = "text/plain"
 
     try:
-        files = {
-            "data": ("metadata", json.dumps(metadata), "application/json; charset=UTF-8"),
-            "file": (file_name, open(file_path, "rb"), file_mime)
-        }
-        response = requests.post(url, headers=headers, files=files, timeout=300)
-        if response.status_code == 200:
-            res_data = response.json()
-            return True, res_data.get("id"), None
-        else:
-            return False, None, f"HTTP {response.status_code}: {response.text}"
+        with open(file_path, "rb") as f:
+            files = {
+                "data": ("metadata", json.dumps(metadata), "application/json; charset=UTF-8"),
+                "file": (file_name, f, file_mime)
+            }
+            response = requests.post(url, headers=headers, files=files, timeout=300)
+            if response.status_code == 200:
+                res_data = response.json()
+                return True, res_data.get("id"), None
+            else:
+                return False, None, f"HTTP {response.status_code}: {response.text}"
     except Exception as e:
         return False, None, str(e)
 
@@ -123,6 +124,15 @@ def process_file_item(file_item, mapping_tokens, server_url, now_str):
 
     if not local_path or not os.path.exists(local_path):
         print(f"⚠️ [{now_str}] Không tìm thấy file local: {local_path}")
+        complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
+        try:
+            requests.post(complete_url, headers=WORKER_HEADERS, json={
+                "fileId": file_id,
+                "status": "failed",
+                "error": "Local file not found or already moved"
+            }, timeout=120)
+        except Exception:
+            pass
         return
 
     access_token = file_item.get("accessToken")
