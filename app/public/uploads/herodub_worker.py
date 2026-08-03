@@ -1128,8 +1128,16 @@ if __name__ == '__main__':
     output_folder = task.get("outputFolder")
     if output_folder and os.path.isdir(output_folder):
         try:
-            timestamp = int(time.time())
-            base_name = f"dubbed_{task_id}_{timestamp}"
+            # Lay ten file goc tu source_url, thay vi dung timestamp
+            import os
+            original_basename = os.path.basename(source_url)
+            original_name, _ = os.path.splitext(original_basename)
+            
+            # Neu khong the lay ten goc (VD: duong dan HTTP), fallback dung id
+            if not original_name:
+                original_name = f"video_{task_id}"
+                
+            base_name = f"{original_name}_dubbed"
             
             dest_video = os.path.join(output_folder, f"{base_name}.mp4")
             dest_srt = os.path.join(output_folder, f"{base_name}.srt")
@@ -1139,7 +1147,7 @@ if __name__ == '__main__':
             
             final_output_path = dest_video
             vi_srt_abs_path = dest_srt
-            print(Fore.CYAN + f"[-] Da luu ket qua vao: {output_folder}")
+            print(Fore.CYAN + f"[-] Da luu ket qua vao: {dest_video}")
         except Exception as e:
             print(Fore.YELLOW + f"[!] Khong the luu vao thu muc dich {output_folder}: {e}")
 
