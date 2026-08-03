@@ -83,17 +83,10 @@ def scan_and_group_local_folder(folder_path):
     return items
 
 def upload_file_to_google_drive(access_token, file_path, file_name, target_folder_id=None):
-    url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
-    
-    headers = {
-        "Authorization": f"Bearer {access_token}"
-    }
+    if not os.path.exists(file_path):
+        return False, None, "File local không tồn tại"
 
-    metadata = {
-        "name": file_name
-    }
-    if target_folder_id:
-        metadata["parents"] = [target_folder_id]
+    file_size = os.path.getsize(file_path)
 
     file_mime = "application/octet-stream"
     if file_name.endswith(('.jpg', '.jpeg')): file_mime = "image/jpeg"
@@ -102,19 +95,63 @@ def upload_file_to_google_drive(access_token, file_path, file_name, target_folde
     elif file_name.endswith('.srt'): file_mime = "text/plain"
     elif file_name.endswith('.txt'): file_mime = "text/plain"
 
+    # 1. Khởi tạo Session Resumable Upload với Google Drive v3 API
+    session_url_endpoint = "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable"
+    init_headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": file_mime,
+        "X-Upload-Content-Length": str(file_size)
+    }
+
+    metadata = {"name": file_name}
+    if target_folder_id:
+        metadata["parents"] = [target_folder_id]
+
     try:
+        init_res = requests.post(session_url_endpoint, headers=init_headers, json=metadata, timeout=60)
+        if init_res.status_code != 200:
+            return False, None, f"Lỗi tạo Session Resumable HTTP {init_res.status_code}: {init_res.text}"
+
+        upload_url = init_res.headers.get("Location")
+        if not upload_url:
+            return False, None, "Không nhận được Resumable Location URL từ Google API"
+
+        # 2. Upload Chunked Stream (Block 8MB) với % live progress
+        chunk_size = 8 * 1024 * 1024 # 8 MB block
         with open(file_path, "rb") as f:
-            files = {
-                "data": ("metadata", json.dumps(metadata), "application/json; charset=UTF-8"),
-                "file": (file_name, f, file_mime)
-            }
-            response = requests.post(url, headers=headers, files=files, timeout=300)
-            if response.status_code == 200:
-                res_data = response.json()
-                return True, res_data.get("id"), None
-            else:
-                return False, None, f"HTTP {response.status_code}: {response.text}"
+            offset = 0
+            while offset < file_size:
+                chunk_data = f.read(chunk_size)
+                chunk_len = len(chunk_data)
+                start_byte = offset
+                end_byte = offset + chunk_len - 1
+
+                chunk_headers = {
+                    "Content-Length": str(chunk_len),
+                    "Content-Range": f"bytes {start_byte}-{end_byte}/{file_size}"
+                }
+
+                pct = int((end_byte + 1) / file_size * 100)
+                mb_uploaded = (end_byte + 1) / (1024 * 1024)
+                mb_total = file_size / (1024 * 1024)
+                print(f"   🚀 [{pct}%] Uploading chunk: {mb_uploaded:.1f} MB / {mb_total:.1f} MB ...", end="\r", flush=True)
+
+                res = requests.put(upload_url, headers=chunk_headers, data=chunk_data, timeout=120)
+
+                if res.status_code in (200, 201):
+                    print(f"\n   ✅ Upload hoàn tất: {file_name} ({mb_total:.1f} MB)")
+                    res_data = res.json()
+                    return True, res_data.get("id"), None
+                elif res.status_code == 308:
+                    offset += chunk_len
+                else:
+                    print("")
+                    return False, None, f"Lỗi Upload Chunk HTTP {res.status_code}: {res.text}"
+
+        return False, None, "Upload kết thúc bất thường"
     except Exception as e:
+        print("")
         return False, None, str(e)
 
 def process_file_item(file_item, mapping_tokens, server_url, now_str):
