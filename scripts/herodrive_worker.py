@@ -95,7 +95,7 @@ def upload_file_to_google_drive(access_token, file_path, file_name, target_folde
     elif file_name.endswith('.srt'): file_mime = "text/plain"
     elif file_name.endswith('.txt'): file_mime = "text/plain"
 
-    # 1. Khởi tạo Session Resumable Upload với Google Drive v3 API
+    # 1. Khởi tạo Session Resumable Upload với Google Drive v3 API (Auto Retry 3 lần nếu Google gặp 502)
     session_url_endpoint = "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable"
     init_headers = {
         "Authorization": f"Bearer {access_token}",
@@ -108,51 +108,82 @@ def upload_file_to_google_drive(access_token, file_path, file_name, target_folde
     if target_folder_id:
         metadata["parents"] = [target_folder_id]
 
-    try:
-        init_res = requests.post(session_url_endpoint, headers=init_headers, json=metadata, timeout=60)
-        if init_res.status_code != 200:
-            return False, None, f"Lỗi tạo Session Resumable HTTP {init_res.status_code}: {init_res.text}"
+    upload_url = None
+    for init_attempt in range(3):
+        try:
+            init_res = requests.post(session_url_endpoint, headers=init_headers, json=metadata, timeout=60)
+            if init_res.status_code == 200:
+                upload_url = init_res.headers.get("Location")
+                if upload_url:
+                    break
+            elif init_res.status_code in (500, 502, 503, 504):
+                print(f"   ⚠️ Máy chủ Google trả về HTTP {init_res.status_code} tạm thời, thử lại sau 5s (lần {init_attempt + 1}/3)...")
+                time.sleep(5)
+                continue
+            else:
+                return False, None, f"Lỗi tạo Session Resumable HTTP {init_res.status_code}: {init_res.text[:200]}"
+        except Exception as e:
+            if init_attempt < 2:
+                time.sleep(5)
+                continue
+            return False, None, f"Lỗi khởi tạo Session: {str(e)}"
 
-        upload_url = init_res.headers.get("Location")
-        if not upload_url:
-            return False, None, "Không nhận được Resumable Location URL từ Google API"
+    if not upload_url:
+        return False, None, "Không nhận được Resumable Location URL từ Google API"
 
-        # 2. Upload Chunked Stream (Block 8MB) với % live progress
-        chunk_size = 8 * 1024 * 1024 # 8 MB block
-        with open(file_path, "rb") as f:
-            offset = 0
-            while offset < file_size:
-                chunk_data = f.read(chunk_size)
-                chunk_len = len(chunk_data)
-                start_byte = offset
-                end_byte = offset + chunk_len - 1
+    # 2. Upload Chunked Stream (Block 8MB) với % live progress & Auto Retry 5xx
+    chunk_size = 8 * 1024 * 1024 # 8 MB block
+    with open(file_path, "rb") as f:
+        offset = 0
+        while offset < file_size:
+            chunk_data = f.read(chunk_size)
+            chunk_len = len(chunk_data)
+            start_byte = offset
+            end_byte = offset + chunk_len - 1
 
-                chunk_headers = {
-                    "Content-Length": str(chunk_len),
-                    "Content-Range": f"bytes {start_byte}-{end_byte}/{file_size}"
-                }
+            chunk_headers = {
+                "Content-Length": str(chunk_len),
+                "Content-Range": f"bytes {start_byte}-{end_byte}/{file_size}"
+            }
 
-                pct = int((end_byte + 1) / file_size * 100)
-                mb_uploaded = (end_byte + 1) / (1024 * 1024)
-                mb_total = file_size / (1024 * 1024)
+            pct = int((end_byte + 1) / file_size * 100)
+            mb_uploaded = (end_byte + 1) / (1024 * 1024)
+            mb_total = file_size / (1024 * 1024)
+
+            chunk_success = False
+            for attempt in range(5):
                 print(f"   🚀 [{pct}%] Uploading chunk: {mb_uploaded:.1f} MB / {mb_total:.1f} MB ...", end="\r", flush=True)
+                try:
+                    res = requests.put(upload_url, headers=chunk_headers, data=chunk_data, timeout=120)
 
-                res = requests.put(upload_url, headers=chunk_headers, data=chunk_data, timeout=120)
+                    if res.status_code in (200, 201):
+                        print(f"\n   ✅ Upload hoàn tất: {file_name} ({mb_total:.1f} MB)")
+                        res_data = res.json()
+                        return True, res_data.get("id"), None
+                    elif res.status_code == 308:
+                        offset += chunk_len
+                        chunk_success = True
+                        break
+                    elif res.status_code in (500, 502, 503, 504):
+                        print(f"\n   ⚠️ Google API gặp lỗi HTTP {res.status_code} tạm thời, tự động nghỉ 5s thử lại chunk (lần {attempt + 1}/5)...")
+                        time.sleep(5)
+                        continue
+                    else:
+                        print("")
+                        return False, None, f"Lỗi Upload Chunk HTTP {res.status_code}: {res.text[:200]}"
+                except Exception as chunk_err:
+                    if attempt < 4:
+                        print(f"\n   ⚠️ Gián đoạn mạng, nghỉ 5s thử lại chunk (lần {attempt + 1}/5)...")
+                        time.sleep(5)
+                        continue
+                    else:
+                        print("")
+                        return False, None, f"Lỗi kết nối sau 5 lần thử: {str(chunk_err)}"
 
-                if res.status_code in (200, 201):
-                    print(f"\n   ✅ Upload hoàn tất: {file_name} ({mb_total:.1f} MB)")
-                    res_data = res.json()
-                    return True, res_data.get("id"), None
-                elif res.status_code == 308:
-                    offset += chunk_len
-                else:
-                    print("")
-                    return False, None, f"Lỗi Upload Chunk HTTP {res.status_code}: {res.text}"
+            if not chunk_success:
+                return False, None, "Upload chunk thất bại sau 5 lần thử lại"
 
-        return False, None, "Upload kết thúc bất thường"
-    except Exception as e:
-        print("")
-        return False, None, str(e)
+    return False, None, "Upload kết thúc bất thường"
 
 def process_file_item(file_item, mapping_tokens, server_url, now_str):
     file_id = file_item.get("id")
