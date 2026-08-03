@@ -49,15 +49,38 @@ export function DownloaderWorkerGuide({ teamId }: WorkerGuideProps) {
                   <p>2. Mở thư mục <strong>hero-downloader-worker</strong>, click vào thanh địa chỉ (Address bar) phía trên cùng của thư mục, gõ <strong>cmd</strong> và nhấn Enter.</p>
                   <p>3. Dán câu lệnh dưới đây vào màn hình đen vừa hiện ra và nhấn Enter để khởi chạy!</p>
                 </div>
-                <div className="bg-black/60 p-3 rounded-lg border border-white/10 font-mono text-xs text-gray-300 flex items-center justify-between gap-4 group">
-                  <p className="break-all text-teal-400/90">python -m pip install -U -r requirements.txt &amp;&amp; python worker.py</p>
-                  <button 
-                    onClick={() => { navigator.clipboard.writeText('python -m pip install -U -r requirements.txt && python worker.py'); showToast('Đã copy câu lệnh', 'success'); }} 
-                    className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors shrink-0" 
-                    title="Copy lệnh"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[11px] text-teal-400 font-medium mb-1.5">Cách 1: Khởi chạy từ CMD bất kỳ (Dán vào chạy luôn)</p>
+                    <div className="bg-black/80 border border-white/10 rounded-lg p-2.5 flex items-center justify-between gap-3 font-mono text-xs text-teal-400">
+                      <span className="select-all overflow-x-auto whitespace-nowrap">
+                        cd /d "%USERPROFILE%\OneDrive\Desktop\Ai2Hero\hero-downloader-worker" &amp;&amp; python worker.py
+                      </span>
+                      <button 
+                        onClick={() => { navigator.clipboard.writeText('cd /d "%USERPROFILE%\\OneDrive\\Desktop\\Ai2Hero\\hero-downloader-worker" && python worker.py'); showToast('Đã copy câu lệnh', 'success'); }} 
+                        className="p-1.5 bg-white/5 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors shrink-0" 
+                        title="Copy lệnh"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] text-amber-400 font-medium mb-1.5">Cách 2: Cài đặt mới / Nếu đã ở trong thư mục worker</p>
+                    <div className="bg-black/60 border border-white/10 rounded-lg p-2.5 flex items-center justify-between gap-3 font-mono text-xs text-amber-400">
+                      <span className="select-all overflow-x-auto whitespace-nowrap">
+                        python -m pip install -U -r requirements.txt &amp;&amp; python worker.py
+                      </span>
+                      <button 
+                        onClick={() => { navigator.clipboard.writeText('python -m pip install -U -r requirements.txt && python worker.py'); showToast('Đã copy câu lệnh', 'success'); }} 
+                        className="p-1.5 bg-white/5 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors shrink-0" 
+                        title="Copy lệnh"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="text-xs text-amber-400/90 leading-relaxed mt-4">
