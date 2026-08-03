@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Video,
   Loader2,
@@ -11,7 +11,11 @@ import {
   RotateCcw,
   Trash2,
   Pause,
-  Play
+  Play,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Filter
 } from 'lucide-react';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 import { getStatusBadge, getPlatformLabel } from '../_shared/dub-ui-helpers';
@@ -56,6 +60,42 @@ export default function DubTaskTable({
   handleResumeAll,
   handleClearUnassigned,
 }: DubTaskTableProps) {
+  const [taskFilter, setTaskFilter] = useState<string>('all');
+
+  const isProcessingStatus = (status: string) => ['processing', 'downloading', 'dubbing', 'rendering'].includes(status);
+  const isPendingStatus = (status: string) => ['pending', 'queued'].includes(status);
+  const isCompletedStatus = (status: string) => ['completed', 'done'].includes(status);
+  const isFailedStatus = (status: string) => ['failed', 'error', 'cancelled', 'paused'].includes(status);
+
+  const processingCount = tasks.filter((t) => isProcessingStatus(t.status)).length;
+  const pendingCount = tasks.filter((t) => isPendingStatus(t.status)).length;
+  const completedCount = tasks.filter((t) => isCompletedStatus(t.status)).length;
+  const failedCount = tasks.filter((t) => isFailedStatus(t.status)).length;
+
+  const statusPriority = (status: string) => {
+    if (isProcessingStatus(status)) return 1;
+    if (isPendingStatus(status)) return 2;
+    if (isCompletedStatus(status)) return 3;
+    if (isFailedStatus(status)) return 4;
+    return 5;
+  };
+
+  const filteredTasks = tasks.filter((t) => {
+    if (taskFilter === 'all') return true;
+    if (taskFilter === 'processing') return isProcessingStatus(t.status);
+    if (taskFilter === 'pending') return isPendingStatus(t.status);
+    if (taskFilter === 'completed') return isCompletedStatus(t.status);
+    if (taskFilter === 'failed') return isFailedStatus(t.status);
+    return true;
+  });
+
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    const pA = statusPriority(a.status);
+    const pB = statusPriority(b.status);
+    if (pA !== pB) return pA - pB;
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+  });
+
   return (
     <div className="bg-gray-900/40 border border-white/5 p-5 rounded-2xl shadow-sm backdrop-blur-xl space-y-4 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
@@ -95,6 +135,95 @@ export default function DubTaskTable({
         </div>
       </div>
 
+      {/* Stats Summary Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1 pb-2">
+        <div className="p-3 bg-[#111622] border border-white/10 rounded-xl flex flex-col justify-between">
+          <span className="text-[11px] text-gray-400 font-medium">Tổng số tác vụ</span>
+          <span className="text-lg font-bold text-gray-100 mt-1">{tasks.length}</span>
+        </div>
+        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col justify-between">
+          <span className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
+            <RefreshCw className="w-3 h-3 animate-spin" /> Đang lồng tiếng
+          </span>
+          <span className="text-lg font-bold text-amber-300 mt-1">{processingCount}</span>
+        </div>
+        <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl flex flex-col justify-between">
+          <span className="text-[11px] text-blue-400 font-medium flex items-center gap-1">
+            <Clock className="w-3 h-3" /> Chờ xử lý
+          </span>
+          <span className="text-lg font-bold text-blue-300 mt-1">{pendingCount}</span>
+        </div>
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex flex-col justify-between">
+          <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" /> Đã hoàn thành
+          </span>
+          <span className="text-lg font-bold text-emerald-300 mt-1">{completedCount}</span>
+        </div>
+        <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex flex-col justify-between">
+          <span className="text-[11px] text-rose-400 font-medium flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" /> Lỗi / Tạm dừng
+          </span>
+          <span className="text-lg font-bold text-rose-300 mt-1">{failedCount}</span>
+        </div>
+      </div>
+
+      {/* Status Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02] border border-white/5 rounded-xl p-3">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <Filter className="w-3.5 h-3.5 text-gray-400 mr-1" />
+          <button
+            onClick={() => setTaskFilter('all')}
+            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+              taskFilter === 'all'
+                ? 'bg-blue-600/20 text-blue-400 border-blue-500/30'
+                : 'bg-black/40 text-gray-400 border-white/10 hover:text-gray-200'
+            }`}
+          >
+            Tất cả ({tasks.length})
+          </button>
+          <button
+            onClick={() => setTaskFilter('processing')}
+            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+              taskFilter === 'processing'
+                ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                : 'bg-black/40 text-gray-400 border-white/10 hover:text-amber-300'
+            }`}
+          >
+            ⏳ Đang lồng tiếng ({processingCount})
+          </button>
+          <button
+            onClick={() => setTaskFilter('pending')}
+            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+              taskFilter === 'pending'
+                ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                : 'bg-black/40 text-gray-400 border-white/10 hover:text-blue-300'
+            }`}
+          >
+            ⚡ Chờ xử lý ({pendingCount})
+          </button>
+          <button
+            onClick={() => setTaskFilter('completed')}
+            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+              taskFilter === 'completed'
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                : 'bg-black/40 text-gray-400 border-white/10 hover:text-emerald-300'
+            }`}
+          >
+            ✅ Đã hoàn thành ({completedCount})
+          </button>
+          <button
+            onClick={() => setTaskFilter('failed')}
+            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+              taskFilter === 'failed'
+                ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                : 'bg-black/40 text-gray-400 border-white/10 hover:text-rose-300'
+            }`}
+          >
+            ❌ Lỗi / Tạm dừng ({failedCount})
+          </button>
+        </div>
+      </div>
+
       {loading ? (
         <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-500">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
@@ -120,7 +249,7 @@ export default function DubTaskTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {tasks.map((task) => (
+              {sortedTasks.map((task) => (
                 <tr key={task.id} className="text-xs group hover:bg-white/[0.01] transition-colors">
                   <td className="py-3 pr-3 max-w-[320px]">
                     <div className="flex gap-3 items-center">
