@@ -1,5 +1,5 @@
 {
     "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJ0ZWFtSWQiOjMsInVzZXJJZCI6MSwicm9sZSI6ImRvd25sb2FkZXItd29ya2VyIiwiZGV2aWNlTmFtZSI6IkxvY2FsIFdvcmtlciIsInBsYXRmb3JtIjoid2luZG93cyIsImlhdCI6MTc4Mzg0OTM0MiwiZXhwIjoxNzkxNjI1MzQyfQ.j263Uk7rVSHXWdsxyT4hSGPmjoUbuee3S4DJHvG3vV8",
     "teamName": "\u0110HTK",
-    "apiBase": "https://www.ai2hero.com/api/hero-downloader/worker"
+    "apiBase": "https://ai2hero-flax.vercel.app/api/hero-downloader/worker"
 }
