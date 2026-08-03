@@ -190,50 +190,82 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      // Lấy Access Token cho từng mapping
+      // Lấy Access Token cho từng mapping NHƯNG CHỈ KHI CÓ FILE PENDING
       const mappingTokens: Record<number, { accessToken: string | null; targetFolderId: string | null; deleteAfterUpload: boolean }> = {};
-
-      // Lấy kết nối Google Drive mặc định (nếu mapping chưa gán)
       let defaultAccessToken: string | null = null;
-      const allDriveConns = await db.query.connectHubConnections.findMany();
 
-      for (const conn of allDriveConns as any[]) {
-        const creds = parseCredentials(conn);
-        if (creds) {
-          try {
-            const res = await runGoogleDrive(creds, 'get_about', {});
-            const token = res?.accessToken || res?.data?.accessToken;
-            if (res && res.success && token) {
-              defaultAccessToken = token;
-              break;
+      if (pendingFiles.length > 0) {
+        // Tìm xem file pending thuộc mapping nào
+        const neededMappingIds = [...new Set(pendingFiles.map(f => {
+          const content = contents.find((c) => c.id === f.contentId);
+          return content?.mappingId;
+        }).filter(Boolean))] as number[];
+
+        // Chỉ lấy default token nếu có file PENDING mà KHÔNG CÓ mappingId
+        const needsDefault = pendingFiles.some(f => {
+          const content = contents.find(c => c.id === f.contentId);
+          return !content || !content.mappingId;
+        });
+
+        if (needsDefault) {
+          const allDriveConns = await db.query.connectHubConnections.findMany();
+          for (const conn of allDriveConns as any[]) {
+            const creds = parseCredentials(conn);
+            if (creds) {
+              try {
+                const res = await runGoogleDrive(creds, 'get_about', {});
+                const token = res?.accessToken || res?.data?.accessToken;
+                if (res && res.success && token) {
+                  defaultAccessToken = token;
+                  break;
+                }
+              } catch (e) {}
             }
-          } catch (e) {}
-        }
-      }
-
-      for (const m of mappings) {
-        let accessToken = null;
-        if (m.connectionId) {
-          const conn: any = await db.query.connectHubConnections.findFirst({
-            where: eq(connectHubConnections.id, m.connectionId),
-          });
-          const creds = parseCredentials(conn);
-          if (creds) {
-            try {
-              const res = await runGoogleDrive(creds, 'get_about', {});
-              const token = res?.accessToken || res?.data?.accessToken;
-              if (res && res.success && token) {
-                accessToken = token;
-              }
-            } catch (e) {}
           }
         }
 
-        mappingTokens[m.id] = {
-          accessToken: accessToken || defaultAccessToken,
-          targetFolderId: m.targetFolderId || null,
-          deleteAfterUpload: m.deleteAfterUpload,
-        };
+        for (const m of mappings) {
+          if (!neededMappingIds.includes(m.id)) {
+            mappingTokens[m.id] = {
+              accessToken: null,
+              targetFolderId: m.targetFolderId || null,
+              deleteAfterUpload: m.deleteAfterUpload,
+            };
+            continue;
+          }
+
+          let accessToken = null;
+          if (m.connectionId) {
+            const conn: any = await db.query.connectHubConnections.findFirst({
+              where: eq(connectHubConnections.id, m.connectionId),
+            });
+            const creds = parseCredentials(conn);
+            if (creds) {
+              try {
+                const res = await runGoogleDrive(creds, 'get_about', {});
+                const token = res?.accessToken || res?.data?.accessToken;
+                if (res && res.success && token) {
+                  accessToken = token;
+                }
+              } catch (e) {}
+            }
+          }
+
+          mappingTokens[m.id] = {
+            accessToken: accessToken || defaultAccessToken,
+            targetFolderId: m.targetFolderId || null,
+            deleteAfterUpload: m.deleteAfterUpload,
+          };
+        }
+      } else {
+        // Không có pending file -> Không tốn thời gian fetch token
+        for (const m of mappings) {
+          mappingTokens[m.id] = {
+            accessToken: null,
+            targetFolderId: m.targetFolderId || null,
+            deleteAfterUpload: m.deleteAfterUpload,
+          };
+        }
       }
 
       const filesWithTokens = pendingFiles.map((file) => {
@@ -305,27 +337,51 @@ export async function GET(req: NextRequest) {
         limit: 10,
       });
 
-      // Lấy Access Token cho từng mapping
+      // Lấy Access Token cho từng mapping CHỈ KHI CÓ FILE PENDING
       const mappingTokens: Record<number, { accessToken: string | null; targetFolderId: string | null; deleteAfterUpload: boolean }> = {};
 
-      for (const m of mappings) {
-        let accessToken = null;
-        if (m.connectionId) {
-          const conn: any = await db.query.connectHubConnections.findFirst({
-            where: eq(connectHubConnections.id, m.connectionId),
-          });
-          if (conn && conn.credentials) {
-            const res = await runGoogleDrive(conn.credentials as any, 'get_about', {});
-            if (res.success && res.data && res.data.accessToken) {
-              accessToken = res.data.accessToken;
+      if (pendingFiles.length > 0) {
+        const neededMappingIds = [...new Set(pendingFiles.map(f => {
+          const content = contents.find((c) => c.id === f.contentId);
+          return content?.mappingId;
+        }).filter(Boolean))] as number[];
+
+        for (const m of mappings) {
+          if (!neededMappingIds.includes(m.id)) {
+            mappingTokens[m.id] = {
+              accessToken: null,
+              targetFolderId: m.targetFolderId || null,
+              deleteAfterUpload: m.deleteAfterUpload,
+            };
+            continue;
+          }
+
+          let accessToken = null;
+          if (m.connectionId) {
+            const conn: any = await db.query.connectHubConnections.findFirst({
+              where: eq(connectHubConnections.id, m.connectionId),
+            });
+            if (conn && conn.credentials) {
+              const res = await runGoogleDrive(conn.credentials as any, 'get_about', {});
+              if (res.success && res.data && res.data.accessToken) {
+                accessToken = res.data.accessToken;
+              }
             }
           }
+          mappingTokens[m.id] = {
+            accessToken,
+            targetFolderId: m.targetFolderId || null,
+            deleteAfterUpload: m.deleteAfterUpload,
+          };
         }
-        mappingTokens[m.id] = {
-          accessToken,
-          targetFolderId: m.targetFolderId || null,
-          deleteAfterUpload: m.deleteAfterUpload,
-        };
+      } else {
+        for (const m of mappings) {
+          mappingTokens[m.id] = {
+            accessToken: null,
+            targetFolderId: m.targetFolderId || null,
+            deleteAfterUpload: m.deleteAfterUpload,
+          };
+        }
       }
 
       return NextResponse.json({
