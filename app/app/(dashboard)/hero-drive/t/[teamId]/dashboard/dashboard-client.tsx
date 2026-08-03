@@ -30,6 +30,7 @@ import {
   toggleDriveFolderMappingAction,
   triggerImmediateScanAction,
   getFolderMappingHistoryAction,
+  cleanAndResetMappingAction,
 } from '@/lib/db/hero-drive-actions';
 import MappingSidebar from './mapping-sidebar';
 import { DriveWorkerGuide } from './drive-worker-guide';
@@ -57,9 +58,21 @@ export default function DriveDashboardClient({
 
   const [rawFilesList, setRawFilesList] = useState<any[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState<boolean>(false);
-  const [fileFilter, setFileFilter] = useState<string>('all'); // 'all' | 'completed' | 'uploading' | 'pending'
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const pageSize = 10;
+  const [isCleaning, setIsCleaning] = useState<boolean>(false);
+
+  const handleCleanAndReset = async () => {
+    if (!selectedMappingId) return;
+    if (!confirm('Bạn có chắc muốn dọn dẹp sạch toàn bộ dữ liệu rác cũ để đưa bảng thống kê về đúng 1:1 theo local không?')) return;
+    setIsCleaning(true);
+    const res = await cleanAndResetMappingAction(selectedMappingId);
+    if (res.success) {
+      await fetchMappingFiles(selectedMappingId);
+      alert('Đã dọn dẹp dữ liệu rác thành công! Danh sách hiển thị hiện tại chuẩn 1:1 theo thực tế.');
+    } else {
+      alert('Có lỗi xảy ra khi dọn dẹp: ' + res.error);
+    }
+    setIsCleaning(false);
+  };
 
   // Modals
   const [isMappingModalOpen, setIsMappingModalOpen] = useState<boolean>(false);
@@ -388,6 +401,17 @@ export default function DriveDashboardClient({
                       <Play className="w-3.5 h-3.5" /> Tiếp tục
                     </>
                   )}
+                </button>
+
+                {/* Nút Dọn Rác & Đếm 1:1 */}
+                <button
+                  onClick={handleCleanAndReset}
+                  disabled={isCleaning}
+                  title="Xóa toàn bộ bản ghi rác cũ không có ở ổ C để đồng bộ chuẩn 1:1"
+                  className="px-3 py-2 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 rounded-lg text-xs text-rose-300 flex items-center gap-1.5 font-medium transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className={`w-3.5 h-3.5 ${isCleaning ? 'animate-spin' : ''}`} />
+                  {isCleaning ? 'Đang dọn...' : 'Dọn rác 1:1'}
                 </button>
 
                 {/* Nút Làm mới */}

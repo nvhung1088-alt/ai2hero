@@ -273,3 +273,42 @@ export async function getDriveContentsWithFilesByProject(projectId: number) {
     return { success: false, error: error.message };
   }
 }
+
+export async function cleanAndResetMappingAction(mappingId: number) {
+  try {
+    const contents = await db
+      .select({ id: driveContents.id })
+      .from(driveContents)
+      .where(eq(driveContents.mappingId, mappingId));
+
+    if (contents.length > 0) {
+      const contentIds = contents.map((c) => c.id);
+      await db
+        .delete(driveFiles)
+        .where(
+          and(
+            inArray(driveFiles.contentId, contentIds),
+            inArray(driveFiles.status, ['pending', 'failed'])
+          )
+        );
+
+      const remainingFiles = await db
+        .select({ contentId: driveFiles.contentId })
+        .from(driveFiles)
+        .where(inArray(driveFiles.contentId, contentIds));
+
+      const activeContentIds = new Set(remainingFiles.map((f) => f.contentId));
+      const unusedContentIds = contentIds.filter((id) => !activeContentIds.has(id));
+
+      if (unusedContentIds.length > 0) {
+        await db.delete(driveContents).where(inArray(driveContents.id, unusedContentIds));
+      }
+    }
+
+    revalidatePath('/hero-drive');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error cleaning mapping action:', error);
+    return { success: false, error: error.message };
+  }
+}
