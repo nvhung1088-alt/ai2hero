@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
-import { Plus, Play, Pause, FolderOpen, Settings, LayoutDashboard, Square, Trash2, RefreshCw, RotateCcw, Languages, Sparkles, X } from 'lucide-react';
+import { Plus, Play, Pause, FolderOpen, Settings, LayoutDashboard, Square, Trash2, RefreshCw, RotateCcw, Languages, Sparkles, X, Clock, CheckCircle2, AlertCircle, Filter } from 'lucide-react';
 import { CreateProjectModal } from './create-project-modal';
 import { EditProjectModal } from './edit-project-modal';
 import { PollingBanner } from '@/components/polling-banner';
@@ -98,13 +98,33 @@ export default function DownloaderDashboardClient({
     }
   };
 
+  const [videoFilter, setVideoFilter] = useState<string>('all'); // 'all' | 'downloading' | 'pending' | 'completed' | 'failed'
+
   const activeProject = projects.find(p => p.id === activeProjectId);
 
-  const sortedVideos = [...videos].sort((a, b) => {
-    const rankA = getStatusRank(a.status);
-    const rankB = getStatusRank(b.status);
-    if (rankA !== rankB) return rankA - rankB;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  const statusPriority: Record<string, number> = {
+    downloading: 1,
+    pending: 2,
+    completed: 3,
+    failed: 4,
+    error: 4,
+    cancelled: 5,
+  };
+
+  const filteredVideos = videos.filter((v) => {
+    if (videoFilter === 'all') return true;
+    if (videoFilter === 'downloading') return v.status === 'downloading';
+    if (videoFilter === 'pending') return v.status === 'pending';
+    if (videoFilter === 'completed') return v.status === 'completed';
+    if (videoFilter === 'failed') return v.status === 'failed' || v.status === 'error' || v.status === 'cancelled';
+    return true;
+  });
+
+  const sortedVideos = [...filteredVideos].sort((a, b) => {
+    const pA = statusPriority[a.status] || 99;
+    const pB = statusPriority[b.status] || 99;
+    if (pA !== pB) return pA - pB;
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
   });
 
   const hasDownloading = videos.some(v => v.status === 'downloading' || v.status === 'pending');
@@ -121,10 +141,10 @@ export default function DownloaderDashboardClient({
     },
   });
 
-  // Reset trang về 1 khi đổi project
+  // Reset trang về 1 khi đổi project hoặc filter
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeProjectId]);
+  }, [activeProjectId, videoFilter]);
 
 
   const isFirstRender = useRef(true);
@@ -367,8 +387,48 @@ export default function DownloaderDashboardClient({
                 </div>
               </div>
 
+              {/* Stats Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 px-6 pt-4 pb-2">
+                <div className="p-3 bg-[#111622] border border-white/10 rounded-xl flex flex-col justify-between">
+                  <span className="text-[11px] text-gray-400 font-medium">Tổng số video</span>
+                  <span className="text-lg font-bold text-gray-100 mt-1">{videos.length}</span>
+                </div>
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col justify-between">
+                  <span className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Đang tải
+                  </span>
+                  <span className="text-lg font-bold text-amber-300 mt-1">
+                    {videos.filter((v) => v.status === 'downloading').length}
+                  </span>
+                </div>
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl flex flex-col justify-between">
+                  <span className="text-[11px] text-blue-400 font-medium flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Chờ tải
+                  </span>
+                  <span className="text-lg font-bold text-blue-300 mt-1">
+                    {videos.filter((v) => v.status === 'pending').length}
+                  </span>
+                </div>
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex flex-col justify-between">
+                  <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Đã tải xong
+                  </span>
+                  <span className="text-lg font-bold text-emerald-300 mt-1">
+                    {videos.filter((v) => v.status === 'completed').length}
+                  </span>
+                </div>
+                <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex flex-col justify-between">
+                  <span className="text-[11px] text-rose-400 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> Video lỗi / Hủy
+                  </span>
+                  <span className="text-lg font-bold text-rose-300 mt-1">
+                    {videos.filter((v) => v.status === 'failed' || v.status === 'error' || v.status === 'cancelled').length}
+                  </span>
+                </div>
+              </div>
+
               {/* Video List */}
-              <div className="flex-1 overflow-auto p-6">
+              <div className="flex-1 overflow-auto p-6 pt-2">
                 {/* Form Inline Thêm URL */}
                 {isAddUrlOpen && (
                   <div className="flex items-center gap-2 mb-4 bg-white/[0.02] border border-white/5 rounded-xl p-3">
@@ -396,6 +456,63 @@ export default function DownloaderDashboardClient({
                     </button>
                   </div>
                 )}
+
+                {/* Status Filter & Config Toolbar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <Filter className="w-3.5 h-3.5 text-gray-400 mr-1" />
+                    <button
+                      onClick={() => setVideoFilter('all')}
+                      className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                        videoFilter === 'all'
+                          ? 'bg-blue-600/20 text-blue-400 border-blue-500/30'
+                          : 'bg-black/40 text-gray-400 border-white/10 hover:text-gray-200'
+                      }`}
+                    >
+                      Tất cả ({videos.length})
+                    </button>
+                    <button
+                      onClick={() => setVideoFilter('downloading')}
+                      className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                        videoFilter === 'downloading'
+                          ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                          : 'bg-black/40 text-gray-400 border-white/10 hover:text-amber-300'
+                      }`}
+                    >
+                      ⏳ Đang tải ({videos.filter((v) => v.status === 'downloading').length})
+                    </button>
+                    <button
+                      onClick={() => setVideoFilter('pending')}
+                      className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                        videoFilter === 'pending'
+                          ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                          : 'bg-black/40 text-gray-400 border-white/10 hover:text-blue-300'
+                      }`}
+                    >
+                      ⚡ Chờ tải ({videos.filter((v) => v.status === 'pending').length})
+                    </button>
+                    <button
+                      onClick={() => setVideoFilter('completed')}
+                      className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                        videoFilter === 'completed'
+                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                          : 'bg-black/40 text-gray-400 border-white/10 hover:text-emerald-300'
+                      }`}
+                    >
+                      ✅ Đã tải xong ({videos.filter((v) => v.status === 'completed').length})
+                    </button>
+                    <button
+                      onClick={() => setVideoFilter('failed')}
+                      className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                        videoFilter === 'failed'
+                          ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                          : 'bg-black/40 text-gray-400 border-white/10 hover:text-rose-300'
+                      }`}
+                    >
+                      ❌ Video lỗi ({videos.filter((v) => v.status === 'failed' || v.status === 'error' || v.status === 'cancelled').length})
+                    </button>
+                  </div>
+                </div>
 
                 {/* Toolbar Chọn Ngôn Ngữ & Chọn AI */}
                 <div className="flex items-center justify-between gap-4 mb-4 bg-white/[0.02] border border-white/5 rounded-xl p-3">
