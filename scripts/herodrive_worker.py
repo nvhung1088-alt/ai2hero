@@ -175,15 +175,36 @@ def main():
                             items = scan_and_group_local_folder(local_folder)
                             if items:
                                 print(f"   🔍 Phát hiện {len(items)} nhóm bài đăng ở local")
+                                
+                                # Chia nhỏ mảng items thành các chunk (50 items/chunk) để tránh Vercel timeout
+                                batch_size = 50
+                                total_batches = (len(items) + batch_size - 1) // batch_size
+                                
+                                for i in range(0, len(items), batch_size):
+                                    batch_items = items[i:i+batch_size]
+                                    print(f"   📤 Đang đồng bộ batch {i//batch_size + 1}/{total_batches} ({len(batch_items)} nhóm)...")
+                                    
+                                    sync_url = f"{server_url}/api/hero-drive/worker?action=sync"
+                                    try:
+                                        requests.post(sync_url, headers=WORKER_HEADERS, json={
+                                            "mappingId": mapping_id,
+                                            "items": batch_items
+                                        }, timeout=120)
+                                    except Exception as e:
+                                        print(f"   ⚠️ Lỗi đồng bộ batch {i//batch_size + 1}: {e}")
+                                        
                             else:
                                 print(f"   ✅ Quét hoàn tất, thư mục hiện chưa có file mới")
-
-                            # Luôn gửi sync để Server cập nhật lastScanAt = now và status = 'idle'
-                            sync_url = f"{server_url}/api/hero-drive/worker?action=sync"
-                            requests.post(sync_url, headers=WORKER_HEADERS, json={
-                                "mappingId": mapping_id,
-                                "items": items
-                            }, timeout=120)
+                                
+                                # Luôn gửi sync rỗng để Server cập nhật lastScanAt = now và status = 'idle'
+                                sync_url = f"{server_url}/api/hero-drive/worker?action=sync"
+                                try:
+                                    requests.post(sync_url, headers=WORKER_HEADERS, json={
+                                        "mappingId": mapping_id,
+                                        "items": []
+                                    }, timeout=120)
+                                except Exception as e:
+                                    pass
 
                     # 2. Upload Pending Files
                     if pending_files:
