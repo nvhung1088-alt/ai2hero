@@ -28,7 +28,7 @@ except ImportError:
 # ---------------------------------------------------------
 import argparse
 parser = argparse.ArgumentParser(description="HeroDub Local Worker")
-parser.add_argument("--server", type=str, default="https://www.ai2hero.com", help="URL máy chủ AI2Hero")
+parser.add_argument("--server", type=str, default="https://ai2hero-flax.vercel.app", help="URL máy chủ AI2Hero")
 args, unknown = parser.parse_known_args()
 
 API_BASE_URL = f"{args.server.rstrip('/')}/api/hero-dub"
