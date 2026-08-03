@@ -23,6 +23,7 @@ def parse_args():
     parser.add_argument("--config", type=int, help="ID của Cấu hình quét (Tùy chọn)")
     parser.add_argument("--server", type=str, default="https://www.ai2hero.com", help="URL máy chủ AI2Hero")
     parser.add_argument("--interval", type=int, default=60, help="Thời gian giãn cách kiểm tra polling (giây)")
+    parser.add_argument("--workers", type=int, default=2, help="Số luồng upload song song (Mặc định 2 luồng để tối ưu băng thông)")
     return parser.parse_args()
 
 def format_seconds_human(seconds):
@@ -345,10 +346,18 @@ def main():
                                 except Exception as e:
                                     pass
 
-                    # 2. Upload Pending Files
+                    # 2. Upload Pending Files (Ưu tiên file nhỏ ảnh/txt trước, file lớn video sau; tối ưu băng thông)
                     if pending_files:
-                        print(f"📦 [{now_str}] Có {len(pending_files)} tệp đính kèm đang chờ upload...")
-                        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                        max_workers = max(1, getattr(args, 'workers', 2))
+                        def get_file_sort_key(f):
+                            f_type = f.get('fileType', '')
+                            f_size = f.get('fileSize', 0)
+                            type_order = 0 if f_type in ('image', 'text') else 1
+                            return (type_order, f_size)
+
+                        pending_files.sort(key=get_file_sort_key)
+                        print(f"📦 [{now_str}] Có {len(pending_files)} tệp đính kèm đang chờ upload (Tải tối ưu {max_workers} luồng song song)...")
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                             futures = [
                                 executor.submit(process_file_item, file_item, mapping_tokens, server_url, now_str)
                                 for file_item in pending_files
