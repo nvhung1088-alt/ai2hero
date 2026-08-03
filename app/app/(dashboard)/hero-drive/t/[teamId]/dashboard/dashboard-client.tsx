@@ -229,13 +229,14 @@ export default function DriveDashboardClient({
     uploading: 1,
     pending: 2,
     completed: 3,
+    deleted_local: 3,
     failed: 4,
   };
 
   const filteredFiles = rawFilesList
     .filter((f) => {
       if (fileFilter === 'all') return true;
-      if (fileFilter === 'completed') return f.status === 'completed';
+      if (fileFilter === 'completed') return f.status === 'completed' || f.status === 'deleted_local';
       if (fileFilter === 'uploading') return f.status === 'uploading';
       if (fileFilter === 'pending') return f.status === 'pending';
       if (fileFilter === 'failed') return f.status === 'failed';
@@ -446,7 +447,7 @@ export default function DriveDashboardClient({
                   <CheckCircle2 className="w-3 h-3" /> Đã upload
                 </span>
                 <span className="text-lg font-bold text-emerald-300 mt-1">
-                  {rawFilesList.filter((f) => f.status === 'completed').length}
+                  {rawFilesList.filter((f) => f.status === 'completed' || f.status === 'deleted_local').length}
                 </span>
               </div>
               <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex flex-col justify-between">
@@ -507,7 +508,7 @@ export default function DriveDashboardClient({
                         : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-emerald-300'
                     }`}
                   >
-                    ✅ Đã upload ({rawFilesList.filter((f) => f.status === 'completed').length})
+                    ✅ Đã upload ({rawFilesList.filter((f) => f.status === 'completed' || f.status === 'deleted_local').length})
                   </button>
                   <button
                     onClick={() => setFileFilter('failed')}

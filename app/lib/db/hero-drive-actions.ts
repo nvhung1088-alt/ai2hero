@@ -8,7 +8,7 @@ import {
   driveContents,
   driveFiles,
 } from './schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 // === PROJECT ACTIONS ===
@@ -197,19 +197,29 @@ export async function getFolderMappingHistoryAction(mappingId: number) {
       .where(eq(driveContents.mappingId, mappingId))
       .orderBy(desc(driveContents.createdAt));
 
-    const result = await Promise.all(
-      contents.map(async (content) => {
-        const files = await db
-          .select()
-          .from(driveFiles)
-          .where(eq(driveFiles.contentId, content.id))
-          .orderBy(driveFiles.fileName);
-        return {
-          ...content,
-          files,
-        };
-      })
-    );
+    if (contents.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const contentIds = contents.map((c) => c.id);
+    const allFiles = await db
+      .select()
+      .from(driveFiles)
+      .where(inArray(driveFiles.contentId, contentIds))
+      .orderBy(driveFiles.fileName);
+
+    const filesByContentId = new Map<number, any[]>();
+    for (const f of allFiles) {
+      if (!filesByContentId.has(f.contentId)) {
+        filesByContentId.set(f.contentId, []);
+      }
+      filesByContentId.get(f.contentId)!.push(f);
+    }
+
+    const result = contents.map((content) => ({
+      ...content,
+      files: filesByContentId.get(content.id) || [],
+    }));
 
     return { success: true, data: result };
   } catch (error: any) {
