@@ -305,6 +305,29 @@ def standardize_and_cache_video(video_path, target_width, target_height, target_
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return cache_filepath
 
+def detect_best_encoder():
+    """Auto-detect GPU encoder kha dung, tra ve (vcodec, extra_args)"""
+    import subprocess
+    candidates = [
+        ("h264_nvenc", {"preset": "p4"}),
+        ("h264_amf",   {}),
+        ("h264_qsv",   {"preset": "fast"}),
+    ]
+    for codec, extra in candidates:
+        try:
+            r = subprocess.run(
+                ["ffmpeg", "-f", "lavfi", "-i", "color=c=black:s=320x240:d=0.1",
+                 "-c:v", codec, "-f", "null", "NUL"],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10
+            )
+            if r.returncode == 0:
+                print(Fore.GREEN + f"  [GPU] Su dung encoder phan cung: {codec}")
+                return codec, extra
+        except:
+            pass
+    print(Fore.YELLOW + "  [CPU] Khong tim thay GPU encoder, su dung libx264 ultrafast")
+    return "libx264", {"preset": "ultrafast"}
+
 def process_task(token, task):
     import shutil
     
@@ -594,14 +617,14 @@ def process_task(token, task):
                     batch_segs = segments_to_translate[i:i+BATCH_SIZE]
                     texts = [seg['text'] for seg in batch_segs]
                     
-                    # Trích xuất Sliding Window Context (3 câu cuối của đoạn trước)
+                    # Trích xuất Sliding Window Context (5 câu cuối của đoạn trước)
                     prev_context = []
                     if translated_count > 0 and i == 0:
                         # Lấy từ translated_segments (batch trước đó được lưu)
-                        prev_context = [seg['text'] for seg in translated_segments[-3:]]
+                        prev_context = [seg['text'] for seg in translated_segments[-5:]]
                     elif i > 0:
                         # Lấy từ segments_to_translate
-                        prev_context = [seg['text'] for seg in segments_to_translate[max(0, i-3):i]]
+                        prev_context = [seg['text'] for seg in segments_to_translate[max(0, i-5):i]]
 
                     try:
                         payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
@@ -1068,32 +1091,44 @@ if __name__ == '__main__':
                 video_sub = ffmpeg.overlay(video_sub, logo, x='main_w-overlay_w-20', y='main_h-overlay_h-20')
 
         
+        vcodec_val, encoder_extra = detect_best_encoder()
+
+        def build_and_run_render(vc, extra_args):
+            if has_dubbed:
+                bg_audio_file = "audio.wav"
+                bg_volume = db_bg_volume
+                demucs_bg = os.path.join("demucs_out", "htdemucs", "audio", "no_vocals.wav")
+                if os.path.exists(demucs_bg) and os.path.getsize(demucs_bg) > 0:
+                    bg_audio_file = demucs_bg
+                    
+                if os.path.exists(bg_audio_file) and os.path.getsize(bg_audio_file) > 0:
+                    a_bg = ffmpeg.input(bg_audio_file).audio.filter('volume', bg_volume)
+                    a_fg = ffmpeg.input("dubbed_audio.wav").audio.filter('volume', db_tts_volume)
+                    mixed_audio = ffmpeg.filter([a_bg, a_fg], 'amix', inputs=2, duration='first').filter('volume', 2.0)
+                    st = ffmpeg.output(video_sub, mixed_audio, "temp_output.mp4", vcodec=vc, acodec="aac", **extra_args)
+                else:
+                    audio_dub = ffmpeg.input("dubbed_audio.wav").audio
+                    st = ffmpeg.output(video_sub, audio_dub, "temp_output.mp4", vcodec=vc, acodec="aac", **extra_args)
+            else:
+                st = ffmpeg.output(video_sub, video.audio, "temp_output.mp4", vcodec=vc, acodec="aac", **extra_args)
+            ffmpeg.run(st, overwrite_output=True, quiet=True)
+
         if has_dubbed:
             print(Fore.CYAN + "  -> Dang render voi phu de va am thanh long tieng AI...")
-            
-            # Giai doan 2: Vocal Isolation (Su dung nhac nen goc)
-            bg_audio_file = "audio.wav"
-            bg_volume = db_bg_volume
-            
-            # Kiem tra xem co file nhac nen da duoc tach khong (no_vocals.wav)
             demucs_bg = os.path.join("demucs_out", "htdemucs", "audio", "no_vocals.wav")
             if os.path.exists(demucs_bg) and os.path.getsize(demucs_bg) > 0:
-                bg_audio_file = demucs_bg
                 print(Fore.GREEN + "  -> Su dung nhac nen da duoc tach giong noi (Demucs)!")
-                
-            if os.path.exists(bg_audio_file) and os.path.getsize(bg_audio_file) > 0:
-                a_bg = ffmpeg.input(bg_audio_file).audio.filter('volume', bg_volume)
-                a_fg = ffmpeg.input("dubbed_audio.wav").audio.filter('volume', db_tts_volume)
-                mixed_audio = ffmpeg.filter([a_bg, a_fg], 'amix', inputs=2, duration='first').filter('volume', 2.0)
-                stream = ffmpeg.output(video_sub, mixed_audio, "temp_output.mp4", vcodec="libx264", acodec="aac")
-            else:
-                audio_dub = ffmpeg.input("dubbed_audio.wav").audio
-                stream = ffmpeg.output(video_sub, audio_dub, "temp_output.mp4", vcodec="libx264", acodec="aac")
         else:
             print(Fore.CYAN + "  -> Dang render phu de vao video (Giu nguyen am thanh goc)...")
-            stream = ffmpeg.output(video_sub, video.audio, "temp_output.mp4", vcodec="libx264", acodec="aac")
-            
-        ffmpeg.run(stream, overwrite_output=True, quiet=True)
+
+        try:
+            build_and_run_render(vcodec_val, encoder_extra)
+        except Exception as render_err:
+            if vcodec_val != "libx264":
+                print(Fore.YELLOW + f"  [!] Fallback sang CPU ultrafast do GPU render gap loi: {render_err}")
+                build_and_run_render("libx264", {"preset": "ultrafast"})
+            else:
+                raise render_err
         
         # --- KET NOI INTRO / OUTRO ---
         final_output = "temp_output.mp4"
@@ -1125,8 +1160,15 @@ if __name__ == '__main__':
                     idx += 1
                 
                 joined = ffmpeg.concat(*filter_chains, v=1, a=1).node
-                out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec="libx264", acodec="aac")
-                ffmpeg.run(out_stream, overwrite_output=True, quiet=True)
+                out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec=vcodec_val, acodec="aac", **encoder_extra)
+                try:
+                    ffmpeg.run(out_stream, overwrite_output=True, quiet=True)
+                except Exception:
+                    if vcodec_val != "libx264":
+                        out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec="libx264", acodec="aac", preset="ultrafast")
+                        ffmpeg.run(out_stream, overwrite_output=True, quiet=True)
+                    else:
+                        raise
                 final_output = "output.mp4"
             except Exception as concat_err:
                 print(Fore.RED + f"  [!] Loi khi gop Intro/Outro (bo qua): {str(concat_err)}")

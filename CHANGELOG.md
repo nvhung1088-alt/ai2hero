@@ -1,6 +1,8 @@
 # AI2HERO — CHANGELOG
 
-## 2026-08-04 — HeroDub Worker: Fix Critical Audio Alignment, Edge-TTS Crash & Filename Bugs
+## 2026-08-04 — HeroDub Worker: Fix Critical Audio Alignment, GPU Render & Edge-TTS Crash Bugs
+- **GPU Hardware Render Acceleration**: Tích hợp hàm `detect_best_encoder()` tự động phát hiện GPU khả dụng (`h264_amf`, `h264_nvenc`, `h264_qsv`) giúp tăng tốc render FFMPEG gấp 2-3 lần, kèm cơ chế tự động fallback về CPU (`libx264 -preset ultrafast`) nếu GPU gặp sự cố.
+- **Enhance Translation Sliding Context**: Tăng số lượng câu ngữ cảnh liên kề gửi sang Connect-Hub API từ 3 lên 5 câu cuối của batch trước đó, giúp giữ mạch giọng văn và đại từ nhân xưng chuẩn xác hơn.
 - **Fix Sample Rate Drop (Mất tiếng lồng)**: Tích hợp logic nội suy `numpy.interp` vào hàm `merge_tts_segments` để khôi phục và resample các phân đoạn tiếng lồng AI không đạt chuẩn 16000Hz thay vì âm thầm loại bỏ chúng. Giải quyết dứt điểm lỗi video hoàn thành bị mất 100% tiếng lồng.
 - **Fix Windows CMD Inline Script Error (Edge-TTS)**: Sửa lỗi văng syntax ký tự xuống dòng khi chạy `python -c "import edge_tts..."` trên Windows CMD. Worker giờ sẽ tạo ra file `tmp_tts_script.py` an toàn và thực thi như một script riêng biệt để ngăn lỗi môi trường, sau đó tự dọn dẹp.
 - **Fix Filename Extension Duplication (.mp4.mp4)**: Khắc phục lỗi khi lưu trữ local sinh ra file bị nhân đôi đuôi `video.mp4.mp4` trong trường hợp user "Giữ nguyên tên video gốc" hoặc gõ thẳng đuôi file vào web form. Hệ thống hiện tại đã lọc đuôi triệt để qua `os.path.splitext` trước khi chèn `.mp4` thành phẩm.

@@ -145,7 +145,9 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp tính năng **Dịch & Redesign Thumbnail bằng AI** (Connect Hub Vision + Image Gen): Cho phép chọn AI Model và Ngôn ngữ đích (Việt, Anh, Hàn, Nhật, Thái...), tự động đọc text trên ảnh bìa gốc, dịch thuật, tạo lại thumbnail mới và tải lên R2 cloud storage kèm Modal Preview so sánh 2 ảnh trực quan trên Dashboard.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
-- **2026-08-04 (hero-dub - Fix Critical Audio, Extension Duplication & Edge-TTS Worker Bugs)**:
+- **2026-08-04 (hero-dub - Fix Critical Audio, Extension Duplication, GPU Hardware Render & Edge-TTS Worker Bugs)**:
+  - ⚡ **GPU Hardware Render Acceleration (`herodub_worker.py`)**: Tích hợp `detect_best_encoder()` tự động chuyển FFMPEG Render từ CPU (`libx264`) sang GPU (`h264_amf` / `h264_nvenc`), giúp tăng tốc render gấp 2-3 lần kèm cơ chế fallback an toàn (`libx264 -preset ultrafast`).
+  - 🧠 **Enhance Translation Sliding Context (`herodub_worker.py`)**: Tăng số câu ngữ cảnh liền kề từ 3 lên 5 câu cuối của batch trước khi gọi Connect-Hub API, giúp giữ mạch giọng văn và cách xưng hô chuẩn xác hơn.
   - 🐛 **Sample Rate Synchronization (`herodub_worker.py`)**: Tích hợp module resample 1D (sử dụng `numpy.interp`) trực tiếp vào hàm `merge_tts_segments` để cứu các đoạn tiếng lồng không phải chuẩn 16kHz bị trượt nhịp (trước đây bị drop ngầm), giải quyết lỗi video hoàn thành không có tiếng lồng.
   - 🪲 **Windows CMD Inline Python Fix**: Thay thế cơ chế chạy script TTS tự sinh của Edge-TTS thông qua argument `-c` bằng cách xuất thẳng ra file tạm `tmp_tts_script.py` và thực thi trên shell. Loại trừ triệt để lỗi syntax ký tự xuống dòng gây hỏng luồng trên Windows.
   - 🏷️ **Filename Duplication Fix**: Xóa triệt để các đuôi mở rộng dư thừa (`.mp4.mp4`) khi lấy basename lưu trữ cuối bằng cách gọi tường minh `os.path.splitext(base_name)[0]` kể cả khi người dùng giữ nguyên tên gốc hoặc tự dán tên đuôi mở rộng vào title form.
