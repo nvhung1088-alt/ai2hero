@@ -3,7 +3,7 @@
 import { db } from './drizzle';
 import { dubTasks, dubWorkers, teams, users, extensionLinkCodes, connectHubConnections, dubProjects, dubScanConfigs, dubResourceLocks } from './schema';
 import { decryptField } from '../sim-crypto';
-import { eq, and, desc, sql, isNull, gt, inArray, notInArray, or } from 'drizzle-orm';
+import { eq, and, desc, sql, isNull, gt, lt, inArray, notInArray, or } from 'drizzle-orm';
 import { SignJWT, jwtVerify } from 'jose';
 import { createHash, randomBytes } from 'crypto';
 import { getPresignedUploadUrl } from '@/lib/storage/r2';
@@ -661,7 +661,53 @@ export async function verifyDubWorkerToken(bearerToken: string) {
 
 export async function pollPendingTaskAction(workerId: number, teamId: number) {
   try {
-    // 1. Ưu tiên tìm task đang làm dở của worker này
+    // 0. AUTO ZOMBIE RECOVERY (Toàn cục cho Team)
+    // Tìm các worker offline (lastSeenAt < 3 phút trước)
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+    const stuckTasks = await db
+      .select({ id: dubTasks.id, workerName: dubWorkers.deviceName, stuckWorkerId: dubTasks.workerId })
+      .from(dubTasks)
+      .leftJoin(dubWorkers, eq(dubTasks.workerId, dubWorkers.id))
+      .where(
+        and(
+          eq(dubTasks.teamId, teamId),
+          inArray(dubTasks.status, [
+            'assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'processing', 'dubbing', 'running', 'active'
+          ]),
+          or(
+            lt(dubWorkers.lastSeenAt, threeMinutesAgo),
+            isNull(dubWorkers.id)
+          )
+        )
+      );
+
+    if (stuckTasks.length > 0) {
+      for (const t of stuckTasks) {
+        await db
+          .update(dubTasks)
+          .set({
+            status: 'pending',
+            workerId: null,
+            progress: '0',
+            updatedAt: new Date(),
+          })
+          .where(eq(dubTasks.id, t.id));
+        
+        await appendTaskLog(
+          t.id, 
+          'reset', 
+          `🔄 Tự động gỡ lỗi: Worker [${t.workerName || 'Offline Worker'}] mất kết nối, hệ thống giải phóng tác vụ về hàng đợi.`
+        );
+
+        if (t.stuckWorkerId) {
+          await db
+            .delete(dubResourceLocks)
+            .where(and(eq(dubResourceLocks.teamId, teamId), eq(dubResourceLocks.workerId, t.stuckWorkerId)));
+        }
+      }
+    }
+
+    // 1. Ưu tiên tìm task đang làm dở của CHÍNH worker này
     let [task] = await db
       .select()
       .from(dubTasks)
@@ -670,52 +716,39 @@ export async function pollPendingTaskAction(workerId: number, teamId: number) {
           eq(dubTasks.teamId, teamId),
           eq(dubTasks.workerId, workerId),
           inArray(dubTasks.status, [
-            'assigned',
-            'downloading',
-            'transcribing',
-            'translating',
-            'tts',
-            'burning',
-            'uploading',
+            'assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'processing', 'dubbing', 'running', 'active'
           ])
         )
       )
       .orderBy(dubTasks.updatedAt)
       .limit(1);
 
-    // 2. Nếu không có task dở dang, lấy task pending mới hoặc task bị kẹt ở 'assigned' quá 2 phút
+    // 2. Nếu không có task dở dang, lấy task pending ưu tiên nhất
+    let isNewTask = false;
     if (!task) {
-      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
       const [pendingTaskResult] = await db
         .select({ task: dubTasks })
         .from(dubTasks)
-        .leftJoin(dubScanConfigs, eq(dubTasks.scanConfigId, dubScanConfigs.id))
         .where(
           and(
             eq(dubTasks.teamId, teamId),
-            or(
-              isNull(dubTasks.scanConfigId),
-              eq(dubScanConfigs.isActive, true)
-            ),
-            or(
-              eq(dubTasks.status, 'pending'),
-              and(
-                eq(dubTasks.status, 'assigned'),
-                lt(dubTasks.updatedAt, twoMinutesAgo)
-              )
-            )
+            eq(dubTasks.status, 'pending')
           )
         )
         .orderBy(dubTasks.createdAt)
         .limit(1);
-      task = pendingTaskResult?.task;
+      
+      if (pendingTaskResult?.task) {
+        task = pendingTaskResult.task;
+        isNewTask = true;
+      }
     }
 
     if (!task) {
       return { success: true, task: null };
     }
 
-    if (task.status === 'pending') {
+    if (isNewTask) {
       const [updatedTask] = await db
         .update(dubTasks)
         .set({
@@ -731,31 +764,21 @@ export async function pollPendingTaskAction(workerId: number, teamId: number) {
         return { success: true, task: null };
       }
       task = updatedTask;
-    } else {
-      const [updatedTask] = await db
-        .update(dubTasks)
-        .set({
-          workerId,
-          updatedAt: new Date(),
-        })
-        .where(eq(dubTasks.id, task.id))
-        .returning();
-      if (updatedTask) task = updatedTask;
+      
+      // Ghi log chỉ khi mới nhận task
+      const [worker] = await db
+        .select({ deviceName: dubWorkers.deviceName })
+        .from(dubWorkers)
+        .where(eq(dubWorkers.id, workerId))
+        .limit(1);
+      
+      const workerName = worker?.deviceName || `Worker #${workerId}`;
+      await appendTaskLog(
+        task.id,
+        'assigned',
+        `💻 Worker nhận việc: Worker [${workerName}] đã nhận tác vụ xử lý.`
+      );
     }
-
-    // Lấy thông tin worker để ghi log trực quan
-    const [worker] = await db
-      .select({ deviceName: dubWorkers.deviceName })
-      .from(dubWorkers)
-      .where(eq(dubWorkers.id, workerId))
-      .limit(1);
-    
-    const workerName = worker?.deviceName || `Worker #${workerId}`;
-    await appendTaskLog(
-      task.id,
-      'assigned',
-      `💻 Worker nhận việc: Worker [${workerName}] đã nhận tác vụ xử lý.`
-    );
 
     let finalOutputFolder = task.outputFolder;
     if (!finalOutputFolder && task.scanConfigId) {
