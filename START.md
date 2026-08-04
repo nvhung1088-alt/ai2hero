@@ -151,6 +151,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - 🔌 **Bridge API Endpoint**: Phát triển route `/api/connect-hub/bridge` xử lý Polling 2 chiều (GET job / POST submit) với xác thực `bridgeToken`.
   - 🧩 **Chrome Extension (`apps/ai2hero-bridge-ext`)**: Xây dựng trọn bộ Manifest V3 Extension bao gồm Background Worker, Popup UI cài đặt, và Content Script tự động điền prompt, đính kèm file, bấm gửi và bóc tách kết quả bằng MutationObserver trên `gemini.google.com`.
   - 🚀 **Push Production**: Commit và push thành công toàn bộ mã nguồn lên nhánh `main` để Vercel tự động deploy.
+  - 🐛 **Bugfix**: Thêm cấu hình `aiCapability: ['text']` và `aiModels` cho Connector định nghĩa để dropdown Connect Hub hiển thị đúng cổng "Browser AI Bridge" (herodub).
 
 - **2026-08-04 (hero-drive - Multi-Tenancy Fix, Hardcode Removal & Worker Token API Fix)**:
   - 🛡️ **Fix Multi-Tenancy Data Leak**: Cập nhật query `page.tsx` lọc `driveFolderMappings` thông qua mảng `projectId` thuộc `teamId` hiện tại, cô lập dữ liệu hoàn toàn giữa các Team.

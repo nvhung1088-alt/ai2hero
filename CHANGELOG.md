@@ -1,5 +1,8 @@
 # AI2HERO — CHANGELOG
 
+## 2026-08-04 — Connect Hub: Browser AI Bridge Visibility Bugfix
+- **Dropdown Bugfix**: Thêm thuộc tính `aiCapability: ['text']` và cấu hình `aiModels` cho Connector định nghĩa `browser-ai-bridge`. Fix lỗi UI "Dịch thuật (Connect Hub)" không hiển thị cổng do bị filter loại bỏ.
+
 ## 2026-08-04 — HeroDub Multi-Worker: Web Resource Locking & Parallel Execution
 - **Web Resource Locking Engine**: Tạo bảng `dubResourceLocks` và API route `/api/hero-dub/resource-lock` với cơ chế 2 lớp bảo vệ (Try-Finally tại Worker + Auto-release 30 phút trên Server).
 - **Multi-Worker Concurrency Support**: Cho phép chạy 2 hoặc nhiều Worker song song cùng lúc (sử dụng cờ `--port` để phân biệt Local Server).

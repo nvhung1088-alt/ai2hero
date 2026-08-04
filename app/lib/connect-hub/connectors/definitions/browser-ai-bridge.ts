@@ -6,6 +6,12 @@ export const browserAiBridgeConnector: ConnectorDefinition = {
   icon: 'Globe',
   category: 'ai',
   description: 'Điều khiển Gemini / ChatGPT / Claude trực tiếp trên trình duyệt cá nhân qua Chrome Extension hoàn toàn miễn phí.',
+  aiCapability: ['text'],
+  aiModels: [
+    { name: 'gemini', label: 'Gemini (via Browser)', type: 'text' },
+    { name: 'chatgpt', label: 'ChatGPT (via Browser)', type: 'text' },
+    { name: 'claude', label: 'Claude (via Browser)', type: 'text' }
+  ],
   
   authType: 'bearer_token',
   authFields: [
