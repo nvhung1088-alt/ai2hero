@@ -142,7 +142,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Khắc phục lỗi body scroll lock do popup video bằng cách tự động dọn sạch các tham số URL (`vid=...`) trước khi cào.
   - `[x]` Sửa lỗi biên dịch TypeScript lỗi gán kiểu string cho Date trong PairingWidget của cả 3 module (`connect-hub`, `hero-dub`, `hero-video-maker`).
   - `[x]` Nâng cấp Python Local Worker (`worker.py`): Tự động phát hiện và hỗ trợ lựa chọn môi trường máy chủ kết nối động (AI2Hero Cloud / Localhost) trong quá trình pairing và lưu trữ trực tiếp vào cấu hình `config.json`.
-  - `[x]` Tích hợp tính năng **Dịch & Redesign Thumbnail bằng AI** (Connect Hub Vision + Image Gen): Cho phép chọn AI Model và Ngôn ngữ đích (Việt, Anh, Hàn, Nhật, Thái...), tự động đọc text trên ảnh bìa gốc, dịch thuật, tạo lại thumbnail mới và tải lên R2 cloud storage kèm Modal Preview so sánh 2 ảnh trực quan trên Dashboard.
+  - `[x]` Gỡ bỏ hoàn toàn luồng code tính năng **Dịch & Redesign Thumbnail bằng AI** khỏi Hero Downloader (Xóa API, Schema DB `translatedThumbnailUrl`, UI Toolbar, Modal so sánh) giúp hệ thống quay về tối giản chỉ tải về 1 Ảnh bìa gốc + 1 Video MP4.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
 - **2026-08-04 (hero-dub - UI Worker Management, Zombie Task Recovery & Real-time Status Oversight)**:

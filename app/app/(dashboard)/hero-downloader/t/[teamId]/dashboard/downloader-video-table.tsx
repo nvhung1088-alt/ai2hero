@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Download, Eye, Image, CheckCircle2, Pause, AlertCircle, Languages, Play, FolderOpen } from 'lucide-react';
+import { Loader2, Download, Eye, Image, CheckCircle2, Pause, AlertCircle, Play, FolderOpen } from 'lucide-react';
 import { parseDownloaderError } from '../_shared/downloader-ui-helpers';
 
 interface VideoTableProps {
@@ -10,9 +10,7 @@ interface VideoTableProps {
   isLoading: boolean;
   onUpdateStatus: (videoId: number, status: string) => void;
   onOpenLocal: (path: string) => void;
-  onTranslateThumbnail: (videoId: number) => void;
   onPreviewThumbnail: (video: any) => void;
-  translatingIds: Set<number>;
 }
 
 export function DownloaderVideoTable({
@@ -22,9 +20,7 @@ export function DownloaderVideoTable({
   isLoading,
   onUpdateStatus,
   onOpenLocal,
-  onTranslateThumbnail,
   onPreviewThumbnail,
-  translatingIds
 }: VideoTableProps) {
   return (
     <div className="border border-white/5 rounded-xl bg-white/[0.01] overflow-hidden shadow-sm">
@@ -51,12 +47,12 @@ export function DownloaderVideoTable({
           ) : videos.length === 0 ? (
             <tr>
               <td colSpan={7} className="py-12 text-center text-gray-500">
-                <Download className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                <p>Chưa có video nào được tải về</p>
+                <Download className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p>Chưa có video nào trong dự án</p>
               </td>
             </tr>
           ) : (
-            videos.slice((currentPage - 1) * 10, currentPage * 10).map((video, idx) => (
+            videos.slice((currentPage - 1) * 10, currentPage * 10).map((video) => (
               <tr key={video.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
                 <td className="py-3 px-4 text-gray-500">{video.id}</td>
                 <td className="py-2 px-4">
@@ -64,20 +60,15 @@ export function DownloaderVideoTable({
                     <div 
                       className="relative cursor-pointer group/thumb w-20 h-[45px] rounded-md overflow-hidden border border-white/10 bg-black/40 hover:border-purple-500/50 transition-colors"
                       onClick={() => onPreviewThumbnail(video)}
-                      title="Click để xem fullsize & so sánh"
+                      title="Click để xem phóng to ảnh bìa"
                     >
                       <img 
-                        src={video.translatedThumbnailUrl || video.thumbnailUrl} 
+                        src={video.thumbnailUrl} 
                         alt="" 
                         className="w-full h-full object-cover" 
                         loading="lazy" 
                         referrerPolicy="no-referrer"
                       />
-                      {video.translatedThumbnailUrl && (
-                        <span className="absolute top-0.5 right-0.5 bg-teal-500/90 text-white text-[7px] font-bold px-1 py-0.2 rounded">
-                          VI
-                        </span>
-                      )}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-opacity">
                         <Eye className="w-4 h-4 text-white" />
                       </div>
@@ -161,21 +152,6 @@ export function DownloaderVideoTable({
                 </td>
                 <td className="py-3 px-4 text-right">
                   <div className="flex items-center justify-end gap-2">
-                    {/* Nút Dịch & Redesign Thumbnail */}
-                    {video.thumbnailUrl && (
-                      <button 
-                        onClick={() => onTranslateThumbnail(video.id)} 
-                        disabled={translatingIds.has(video.id)}
-                        className="p-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/20 transition-colors disabled:opacity-40" 
-                        title={video.translatedThumbnailUrl ? 'Dịch lại Thumbnail (AI)' : 'Dịch & Redesign Thumbnail (AI)'}
-                      >
-                        {translatingIds.has(video.id) ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
-                        ) : (
-                          <Languages className="w-4 h-4" />
-                        )}
-                      </button>
-                    )}
                     {video.status === 'downloading' ? (
                       <>
                         {video.downloadSpeed && <span className="text-teal-400 font-bold text-xs font-mono">{video.downloadSpeed}</span>}

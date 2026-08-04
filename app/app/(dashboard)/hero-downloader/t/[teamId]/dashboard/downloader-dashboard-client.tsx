@@ -40,12 +40,6 @@ export default function DownloaderDashboardClient({
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Thumbnail Translation & AI Selection State
-  const [selectedLang, setSelectedLang] = useState('Tiếng Việt');
-  const [selectedAiConn, setSelectedAiConn] = useState(aiConnections.length > 0 ? `${aiConnections[0].id}:${aiConnections[0].defaultModel || 'gpt-4o-mini'}` : '');
-  const [translatingIds, setTranslatingIds] = useState<Set<number>>(new Set());
-  const [previewVideo, setPreviewVideo] = useState<any>(null);
-
   // Add URL Inline Form State
   const [isAddUrlOpen, setIsAddUrlOpen] = useState(false);
   const [addUrlValue, setAddUrlValue] = useState('');
@@ -59,44 +53,7 @@ export default function DownloaderDashboardClient({
     onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
-  const handleTranslateThumbnail = async (videoId: number) => {
-    if (!selectedAiConn) {
-      showToast('Vui lòng chọn AI model từ danh sách Connect Hub', 'error');
-      return;
-    }
-    const [connId, model] = selectedAiConn.split(':');
-    setTranslatingIds(prev => new Set(prev).add(videoId));
-    try {
-      const res = await fetch('/api/hero-downloader/thumbnail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoId,
-          connectionId: parseInt(connId, 10),
-          model,
-          imageModel: 'dall-e-3',
-          targetLang: selectedLang
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setVideos(prev => prev.map(v => 
-          v.id === videoId ? { ...v, translatedThumbnailUrl: data.translatedThumbnailUrl } : v
-        ));
-        showToast('Dịch & Redesign Thumbnail thành công!', 'success');
-      } else {
-        showToast('Lỗi dịch thumbnail: ' + (data.error || 'Không xác định'), 'error');
-      }
-    } catch (err: any) {
-      showToast('Lỗi kết nối: ' + err.message, 'error');
-    } finally {
-      setTranslatingIds(prev => {
-        const next = new Set(prev);
-        next.delete(videoId);
-        return next;
-      });
-    }
-  };
+  const [previewVideo, setPreviewVideo] = useState<any>(null);
 
   const [videoFilter, setVideoFilter] = useState<string>('all'); // 'all' | 'downloading' | 'pending' | 'completed' | 'failed'
 
@@ -514,45 +471,6 @@ export default function DownloaderDashboardClient({
                   </div>
                 </div>
 
-                {/* Toolbar Chọn Ngôn Ngữ & Chọn AI */}
-                <div className="flex items-center justify-between gap-4 mb-4 bg-white/[0.02] border border-white/5 rounded-xl p-3">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <Languages className="w-4 h-4 text-purple-400" />
-                      <span className="text-xs text-gray-400 font-medium">Ngôn ngữ đích:</span>
-                      <select 
-                        value={selectedLang} 
-                        onChange={e => setSelectedLang(e.target.value)}
-                        className="bg-black/40 border border-white/10 text-gray-200 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-purple-500/50"
-                      >
-                        {LANGUAGES.map(l => <option key={l} value={l} className="bg-gray-900">{l}</option>)}
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-amber-400" />
-                      <span className="text-xs text-gray-400 font-medium">Cổng AI (Connect Hub):</span>
-                      <select 
-                        value={selectedAiConn} 
-                        onChange={e => setSelectedAiConn(e.target.value)}
-                        className="bg-black/40 border border-white/10 text-gray-200 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-500/50 min-w-[200px]"
-                      >
-                        {aiConnections.length === 0 ? (
-                          <option value="" className="bg-gray-900">-- Chưa có kết nối AI (mặc định system) --</option>
-                        ) : (
-                          aiConnections.map((c: any) => (
-                            <option key={c.id} value={`${c.id}:${c.defaultModel || 'gpt-4o-mini'}`} className="bg-gray-900">
-                              {c.name || c.appSlug} ({c.defaultModel || 'default'})
-                            </option>
-                          ))
-                        )}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="text-[11px] text-gray-500 hidden sm:block">
-                    Tự động dịch text trên ảnh & Redesign Thumbnail
-                  </div>
-                </div>
-
                 <DownloaderVideoTable
                   videos={sortedVideos}
                   currentPage={currentPage}
@@ -560,9 +478,7 @@ export default function DownloaderDashboardClient({
                   isLoading={isLoadingVideos}
                   onUpdateStatus={handleUpdateVideoStatus}
                   onOpenLocal={handleOpenLocal}
-                  onTranslateThumbnail={handleTranslateThumbnail}
                   onPreviewThumbnail={setPreviewVideo}
-                  translatingIds={translatingIds}
                 />
               </div>
             </div>
@@ -603,10 +519,6 @@ export default function DownloaderDashboardClient({
       <DownloaderThumbnailModal
         video={previewVideo}
         onClose={() => setPreviewVideo(null)}
-        onTranslate={handleTranslateThumbnail}
-        isTranslating={previewVideo ? translatingIds.has(previewVideo.id) : false}
-        hasAiConnection={!!selectedAiConn}
-        selectedLang={selectedLang}
       />
 
       {/* Confirm Modal */}
