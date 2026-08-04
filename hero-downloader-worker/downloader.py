@@ -44,11 +44,30 @@ def _format_speed(bytes_per_sec: float) -> str:
         return f"{bytes_per_sec / 1024 / 1024:.1f} MB/s"
     return f"{bytes_per_sec / 1024:.0f} KB/s"
 
+def _has_existing_thumbnail(downloads_dir, video_id):
+    """Kiểm tra xem thư mục đã chứa bất kỳ file ảnh thumbnail nào của video_id chưa."""
+    if not downloads_dir or not os.path.exists(downloads_dir):
+        return False
+    prefix = f"{video_id}_"
+    try:
+        for fname in os.listdir(downloads_dir):
+            if fname.startswith(prefix) and fname.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+                return True
+    except Exception:
+        pass
+    return False
+
 def _download_thumbnail(thumbnail_url: str, base_filepath: str):
-    """Tải ảnh thumbnail về cùng thư mục với video."""
+    """Tải ảnh thumbnail về cùng thư mục với video (chỉ tải khi chưa có)."""
     if not thumbnail_url:
         return
     try:
+        dir_name = os.path.dirname(base_filepath)
+        file_name = os.path.basename(base_filepath)
+        video_id = file_name.split('_')[0] if '_' in file_name else ''
+        if video_id and _has_existing_thumbnail(dir_name, video_id):
+            return
+
         if thumbnail_url.startswith("//"):
             thumbnail_url = "https:" + thumbnail_url
 
@@ -97,9 +116,9 @@ def download_direct_mp4(video, url, update_callback):
         active_downloads[video_id] = {"cancel": cancel_event}
 
     try:
-        # Download thumbnail
+        # Download thumbnail (chỉ tải 1 ảnh duy nhất nếu chưa có)
         thumbnail_url = video.get('thumbnailUrl')
-        if thumbnail_url and video.get('downloadThumbnail', True):
+        if thumbnail_url and video.get('downloadThumbnail', True) and not _has_existing_thumbnail(downloads_dir, video_id):
             _download_thumbnail(thumbnail_url, filepath)
 
         response = requests.get(url, headers=headers, stream=True, timeout=30)
@@ -183,14 +202,6 @@ def download_video(video, update_callback, cookie_data: str = None):
     with _lock:
         active_downloads[video_id] = {"cancel": cancel_event}
 
-    # Download thumbnail
-    thumbnail_url = video.get('thumbnailUrl')
-    if thumbnail_url and video.get('downloadThumbnail', True):
-        v_title = video.get('title') or "video"
-        v_safe_title = "".join([c for c in v_title if c.isalnum() or c in [' ', '_', '-']]).strip().replace(' ', '_')
-        base_path = os.path.join(downloads_dir, f"{video_id}_{v_safe_title}")
-        _download_thumbnail(thumbnail_url, base_path)
-
     last_progress = [0]      # mutable để dùng trong closure
     last_speed_report = [0]  # throttle gửi speed
 
@@ -251,7 +262,8 @@ def download_video(video, update_callback, cookie_data: str = None):
         'file_access_retries': 5,
     }
 
-    if video.get('downloadThumbnail', True):
+    # Chỉ để yt-dlp tải 1 file thumbnail duy nhất nếu chưa có bất kỳ file ảnh thumbnail nào trong thư mục
+    if video.get('downloadThumbnail', True) and not _has_existing_thumbnail(downloads_dir, video_id):
         ydl_opts['writethumbnail'] = True
 
     # Bilibili cần Referer và User-Agent Chrome chuẩn để CDN không đóng kết nối (Remote end closed connection).
