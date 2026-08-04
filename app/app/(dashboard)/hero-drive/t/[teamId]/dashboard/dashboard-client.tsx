@@ -527,7 +527,7 @@ export default function DriveDashboardClient({
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
                   <HardDrive className="w-4 h-4 text-blue-400" />
-                  Danh sách File trong Thư mục Quét ({filteredFiles.length})
+                  Danh sách File trong Thư mục Quét ({filteredFiles.length} file • {rawFilesList.filter(f => f.fileType === 'video' || (f.fileName && ['.mp4', '.mkv', '.avi', '.webm'].some(ext => f.fileName.toLowerCase().endsWith(ext)))).length} video)
                 </h2>
 
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
