@@ -361,11 +361,15 @@ export async function GET(req: NextRequest) {
             const conn: any = await db.query.connectHubConnections.findFirst({
               where: eq(connectHubConnections.id, m.connectionId),
             });
-            if (conn && conn.credentials) {
-              const res = await runGoogleDrive(conn.credentials as any, 'get_about', {});
-              if (res.success && res.data && res.data.accessToken) {
-                accessToken = res.data.accessToken;
-              }
+            const creds = parseCredentials(conn);
+            if (creds) {
+              try {
+                const res = await runGoogleDrive(creds, 'get_about', {});
+                const token = res?.accessToken || res?.data?.accessToken;
+                if (res && res.success && token) {
+                  accessToken = token;
+                }
+              } catch (e) {}
             }
           }
           mappingTokens[m.id] = {
@@ -424,11 +428,15 @@ export async function GET(req: NextRequest) {
           where: eq(connectHubConnections.id, config.connectionId),
         });
 
-        if (conn && conn.credentials) {
-          const res = await runGoogleDrive(conn.credentials as any, 'get_about', {});
-          if (res.success && res.data && res.data.accessToken) {
-            accessToken = res.data.accessToken;
-          }
+        const creds = parseCredentials(conn);
+        if (creds) {
+          try {
+            const res = await runGoogleDrive(creds, 'get_about', {});
+            const token = res?.accessToken || res?.data?.accessToken;
+            if (res && res.success && token) {
+              accessToken = token;
+            }
+          } catch (e) {}
         }
       }
 

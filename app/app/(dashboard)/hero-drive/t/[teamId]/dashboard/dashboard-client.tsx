@@ -44,6 +44,7 @@ interface DashboardProps {
   team: any;
   initialMappings: any[];
   googleDriveConnections: any[];
+  defaultProjectId: number;
 }
 
 export default function DriveDashboardClient({
@@ -51,6 +52,7 @@ export default function DriveDashboardClient({
   team,
   initialMappings,
   googleDriveConnections,
+  defaultProjectId,
 }: DashboardProps) {
   const router = useRouter();
   const [mappings, setMappings] = useState<any[]>(initialMappings);
@@ -195,7 +197,6 @@ export default function DriveDashboardClient({
       }
     } else {
       // Create mode
-      const defaultProjectId = 1;
       const res = await createDriveFolderMappingAction({
         projectId: defaultProjectId,
         name: mappingName,
@@ -228,7 +229,6 @@ export default function DriveDashboardClient({
   };
 
   const handleToggleMapping = async (id: number, currentActive: boolean) => {
-    const defaultProjectId = 1;
     const res = await toggleDriveFolderMappingAction(id, defaultProjectId, !currentActive);
     if (res.success) {
       setMappings(
@@ -243,7 +243,6 @@ export default function DriveDashboardClient({
 
   const handleDeleteMapping = async (id: number) => {
     if (!confirm('Bạn có chắc muốn xóa thư mục quét này?')) return;
-    const defaultProjectId = 1;
     const res = await deleteDriveFolderMappingAction(id, defaultProjectId);
     if (res.success) {
       const nextMappings = mappings.filter((m) => m.id !== id);
