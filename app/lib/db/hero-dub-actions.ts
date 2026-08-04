@@ -232,10 +232,14 @@ export async function getDubTasksAction(
       }
     }
 
-    // Query danh sách tác vụ phân trang
-    const tasks = await db
-      .select()
+    // Query danh sách tác vụ phân trang kèm tên Worker
+    const rawTasks = await db
+      .select({
+        task: dubTasks,
+        workerName: dubWorkers.deviceName,
+      })
       .from(dubTasks)
+      .leftJoin(dubWorkers, eq(dubTasks.workerId, dubWorkers.id))
       .where(and(...listConditions))
       .orderBy(
         sql`CASE 
@@ -247,6 +251,11 @@ export async function getDubTasksAction(
       )
       .limit(limit)
       .offset(offset);
+
+    const tasks = rawTasks.map(r => ({
+      ...r.task,
+      workerName: r.workerName || null,
+    }));
 
     // Query tổng số lượng cho danh sách đang hiển thị theo bộ lọc
     const [filteredCountRes] = await db
@@ -481,6 +490,47 @@ export async function deleteDubWorkerAction(workerId: number, teamId: number) {
   } catch (error: any) {
     console.error('[hero-dub-actions] deleteDubWorkerAction error:', error);
     return { error: 'Lỗi xóa máy xử lý: ' + error.message };
+  }
+}
+
+export async function resetDubWorkerAction(workerId: number, teamId: number) {
+  try {
+    // 1. Tìm tất cả task đang bị kẹt/xử lý bởi worker này
+    const stuckTasks = await db
+      .select({ id: dubTasks.id })
+      .from(dubTasks)
+      .where(
+        and(
+          eq(dubTasks.workerId, workerId),
+          eq(dubTasks.teamId, teamId),
+          inArray(dubTasks.status, ['assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'processing', 'dubbing', 'running', 'active'])
+        )
+      );
+
+    // 2. Reset tất cả task về pending và giải phóng workerId
+    for (const t of stuckTasks) {
+      await db
+        .update(dubTasks)
+        .set({
+          status: 'pending',
+          workerId: null,
+          progress: '0',
+          updatedAt: new Date(),
+        })
+        .where(eq(dubTasks.id, t.id));
+
+      await appendTaskLog(t.id, 'reset', '🔄 Gỡ lỗi: Admin đã giải phóng tác vụ về hàng đợi.');
+    }
+
+    // 3. Giải phóng resource locks nếu có
+    await db
+      .delete(dubResourceLocks)
+      .where(and(eq(dubResourceLocks.workerId, workerId), eq(dubResourceLocks.teamId, teamId)));
+
+    return { success: true, releasedCount: stuckTasks.length };
+  } catch (error: any) {
+    console.error('[hero-dub-actions] resetDubWorkerAction error:', error);
+    return { error: 'Lỗi gỡ lỗi worker: ' + error.message };
   }
 }
 

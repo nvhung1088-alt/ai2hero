@@ -15,13 +15,15 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  Filter
+  Filter,
+  Laptop
 } from 'lucide-react';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 import { getStatusBadge, getPlatformLabel } from '../_shared/dub-ui-helpers';
 
 interface DubTaskTableProps {
   tasks: any[];
+  workers?: any[];
   loading: boolean;
   taskPage: number;
   setTaskPage: (_page: number) => void;
@@ -49,6 +51,7 @@ interface DubTaskTableProps {
 
 export default function DubTaskTable({
   tasks,
+  workers = [],
   loading,
   taskPage,
   setTaskPage,
@@ -67,6 +70,11 @@ export default function DubTaskTable({
   handlePauseAll,
   handleResumeAll,
   handleClearUnassigned,
+  handleOpenLocal,
+  setPreviewVideoUrl,
+  setPreviewSrtUrl,
+  teamId,
+  scanConfigId,
 }: DubTaskTableProps) {
   const [localTaskFilter, setLocalTaskFilter] = useState<string>('all');
   const taskFilter = propTaskFilter !== undefined ? propTaskFilter : localTaskFilter;
@@ -82,6 +90,10 @@ export default function DubTaskTable({
   const pendingCount = taskStats?.pending ?? tasks.filter((t) => isPendingStatus(t.status)).length;
   const completedCount = taskStats?.completed ?? tasks.filter((t) => isCompletedStatus(t.status)).length;
   const failedCount = taskStats?.failed ?? tasks.filter((t) => isFailedStatus(t.status)).length;
+
+  const activeWorkerCount = workers.filter(
+    (w) => w.status === 'online' && w.lastSeenAt && (Date.now() - new Date(w.lastSeenAt).getTime()) / 60000 <= 2
+  ).length;
 
   const statusPriority = (status: string) => {
     if (isProcessingStatus(status)) return 1;
@@ -147,7 +159,7 @@ export default function DubTaskTable({
       </div>
 
       {/* Stats Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1 pb-2">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 pt-1 pb-2">
         <div className="p-3 bg-[#111622] border border-white/10 rounded-xl flex flex-col justify-between">
           <span className="text-[11px] text-gray-400 font-medium">Tổng số tác vụ</span>
           <span className="text-lg font-bold text-gray-100 mt-1">{displayTotalCount}</span>
@@ -175,6 +187,14 @@ export default function DubTaskTable({
             <AlertCircle className="w-3 h-3" /> Lỗi / Tạm dừng
           </span>
           <span className="text-lg font-bold text-rose-300 mt-1">{failedCount}</span>
+        </div>
+        <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl flex flex-col justify-between">
+          <span className="text-[11px] text-cyan-400 font-medium flex items-center gap-1">
+            <Laptop className="w-3 h-3 text-cyan-400" /> Máy xử lý
+          </span>
+          <span className="text-lg font-bold text-cyan-300 mt-1">
+            {activeWorkerCount} <span className="text-[10px] text-gray-500 font-normal">/ {workers.length}</span>
+          </span>
         </div>
       </div>
 
@@ -345,14 +365,23 @@ export default function DubTaskTable({
                     <div className="flex flex-col">
                       <span>ASR: {task.asrEngine?.includes(':') ? task.asrEngine.split(':').map((s: string, i: number) => i === 0 ? s : `(${s})`).join(' ') : task.asrEngine}</span>
                       <span className="text-gray-500">Dịch: {task.translateEngine}</span>
+                      {task.workerName && (
+                        <span className="text-[9px] text-cyan-400/90 font-extrabold mt-0.5 flex items-center gap-1 bg-cyan-500/10 px-1.5 py-0.5 rounded w-fit" title={`Được xử lý bởi: ${task.workerName}`}>
+                          🖥️ {task.workerName}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="py-3 pr-3">
                     <div className="flex flex-col gap-1.5">
                       {getStatusBadge(task.status)}
-                      {task.status === 'completed' && task.updatedAt && task.createdAt && (
+                      {task.status === 'completed' && (
                         <span className="text-[9px] text-gray-500 font-bold">
-                          Đã dịch xong trong: {Math.max(1, Math.floor((new Date(task.updatedAt).getTime() - new Date(task.createdAt).getTime()) / 60000))} phút
+                          Đã dịch xong trong: {(() => {
+                            const start = task.startedAt ? new Date(task.startedAt).getTime() : new Date(task.createdAt).getTime();
+                            const end = task.completedAt ? new Date(task.completedAt).getTime() : (task.updatedAt ? new Date(task.updatedAt).getTime() : Date.now());
+                            return Math.max(1, Math.floor((end - start) / 60000));
+                          })()} phút
                         </span>
                       )}
                       {task.status !== 'completed' && task.status !== 'failed' && (

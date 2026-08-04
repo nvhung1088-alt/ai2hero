@@ -4,22 +4,28 @@ import React from 'react';
 import {
   Laptop,
   AlertTriangle,
-  X
+  X,
+  RotateCcw,
+  Activity
 } from 'lucide-react';
 
 interface DubWorkerPanelProps {
   workers: any[];
+  tasks?: any[];
   isWorkerOnline: boolean;
   activeWorker: any;
   handleDeleteWorker: (_id: number) => void;
+  handleResetWorker?: (_id: number) => void;
   section: 'status' | 'management';
 }
 
 export default function DubWorkerPanel({
   workers,
+  tasks = [],
   isWorkerOnline,
   activeWorker,
   handleDeleteWorker,
+  handleResetWorker,
   section,
 }: DubWorkerPanelProps) {
   if (section === 'status') {
@@ -70,10 +76,12 @@ export default function DubWorkerPanel({
   // Section === 'management'
   return (
     <div className="bg-gray-900/40 border border-white/5 p-5 rounded-2xl shadow-sm backdrop-blur-xl space-y-4">
-      <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-        <Laptop className="h-4 w-4 text-emerald-400" />
-        Quản lý máy xử lý kết nối ({workers.length})
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <Laptop className="h-4 w-4 text-emerald-400" />
+          Quản lý máy xử lý kết nối ({workers.length})
+        </h2>
+      </div>
 
       {workers.length === 0 ? (
         <p className="text-[10px] text-gray-500 font-bold py-2">
@@ -85,26 +93,56 @@ export default function DubWorkerPanel({
             const diffMin = w.lastSeenAt ? (Date.now() - new Date(w.lastSeenAt).getTime()) / 1000 / 60 : 999;
             const isOnline = w.status === 'online' && diffMin <= 2;
 
+            // Tìm task đang được gán xử lý bởi worker này
+            const activeTask = tasks.find(
+              (t) => t.workerId === w.id && ['assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'processing'].includes(t.status)
+            );
+
             return (
-              <div key={w.id} className="bg-black/30 border border-white/5 p-4 rounded-xl flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className={`h-2.5 w-2.5 rounded-full ${isOnline ? 'bg-green-500 shadow-md shadow-green-500/30' : 'bg-red-500'} shrink-0`} />
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-black text-white truncate">{w.deviceName}</span>
-                    <span className="text-[9px] text-gray-500 capitalize">{w.platform} | Version {w.version}</span>
+              <div key={w.id} className="bg-black/40 border border-white/5 p-4 rounded-xl flex flex-col justify-between gap-3 relative overflow-hidden">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`h-2.5 w-2.5 rounded-full ${isOnline ? 'bg-green-500 shadow-md shadow-green-500/30 animate-pulse' : 'bg-red-500'} shrink-0`} />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-black text-white truncate" title={w.deviceName}>{w.deviceName}</span>
+                      <span className="text-[9px] text-gray-500 capitalize">{w.platform || 'windows'} | Version {w.version || '1.0.0'}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md ${isOnline ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                      {isOnline ? 'Online' : 'Offline'}
+                    </span>
+                    {handleResetWorker && (
+                      <button
+                        onClick={() => handleResetWorker(w.id)}
+                        className="p-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-md text-amber-400 cursor-pointer transition-all flex items-center gap-1 text-[9px] font-bold"
+                        title="Gỡ lỗi: Thu hồi tất cả tác vụ bị kẹt của máy này về hàng đợi"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteWorker(w.id)}
+                      className="p-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-md text-red-400 cursor-pointer transition-all"
+                      title="Gỡ kết nối máy này"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md ${isOnline ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                    {isOnline ? 'Online' : 'Offline'}
-                  </span>
-                  <button
-                    onClick={() => handleDeleteWorker(w.id)}
-                    className="p-1 bg-red-500/10 hover:bg-red-500/20 rounded-md text-red-500 cursor-pointer transition-all"
-                    title="Gỡ kết nối"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+
+                {/* Sub-status: Task info or Idle state */}
+                <div className="mt-1 pt-2 border-t border-white/5 flex items-center justify-between text-[10px]">
+                  {activeTask ? (
+                    <div className="flex items-center gap-1.5 text-amber-400 font-bold truncate max-w-full">
+                      <Activity className="h-3 w-3 text-amber-400 animate-spin shrink-0" />
+                      <span className="truncate">Đang xử lý Task #{activeTask.id} ({activeTask.progress || 0}%)</span>
+                    </div>
+                  ) : (
+                    <span className="text-gray-500 font-medium">
+                      {isOnline ? '⏳ Đang chờ nhận việc' : `Mất kết nối (${diffMin < 900 ? Math.round(diffMin) + ' phút trước' : 'Lâu rồi'})`}
+                    </span>
+                  )}
                 </div>
               </div>
             );

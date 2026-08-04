@@ -10,6 +10,7 @@ import {
   retryDubTaskAction,
   deleteDubTaskAction,
   deleteDubWorkerAction,
+  resetDubWorkerAction,
   getDubProjectsAction,
   updateAndRetryDubTaskAction,
   clearAllDubDataAction,
@@ -125,6 +126,16 @@ export default function DashboardClient({
     const res = await resumeAllDubTasksAction(teamId, selectedScanConfigId);
     if (res.error) showToast(res.error, 'error');
     else { showToast('Đã kích hoạt lại tất cả tác vụ!', 'success'); refreshData(false); }
+  };
+
+  const handleResetWorker = async (workerId: number) => {
+    const res = await resetDubWorkerAction(workerId, teamId);
+    if (res.error) {
+      showToast(res.error, 'error');
+    } else {
+      showToast(`Đã gỡ lỗi và giải phóng ${res.releasedCount} tác vụ về hàng đợi!`, 'success');
+      refreshData(true);
+    }
   };
 
   // Form State
@@ -1106,6 +1117,7 @@ export default function DashboardClient({
           {selectedScanConfigId === null ? (
             <DubTaskTable
               tasks={tasks}
+              workers={workers}
               loading={loading}
               taskPage={taskPage}
               setTaskPage={setTaskPage}
@@ -1195,9 +1207,11 @@ export default function DashboardClient({
       {/* Connected Workers management Sub-component */}
       <DubWorkerPanel
         workers={workers}
+        tasks={tasks}
         isWorkerOnline={isWorkerOnline}
         activeWorker={activeWorker}
         handleDeleteWorker={handleDeleteWorker}
+        handleResetWorker={handleResetWorker}
         section="management"
       />
 
