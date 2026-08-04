@@ -1441,8 +1441,14 @@ def poll_tasks(token):
                 if os.path.exists(CONFIG_FILE):
                     os.remove(CONFIG_FILE)
                 return False
+                
+            try:
+                data = res.json()
+            except Exception as json_err:
+                print(Fore.RED + f"Loi parse JSON tu Server. HTTP {res.status_code}: {res.text[:500]}")
+                time.sleep(15)
+                continue
 
-            data = res.json()
             if data.get("success") and data.get("task"):
                 task = data.get("task")
                 process_task(token, task)
@@ -1638,8 +1644,14 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="HeroDub Worker")
     parser.add_argument("--port", type=int, default=3001, help="Port cho Local Server")
+    parser.add_argument("--server", type=str, default=None, help="Base URL cho Server API (vd: https://ai2hero-flax.vercel.app)")
     args, _ = parser.parse_known_args()
     worker_port = args.port
+    
+    if args.server:
+        server_url = args.server.rstrip('/')
+        API_BASE_URL = f"{server_url}/api/hero-dub"
+        print(Fore.CYAN + f"[-] Su dung Server API tu bien --server: {API_BASE_URL}")
 
     scan_thread_started = False
     server_thread_started = False

@@ -25,7 +25,7 @@ for /f "tokens=*" %%v in ('python --version 2^>^&1') do echo [OK] Phat hien: %%v
 
 :: Tai Worker Script moi nhat
 echo [INFO] Dang tai herodub_worker.py tu ai2hero.com...
-curl -s -L -o herodub_worker.py "https://ai2hero-flax.vercel.app/uploads/herodub_worker.py?v=8"
+curl -s -L -o herodub_worker.py "https://ai2hero-flax.vercel.app/uploads/herodub_worker.py?v=9"
 
 if not exist herodub_worker.py (
     echo [ERROR] Khong the tai script. Kiem tra ket noi Internet.
