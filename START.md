@@ -146,6 +146,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
 - **2026-08-04 (hero-dub - Fix Critical Audio, Extension Duplication, GPU Hardware Render & Edge-TTS Worker Bugs)**:
+  - 🔀 **Hệ thống Web Điều phối Đa-Worker (Resource Locking)**: Triển khai bảng `dubResourceLocks` và API `/api/hero-dub/resource-lock` với cơ chế 2 lớp bảo vệ (Timeout auto-release 30 phút). Cho phép nhiều Worker chạy song song trên cùng 1 máy (hoặc khác máy) bằng tham số `--port`. Tự động khóa & xếp hàng tài nguyên nặng (Whisper CPU và GPU Render), cho phép các tác vụ STT Online (Bcut), Dịch thuật, TTS chạy song song không làm nghẽn hay sập máy. Fix triệt để Race Condition khi poll pending task.
   - ⚡ **GPU Hardware Render Acceleration (`herodub_worker.py`)**: Tích hợp `detect_best_encoder()` tự động chuyển FFMPEG Render từ CPU (`libx264`) sang GPU (`h264_amf` / `h264_nvenc`), giúp tăng tốc render gấp 2-3 lần kèm cơ chế fallback an toàn (`libx264 -preset ultrafast`).
   - 🧠 **Enhance Translation Sliding Context (`herodub_worker.py`)**: Tăng số câu ngữ cảnh liền kề từ 3 lên 5 câu cuối của batch trước khi gọi Connect-Hub API, giúp giữ mạch giọng văn và cách xưng hô chuẩn xác hơn.
   - 🐛 **Sample Rate Synchronization (`herodub_worker.py`)**: Tích hợp module resample 1D (sử dụng `numpy.interp`) trực tiếp vào hàm `merge_tts_segments` để cứu các đoạn tiếng lồng không phải chuẩn 16kHz bị trượt nhịp (trước đây bị drop ngầm), giải quyết lỗi video hoàn thành không có tiếng lồng.

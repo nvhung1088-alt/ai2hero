@@ -1,9 +1,9 @@
 'use server';
 
 import { db } from './drizzle';
-import { dubTasks, dubWorkers, teams, users, extensionLinkCodes, connectHubConnections, dubProjects, dubScanConfigs } from './schema';
+import { dubTasks, dubWorkers, teams, users, extensionLinkCodes, connectHubConnections, dubProjects, dubScanConfigs, dubResourceLocks } from './schema';
 import { decryptField } from '../sim-crypto';
-import { eq, and, desc, sql, isNull, gt, inArray, or } from 'drizzle-orm';
+import { eq, and, desc, sql, isNull, gt, inArray, notInArray, or } from 'drizzle-orm';
 import { SignJWT, jwtVerify } from 'jose';
 import { createHash, randomBytes } from 'crypto';
 import { getPresignedUploadUrl } from '@/lib/storage/r2';
@@ -658,16 +658,33 @@ export async function pollPendingTaskAction(workerId: number, teamId: number) {
       return { success: true, task: null };
     }
 
-    const [updatedTask] = await db
-      .update(dubTasks)
-      .set({
-        status: task.status === 'pending' ? 'assigned' : task.status,
-        workerId,
-        startedAt: task.startedAt || new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(dubTasks.id, task.id))
-      .returning();
+    if (task.status === 'pending') {
+      const [updatedTask] = await db
+        .update(dubTasks)
+        .set({
+          status: 'assigned',
+          workerId,
+          startedAt: task.startedAt || new Date(),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(dubTasks.id, task.id), eq(dubTasks.status, 'pending')))
+        .returning();
+
+      if (!updatedTask) {
+        return { success: true, task: null };
+      }
+      task = updatedTask;
+    } else {
+      const [updatedTask] = await db
+        .update(dubTasks)
+        .set({
+          workerId,
+          updatedAt: new Date(),
+        })
+        .where(eq(dubTasks.id, task.id))
+        .returning();
+      if (updatedTask) task = updatedTask;
+    }
 
     // Lấy thông tin worker để ghi log trực quan
     const [worker] = await db
@@ -683,12 +700,12 @@ export async function pollPendingTaskAction(workerId: number, teamId: number) {
       `💻 Worker nhận việc: Worker [${workerName}] đã nhận tác vụ xử lý.`
     );
 
-    let finalOutputFolder = updatedTask.outputFolder;
-    if (!finalOutputFolder && updatedTask.scanConfigId) {
+    let finalOutputFolder = task.outputFolder;
+    if (!finalOutputFolder && task.scanConfigId) {
       const [scanConf] = await db
         .select({ outputFolder: dubScanConfigs.outputFolder })
         .from(dubScanConfigs)
-        .where(eq(dubScanConfigs.id, updatedTask.scanConfigId))
+        .where(eq(dubScanConfigs.id, task.scanConfigId))
         .limit(1);
       if (scanConf?.outputFolder) {
         finalOutputFolder = scanConf.outputFolder;
@@ -696,7 +713,7 @@ export async function pollPendingTaskAction(workerId: number, teamId: number) {
     }
 
     const taskPayload = {
-      ...updatedTask,
+      ...task,
       outputFolder: finalOutputFolder || undefined,
       output_folder: finalOutputFolder || undefined,
     };
@@ -1051,5 +1068,99 @@ export async function resumeAllDubTasksAction(teamId: number, scanConfigId?: num
     return { error: 'Lỗi tiếp tục tất cả: ' + error.message };
   }
 }
+
+// === RESOURCE LOCKING ACTIONS ===
+
+export async function acquireResourceLockAction(
+  teamId: number,
+  workerId: number,
+  taskId: number,
+  resourceKey: string
+) {
+  try {
+    const LOCK_TIMEOUT_MS = 30 * 60 * 1000; // 30 phút timeout
+    const now = new Date();
+
+    const [existingLock] = await db
+      .select()
+      .from(dubResourceLocks)
+      .where(
+        and(
+          eq(dubResourceLocks.teamId, teamId),
+          eq(dubResourceLocks.resourceKey, resourceKey)
+        )
+      )
+      .limit(1);
+
+    if (existingLock) {
+      if (existingLock.lockedByTask === taskId) {
+        await db
+          .update(dubResourceLocks)
+          .set({ lockedAt: now, workerId })
+          .where(eq(dubResourceLocks.id, existingLock.id));
+        return { success: true, acquired: true };
+      }
+
+      const lockAge = now.getTime() - new Date(existingLock.lockedAt).getTime();
+      if (lockAge < LOCK_TIMEOUT_MS) {
+        return {
+          success: true,
+          acquired: false,
+          holderTaskId: existingLock.lockedByTask,
+          message: `Resource '${resourceKey}' đang được sử dụng bởi Task #${existingLock.lockedByTask}`,
+        };
+      }
+
+      // Timeout > 30 min -> Override lock
+      await db
+        .update(dubResourceLocks)
+        .set({
+          lockedByTask: taskId,
+          workerId,
+          lockedAt: now,
+        })
+        .where(eq(dubResourceLocks.id, existingLock.id));
+
+      return { success: true, acquired: true, note: 'Override stale lock' };
+    }
+
+    await db.insert(dubResourceLocks).values({
+      teamId,
+      resourceKey,
+      lockedByTask: taskId,
+      workerId,
+      lockedAt: now,
+    });
+
+    return { success: true, acquired: true };
+  } catch (error: any) {
+    console.error('Error acquiring resource lock:', error);
+    return { success: false, acquired: false, error: error.message };
+  }
+}
+
+export async function releaseResourceLockAction(
+  teamId: number,
+  workerId: number,
+  taskId: number,
+  resourceKey: string
+) {
+  try {
+    await db
+      .delete(dubResourceLocks)
+      .where(
+        and(
+          eq(dubResourceLocks.teamId, teamId),
+          eq(dubResourceLocks.resourceKey, resourceKey),
+          eq(dubResourceLocks.lockedByTask, taskId)
+        )
+      );
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error releasing resource lock:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 
 

@@ -87,6 +87,43 @@ def format_timestamp(seconds: float):
     millis = int((seconds - int(seconds)) * 1000)
     return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
 
+def acquire_resource_lock(token, task_id, resource_key, label=""):
+    headers = {'Authorization': f'Bearer {token}'}
+    first_wait = True
+    while True:
+        try:
+            res = requests.post(
+                f"{API_BASE_URL}/resource-lock",
+                json={"action": "acquire", "taskId": task_id, "resourceKey": resource_key},
+                headers=headers,
+                timeout=15
+            )
+            if res.status_code == 200:
+                data = res.json()
+                if data.get("acquired"):
+                    if not first_wait:
+                        print(Fore.GREEN + f"[{label}] -> Da lay duoc Lock '{resource_key}'. Tiep tuc xu ly.")
+                    return True
+                else:
+                    holder = data.get("holderTaskId")
+                    print(Fore.YELLOW + f"[{label}] Tai nguyen '{resource_key}' dang duoc dung boi Task #{holder}. Dang cho...")
+                    first_wait = False
+        except Exception as e:
+            print(Fore.RED + f"[Lock] Loi khi xin lock {resource_key}: {e}")
+        time.sleep(10)
+
+def release_resource_lock(token, task_id, resource_key):
+    headers = {'Authorization': f'Bearer {token}'}
+    try:
+        requests.post(
+            f"{API_BASE_URL}/resource-lock",
+            json={"action": "release", "taskId": task_id, "resourceKey": resource_key},
+            headers=headers,
+            timeout=15
+        )
+    except Exception:
+        pass
+
 def get_audio_duration(ffmpeg_exe, file_path):
     try:
         cmd = [ffmpeg_exe, "-i", file_path]
@@ -399,6 +436,9 @@ def process_task(token, task):
                 extracted_segments = json.load(f)
         else:
             stt_was_run = True
+            is_bcut = "bcut" in asr_engine.lower()
+            if not is_bcut:
+                acquire_resource_lock(token, task_id, "whisper_cpu", "Whisper CPU")
             audio_path = os.path.join(workspace, "audio.wav")
             if not os.path.exists(audio_path):
                 print(Fore.CYAN + "[-] Dang trich xuat am thanh (WAV 16kHz) tu Video de tranh loi ASR...")
@@ -562,8 +602,13 @@ def process_task(token, task):
             asr_end_time = time.time()
             asr_duration = asr_end_time - asr_start_time
             print(Fore.YELLOW + Style.BRIGHT + f"\n[!] THOI GIAN HOAN THANH NHAN DANG (STT): {asr_duration:.2f} giay.\n")
+            if not is_bcut:
+                release_resource_lock(token, task_id, "whisper_cpu")
             
     except Exception as e:
+         is_bcut = "bcut" in asr_engine.lower()
+         if not is_bcut:
+             release_resource_lock(token, task_id, "whisper_cpu")
          print(Fore.RED + f"[-] Loi Nhan dang (ASR): {str(e)}")
          requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Loi Whisper ASR: {str(e)}"}, headers=headers)
          return
@@ -1059,6 +1104,7 @@ if __name__ == '__main__':
     requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "burning", "progress": 85}, headers=headers)
     burn_start_time = time.time()
     
+    acquire_resource_lock(token, task_id, "gpu_render", "GPU Render")
     cwd = os.getcwd()
     try:
         import imageio_ffmpeg
@@ -1182,8 +1228,10 @@ if __name__ == '__main__':
         burn_duration = time.time() - burn_start_time
         print(Fore.YELLOW + Style.BRIGHT + f"\n[!] THOI GIAN HOAN THANH RENDER VIDEO (BURNING): {burn_duration:.2f} giay.\n")
         
+        release_resource_lock(token, task_id, "gpu_render")
         os.chdir(cwd)
     except Exception as e:
+         release_resource_lock(token, task_id, "gpu_render")
          print(Fore.RED + f"[-] Loi FFMPEG Render Video: {str(e)}")
          requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Loi FFMPEG: {str(e)}"}, headers=headers)
          os.chdir(cwd)
@@ -1577,15 +1625,22 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
         self.send_cors_headers()
         self.end_headers()
 
-def start_local_server():
+def start_local_server(port=3001):
     try:
-        server = HTTPServer(('127.0.0.1', 3001), LocalWorkerHandler)
+        server = HTTPServer(('127.0.0.1', port), LocalWorkerHandler)
+        print(Fore.GREEN + f"[\u2713] Local Server dang chay tai http://127.0.0.1:{port}")
         server.serve_forever()
     except Exception as e:
-        print(Fore.RED + f"Khong the khoi dong Local Server: {str(e)}")
+        print(Fore.RED + f"Khong the khoi dong Local Server tren port {port}: {str(e)}")
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="HeroDub Worker")
+    parser.add_argument("--port", type=int, default=3001, help="Port cho Local Server")
+    args, _ = parser.parse_known_args()
+    worker_port = args.port
+
     scan_thread_started = False
     server_thread_started = False
     
@@ -1606,7 +1661,7 @@ if __name__ == "__main__":
                 
             if not server_thread_started:
                 # Khoi dong Local Server
-                t_server = threading.Thread(target=start_local_server, daemon=True)
+                t_server = threading.Thread(target=start_local_server, args=(worker_port,), daemon=True)
                 t_server.start()
                 server_thread_started = True
                 

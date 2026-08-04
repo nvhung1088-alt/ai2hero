@@ -26,12 +26,7 @@ except ImportError:
 # ---------------------------------------------------------
 # CAU HINH MVP WORKER
 # ---------------------------------------------------------
-import argparse
-parser = argparse.ArgumentParser(description="HeroDub Local Worker")
-parser.add_argument("--server", type=str, default="https://ai2hero-flax.vercel.app", help="URL máy chủ AI2Hero")
-args, unknown = parser.parse_known_args()
-
-API_BASE_URL = f"{args.server.rstrip('/')}/api/hero-dub"
+API_BASE_URL = "https://www.ai2hero.com/api/hero-dub"
 CONFIG_FILE = "config.json"
 WORKSPACE_DIR = "workspace"
 
@@ -91,6 +86,43 @@ def format_timestamp(seconds: float):
     secs = int(seconds % 60)
     millis = int((seconds - int(seconds)) * 1000)
     return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
+
+def acquire_resource_lock(token, task_id, resource_key, label=""):
+    headers = {'Authorization': f'Bearer {token}'}
+    first_wait = True
+    while True:
+        try:
+            res = requests.post(
+                f"{API_BASE_URL}/resource-lock",
+                json={"action": "acquire", "taskId": task_id, "resourceKey": resource_key},
+                headers=headers,
+                timeout=15
+            )
+            if res.status_code == 200:
+                data = res.json()
+                if data.get("acquired"):
+                    if not first_wait:
+                        print(Fore.GREEN + f"[{label}] -> Da lay duoc Lock '{resource_key}'. Tiep tuc xu ly.")
+                    return True
+                else:
+                    holder = data.get("holderTaskId")
+                    print(Fore.YELLOW + f"[{label}] Tai nguyen '{resource_key}' dang duoc dung boi Task #{holder}. Dang cho...")
+                    first_wait = False
+        except Exception as e:
+            print(Fore.RED + f"[Lock] Loi khi xin lock {resource_key}: {e}")
+        time.sleep(10)
+
+def release_resource_lock(token, task_id, resource_key):
+    headers = {'Authorization': f'Bearer {token}'}
+    try:
+        requests.post(
+            f"{API_BASE_URL}/resource-lock",
+            json={"action": "release", "taskId": task_id, "resourceKey": resource_key},
+            headers=headers,
+            timeout=15
+        )
+    except Exception:
+        pass
 
 def get_audio_duration(ffmpeg_exe, file_path):
     try:
@@ -172,7 +204,13 @@ def merge_tts_segments(ffmpeg_exe, tts_dir, segments, workspace):
     
     for start_time, data, samplerate in valid_segments:
         if samplerate != target_sr:
-            continue
+            # Resample bang numpy interpolation neu khong phai 16kHz
+            num_samples = int(len(data) * target_sr / samplerate)
+            data = np.interp(
+                np.linspace(0.0, 1.0, num_samples),
+                np.linspace(0.0, 1.0, len(data)),
+                data
+            )
             
         start_sample = int(start_time * target_sr)
         end_sample = min(start_sample + len(data), len(mixed_audio))
@@ -304,6 +342,29 @@ def standardize_and_cache_video(video_path, target_width, target_height, target_
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return cache_filepath
 
+def detect_best_encoder():
+    """Auto-detect GPU encoder kha dung, tra ve (vcodec, extra_args)"""
+    import subprocess
+    candidates = [
+        ("h264_nvenc", {"preset": "p4"}),
+        ("h264_amf",   {}),
+        ("h264_qsv",   {"preset": "fast"}),
+    ]
+    for codec, extra in candidates:
+        try:
+            r = subprocess.run(
+                ["ffmpeg", "-f", "lavfi", "-i", "color=c=black:s=320x240:d=0.1",
+                 "-c:v", codec, "-f", "null", "NUL"],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10
+            )
+            if r.returncode == 0:
+                print(Fore.GREEN + f"  [GPU] Su dung encoder phan cung: {codec}")
+                return codec, extra
+        except:
+            pass
+    print(Fore.YELLOW + "  [CPU] Khong tim thay GPU encoder, su dung libx264 ultrafast")
+    return "libx264", {"preset": "ultrafast"}
+
 def process_task(token, task):
     import shutil
     
@@ -328,15 +389,17 @@ def process_task(token, task):
     workspace = f"workspace/task_{task_id}"
     os.makedirs(workspace, exist_ok=True)
     
-    print(Fore.CYAN + "[-] Chuan bi video (Doc truc tiep tu file goc)...")
+    # Copy/Download video vao workspace de tien xu ly
+    print(Fore.CYAN + "[-] Chuan bi video vao thu muc lam viec...")
     requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "downloading", "progress": 10}, headers=headers)
 
-    if not os.path.exists(source_url):
-        print(Fore.RED + f"[-] Loi: Khong tim thay file {source_url} tren may tinh!")
-        requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Khong tim thay file tren o cung: {source_url}"}, headers=headers)
-        return
-        
-    local_input = os.path.abspath(source_url)
+    local_input = os.path.join(workspace, "input.mp4")
+    if not os.path.exists(local_input):
+        if not os.path.exists(source_url):
+            print(Fore.RED + f"[-] Loi: Khong tim thay file {source_url} tren may tinh!")
+            requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Khong tim thay file tren o cung: {source_url}"}, headers=headers)
+            return
+        shutil.copy2(source_url, local_input)
 
     # 1. TRANSCRIBING
     duration_sec = 0
@@ -373,6 +436,9 @@ def process_task(token, task):
                 extracted_segments = json.load(f)
         else:
             stt_was_run = True
+            is_bcut = "bcut" in asr_engine.lower()
+            if not is_bcut:
+                acquire_resource_lock(token, task_id, "whisper_cpu", "Whisper CPU")
             audio_path = os.path.join(workspace, "audio.wav")
             if not os.path.exists(audio_path):
                 print(Fore.CYAN + "[-] Dang trich xuat am thanh (WAV 16kHz) tu Video de tranh loi ASR...")
@@ -460,6 +526,18 @@ def process_task(token, task):
             
             asr_start_time = time.time()
             
+            # --- Tích hợp AI Pipeline: Trích xuất initial_prompt từ translateContext ---
+            initial_prompt = None
+            translate_ctx = task.get("translateContext", "")
+            if translate_ctx:
+                import re
+                # Bắt các từ Hán tự trước dấu '=' trong bảng từ điển (Ví dụ: 燕琼 = Yến Quỳnh)
+                matches = re.findall(r'([一-龥]+)\s*=', translate_ctx)
+                if matches:
+                    # Whisper initial_prompt giới hạn ở ~224 tokens, nên ta chỉ lấy max 30 từ
+                    initial_prompt = ", ".join(matches[:30])
+                    print(Fore.CYAN + f"[-] Đã tiêm {len(matches[:30])} từ vựng chuyên ngành vào Whisper initial_prompt.")
+
             transcribe_kwargs = {
                 "beam_size": beam_size,
                 "vad_filter": True,
@@ -467,6 +545,8 @@ def process_task(token, task):
             }
             if vad_params:
                 transcribe_kwargs["vad_parameters"] = vad_params
+            if initial_prompt:
+                transcribe_kwargs["initial_prompt"] = initial_prompt
 
             try:
                 segments, info = model.transcribe(whisper_input_audio, **transcribe_kwargs)
@@ -522,8 +602,13 @@ def process_task(token, task):
             asr_end_time = time.time()
             asr_duration = asr_end_time - asr_start_time
             print(Fore.YELLOW + Style.BRIGHT + f"\n[!] THOI GIAN HOAN THANH NHAN DANG (STT): {asr_duration:.2f} giay.\n")
+            if not is_bcut:
+                release_resource_lock(token, task_id, "whisper_cpu")
             
     except Exception as e:
+         is_bcut = "bcut" in asr_engine.lower()
+         if not is_bcut:
+             release_resource_lock(token, task_id, "whisper_cpu")
          print(Fore.RED + f"[-] Loi Nhan dang (ASR): {str(e)}")
          requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Loi Whisper ASR: {str(e)}"}, headers=headers)
          return
@@ -577,8 +662,17 @@ def process_task(token, task):
                     batch_segs = segments_to_translate[i:i+BATCH_SIZE]
                     texts = [seg['text'] for seg in batch_segs]
                     
+                    # Trích xuất Sliding Window Context (5 câu cuối của đoạn trước)
+                    prev_context = []
+                    if translated_count > 0 and i == 0:
+                        # Lấy từ translated_segments (batch trước đó được lưu)
+                        prev_context = [seg['text'] for seg in translated_segments[-5:]]
+                    elif i > 0:
+                        # Lấy từ segments_to_translate
+                        prev_context = [seg['text'] for seg in segments_to_translate[max(0, i-5):i]]
+
                     try:
-                        payload = {"taskId": task_id, "texts": texts}
+                        payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
                         res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=90)
                         if res.status_code == 200:
                             data = res.json()
@@ -871,11 +965,14 @@ if __name__ == '__main__':
                     
                     if tts_engine == "edge-tts":
                         tmp_txt = os.path.join(workspace, f"tmp_tts_{i}.txt")
+                        tmp_py = os.path.join(workspace, f"tmp_tts_script_{i}.py")
                         try:
                             with open(tmp_txt, "w", encoding="utf-8") as f:
                                 f.write(seg['text'])
-                            script = f"import edge_tts, asyncio\\nwith open(r'{tmp_txt}', 'r', encoding='utf-8') as f:\\n    text = f.read()\\nasyncio.run(edge_tts.Communicate(text, '{tts_voice}', rate='{rate_str}').save(r'{output_file}'))"
-                            cmd = [sys.executable, "-c", script]
+                            script_code = f"import edge_tts, asyncio\nwith open(r'{tmp_txt}', 'r', encoding='utf-8') as f:\n    text = f.read()\nasyncio.run(edge_tts.Communicate(text, '{tts_voice}', rate='{rate_str}').save(r'{output_file}'))"
+                            with open(tmp_py, "w", encoding="utf-8") as f:
+                                f.write(script_code)
+                            cmd = [sys.executable, tmp_py]
                             for attempt in range(3):
                                 result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
                                 if result.returncode == 0 and os.path.exists(output_file) and os.path.getsize(output_file) > 100:
@@ -886,6 +983,9 @@ if __name__ == '__main__':
                         finally:
                             if os.path.exists(tmp_txt):
                                 try: os.remove(tmp_txt)
+                                except: pass
+                            if os.path.exists(tmp_py):
+                                try: os.remove(tmp_py)
                                 except: pass
                     else:
                         # Goi Connect Hub qua Server API
@@ -1004,6 +1104,7 @@ if __name__ == '__main__':
     requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "burning", "progress": 85}, headers=headers)
     burn_start_time = time.time()
     
+    acquire_resource_lock(token, task_id, "gpu_render", "GPU Render")
     cwd = os.getcwd()
     try:
         import imageio_ffmpeg
@@ -1014,13 +1115,13 @@ if __name__ == '__main__':
         
         has_dubbed = dubbed_audio_path is not None and os.path.exists("dubbed_audio.wav")
         
-        video = ffmpeg.input(local_input)
+        video = ffmpeg.input("input.mp4")
         video_sub = video.video.filter('subtitles', 'vi.srt', force_style="FontSize=20,PrimaryColour=&HFFFFFF,BackColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=10")
         
         if branding_enabled and logo_url and os.path.exists(logo_url):
             print(Fore.CYAN + "  -> Dang ap dung Logo (Watermark)...")
             try:
-                tw, th, tfps = get_video_props(local_input)
+                tw, th, tfps = get_video_props("input.mp4")
                 logo_w = max(50, int(tw * 0.15)) # 15% width
             except:
                 logo_w = 150 # fallback
@@ -1036,32 +1137,44 @@ if __name__ == '__main__':
                 video_sub = ffmpeg.overlay(video_sub, logo, x='main_w-overlay_w-20', y='main_h-overlay_h-20')
 
         
+        vcodec_val, encoder_extra = detect_best_encoder()
+
+        def build_and_run_render(vc, extra_args):
+            if has_dubbed:
+                bg_audio_file = "audio.wav"
+                bg_volume = db_bg_volume
+                demucs_bg = os.path.join("demucs_out", "htdemucs", "audio", "no_vocals.wav")
+                if os.path.exists(demucs_bg) and os.path.getsize(demucs_bg) > 0:
+                    bg_audio_file = demucs_bg
+                    
+                if os.path.exists(bg_audio_file) and os.path.getsize(bg_audio_file) > 0:
+                    a_bg = ffmpeg.input(bg_audio_file).audio.filter('volume', bg_volume)
+                    a_fg = ffmpeg.input("dubbed_audio.wav").audio.filter('volume', db_tts_volume)
+                    mixed_audio = ffmpeg.filter([a_bg, a_fg], 'amix', inputs=2, duration='first').filter('volume', 2.0)
+                    st = ffmpeg.output(video_sub, mixed_audio, "temp_output.mp4", vcodec=vc, acodec="aac", **extra_args)
+                else:
+                    audio_dub = ffmpeg.input("dubbed_audio.wav").audio
+                    st = ffmpeg.output(video_sub, audio_dub, "temp_output.mp4", vcodec=vc, acodec="aac", **extra_args)
+            else:
+                st = ffmpeg.output(video_sub, video.audio, "temp_output.mp4", vcodec=vc, acodec="aac", **extra_args)
+            ffmpeg.run(st, overwrite_output=True, quiet=True)
+
         if has_dubbed:
             print(Fore.CYAN + "  -> Dang render voi phu de va am thanh long tieng AI...")
-            
-            # Giai doan 2: Vocal Isolation (Su dung nhac nen goc)
-            bg_audio_file = "audio.wav"
-            bg_volume = db_bg_volume
-            
-            # Kiem tra xem co file nhac nen da duoc tach khong (no_vocals.wav)
             demucs_bg = os.path.join("demucs_out", "htdemucs", "audio", "no_vocals.wav")
             if os.path.exists(demucs_bg) and os.path.getsize(demucs_bg) > 0:
-                bg_audio_file = demucs_bg
                 print(Fore.GREEN + "  -> Su dung nhac nen da duoc tach giong noi (Demucs)!")
-                
-            if os.path.exists(bg_audio_file) and os.path.getsize(bg_audio_file) > 0:
-                a_bg = ffmpeg.input(bg_audio_file).audio.filter('volume', bg_volume)
-                a_fg = ffmpeg.input("dubbed_audio.wav").audio.filter('volume', db_tts_volume)
-                mixed_audio = ffmpeg.filter([a_bg, a_fg], 'amix', inputs=2, duration='first').filter('volume', 2.0)
-                stream = ffmpeg.output(video_sub, mixed_audio, "temp_output.mp4", vcodec="libx264", acodec="aac")
-            else:
-                audio_dub = ffmpeg.input("dubbed_audio.wav").audio
-                stream = ffmpeg.output(video_sub, audio_dub, "temp_output.mp4", vcodec="libx264", acodec="aac")
         else:
             print(Fore.CYAN + "  -> Dang render phu de vao video (Giu nguyen am thanh goc)...")
-            stream = ffmpeg.output(video_sub, video.audio, "temp_output.mp4", vcodec="libx264", acodec="aac")
-            
-        ffmpeg.run(stream, overwrite_output=True, quiet=True)
+
+        try:
+            build_and_run_render(vcodec_val, encoder_extra)
+        except Exception as render_err:
+            if vcodec_val != "libx264":
+                print(Fore.YELLOW + f"  [!] Fallback sang CPU ultrafast do GPU render gap loi: {render_err}")
+                build_and_run_render("libx264", {"preset": "ultrafast"})
+            else:
+                raise render_err
         
         # --- KET NOI INTRO / OUTRO ---
         final_output = "temp_output.mp4"
@@ -1093,8 +1206,15 @@ if __name__ == '__main__':
                     idx += 1
                 
                 joined = ffmpeg.concat(*filter_chains, v=1, a=1).node
-                out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec="libx264", acodec="aac")
-                ffmpeg.run(out_stream, overwrite_output=True, quiet=True)
+                out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec=vcodec_val, acodec="aac", **encoder_extra)
+                try:
+                    ffmpeg.run(out_stream, overwrite_output=True, quiet=True)
+                except Exception:
+                    if vcodec_val != "libx264":
+                        out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec="libx264", acodec="aac", preset="ultrafast")
+                        ffmpeg.run(out_stream, overwrite_output=True, quiet=True)
+                    else:
+                        raise
                 final_output = "output.mp4"
             except Exception as concat_err:
                 print(Fore.RED + f"  [!] Loi khi gop Intro/Outro (bo qua): {str(concat_err)}")
@@ -1108,8 +1228,10 @@ if __name__ == '__main__':
         burn_duration = time.time() - burn_start_time
         print(Fore.YELLOW + Style.BRIGHT + f"\n[!] THOI GIAN HOAN THANH RENDER VIDEO (BURNING): {burn_duration:.2f} giay.\n")
         
+        release_resource_lock(token, task_id, "gpu_render")
         os.chdir(cwd)
     except Exception as e:
+         release_resource_lock(token, task_id, "gpu_render")
          print(Fore.RED + f"[-] Loi FFMPEG Render Video: {str(e)}")
          requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Loi FFMPEG: {str(e)}"}, headers=headers)
          os.chdir(cwd)
@@ -1126,25 +1248,49 @@ if __name__ == '__main__':
     output_folder = task.get("outputFolder")
     if output_folder and os.path.isdir(output_folder):
         try:
-            # Lay ten file goc tu source_url, thay vi dung timestamp
-            original_basename = os.path.basename(source_url)
-            original_name, _ = os.path.splitext(original_basename)
-            
-            # Neu khong the lay ten goc (VD: duong dan HTTP), fallback dung id
-            if not original_name:
-                original_name = f"video_{task_id}"
+            # Lấy tên gốc của video
+            raw_source = source_url or task.get("sourceTitle") or f"video_{task_id}"
+            if raw_source.startswith("http://") or raw_source.startswith("https://"):
+                base_name = task.get("sourceTitle") or os.path.basename(raw_source)
+            else:
+                base_name = os.path.basename(raw_source)
                 
-            base_name = f"{original_name}_dubbed"
+            # Xoa duoi file triet de de tranh loi .mp4.mp4
+            base_name = os.path.splitext(base_name)[0]
             
+            # Làm sạch tên file (xóa ký tự cấm Windows & giới hạn độ dài an toàn < 180 ký tự)
+            import re
+            base_name = re.sub(r'[\\/:*?"<>|]', '_', base_name).strip()
+            if len(base_name) > 180:
+                base_name = base_name[:180]
+                
+            if not base_name or base_name.strip() == "":
+                base_name = f"video_{task_id}"
+
             dest_video = os.path.join(output_folder, f"{base_name}.mp4")
             dest_srt = os.path.join(output_folder, f"{base_name}.srt")
             
             shutil.copy2(final_output_path, dest_video)
             shutil.copy2(vi_srt_abs_path, dest_srt)
             
+            # Tự động tìm và copy ảnh thumbnail trùng tên trong thư mục gốc
+            if source_url and not (source_url.startswith("http://") or source_url.startswith("https://")):
+                source_dir = os.path.dirname(source_url)
+                if os.path.isdir(source_dir):
+                    for ext in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
+                        thumb_src = os.path.join(source_dir, f"{base_name}{ext}")
+                        if os.path.exists(thumb_src):
+                            thumb_dest = os.path.join(output_folder, f"{base_name}{ext}")
+                            try:
+                                shutil.copy2(thumb_src, thumb_dest)
+                                print(Fore.CYAN + f"[-] Da copy anh thumbnail: {os.path.basename(thumb_dest)}")
+                            except Exception as thumb_err:
+                                print(Fore.YELLOW + f"[!] Khong the copy thumbnail: {thumb_err}")
+                            break
+            
             final_output_path = dest_video
             vi_srt_abs_path = dest_srt
-            print(Fore.CYAN + f"[-] Da luu ket qua vao: {dest_video}")
+            print(Fore.CYAN + f"[-] Da luu ket qua vao: {output_folder} voi ten: {base_name}")
         except Exception as e:
             print(Fore.YELLOW + f"[!] Khong the luu vao thu muc dich {output_folder}: {e}")
 
@@ -1157,6 +1303,15 @@ if __name__ == '__main__':
         "resultVideoUrl": final_output_path,
         "resultSrtUrl": vi_srt_abs_path
     }, headers=headers)
+
+    # 5. AUTO CLEANUP WORKSPACE (Tự động xóa dọn dẹp giải phóng ổ đĩa)
+    try:
+        abs_workspace = os.path.abspath(workspace)
+        if os.path.exists(abs_workspace) and "workspace" in abs_workspace:
+            shutil.rmtree(abs_workspace, ignore_errors=True)
+            print(Fore.CYAN + f"[-] Da tu dong don dep giai phong dung luong o dia: {abs_workspace}")
+    except Exception as clean_err:
+        print(Fore.YELLOW + f"[!] Khong the xoa thu muc tam: {clean_err}")
 
 
 import threading
@@ -1293,14 +1448,17 @@ def poll_tasks(token):
                 process_task(token, task)
                 print(Fore.GREEN + "\nWorker dang chay ngam, san sang nhan nhiem vu tiep theo...")
             else:
-                time.sleep(4)
+                poll_interval = 15.0
+                if isinstance(data, dict) and data.get("pollIntervalMs"):
+                    poll_interval = float(data.get("pollIntervalMs")) / 1000.0
+                time.sleep(poll_interval)
                 
         except requests.exceptions.ConnectionError:
-            print(Fore.YELLOW + "Khong the ket noi toi Server. Dang thu lai sau 10s...")
-            time.sleep(10)
+            print(Fore.YELLOW + "Khong the ket noi toi Server. Dang thu lai sau 15s...")
+            time.sleep(15)
         except Exception as e:
             print(Fore.RED + f"Loi vong lap poll: {str(e)}")
-            time.sleep(5)
+            time.sleep(15)
 
 import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -1361,7 +1519,6 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
                 body = self.rfile.read(content_length)
                 import json
                 data = json.loads(body)
-                data.pop('lastScanAt', None) # Force scan immediately
                 if GLOBAL_TOKEN:
                     scan_single_config(data, GLOBAL_TOKEN)
                 self.send_response(200)
@@ -1468,15 +1625,22 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
         self.send_cors_headers()
         self.end_headers()
 
-def start_local_server():
+def start_local_server(port=3001):
     try:
-        server = HTTPServer(('127.0.0.1', 3001), LocalWorkerHandler)
+        server = HTTPServer(('127.0.0.1', port), LocalWorkerHandler)
+        print(Fore.GREEN + f"[\u2713] Local Server dang chay tai http://127.0.0.1:{port}")
         server.serve_forever()
     except Exception as e:
-        print(Fore.RED + f"Khong the khoi dong Local Server: {str(e)}")
+        print(Fore.RED + f"Khong the khoi dong Local Server tren port {port}: {str(e)}")
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="HeroDub Worker")
+    parser.add_argument("--port", type=int, default=3001, help="Port cho Local Server")
+    args, _ = parser.parse_known_args()
+    worker_port = args.port
+
     scan_thread_started = False
     server_thread_started = False
     
@@ -1497,7 +1661,7 @@ if __name__ == "__main__":
                 
             if not server_thread_started:
                 # Khoi dong Local Server
-                t_server = threading.Thread(target=start_local_server, daemon=True)
+                t_server = threading.Thread(target=start_local_server, args=(worker_port,), daemon=True)
                 t_server.start()
                 server_thread_started = True
                 

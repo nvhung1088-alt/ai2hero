@@ -1,5 +1,11 @@
 # AI2HERO — CHANGELOG
 
+## 2026-08-04 — HeroDub Multi-Worker: Web Resource Locking & Parallel Execution
+- **Web Resource Locking Engine**: Tạo bảng `dubResourceLocks` và API route `/api/hero-dub/resource-lock` với cơ chế 2 lớp bảo vệ (Try-Finally tại Worker + Auto-release 30 phút trên Server).
+- **Multi-Worker Concurrency Support**: Cho phép chạy 2 hoặc nhiều Worker song song cùng lúc (sử dụng cờ `--port` để phân biệt Local Server).
+- **Resource Queue & Parallel Execution**: Whisper (CPU) và Render FFMPEG (GPU) được khóa và xếp hàng tự động, tránh hiện tượng quá tải sập máy hay đơ GPU. Các bước nhẹ như STT Online (Bcut), Dịch thuật và TTS được phép chạy song song 100%.
+- **Atomic Task Claiming**: Fix dứt điểm lỗi Race Condition khi 2 Worker poll chung 1 task pending cùng 1 thời điểm.
+
 ## 2026-08-04 — HeroDub Worker: Fix Critical Audio Alignment, GPU Render & Edge-TTS Crash Bugs
 - **GPU Hardware Render Acceleration**: Tích hợp hàm `detect_best_encoder()` tự động phát hiện GPU khả dụng (`h264_amf`, `h264_nvenc`, `h264_qsv`) giúp tăng tốc render FFMPEG gấp 2-3 lần, kèm cơ chế tự động fallback về CPU (`libx264 -preset ultrafast`) nếu GPU gặp sự cố.
 - **Enhance Translation Sliding Context**: Tăng số lượng câu ngữ cảnh liên kề gửi sang Connect-Hub API từ 3 lên 5 câu cuối của batch trước đó, giúp giữ mạch giọng văn và đại từ nhân xưng chuẩn xác hơn.

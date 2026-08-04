@@ -127,6 +127,22 @@ export default function HeroDubGuidePage() {
                       </button>
                     </div>
                   </div>
+
+                  <div>
+                    <p className="text-[11px] text-cyan-400 font-medium mb-1.5">Cách 3 (Song Song): Mở thêm Cửa sổ Terminal thứ 2 chạy Worker #2</p>
+                    <div className="bg-black/80 border border-cyan-500/20 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-cyan-400/90 text-[11px]">
+                      <span className="select-all overflow-x-auto whitespace-nowrap">
+                        cd /d "%USERPROFILE%\HeroDubWorker" && python herodub_worker.py --port 3002
+                      </span>
+                      <button
+                        onClick={() => handleCopy('cd /d "%USERPROFILE%\\HeroDubWorker" && python herodub_worker.py --port 3002')}
+                        className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                        title="Sao chép lệnh Worker 2"
+                      >
+                        {copiedText ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 
                 <p className="text-[11px] text-gray-500 italic mt-2">

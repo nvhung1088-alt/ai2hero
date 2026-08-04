@@ -2429,6 +2429,17 @@ export const dubTasks = pgTable('dub_tasks', {
   };
 });
 
+export const dubResourceLocks = pgTable('dub_resource_locks', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  resourceKey: varchar('resource_key', { length: 50 }).notNull(), // 'whisper_cpu' | 'gpu_render'
+  lockedByTask: integer('locked_by_task'),
+  workerId: integer('worker_id'),
+  lockedAt: timestamp('locked_at').notNull().defaultNow(),
+});
+
 // Relations
 export const dubWorkersRelations = relations(dubWorkers, ({ one, many }) => ({
   team: one(teams, {

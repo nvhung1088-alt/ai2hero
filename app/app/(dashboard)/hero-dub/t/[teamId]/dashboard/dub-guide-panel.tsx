@@ -92,8 +92,7 @@ export default function DubGuidePanel({
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(guideOs === 'windows' ? 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat & herodub-setup.bat --server https://ai2hero-flax.vercel.app' : 'curl -o herodub-setup.sh https://ai2hero-flax.vercel.app/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh --server https://ai2hero-flax.vercel.app');
-                    setGuideCopied(true);
-                    setTimeout(() => setGuideCopied(false), 2000);
+                    handleCopyGuideCommand();
                   }}
                   className="p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
                   title="Sao chép lệnh"
@@ -112,11 +111,29 @@ export default function DubGuidePanel({
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(guideOs === 'windows' ? 'cd /d "%USERPROFILE%\\HeroDubWorker" && python herodub_worker.py' : 'cd ~/HeroDubWorker && python3 herodub_worker.py');
-                    setGuideCopied(true);
-                    setTimeout(() => setGuideCopied(false), 2000);
+                    handleCopyGuideCommand();
                   }}
                   className="p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
                   title="Sao chép lệnh"
+                >
+                  {guideCopied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] text-cyan-400 font-medium mb-1.5">Cách 3 (Song Song): Chạy thêm Worker #2 xử lý đa luồng</p>
+              <div className="bg-black/80 border border-cyan-500/20 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-cyan-400/90 text-[11px] shadow-inner">
+                <span className="select-all overflow-x-auto whitespace-nowrap">
+                  {guideOs === 'windows' ? 'cd /d "%USERPROFILE%\\HeroDubWorker" && python herodub_worker.py --port 3002' : 'cd ~/HeroDubWorker && python3 herodub_worker.py --port 3002'}
+                </span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(guideOs === 'windows' ? 'cd /d "%USERPROFILE%\\HeroDubWorker" && python herodub_worker.py --port 3002' : 'cd ~/HeroDubWorker && python3 herodub_worker.py --port 3002');
+                    handleCopyGuideCommand();
+                  }}
+                  className="p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                  title="Sao chép lệnh Worker 2"
                 >
                   {guideCopied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
                 </button>
