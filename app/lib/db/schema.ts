@@ -2710,7 +2710,7 @@ export const connectHubBridgeJobs = pgTable('connect_hub_bridge_jobs', {
   // Input
   targetAi: varchar('target_ai', { length: 20 }).notNull().default('gemini'), // 'gemini' | 'chatgpt' | 'claude'
   prompt: text('prompt').notNull(),
-  attachments: json('attachments'), // [{ type: 'image' | 'video' | 'file', base64?: string, url?: string }]
+  attachments: jsonb('attachments'), // [{ type: 'image' | 'video' | 'file', base64?: string, url?: string }]
 
   // Status
   status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'processing' | 'done' | 'failed'
