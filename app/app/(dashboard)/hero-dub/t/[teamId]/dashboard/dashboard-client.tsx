@@ -84,7 +84,8 @@ export default function DashboardClient({
   const [taskStats, setTaskStats] = useState(initialTaskStats);
   const [selectedScanConfigId, setSelectedScanConfigId] = useState<number | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const TASKS_PER_PAGE = 20;
+  const [taskFilter, setTaskFilter] = useState<string>('all');
+  const [tasksPerPage, setTasksPerPage] = useState<number>(20);
 
   const handlePauseTask = async (taskId: number) => {
     const res = await pauseDubTaskAction(taskId, teamId);
@@ -386,12 +387,12 @@ export default function DashboardClient({
   const [previewSrtUrl, setPreviewSrtUrl] = useState<string | null>(null);
 
   // Fetch Tasks and Workers
-  const refreshData = useCallback(async (showLoading = false, page = taskPage) => {
+  const refreshData = useCallback(async (showLoading = false, page = taskPage, filter = taskFilter, perPage = tasksPerPage) => {
     if (showLoading) setLoading(true);
     try {
-      const offset = (page - 1) * TASKS_PER_PAGE;
+      const offset = (page - 1) * perPage;
       const [tasksRes, workersRes, projectsRes, scanConfigsRes] = await Promise.all([
-        getDubTasksAction(teamId, { scanConfigId: selectedScanConfigId, limit: TASKS_PER_PAGE, offset }),
+        getDubTasksAction(teamId, { scanConfigId: selectedScanConfigId, status: filter, limit: perPage, offset }),
         getDubWorkersAction(teamId),
         getDubProjectsAction(teamId),
         getDubScanConfigsAction(teamId),
@@ -439,7 +440,7 @@ export default function DashboardClient({
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [teamId, taskPage, selectedScanConfigId]);
+  }, [teamId, taskPage, selectedScanConfigId, taskFilter, tasksPerPage]);
 
   useSmartPolling({
     appId: 'hero-dub',
@@ -1110,7 +1111,18 @@ export default function DashboardClient({
               setTaskPage={setTaskPage}
               taskTotalCount={taskTotalCount}
               taskStats={taskStats}
-              tasksPerPage={TASKS_PER_PAGE}
+              taskFilter={taskFilter}
+              setTaskFilter={(filter) => {
+                setTaskFilter(filter);
+                setTaskPage(1);
+                refreshData(true, 1, filter, tasksPerPage);
+              }}
+              tasksPerPage={tasksPerPage}
+              setTasksPerPage={(perPage) => {
+                setTasksPerPage(perPage);
+                setTaskPage(1);
+                refreshData(true, 1, taskFilter, perPage);
+              }}
               refreshData={refreshData}
               handleRetryTask={handleRetryTask}
               handleDeleteTask={handleDeleteTask}
@@ -1137,7 +1149,19 @@ export default function DashboardClient({
               taskPage={taskPage}
               setTaskPage={setTaskPage}
               taskTotalCount={taskTotalCount}
-              tasksPerPage={TASKS_PER_PAGE}
+              taskStats={taskStats}
+              taskFilter={taskFilter}
+              setTaskFilter={(filter) => {
+                setTaskFilter(filter);
+                setTaskPage(1);
+                refreshData(true, 1, filter, tasksPerPage);
+              }}
+              tasksPerPage={tasksPerPage}
+              setTasksPerPage={(perPage) => {
+                setTasksPerPage(perPage);
+                setTaskPage(1);
+                refreshData(true, 1, taskFilter, perPage);
+              }}
               refreshData={refreshData}
               handleRetryTask={handleRetryTask}
               handleDeleteTask={handleDeleteTask}

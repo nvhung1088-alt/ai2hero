@@ -29,7 +29,11 @@ interface DubScanProjectPaneProps {
   taskPage: number;
   setTaskPage: (page: number) => void;
   taskTotalCount: number;
+  taskStats?: { total: number; processing: number; pending: number; completed: number; failed: number };
+  taskFilter?: string;
+  setTaskFilter?: (filter: string) => void;
   tasksPerPage: number;
+  setTasksPerPage?: (perPage: number) => void;
   refreshData: (showLoading?: boolean, page?: number) => void;
   handleRetryTask: (taskId: number) => void;
   handleDeleteTask: (taskId: number) => void;
@@ -56,7 +60,11 @@ export function DubScanProjectPane({
   taskPage,
   setTaskPage,
   taskTotalCount,
+  taskStats,
+  taskFilter,
+  setTaskFilter,
   tasksPerPage,
+  setTasksPerPage,
   refreshData,
   handleRetryTask,
   handleDeleteTask,
@@ -260,7 +268,11 @@ export function DubScanProjectPane({
           taskPage={taskPage}
           setTaskPage={setTaskPage}
           taskTotalCount={taskTotalCount}
+          taskStats={taskStats}
+          taskFilter={taskFilter}
+          setTaskFilter={setTaskFilter}
           tasksPerPage={tasksPerPage}
+          setTasksPerPage={setTasksPerPage}
           refreshData={refreshData}
           handleRetryTask={handleRetryTask}
           handleDeleteTask={handleDeleteTask}

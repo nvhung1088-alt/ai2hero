@@ -194,26 +194,52 @@ export async function getDubTasksAction(
     const limit = filters?.limit || 20;
     const offset = filters?.offset || 0;
 
-    let conditions = [eq(dubTasks.teamId, teamId)];
-    if (filters?.status) {
-      conditions.push(eq(dubTasks.status, filters.status));
-    }
+    // 1. Base conditions (chỉ lọc theo Team & Dự án Quét - dùng để tính TaskStats cố định cho toàn bộ dự án)
+    let baseConditions = [eq(dubTasks.teamId, teamId)];
     if (filters?.scanConfigId !== undefined) {
       const parsedId = filters.scanConfigId === null ? null : typeof filters.scanConfigId === 'string' ? parseInt(filters.scanConfigId) : filters.scanConfigId;
       if (parsedId === null || parsedId === 0 || isNaN(parsedId)) {
-        conditions.push(isNull(dubTasks.scanConfigId));
+        baseConditions.push(isNull(dubTasks.scanConfigId));
       } else {
-        conditions.push(eq(dubTasks.scanConfigId, parsedId));
+        baseConditions.push(or(eq(dubTasks.scanConfigId, parsedId), eq(dubTasks.projectId, parsedId))!);
       }
     }
 
+    // 2. List conditions (thêm lọc theo nhóm trạng thái status nếu người dùng đang dùng Bộ Lọc)
+    let listConditions = [...baseConditions];
+    if (filters?.status && filters.status !== 'all') {
+      const s = filters.status;
+      if (s === 'processing') {
+        listConditions.push(inArray(dubTasks.status, ['assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'processing', 'dubbing', 'running', 'active']));
+      } else if (s === 'completed') {
+        listConditions.push(inArray(dubTasks.status, ['completed', 'done', 'finished', 'success']));
+      } else if (s === 'failed') {
+        listConditions.push(inArray(dubTasks.status, ['failed', 'error', 'cancelled', 'paused']));
+      } else if (s === 'pending') {
+        listConditions.push(
+          or(
+            inArray(dubTasks.status, ['pending', 'queued', 'created', 'ready']),
+            isNull(dubTasks.status),
+            notInArray(dubTasks.status, [
+              'assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'processing', 'dubbing', 'running', 'active',
+              'completed', 'done', 'finished', 'success',
+              'failed', 'error', 'cancelled', 'paused'
+            ])
+          )!
+        );
+      } else {
+        listConditions.push(eq(dubTasks.status, s));
+      }
+    }
+
+    // Query danh sách tác vụ phân trang
     const tasks = await db
       .select()
       .from(dubTasks)
-      .where(and(...conditions))
+      .where(and(...listConditions))
       .orderBy(
         sql`CASE 
-          WHEN ${dubTasks.status} IN ('assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading') THEN 1
+          WHEN ${dubTasks.status} IN ('assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'processing', 'dubbing', 'running', 'active') THEN 1
           WHEN ${dubTasks.status} = 'pending' THEN 2
           ELSE 3
         END`,
@@ -222,6 +248,13 @@ export async function getDubTasksAction(
       .limit(limit)
       .offset(offset);
 
+    // Query tổng số lượng cho danh sách đang hiển thị theo bộ lọc
+    const [filteredCountRes] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(dubTasks)
+      .where(and(...listConditions));
+
+    // Query TaskStats tổng thể cho TOÀN BỘ DỰ ÁN (dựa trên baseConditions)
     const [countResult] = await db
       .select({
         total: sql<number>`count(*)::int`,
@@ -231,7 +264,7 @@ export async function getDubTasksAction(
         pending: sql<number>`count(*) filter (where ${dubTasks.status} in ('pending', 'queued', 'created', 'ready') or ${dubTasks.status} is null or ${dubTasks.status} not in ('assigned', 'downloading', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'processing', 'dubbing', 'running', 'active', 'completed', 'done', 'finished', 'success', 'failed', 'error', 'cancelled', 'paused'))::int`,
       })
       .from(dubTasks)
-      .where(and(...conditions));
+      .where(and(...baseConditions));
 
     const total = countResult?.total || 0;
     const processing = countResult?.processing || 0;
@@ -242,7 +275,7 @@ export async function getDubTasksAction(
     return {
       success: true,
       tasks,
-      totalCount: total,
+      totalCount: filteredCountRes?.count || tasks.length,
       taskStats: {
         total,
         processing,

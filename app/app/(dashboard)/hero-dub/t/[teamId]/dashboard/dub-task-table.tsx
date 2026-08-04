@@ -27,8 +27,11 @@ interface DubTaskTableProps {
   setTaskPage: (_page: number) => void;
   taskTotalCount: number;
   taskStats?: { total: number; processing: number; pending: number; completed: number; failed: number };
+  taskFilter?: string;
+  setTaskFilter?: (_filter: string) => void;
   tasksPerPage: number;
-  refreshData: (showLoading?: boolean, page?: number) => void;
+  setTasksPerPage?: (_perPage: number) => void;
+  refreshData: (showLoading?: boolean, page?: number, filter?: string, perPage?: number) => void;
   handleRetryTask: (_taskId: number) => void;
   handleDeleteTask: (_taskId: number) => void;
   handleEditTask: (_task: any) => void;
@@ -51,7 +54,10 @@ export default function DubTaskTable({
   setTaskPage,
   taskTotalCount,
   taskStats,
+  taskFilter: propTaskFilter,
+  setTaskFilter: propSetTaskFilter,
   tasksPerPage,
+  setTasksPerPage,
   refreshData,
   handleRetryTask,
   handleDeleteTask,
@@ -62,7 +68,9 @@ export default function DubTaskTable({
   handleResumeAll,
   handleClearUnassigned,
 }: DubTaskTableProps) {
-  const [taskFilter, setTaskFilter] = useState<string>('all');
+  const [localTaskFilter, setLocalTaskFilter] = useState<string>('all');
+  const taskFilter = propTaskFilter !== undefined ? propTaskFilter : localTaskFilter;
+  const setTaskFilter = propSetTaskFilter || setLocalTaskFilter;
 
   const isProcessingStatus = (status: string) => ['processing', 'downloading', 'dubbing', 'rendering', 'assigned', 'transcribing', 'translating', 'tts', 'burning', 'uploading', 'running', 'active'].includes(status);
   const isCompletedStatus = (status: string) => ['completed', 'done', 'finished', 'success'].includes(status);
@@ -176,53 +184,53 @@ export default function DubTaskTable({
           <Filter className="w-3.5 h-3.5 text-gray-400 mr-1" />
           <button
             onClick={() => setTaskFilter('all')}
-            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors cursor-pointer ${
               taskFilter === 'all'
-                ? 'bg-blue-600/20 text-blue-400 border-blue-500/30'
+                ? 'bg-blue-600/20 text-blue-400 border-blue-500/30 font-bold'
                 : 'bg-black/40 text-gray-400 border-white/10 hover:text-gray-200'
             }`}
           >
-            Tất cả ({displayTotalCount})
+            Tất cả ({taskStats?.total ?? displayTotalCount})
           </button>
           <button
             onClick={() => setTaskFilter('processing')}
-            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors cursor-pointer ${
               taskFilter === 'processing'
-                ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 font-bold'
                 : 'bg-black/40 text-gray-400 border-white/10 hover:text-amber-300'
             }`}
           >
-            ⏳ Đang lồng tiếng ({processingCount})
+            ⏳ Đang lồng tiếng ({taskStats?.processing ?? processingCount})
           </button>
           <button
             onClick={() => setTaskFilter('pending')}
-            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors cursor-pointer ${
               taskFilter === 'pending'
-                ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 font-bold'
                 : 'bg-black/40 text-gray-400 border-white/10 hover:text-blue-300'
             }`}
           >
-            ⚡ Chờ xử lý ({pendingCount})
+            ⚡ Chờ xử lý ({taskStats?.pending ?? pendingCount})
           </button>
           <button
             onClick={() => setTaskFilter('completed')}
-            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors cursor-pointer ${
               taskFilter === 'completed'
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-bold'
                 : 'bg-black/40 text-gray-400 border-white/10 hover:text-emerald-300'
             }`}
           >
-            ✅ Đã hoàn thành ({completedCount})
+            ✅ Đã hoàn thành ({taskStats?.completed ?? completedCount})
           </button>
           <button
             onClick={() => setTaskFilter('failed')}
-            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-lg border font-medium transition-colors cursor-pointer ${
               taskFilter === 'failed'
-                ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 font-bold'
                 : 'bg-black/40 text-gray-400 border-white/10 hover:text-rose-300'
             }`}
           >
-            ❌ Lỗi / Tạm dừng ({failedCount})
+            ❌ Lỗi / Tạm dừng ({taskStats?.failed ?? failedCount})
           </button>
         </div>
       </div>
@@ -454,57 +462,89 @@ export default function DubTaskTable({
       )}
 
       {/* Pagination Footer */}
-      {taskTotalCount > tasksPerPage && (
-        <div className="flex items-center justify-between pt-3 border-t border-white/5">
-          <span className="text-[10px] text-gray-500 font-bold">
-            Trang {taskPage} / {Math.ceil(taskTotalCount / tasksPerPage)} &nbsp;·&nbsp; {taskTotalCount} tác vụ
-          </span>
+      {taskTotalCount > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-white/5 text-xs text-gray-400">
+          <div className="flex flex-wrap items-center gap-3">
+            <span>
+              Hiển thị <strong className="text-gray-200">{(taskPage - 1) * tasksPerPage + 1}</strong> - <strong className="text-gray-200">{Math.min(taskPage * tasksPerPage, taskTotalCount)}</strong> trong tổng số <strong className="text-orange-400 font-bold">{taskTotalCount}</strong> tác vụ
+            </span>
+            {setTasksPerPage && (
+              <div className="flex items-center gap-1.5 ml-2">
+                <span className="text-gray-500">Hiển thị:</span>
+                <select
+                  value={tasksPerPage}
+                  onChange={(e) => {
+                    const newPerPage = Number(e.target.value);
+                    if (setTasksPerPage) setTasksPerPage(newPerPage);
+                    setTaskPage(1);
+                    refreshData(true, 1, taskFilter, newPerPage);
+                  }}
+                  className="bg-black/60 border border-white/10 text-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-orange-500/50 cursor-pointer"
+                >
+                  <option value={20}>20 / trang</option>
+                  <option value={50}>50 / trang</option>
+                  <option value={100}>100 / trang</option>
+                </select>
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center gap-1.5">
+            {/* Nút Đầu */}
+            <button
+              onClick={() => {
+                setTaskPage(1);
+                refreshData(true, 1, taskFilter, tasksPerPage);
+              }}
+              disabled={taskPage === 1}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-white/5"
+            >
+              ⏮ Đầu
+            </button>
+
+            {/* Nút Trước */}
             <button
               onClick={() => {
                 const newPage = Math.max(1, taskPage - 1);
                 setTaskPage(newPage);
-                refreshData(true, newPage);
+                refreshData(true, newPage, taskFilter, tasksPerPage);
               }}
               disabled={taskPage === 1}
-              className="px-3 py-1 rounded-lg text-[10px] font-black bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-white/5"
             >
-              ← Trước
+              ◀ Trước
             </button>
-            {Array.from({ length: Math.min(5, Math.ceil(taskTotalCount / tasksPerPage)) }, (_, i) => {
-              const totalPages = Math.ceil(taskTotalCount / tasksPerPage);
-              let startPage = Math.max(1, taskPage - 2);
-              const endPage = Math.min(totalPages, startPage + 4);
-              if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
-              const page = startPage + i;
-              if (page > totalPages) return null;
-              return (
-                <button
-                  key={page}
-                  onClick={() => {
-                    setTaskPage(page);
-                    refreshData(true, page);
-                  }}
-                  className={`w-7 h-7 rounded-lg text-[10px] font-black transition-all ${
-                    page === taskPage
-                      ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30'
-                      : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {page}
-                </button>
-              );
-            })}
+
+            {/* Trang X / Y Badge */}
+            <span className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 font-bold text-xs">
+              Trang {taskPage} / {Math.max(1, Math.ceil(taskTotalCount / tasksPerPage))}
+            </span>
+
+            {/* Nút Sau */}
             <button
               onClick={() => {
-                const newPage = Math.min(Math.ceil(taskTotalCount / tasksPerPage), taskPage + 1);
+                const maxPage = Math.ceil(taskTotalCount / tasksPerPage);
+                const newPage = Math.min(maxPage, taskPage + 1);
                 setTaskPage(newPage);
-                refreshData(true, newPage);
+                refreshData(true, newPage, taskFilter, tasksPerPage);
               }}
-              disabled={taskPage === Math.ceil(taskTotalCount / tasksPerPage)}
-              className="px-3 py-1 rounded-lg text-[10px] font-black bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              disabled={taskPage >= Math.ceil(taskTotalCount / tasksPerPage)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-white/5"
             >
-              Sau →
+              Sau ▶
+            </button>
+
+            {/* Nút Cuối */}
+            <button
+              onClick={() => {
+                const maxPage = Math.ceil(taskTotalCount / tasksPerPage);
+                setTaskPage(maxPage);
+                refreshData(true, maxPage, taskFilter, tasksPerPage);
+              }}
+              disabled={taskPage >= Math.ceil(taskTotalCount / tasksPerPage)}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-white/5"
+            >
+              Cuối ⏭
             </button>
           </div>
         </div>
