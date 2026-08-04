@@ -2502,6 +2502,7 @@ export const downloaderVideos = pgTable('downloader_videos', {
   title: varchar('title', { length: 500 }),
   author: varchar('author', { length: 255 }),
   thumbnailUrl: text('thumbnail_url'),
+  translatedThumbnailUrl: text('translated_thumbnail_url'),
   duration: integer('duration'), // seconds
   status: varchar('status', { length: 20 }).notNull().default('pending'), // pending, downloading, downloaded, failed
   progress: integer('progress').notNull().default(0), // percentage

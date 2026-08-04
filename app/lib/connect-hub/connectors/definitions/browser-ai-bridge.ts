@@ -6,11 +6,11 @@ export const browserAiBridgeConnector: ConnectorDefinition = {
   icon: 'Globe',
   category: 'ai',
   description: 'Điều khiển Gemini / ChatGPT / Claude trực tiếp trên trình duyệt cá nhân qua Chrome Extension hoàn toàn miễn phí.',
-  aiCapability: ['text'],
+  aiCapability: ['text', 'vision', 'image-generation'],
   aiModels: [
-    { name: 'gemini', label: 'Gemini (via Browser)', type: 'text' },
-    { name: 'chatgpt', label: 'ChatGPT (via Browser)', type: 'text' },
-    { name: 'claude', label: 'Claude (via Browser)', type: 'text' }
+    { name: 'gemini', label: 'Gemini (via Browser)', type: 'text,vision' },
+    { name: 'chatgpt', label: 'ChatGPT (via Browser)', type: 'text,vision,image-generation' },
+    { name: 'claude', label: 'Claude (via Browser)', type: 'text,vision' }
   ],
   
   authType: 'bearer_token',
@@ -42,6 +42,26 @@ export const browserAiBridgeConnector: ConnectorDefinition = {
         { name: 'prompt', label: 'Nội dung Prompt', type: 'textarea', required: true, placeholder: 'Nhập yêu cầu cho AI...' },
         { name: 'targetAi', label: 'Nền tảng AI mục tiêu', type: 'select', required: true, options: ['gemini', 'chatgpt', 'claude'], default: 'gemini' },
         { name: 'attachments', label: 'File đính kèm (JSON Base64/URL)', type: 'textarea', required: false, placeholder: '[{"type":"image","base64":"data:image/png;base64,..."}]' },
+        { name: 'jobId', label: 'Job ID (Dùng khi Thử lại / Retry)', type: 'text', required: false, placeholder: 'Nhập Job ID cũ nếu có' },
+      ],
+
+      testStrategy: 'direct',
+    },
+    {
+      slug: 'vision',
+      name: 'Phân tích / Chỉnh sửa ảnh',
+      description: 'Gửi prompt và hình ảnh (attachments) sang AI để phân tích, trích xuất dữ liệu, hoặc yêu cầu chỉnh sửa.',
+      group: 'AI Vision & Image',
+      httpMethod: 'POST',
+      endpoint: '/bridge',
+      status: 'ready',
+      outputFields: ['content', 'targetAi', 'jobId'],
+      aiInstruction: 'Gửi ảnh đính kèm và prompt hướng dẫn sang AI (như ChatGPT/Gemini) để nó phân tích hoặc xử lý ảnh.',
+      
+      inputSchema: [
+        { name: 'prompt', label: 'Yêu cầu xử lý ảnh', type: 'textarea', required: true, placeholder: 'Phân tích chi tiết hình ảnh này / Trích xuất văn bản / Chỉnh sửa ảnh theo ý tôi...' },
+        { name: 'targetAi', label: 'Nền tảng AI mục tiêu', type: 'select', required: true, options: ['gemini', 'chatgpt', 'claude'], default: 'gemini' },
+        { name: 'attachments', label: 'Ảnh đính kèm (JSON Base64/URL)', type: 'textarea', required: true, placeholder: '[{"type":"image","url":"https://.../img.png"}]' },
         { name: 'jobId', label: 'Job ID (Dùng khi Thử lại / Retry)', type: 'text', required: false, placeholder: 'Nhập Job ID cũ nếu có' },
       ],
 

@@ -673,7 +673,20 @@ def process_task(token, task):
 
                     try:
                         payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
-                        res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=90)
+                        
+                        api_attempts = 0
+                        while api_attempts < 60:
+                            res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=90)
+                            if res.status_code == 200 and res.json().get("isPending"):
+                                pending_job_id = res.json().get("jobId")
+                                if pending_job_id:
+                                    payload["jobId"] = pending_job_id
+                                print(Fore.CYAN + f"  [!] Dang cho Chrome Extension xu ly tren trinh duyet... (Lan {api_attempts+1}/60)")
+                                time.sleep(5)
+                                api_attempts += 1
+                            else:
+                                break
+                                
                         if res.status_code == 200:
                             data = res.json()
                             if data.get("success") and data.get("translatedTexts"):

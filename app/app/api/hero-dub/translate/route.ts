@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { taskId, text, texts: inputTexts, previousContext } = body;
+    const { taskId, text, texts: inputTexts, previousContext, jobId } = body;
 
     let texts = inputTexts;
     if (!texts && text) {
@@ -178,6 +178,7 @@ Output: {"0": {"asr_correction": "这博学鸿词科很难考", "vi_translation"
       console.log(`[API Translate] Attempt ${attempts}/${MAX_ATTEMPTS} for task ${taskId}...`);
       
       const result = await executeAction(appSlug, credentials, 'chat_completion', {
+        jobId, // Truyền jobId từ worker xuống để không tạo nhiều job mới khi polling
         model: modelName,
         messages: [
           { role: 'system', content: systemMessage },
@@ -190,6 +191,16 @@ Output: {"0": {"asr_correction": "这博学鸿词科很难考", "vi_translation"
         console.warn(`[API Translate] Attempt ${attempts} AI error: ${lastError}`);
         await new Promise(r => setTimeout(r, 1500));
         continue;
+      }
+
+      // Nếu đang được xử lý trên Extension (chưa có kết quả do tốn thời gian)
+      if (result.data?.isPending) {
+        return NextResponse.json({ 
+          success: true, 
+          isPending: true, 
+          jobId: result.data.jobId,
+          message: 'Đang xử lý trên trình duyệt...'
+        });
       }
 
       const outputText = extractContentFromResult(result.data);
