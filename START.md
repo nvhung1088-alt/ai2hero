@@ -145,6 +145,13 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Gỡ bỏ hoàn toàn luồng code tính năng **Dịch & Redesign Thumbnail bằng AI** khỏi Hero Downloader (Xóa API, Schema DB `translatedThumbnailUrl`, UI Toolbar, Modal so sánh) giúp hệ thống quay về tối giản chỉ tải về 1 Ảnh bìa gốc + 1 Video MP4.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- **2026-08-04 (connect-hub - Browser AI Bridge Connector & Chrome Extension)**:
+  - 🌐 **Thêm Connector mới trong Connect Hub**: Tạo `browser-ai-bridge` trong registry và engine của Connect Hub, mở cổng chung cho toàn bộ các MVP (Hero-Dub, Hero-Video-Maker, AI Chat...) gọi AI miễn phí qua trình duyệt.
+  - 🗄️ **Schema Database**: Bổ sung bảng `connectHubBridgeJobs` quản lý hàng đợi tác vụ dịch thuật & automation AI (text, ảnh, video) từ Vercel Serverless tới Chrome Extension.
+  - 🔌 **Bridge API Endpoint**: Phát triển route `/api/connect-hub/bridge` xử lý Polling 2 chiều (GET job / POST submit) với xác thực `bridgeToken`.
+  - 🧩 **Chrome Extension (`apps/ai2hero-bridge-ext`)**: Xây dựng trọn bộ Manifest V3 Extension bao gồm Background Worker, Popup UI cài đặt, và Content Script tự động điền prompt, đính kèm file, bấm gửi và bóc tách kết quả bằng MutationObserver trên `gemini.google.com`.
+  - 🚀 **Push Production**: Commit và push thành công toàn bộ mã nguồn lên nhánh `main` để Vercel tự động deploy.
+
 - **2026-08-04 (hero-drive - Multi-Tenancy Fix, Hardcode Removal & Worker Token API Fix)**:
   - 🛡️ **Fix Multi-Tenancy Data Leak**: Cập nhật query `page.tsx` lọc `driveFolderMappings` thông qua mảng `projectId` thuộc `teamId` hiện tại, cô lập dữ liệu hoàn toàn giữa các Team.
   - 🎯 **Loại bỏ Hardcode Project ID**: Xóa toàn bộ các vị trí hardcode `defaultProjectId = 1` trong `dashboard-client.tsx`, tự động khởi tạo/truyền `defaultProjectId` thực tế từ server.

@@ -1,7 +1,6 @@
 import { db } from '@/lib/db/drizzle';
 import { connectHubBridgeJobs } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
 
 export async function runBrowserAiBridge(
   creds: Record<string, string>,
@@ -58,7 +57,7 @@ export async function runBrowserAiBridge(
 
   // 2. Nếu chưa có jobRecord, tạo Job mới
   if (!jobRecord) {
-    jobId = uuidv4();
+    jobId = crypto.randomUUID();
     const [newJob] = await db
       .insert(connectHubBridgeJobs)
       .values({
