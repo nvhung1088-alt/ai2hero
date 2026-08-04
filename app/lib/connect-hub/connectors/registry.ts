@@ -29,11 +29,13 @@ import { viettelAiConnector } from './definitions/viettel-ai';
 import { googleTtsConnector } from './definitions/google-tts';
 import { elevenlabsConnector } from './definitions/elevenlabs';
 import { postizConnector } from './definitions/postiz';
+import { browserAiBridgeConnector } from './definitions/browser-ai-bridge';
 
 import { GENERATED_CONNECTORS } from './registry-generated';
 
 const RAW_CONNECTORS: ConnectorDefinition[] = [
   coreLogicConnector,
+  browserAiBridgeConnector,
   zaloZnsConnector,
   openaiConnector,
   anthropicConnector,
@@ -67,6 +69,7 @@ const RAW_CONNECTORS: ConnectorDefinition[] = [
 
 const READY_SLUGS = [
   'core-logic',
+  'browser-ai-bridge',
   'zalo-zns',
   'custom-http',
   'kiotviet',

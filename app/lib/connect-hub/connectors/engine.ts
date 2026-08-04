@@ -21,8 +21,10 @@ import { runViettelAi } from './runners/viettel-ai';
 import { runGoogleTts } from './runners/google-tts';
 import { runElevenLabs } from './runners/elevenlabs';
 import { runPostiz } from './runners/postiz';
+import { runBrowserAiBridge } from './runners/browser-ai-bridge';
 
 const RUNNERS: Record<string, (creds: any, action: string, input: any) => Promise<any>> = {
+  'browser-ai-bridge': runBrowserAiBridge,
   'custom-http': runCustomHttp,
   'kiotviet': runKiotViet,
   'pancake-chat': runPancakeChat,

@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Ai2Hero Browser AI Bridge",
+  "version": "1.0.0",
+  "description": "Cổng kết nối AI trên trình duyệt tự động cho hệ sinh thái Ai2Hero Connect Hub.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://gemini.google.com/*"
+      ],
+      "js": [
+        "content-gemini.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Ai2Hero Bridge Settings"
+  }
+}

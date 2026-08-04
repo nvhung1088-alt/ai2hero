@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Ai2Hero Bridge Settings</title>
+  <style>
+    body {
+      width: 320px;
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+    h2 {
+      font-size: 15px;
+      margin-top: 0;
+      margin-bottom: 12px;
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background-color: #1e293b;
+      color: #ffffff;
+      font-size: 12px;
+      outline: none;
+    }
+    input:focus {
+      border-color: #fbbf24;
+    }
+    button {
+      width: 100%;
+      padding: 9px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .status-card {
+      margin-top: 14px;
+      padding: 10px;
+      border-radius: 8px;
+      background-color: #1e293b;
+      border: 1px solid #334155;
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .badge {
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 10px;
+    }
+    .badge-on { background-color: #064e3b; color: #34d399; }
+    .badge-off { background-color: #7f1d1d; color: #f87171; }
+  </style>
+</head>
+<body>
+  <h2>🌐 Ai2Hero Browser Bridge</h2>
+  
+  <div class="form-group">
+    <label for="serverUrl">Server URL</label>
+    <input type="text" id="serverUrl" placeholder="https://ai2hero-flax.vercel.app">
+  </div>
+
+  <div class="form-group">
+    <label for="bridgeToken">Bridge Token (Connect Hub)</label>
+    <input type="password" id="bridgeToken" placeholder="Nhập Bridge Token...">
+  </div>
+
+  <button id="saveBtn">LƯU CẤU HÌNH</button>
+
+  <div class="status-card">
+    <span>Trạng thái:</span>
+    <span id="statusBadge" class="badge badge-off">Chưa lưu token</span>
+  </div>
+
+  <div style="margin-top: 8px; font-size: 10px; color: #64748b; text-align: center;">
+    Đã xử lý thành công: <strong id="jobCount" style="color: #fbbf24;">0</strong> tác vụ
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

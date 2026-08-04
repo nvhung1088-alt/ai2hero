@@ -2698,6 +2698,38 @@ export type NewDriveContent = typeof driveContents.$inferInsert;
 export type DriveFile = typeof driveFiles.$inferSelect;
 export type NewDriveFile = typeof driveFiles.$inferInsert;
 
+// ==========================================
+// CONNECT HUB BROWSER BRIDGE JOBS
+// ==========================================
+export const connectHubBridgeJobs = pgTable('connect_hub_bridge_jobs', {
+  id: text('id').primaryKey(), // UUID
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  connectionId: integer('connection_id').notNull().references(() => connectHubConnections.id, { onDelete: 'cascade' }),
+  callerModule: varchar('caller_module', { length: 50 }).notNull(),
+
+  // Input
+  targetAi: varchar('target_ai', { length: 20 }).notNull().default('gemini'), // 'gemini' | 'chatgpt' | 'claude'
+  prompt: text('prompt').notNull(),
+  attachments: json('attachments'), // [{ type: 'image' | 'video' | 'file', base64?: string, url?: string }]
+
+  // Status
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'processing' | 'done' | 'failed'
+  result: text('result'), // Kết quả text trả về từ AI
+  error: text('error'),
+
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const connectHubBridgeJobsRelations = relations(connectHubBridgeJobs, ({ one }) => ({
+  team: one(teams, { fields: [connectHubBridgeJobs.teamId], references: [teams.id] }),
+  connection: one(connectHubConnections, { fields: [connectHubBridgeJobs.connectionId], references: [connectHubConnections.id] }),
+}));
+
+export type ConnectHubBridgeJob = typeof connectHubBridgeJobs.$inferSelect;
+export type NewConnectHubBridgeJob = typeof connectHubBridgeJobs.$inferInsert;
+
+
 
 
 
