@@ -12,7 +12,13 @@ export async function runBrowserAiBridge(
     throw new Error(`Action "${actionSlug}" không được hỗ trợ bởi Browser AI Bridge.`);
   }
 
-  const prompt = input.prompt;
+  let prompt = input.prompt;
+  if (!prompt && Array.isArray(input.messages)) {
+    const sysMsg = input.messages.find((m: any) => m.role === 'system')?.content || '';
+    const userMsg = input.messages.find((m: any) => m.role === 'user')?.content || '';
+    prompt = sysMsg ? `${sysMsg}\n\n${userMsg}` : userMsg;
+  }
+
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('Nội dung Prompt là bắt buộc.');
   }

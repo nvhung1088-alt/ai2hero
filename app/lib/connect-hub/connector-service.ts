@@ -232,7 +232,12 @@ export async function runConnectorAction(params: {
       connection.appSlug,
       credentials,
       actionSlug,
-      input
+      {
+        ...input,
+        teamId,
+        connectionId: connection.id,
+        callerModule
+      }
     );
 
     let finalData = executionResult.data;
