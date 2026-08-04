@@ -4,6 +4,7 @@ import time
 import argparse
 import requests
 import json
+import shutil
 import concurrent.futures
 from datetime import datetime
 from pathlib import Path
@@ -138,6 +139,8 @@ def upload_file_to_google_drive(access_token, file_path, file_name, target_folde
                 upload_url = init_res.headers.get("Location")
                 if upload_url:
                     break
+            elif init_res.status_code == 401:
+                return False, None, "TOKEN_EXPIRED"
             elif init_res.status_code in (500, 502, 503, 504):
                 print(f"   ⚠️ Máy chủ Google trả về HTTP {init_res.status_code} tạm thời, thử lại sau 5s (lần {init_attempt + 1}/3)...")
                 time.sleep(5)
@@ -186,6 +189,8 @@ def upload_file_to_google_drive(access_token, file_path, file_name, target_folde
                         offset += chunk_len
                         chunk_success = True
                         break
+                    elif res.status_code == 401:
+                        return False, None, "TOKEN_EXPIRED"
                     elif res.status_code in (500, 502, 503, 504):
                         print(f"\n   ⚠️ Google API gặp lỗi HTTP {res.status_code} tạm thời, tự động nghỉ 5s thử lại chunk (lần {attempt + 1}/5)...")
                         time.sleep(5)
@@ -265,6 +270,10 @@ def process_file_item(file_item, mapping_tokens, server_url, now_str):
         except Exception as e:
             print(f"❌ [{now_str}] Lỗi cập nhật trạng thái completed: {e}")
     else:
+        if err_msg == "TOKEN_EXPIRED":
+            print(f"⚠️ [{now_str}] Token Drive đã hết hạn (401). Worker sẽ nhận Token mới ở lượt polling tiếp theo.")
+            return
+
         print(f"❌ [{now_str}] Lỗi upload {file_name}: {err_msg}")
         complete_url = f"{server_url}/api/hero-drive/worker?action=file_complete"
         try:

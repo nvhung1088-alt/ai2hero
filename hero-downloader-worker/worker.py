@@ -102,12 +102,25 @@ def run_worker_loop(token):
     poll_interval = 5
     _last_heartbeat = [0]  # Lưu thời gian in heartbeat gần nhất
     
+    def clean_temp_files_periodic():
+        base_dir = os.path.abspath(os.path.join(os.getcwd(), "downloads"))
+        if not os.path.exists(base_dir): return
+        try:
+            active_ids_str = [str(k) for k in active_downloads.keys()]
+            for f in os.listdir(base_dir):
+                if f.endswith('.part') or f.endswith('.ytdl') or f.endswith('.crdownload'):
+                    vid = f.split('_')[0] if '_' in f else ""
+                    if vid and vid not in active_ids_str:
+                        try: os.remove(os.path.join(base_dir, f))
+                        except: pass
+        except:
+            pass
+
     while True:
         has_new_tasks = False
         has_force = False
         try:
-            active_ids_str = ",".join(map(str, active_downloads.keys()))
-            url = f"{API_BASE_URL}/tasks?teamId={config.load_config().get('teamId')}&active={active_ids_str}"
+            # Đoạn khai báo active_ids_str không còn dùng cho URL nữa, URL sẽ là /tasks
             
             # In heartbeat mỗi 60 giây để biết Worker còn sống (không spam mỗi poll)
             import time as _time
@@ -119,9 +132,18 @@ def run_worker_loop(token):
                     print(Fore.CYAN + f"[Worker] Dang tai {active_count} video: {ids}")
                 else:
                     print(Fore.CYAN + "[Worker] Cho viec... (0 download)")
+                
+                # Chạy dọn dẹp file tạm rác định kỳ (Mỗi 60s)
+                clean_temp_files_periodic()
                 _last_heartbeat[0] = now
             
-            res = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=120)
+            # Đổi từ GET sang POST tránh lỗi HTTP 414 URI Too Long khi danh sách active quá dài
+            url = f"{API_BASE_URL}/tasks"
+            payload = {
+                "teamId": config.load_config().get("teamId"),
+                "activeIds": list(active_downloads.keys())
+            }
+            res = requests.post(url, json=payload, headers={"Authorization": f"Bearer {token}"}, timeout=120)
             
             if res.status_code == 200:
                 data = res.json()

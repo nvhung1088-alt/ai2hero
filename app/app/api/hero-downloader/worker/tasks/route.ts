@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 const authSecret = process.env.AUTH_SECRET;
 const key = new TextEncoder().encode(authSecret);
 
-export async function GET(request: Request) {
+async function handleTasks(request: Request, isPost = false) {
   try {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -27,9 +27,19 @@ export async function GET(request: Request) {
 
     const teamId = payload.teamId as number;
 
-    const urlObj = new URL(request.url);
-    const activeStr = urlObj.searchParams.get('active') || '';
-    const activeIds = activeStr ? activeStr.split(',').map(Number).filter(Boolean) : [];
+    let activeIds: number[] = [];
+    if (isPost) {
+      try {
+        const body = await request.json();
+        if (body.activeIds && Array.isArray(body.activeIds)) {
+          activeIds = body.activeIds.map(Number).filter(Boolean);
+        }
+      } catch (e) {}
+    } else {
+      const urlObj = new URL(request.url);
+      const activeStr = urlObj.searchParams.get('active') || '';
+      activeIds = activeStr ? activeStr.split(',').map(Number).filter(Boolean) : [];
+    }
 
     // Reset stuck downloading videos
     const stuckVideos = await db
@@ -247,4 +257,12 @@ function getScanIntervalMs(intervalStr: string): number {
     console.error('[API Downloader Worker Tasks] Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
+}
+
+export async function GET(request: Request) {
+  return handleTasks(request, false);
+}
+
+export async function POST(request: Request) {
+  return handleTasks(request, true);
 }

@@ -1,5 +1,10 @@
 # AI2HERO — CHANGELOG
 
+## 2026-08-04 — HeroDub Worker: Fix Critical Audio Alignment, Edge-TTS Crash & Filename Bugs
+- **Fix Sample Rate Drop (Mất tiếng lồng)**: Tích hợp logic nội suy `numpy.interp` vào hàm `merge_tts_segments` để khôi phục và resample các phân đoạn tiếng lồng AI không đạt chuẩn 16000Hz thay vì âm thầm loại bỏ chúng. Giải quyết dứt điểm lỗi video hoàn thành bị mất 100% tiếng lồng.
+- **Fix Windows CMD Inline Script Error (Edge-TTS)**: Sửa lỗi văng syntax ký tự xuống dòng khi chạy `python -c "import edge_tts..."` trên Windows CMD. Worker giờ sẽ tạo ra file `tmp_tts_script.py` an toàn và thực thi như một script riêng biệt để ngăn lỗi môi trường, sau đó tự dọn dẹp.
+- **Fix Filename Extension Duplication (.mp4.mp4)**: Khắc phục lỗi khi lưu trữ local sinh ra file bị nhân đôi đuôi `video.mp4.mp4` trong trường hợp user "Giữ nguyên tên video gốc" hoặc gõ thẳng đuôi file vào web form. Hệ thống hiện tại đã lọc đuôi triệt để qua `os.path.splitext` trước khi chèn `.mp4` thành phẩm.
+
 ## 2026-08-02 — 86x Traffic Optimization & Centralized Super Admin Control
 - **Super Admin Central Control (`/admin/traffic`)**: Nâng cấp DB và UI để quản trị toàn quyền 3 lớp bảo vệ Traffic (Idle Timeout, Max Backoff Ceiling, Pause Background Tab) bằng các thanh trượt trực quan.
 - **Chrome Extension Idle Detection (`chrome.idle`)**: Bổ sung quyền `"idle"`, Extension tự động ĐÓNG BĂNG 100% request khi máy tính bị khóa hoặc user không tương tác quá 15 phút.

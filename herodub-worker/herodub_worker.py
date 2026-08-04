@@ -167,7 +167,13 @@ def merge_tts_segments(ffmpeg_exe, tts_dir, segments, workspace):
     
     for start_time, data, samplerate in valid_segments:
         if samplerate != target_sr:
-            continue
+            # Resample bang numpy interpolation neu khong phai 16kHz
+            num_samples = int(len(data) * target_sr / samplerate)
+            data = np.interp(
+                np.linspace(0.0, 1.0, num_samples),
+                np.linspace(0.0, 1.0, len(data)),
+                data
+            )
             
         start_sample = int(start_time * target_sr)
         end_sample = min(start_sample + len(data), len(mixed_audio))
@@ -891,11 +897,14 @@ if __name__ == '__main__':
                     
                     if tts_engine == "edge-tts":
                         tmp_txt = os.path.join(workspace, f"tmp_tts_{i}.txt")
+                        tmp_py = os.path.join(workspace, f"tmp_tts_script_{i}.py")
                         try:
                             with open(tmp_txt, "w", encoding="utf-8") as f:
                                 f.write(seg['text'])
-                            script = f"import edge_tts, asyncio\\nwith open(r'{tmp_txt}', 'r', encoding='utf-8') as f:\\n    text = f.read()\\nasyncio.run(edge_tts.Communicate(text, '{tts_voice}', rate='{rate_str}').save(r'{output_file}'))"
-                            cmd = [sys.executable, "-c", script]
+                            script_code = f"import edge_tts, asyncio\nwith open(r'{tmp_txt}', 'r', encoding='utf-8') as f:\n    text = f.read()\nasyncio.run(edge_tts.Communicate(text, '{tts_voice}', rate='{rate_str}').save(r'{output_file}'))"
+                            with open(tmp_py, "w", encoding="utf-8") as f:
+                                f.write(script_code)
+                            cmd = [sys.executable, tmp_py]
                             for attempt in range(3):
                                 result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
                                 if result.returncode == 0 and os.path.exists(output_file) and os.path.getsize(output_file) > 100:
@@ -906,6 +915,9 @@ if __name__ == '__main__':
                         finally:
                             if os.path.exists(tmp_txt):
                                 try: os.remove(tmp_txt)
+                                except: pass
+                            if os.path.exists(tmp_py):
+                                try: os.remove(tmp_py)
                                 except: pass
                     else:
                         # Goi Connect Hub qua Server API
@@ -1149,9 +1161,12 @@ if __name__ == '__main__':
             # Lấy tên gốc của video
             raw_source = source_url or task.get("sourceTitle") or f"video_{task_id}"
             if raw_source.startswith("http://") or raw_source.startswith("https://"):
-                base_name = task.get("sourceTitle") or os.path.splitext(os.path.basename(raw_source))[0]
+                base_name = task.get("sourceTitle") or os.path.basename(raw_source)
             else:
-                base_name = os.path.splitext(os.path.basename(raw_source))[0]
+                base_name = os.path.basename(raw_source)
+                
+            # Xoa duoi file triet de de tranh loi .mp4.mp4
+            base_name = os.path.splitext(base_name)[0]
             
             # Làm sạch tên file (xóa ký tự cấm Windows & giới hạn độ dài an toàn < 180 ký tự)
             import re
