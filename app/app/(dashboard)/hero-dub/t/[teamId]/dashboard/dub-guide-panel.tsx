@@ -150,7 +150,7 @@ export default function DubGuidePanel({
         <div className="space-y-2">
           <h3 className="text-sm font-extrabold text-white">Nhập Mã liên kết vào màn hình đen</h3>
           <p className="text-xs text-gray-400 leading-relaxed font-medium">
-            Bấm nút <b className="text-amber-400">Kết nối máy local</b> ở trên, copy mã số 6 chữ số và dán vào màn hình đen CMD để kết nối.
+            Copy <b className="text-amber-400">Mã liên kết (Worker) 6 chữ số</b> ở góc phải phía trên màn hình Dashboard và dán vào cửa sổ đen CMD để kết nối.
           </p>
         </div>
       </div>

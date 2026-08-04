@@ -65,7 +65,7 @@ export default function DubWorkerPanel({
               </div>
             </div>
             <p className="text-[10px] text-amber-500/80 font-bold leading-normal max-w-xl">
-              Cần chạy script local worker trên máy tính của bạn để nhận và xử lý tác vụ dịch thuật. Nhấp nút &quot;Kết nối máy local&quot; để lấy mã liên kết và bắt đầu.
+              Cần chạy script local worker trên máy tính của bạn để nhận và xử lý tác vụ dịch thuật. Lấy Mã liên kết (Worker) ở góc phải phía trên màn hình để kết nối và bắt đầu.
             </p>
           </div>
         )}
