@@ -615,12 +615,41 @@ export default function MappingManagerClient({ connectedApps, teamId }: MappingM
                             ))}
                           </select>
                         ) : param.type === 'textarea' ? (
-                          <textarea
-                            className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all text-sm min-h-[80px]"
-                            placeholder={param.placeholder || `Nhập ${param.name}...`}
-                            value={testInput[param.name] || ''}
-                            onChange={(e) => setTestInput({...testInput, [param.name]: e.target.value})}
-                          />
+                          <div className="relative">
+                            <textarea
+                              className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all text-sm min-h-[80px]"
+                              placeholder={param.placeholder || `Nhập ${param.name}...`}
+                              value={testInput[param.name] || ''}
+                              onChange={(e) => setTestInput({...testInput, [param.name]: e.target.value})}
+                            />
+                            {param.name === 'attachments' && (
+                              <div className="mt-2 flex justify-end">
+                                <label className="cursor-pointer text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors border border-gray-700">
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                  Tải ảnh lên từ máy tính (Tự tạo JSON)
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    className="hidden" 
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const reader = new FileReader();
+                                        reader.onload = (ev) => {
+                                          const base64 = ev.target?.result;
+                                          if (base64) {
+                                            const jsonStr = JSON.stringify([{ type: 'image', base64 }]);
+                                            setTestInput({...testInput, [param.name]: jsonStr});
+                                          }
+                                        };
+                                        reader.readAsDataURL(file);
+                                      }
+                                    }} 
+                                  />
+                                </label>
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <input 
                             type={param.type === 'password' ? 'password' : 'text'}
