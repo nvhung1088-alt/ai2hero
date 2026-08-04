@@ -145,6 +145,12 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Gỡ bỏ hoàn toàn luồng code tính năng **Dịch & Redesign Thumbnail bằng AI** khỏi Hero Downloader (Xóa API, Schema DB `translatedThumbnailUrl`, UI Toolbar, Modal so sánh) giúp hệ thống quay về tối giản chỉ tải về 1 Ảnh bìa gốc + 1 Video MP4.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- **2026-08-04 (hero-drive - Multi-Tenancy Fix, Hardcode Removal & Worker Token API Fix)**:
+  - 🛡️ **Fix Multi-Tenancy Data Leak**: Cập nhật query `page.tsx` lọc `driveFolderMappings` thông qua mảng `projectId` thuộc `teamId` hiện tại, cô lập dữ liệu hoàn toàn giữa các Team.
+  - 🎯 **Loại bỏ Hardcode Project ID**: Xóa toàn bộ các vị trí hardcode `defaultProjectId = 1` trong `dashboard-client.tsx`, tự động khởi tạo/truyền `defaultProjectId` thực tế từ server.
+  - 🔑 **Giải mã Token Worker API**: Cập nhật `route.ts` sử dụng hàm `parseCredentials(conn)` để giải mã `encryptedCredentials` lấy `accessToken` tươi cho Python Worker kết nối Google Drive.
+  - 🚀 **Push Production**: Kiểm thử build local sạch 100% không lỗi và đẩy mã nguồn trực tiếp lên Vercel Production (`main`).
+
 - **2026-08-04 (hero-dub - UI Worker Management, Zombie Task Recovery & Real-time Status Oversight)**:
   - 🖥️ **Hiển thị Tên Worker trên Task Table**: Cập nhật `getDubTasksAction` thực hiện `LEFT JOIN` với bảng `dubWorkers`, hiển thị badge tên máy (`🖥️ DESKTOP-NKQTFE7`) trực tiếp trên mỗi ô tác vụ thuộc danh sách.
   - 📊 **Thống kê Worker Online/Total**: Bổ sung card thứ 6 `Máy xử lý (Worker)` trên thanh TaskStats summary bar (`dub-task-table.tsx`), tự động đếm và hiển thị số lượng Worker đang hoạt động thực tế.
