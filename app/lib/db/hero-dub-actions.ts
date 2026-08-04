@@ -633,19 +633,26 @@ export async function pollPendingTaskAction(workerId: number, teamId: number) {
       .orderBy(dubTasks.updatedAt)
       .limit(1);
 
-    // 2. Nếu không có task dở dang, lấy task pending mới
+    // 2. Nếu không có task dở dang, lấy task pending mới hoặc task bị kẹt ở 'assigned' quá 2 phút
     if (!task) {
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
       const [pendingTaskResult] = await db
         .select({ task: dubTasks })
         .from(dubTasks)
         .leftJoin(dubScanConfigs, eq(dubTasks.scanConfigId, dubScanConfigs.id))
         .where(
           and(
-            eq(dubTasks.status, 'pending'),
             eq(dubTasks.teamId, teamId),
             or(
               isNull(dubTasks.scanConfigId),
               eq(dubScanConfigs.isActive, true)
+            ),
+            or(
+              eq(dubTasks.status, 'pending'),
+              and(
+                eq(dubTasks.status, 'assigned'),
+                lt(dubTasks.updatedAt, twoMinutesAgo)
+              )
             )
           )
         )
