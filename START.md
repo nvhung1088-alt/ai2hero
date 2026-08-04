@@ -145,6 +145,13 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Tích hợp tính năng **Dịch & Redesign Thumbnail bằng AI** (Connect Hub Vision + Image Gen): Cho phép chọn AI Model và Ngôn ngữ đích (Việt, Anh, Hàn, Nhật, Thái...), tự động đọc text trên ảnh bìa gốc, dịch thuật, tạo lại thumbnail mới và tải lên R2 cloud storage kèm Modal Preview so sánh 2 ảnh trực quan trên Dashboard.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- **2026-08-04 (hero-dub - UI Worker Management, Zombie Task Recovery & Real-time Status Oversight)**:
+  - 🖥️ **Hiển thị Tên Worker trên Task Table**: Cập nhật `getDubTasksAction` thực hiện `LEFT JOIN` với bảng `dubWorkers`, hiển thị badge tên máy (`🖥️ DESKTOP-NKQTFE7`) trực tiếp trên mỗi ô tác vụ thuộc danh sách.
+  - 📊 **Thống kê Worker Online/Total**: Bổ sung card thứ 6 `Máy xử lý (Worker)` trên thanh TaskStats summary bar (`dub-task-table.tsx`), tự động đếm và hiển thị số lượng Worker đang hoạt động thực tế.
+  - ⏱️ **Tính toán Thời gian Dịch thực tế**: Sửa công thức đếm `"Đã dịch xong trong: X phút"` trong `dub-task-table.tsx` chuyển sang lấy mốc từ `startedAt` (thời điểm Worker chính thức nhận task) đến `completedAt`, thay vì tính từ `createdAt` (lúc nộp hàng đợi).
+  - 🔄 **Tính năng Gỡ lỗi (Reset Worker Task)**: Thêm hàm `resetDubWorkerAction` và nút bấm **Gỡ lỗi (Icon xoay tròn)** trên mỗi Worker Card (`dub-worker-panel.tsx`). Cho phép Admin 1-click thu hồi tất cả các tác vụ bị kẹt về lại trạng thái *"Chờ xử lý" (Pending)* và giải phóng Resource Locks ngay lập tức.
+  - 🧟 **Cơ chế Tự động Thu hồi Zombie Task**: Cập nhật `pollPendingTaskAction` để tự động giải phóng các task bị kẹt ở trạng thái `assigned` quá 2 phút (do Worker bị sập/reset ID) về lại hàng đợi cho Worker khác nhận làm.
+
 - **2026-08-04 (hero-dub - Fix Critical Audio, Extension Duplication, GPU Hardware Render & Edge-TTS Worker Bugs)**:
   - 🔀 **Hệ thống Web Điều phối Đa-Worker (Resource Locking)**: Triển khai bảng `dubResourceLocks` và API `/api/hero-dub/resource-lock` với cơ chế 2 lớp bảo vệ (Timeout auto-release 30 phút). Cho phép nhiều Worker chạy song song trên cùng 1 máy (hoặc khác máy) bằng tham số `--port`. Tự động khóa & xếp hàng tài nguyên nặng (Whisper CPU và GPU Render), cho phép các tác vụ STT Online (Bcut), Dịch thuật, TTS chạy song song không làm nghẽn hay sập máy. Fix triệt để Race Condition khi poll pending task.
   - ⚡ **GPU Hardware Render Acceleration (`herodub_worker.py`)**: Tích hợp `detect_best_encoder()` tự động chuyển FFMPEG Render từ CPU (`libx264`) sang GPU (`h264_amf` / `h264_nvenc`), giúp tăng tốc render gấp 2-3 lần kèm cơ chế fallback an toàn (`libx264 -preset ultrafast`).

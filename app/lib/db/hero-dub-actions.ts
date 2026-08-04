@@ -431,6 +431,7 @@ export async function updateAndRetryDubTaskAction(taskId: number, teamId: number
     if (data.ttsSpeed !== undefined) updateData.ttsSpeed = data.ttsSpeed;
     if (data.bgVolume !== undefined) updateData.bgVolume = data.bgVolume;
     if (data.ttsVolume !== undefined) updateData.ttsVolume = data.ttsVolume;
+    if (data.translateContext !== undefined) updateData.translateContext = data.translateContext;
 
     await db
       .update(dubTasks)

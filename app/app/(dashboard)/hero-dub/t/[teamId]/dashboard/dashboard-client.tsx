@@ -576,6 +576,7 @@ export default function DashboardClient({
     }
 
     setTranslateEngine(task.translateEngine === 'connect-hub' ? 'google' : task.translateEngine);
+    setTranslateContext(task.translateContext || '');
     if (task.llmModel) {
       setTranslateEngine('connect-hub');
       const parts = task.llmModel.split('|');
@@ -632,6 +633,7 @@ export default function DashboardClient({
           ttsSpeed: ttsEnabled ? ttsSpeed : undefined,
           bgVolume: ttsEnabled ? bgVolume : undefined,
           ttsVolume: ttsEnabled ? ttsVolume : undefined,
+          translateContext: translateContext,
         });
 
         if (res.error) {
