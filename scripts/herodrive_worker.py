@@ -40,6 +40,22 @@ def format_seconds_human(seconds):
         mins = (seconds % 3600) // 60
         return f"{hours} giờ {mins} phút"
 
+TEMP_FILE_EXTENSIONS = {
+    '.part', '.crdownload', '.tmp', '.download', '.aria2', 
+    '.ytdl', '.bak', '.~tmp', '.~lock', '.downloading', '.d3v'
+}
+
+def is_temp_or_downloading_file(file_name):
+    name_lower = file_name.lower()
+    for temp_ext in TEMP_FILE_EXTENSIONS:
+        if name_lower.endswith(temp_ext):
+            return True
+    if '.part.' in name_lower or '.crdownload.' in name_lower or '.tmp.' in name_lower:
+        return True
+    if file_name.startswith('~$') or file_name.startswith('._'):
+        return True
+    return False
+
 def get_file_type(extension):
     ext = extension.lower()
     if ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv']:
@@ -59,6 +75,11 @@ def scan_and_group_local_folder(folder_path):
     for entry in os.scandir(folder_path):
         if entry.is_file():
             file_name = entry.name
+            
+            # Bỏ qua hoàn toàn các file tạm / file đang tải dở (.part, .crdownload, .tmp...)
+            if is_temp_or_downloading_file(file_name):
+                continue
+
             path_obj = Path(file_name)
             base_name = path_obj.stem # Tên không bao gồm extension
             ext = path_obj.suffix
