@@ -459,6 +459,11 @@ export default function DashboardClient({
           translateContext: c.translateContext || '',
           aiAppSlug: c.aiAppSlug || '',
           aiModel: c.aiModel || '',
+          redesignThumbnailEnabled: c.redesignThumbnailEnabled ?? false,
+          thumbnailLogoSource: c.thumbnailLogoSource || 'project',
+          customThumbnailLogoUrl: c.customThumbnailLogoUrl || '',
+          thumbnailAiAppSlug: c.thumbnailAiAppSlug || '',
+          thumbnailAiModel: c.thumbnailAiModel || '',
           lastScanAt: c.lastScanAt ? new Date(c.lastScanAt).getTime() : undefined,
           isActive: c.isActive !== undefined ? c.isActive : true,
           scannedCount: c.scannedCount || 0
