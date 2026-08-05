@@ -98,6 +98,11 @@ export async function POST(request: Request) {
         ttsVolume,
         outputFolder: outputFolder?.trim() || undefined,
         scanConfigId,
+        redesignThumbnailEnabled: config.redesignThumbnailEnabled ?? config.redesign_thumbnail_enabled ?? false,
+        thumbnailLogoSource: config.thumbnailLogoSource ?? config.thumbnail_logo_source ?? 'project',
+        customThumbnailLogoUrl: config.customThumbnailLogoUrl ?? config.custom_thumbnail_logo_url ?? undefined,
+        thumbnailAiAppSlug: config.thumbnailAiAppSlug ?? config.thumbnail_ai_app_slug ?? undefined,
+        thumbnailAiModel: config.thumbnailAiModel ?? config.thumbnail_ai_model ?? undefined,
       });
 
       console.log(`[create-from-worker] filePath=${filePath} result=`, JSON.stringify(result));
