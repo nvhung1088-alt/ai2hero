@@ -25,6 +25,16 @@
         "content-gemini.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://*.chatgpt.com/*"
+      ],
+      "js": [
+        "content-chatgpt.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "action": {
