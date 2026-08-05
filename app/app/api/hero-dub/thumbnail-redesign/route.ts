@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       promptText += `5. CHÈN LOGO THƯƠNG HIỆU: Hãy chèn tấm ảnh logo đính kèm thứ 2 vào ${posText}. GIỮ NGUYÊN 100% HÌNH DẠNG, MÀU SẮC VÀ TỶ LỆ LOGO GỐC, tuyệt đối không biến dạng logo và không che mặt nhân vật.\n`;
     }
 
-    promptText += `\nHãy xuất ra tấm ảnh bìa hoàn thiện đẹp mắt, chuyên nghiệp nhất theo tỷ lệ 16:9.`;
+    promptText += `\nHãy xuất ra tấm ảnh bìa hoàn thiện đẹp mắt, chuyên nghiệp nhất và GIỮ NGUYÊN TỶ LỆ KÍCH THƯỚC VÀ KHUNG HÌNH CỦA ẢNH GỐC.`;
 
     // 5. Khởi tạo Job trong bridge với targetAi lấy từ model (chatgpt / gemini / claude)
     const targetAiModel = (task.thumbnailAiModel && ['gemini', 'chatgpt', 'claude'].includes(task.thumbnailAiModel.toLowerCase()))
