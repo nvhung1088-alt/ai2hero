@@ -867,6 +867,11 @@ export default function DubTaskForm({
                   <option value="2.0">Lớn (2.0)</option>
                   <option value="2.5">Rất lớn (2.5)</option>
                 </select>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Thiết kế lại Ảnh Bìa (AI Thumbnail) */}
         <div className="space-y-3 pt-2 border-t border-white/5">
           <div className="flex items-center justify-between">
