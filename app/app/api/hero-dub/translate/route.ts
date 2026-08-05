@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { taskId, text, texts: inputTexts, previousContext, jobId } = body;
+    const { taskId, text, texts: inputTexts, previousContext, jobId, fallbackModel } = body;
 
     let texts = inputTexts;
     if (!texts && text) {
@@ -99,11 +99,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
-    if (!task.llmModel || !task.llmModel.includes('|')) {
+    let activeModel = fallbackModel || task.llmModel;
+
+    if (!activeModel || !activeModel.includes('|')) {
       return NextResponse.json({ error: 'No connect hub LLM model configured for this task' }, { status: 400 });
     }
 
-    const [appSlug, modelName] = task.llmModel.split('|');
+    const [appSlug, modelName] = activeModel.split('|');
 
     // 2. Fetch the corresponding connection
     const [connection] = await db
@@ -131,7 +133,17 @@ export async function POST(request: Request) {
     texts.forEach((t: string, i: number) => { inputObj[i.toString()] = t; });
     const jsonInput = JSON.stringify(inputObj);
 
-    let systemMessage = `Bạn là một biên dịch viên phụ đề phim điện ảnh chuyên nghiệp. Nhiệm vụ duy nhất của bạn là dịch phụ đề từ tiếng Trung Quốc sang tiếng Việt mượt mà, thoát ý, cô đọng, đúng bối cảnh phim.
+    let systemMessage = '';
+
+    if (appSlug === 'browser-ai-bridge') {
+      systemMessage = `Bạn là chuyên gia dịch thuật phụ đề phim. 
+Hãy dịch các câu tiếng Trung sau sang tiếng Việt một cách mượt mà, thoát ý, chuẩn văn phong phim Tiên Hiệp / Cổ Trang.
+
+QUY TẮC BẮT BUỘC:
+1. Trả về đúng định dạng JSON gốc (giữ nguyên các key "0", "1"... và chỉ thay value thành tiếng Việt).
+2. KHÔNG giải thích, KHÔNG thêm lời chào, KHÔNG bọc trong markdown code block (\`\`\`json). Chỉ trả về mã JSON thuần túy để máy đọc.`;
+    } else {
+      systemMessage = `Bạn là một biên dịch viên phụ đề phim điện ảnh chuyên nghiệp. Nhiệm vụ duy nhất của bạn là dịch phụ đề từ tiếng Trung Quốc sang tiếng Việt mượt mà, thoát ý, cô đọng, đúng bối cảnh phim.
 
 QUY TẮC PHONG CÁCH & ĐẠI TỪ XƯƠNG HÔ (BẮT BUỘC):
 1. TRAU CHUỐT & CÔ ĐỌNG: 
@@ -157,6 +169,7 @@ QUY TẮC PHONG CÁCH & ĐẠI TỪ XƯƠNG HÔ (BẮT BUỘC):
 VÍ DỤ:
 Input: {"0":"这薄雪红磁壳很难考"}
 Output: {"0": {"asr_correction": "这博学鸿词科很难考", "vi_translation": "Khoa thi Bác Học Hồng Từ này rất khó đỗ"}}`;
+    }
 
     if (task.translateContext && task.translateContext.trim()) {
       systemMessage += `\n\nBỐI CẢNH & TỪ ĐIỂN PHIM DO NGƯỜI DÙNG CUNG CẤP (BẮT BUỘC TUÂN THỦ 100%):\n${task.translateContext.trim()}`;
