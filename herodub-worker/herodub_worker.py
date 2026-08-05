@@ -1295,8 +1295,39 @@ if __name__ == '__main__':
                         if os.path.exists(thumb_src):
                             thumb_dest = os.path.join(output_folder, f"{base_name}{ext}")
                             try:
-                                shutil.copy2(thumb_src, thumb_dest)
-                                print(Fore.CYAN + f"[-] Da copy anh thumbnail: {os.path.basename(thumb_dest)}")
+                                # Kiểm tra xem Task có cài đặt Ứng dụng AI Chỉnh Ảnh Thumbnail hay không
+                                if task.get("thumbnailAiAppSlug") or task.get("thumbnailAiModel"):
+                                    print(Fore.CYAN + "[-] Phat hien yeu cau Thiet ke lai Thumbnail AI. Dang gui sang Extension...")
+                                    try:
+                                        import base64
+                                        with open(thumb_src, "rb") as img_f:
+                                            b64_data = base64.b64encode(img_f.read()).decode('utf-8')
+                                            img_b64 = f"data:image/jpeg;base64,{b64_data}"
+
+                                        redesign_res = requests.post(f"{API_BASE_URL}/hero-dub/thumbnail-redesign", json={
+                                            "taskId": task_id,
+                                            "imageBase64": img_b64
+                                        }, headers=headers, timeout=120)
+
+                                        if redesign_res.status_code == 200 and redesign_res.json().get("success"):
+                                            new_thumb_url = redesign_res.json().get("resultThumbnailUrl")
+                                            if new_thumb_url and (new_thumb_url.startswith("http://") or new_thumb_url.startswith("https://")):
+                                                img_data = requests.get(new_thumb_url, timeout=30).content
+                                                with open(thumb_dest, 'wb') as handler:
+                                                    handler.write(img_data)
+                                                print(Fore.GREEN + f"[✓] Da thiet ke & luu anh Thumbnail AI Tieng Viet moi: {os.path.basename(thumb_dest)}")
+                                            else:
+                                                shutil.copy2(thumb_src, thumb_dest)
+                                                print(Fore.CYAN + f"[-] Da copy anh thumbnail goc: {os.path.basename(thumb_dest)}")
+                                        else:
+                                            print(Fore.YELLOW + f"[!] AI Redesign thiet ke thumbnail khong thanh cong, dung anh goc.")
+                                            shutil.copy2(thumb_src, thumb_dest)
+                                    except Exception as r_err:
+                                        print(Fore.YELLOW + f"[!] Loi khi thiet ke AI Thumbnail: {r_err}, dung anh goc.")
+                                        shutil.copy2(thumb_src, thumb_dest)
+                                else:
+                                    shutil.copy2(thumb_src, thumb_dest)
+                                    print(Fore.CYAN + f"[-] Da copy anh thumbnail: {os.path.basename(thumb_dest)}")
                             except Exception as thumb_err:
                                 print(Fore.YELLOW + f"[!] Khong the copy thumbnail: {thumb_err}")
                             break

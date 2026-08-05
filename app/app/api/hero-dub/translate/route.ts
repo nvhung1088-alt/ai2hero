@@ -231,9 +231,25 @@ Output: {"0": {"asr_correction": "这博学鸿词科很难考", "vi_translation"
           }
         }
 
-        const parsed = JSON.parse(cleanOutput);
+        let parsed: any = null;
+        try {
+          parsed = JSON.parse(cleanOutput);
+        } catch (jsonErr) {
+          console.warn(`[API Translate] JSON.parse tiêu chuẩn bị lỗi, dùng Regex Fallback Extractor...`);
+          parsed = {};
+          const pairRegex = /"(\d+)":\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g;
+          let match;
+          while ((match = pairRegex.exec(cleanOutput)) !== null) {
+            try {
+              parsed[match[1]] = JSON.parse(`"${match[2]}"`);
+            } catch {
+              parsed[match[1]] = match[2];
+            }
+          }
+        }
+
         if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-          throw new Error("Output is not a valid JSON object");
+          throw new Error("Output không thể parse thành JSON object hợp lệ");
         }
 
         const tempTexts: string[] = [];
