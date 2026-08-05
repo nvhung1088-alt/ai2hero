@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import time
 import json
@@ -656,97 +656,108 @@ def process_task(token, task):
                     json.dump(translated_segments, f, ensure_ascii=False, indent=2)
             
             if task.get("translateEngine") == "connect-hub":
-                print(Fore.CYAN + "  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 30 cau/lan)")
-                BATCH_SIZE = 30
-                for i in range(0, len(segments_to_translate), BATCH_SIZE):
-                    batch_segs = segments_to_translate[i:i+BATCH_SIZE]
-                    texts = [seg['text'] for seg in batch_segs]
+                llm_model = task.get("llmModel", "")
+                is_browser_ai = "browser-ai-bridge" in llm_model
+                
+                # Bien co hieu cho fallback
+                force_fallback_to_deepseek = False
+                
+                def process_connect_hub_loop():
+                    nonlocal force_fallback_to_deepseek
                     
-                    # Trích xuất Sliding Window Context (5 câu cuối của đoạn trước)
-                    prev_context = []
-                    if translated_count > 0 and i == 0:
-                        # Lấy từ translated_segments (batch trước đó được lưu)
-                        prev_context = [seg['text'] for seg in translated_segments[-5:]]
-                    elif i > 0:
-                        # Lấy từ segments_to_translate
-                        prev_context = [seg['text'] for seg in segments_to_translate[max(0, i-5):i]]
-
-                    try:
-                        payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
-                        res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=90)
-                        if res.status_code == 200:
-                            data = res.json()
-                            if data.get("success") and data.get("translatedTexts"):
-                                translated_array = data.get("translatedTexts")
-                                import re
+                    # Cap nhat danh sach can dich
+                    current_untranslated = extracted_segments[len(translated_segments):]
+                    if len(current_untranslated) == 0: return True
+                    
+                    BATCH_SIZE = len(current_untranslated) if (is_browser_ai and not force_fallback_to_deepseek) else 30
+                    
+                    if is_browser_ai and not force_fallback_to_deepseek:
+                        print(Fore.CYAN + f"  -> Su dung Connect Hub (Browser AI Bridge) (Gui toan bo {BATCH_SIZE} cau 1 lan)")
+                    else:
+                        print(Fore.CYAN + f"  -> Su dung Connect Hub (Server-side LLM) (Batching {BATCH_SIZE} cau/lan)")
+                    
+                    for i in range(0, len(current_untranslated), BATCH_SIZE):
+                        batch_segs = current_untranslated[i:i+BATCH_SIZE]
+                        texts = [seg['text'] for seg in batch_segs]
+                        
+                        # Trich xuat Sliding Window Context (5 cau cuoi cua doan truoc)
+                        prev_context = []
+                        if len(translated_segments) > 0 and i == 0:
+                            prev_context = [seg['text'] for seg in translated_segments[-5:]]
+                        elif i > 0:
+                            prev_context = [seg['text'] for seg in current_untranslated[max(0, i-5):i]]
+                            
+                        try:
+                            payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
+                            if force_fallback_to_deepseek:
+                                payload["fallbackModel"] = "deepseek|deepseek-chat"
                                 
-                                for j, seg in enumerate(batch_segs):
-                                    translated = translated_array[j] if j < len(translated_array) else seg['text']
+                            timeout_val = 180 if (is_browser_ai and not force_fallback_to_deepseek) else 90
+                            res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=timeout_val)
+                            
+                            if res.status_code == 200:
+                                data = res.json()
+                                if data.get("success") and data.get("translatedTexts"):
+                                    translated_array = data.get("translatedTexts")
+                                    import re
                                     
-                                    # Co che nhan dien loi (Self-Correction): Kiem tra neu LLM luoi bieng hoac tra ve tieng Trung
-                                    is_failed = False
-                                    if translated.strip() == seg['text'].strip():
-                                        is_failed = True
-                                    else:
-                                        ch_chars = len(re.findall(r'[\u4e00-\u9fff]', translated))
-                                        if ch_chars > 2 or (ch_chars > 0 and ch_chars > len(translated) * 0.15):
-                                            is_failed = True
-                                    
-                                    if is_failed:
-                                        try:
-                                            fixed_translated = google_translate(seg['text'], dest='vi')
-                                            print(Fore.YELLOW + f"  [Sua loi LLM bang Google] {seg['text']} -> {fixed_translated}")
-                                            translated = fixed_translated
-                                        except:
-                                            print(Fore.WHITE + f"  [Connect Hub] {translated}")
-                                    else:
-                                        print(Fore.WHITE + f"  [Connect Hub] {translated}")
+                                    for j, seg in enumerate(batch_segs):
+                                        translated = translated_array[j] if j < len(translated_array) else seg['text']
                                         
-                                    translated_segments.append({
-                                        "start": seg['start'],
-                                        "end": seg['end'],
-                                        "text": translated
-                                    })
-                                save_translation_progress()
+                                        # Co che nhan dien loi (Self-Correction)
+                                        is_failed = False
+                                        if translated.strip() == seg['text'].strip():
+                                            is_failed = True
+                                        else:
+                                            ch_chars = len(re.findall(r'[\u4e00-\u9fff]', translated))
+                                            if ch_chars > 2 or (ch_chars > 0 and ch_chars > len(translated) * 0.15):
+                                                is_failed = True
+                                        
+                                        if is_failed:
+                                            try:
+                                                fixed_translated = google_translate(seg['text'], dest='vi')
+                                                print(Fore.YELLOW + f"  [Sua loi LLM bang Google] {seg['text']} -> {fixed_translated}")
+                                                translated = fixed_translated
+                                            except:
+                                                print(Fore.WHITE + f"  [Connect Hub] {translated}")
+                                        else:
+                                            print(Fore.WHITE + f"  [Connect Hub] {translated}")
+                                            
+                                        translated_segments.append({
+                                            "start": seg['start'],
+                                            "end": seg['end'],
+                                            "text": translated
+                                        })
+                                    save_translation_progress()
+                                else:
+                                    raise Exception(data.get("error", "AI Error"))
                             else:
-                                print(Fore.RED + f"  [Loi AI] {data.get('error')}")
-                                # fallback Google Translate cho batch nay
+                                raise Exception(f"HTTP Error {res.status_code}")
+                        except Exception as api_err:
+                            print(Fore.RED + f"  [Loi AI/Mang] {str(api_err)}")
+                            if is_browser_ai and not force_fallback_to_deepseek:
+                                print(Fore.YELLOW + "  [!] Browser AI that bai! Fallback sang DeepSeek (Batching 30 cau/lan)...")
+                                force_fallback_to_deepseek = True
+                                return False # Bao cho vong lap ngoai chay lai
+                            else:
                                 print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
                                 for seg in batch_segs:
-                                    translated = google_translate(seg['text'], dest='vi')
+                                    translated = ""
+                                    for attempt in range(3):
+                                        try:
+                                            translated = google_translate(seg['text'], dest='vi')
+                                            break
+                                        except Exception as e:
+                                            if attempt == 2: raise e
+                                            time.sleep(2)
                                     translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                                     print(Fore.WHITE + f"  [Google] {translated}")
                                 save_translation_progress()
-                        else:
-                            print(Fore.RED + f"  [Loi HTTP] {res.status_code}")
-                            print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
-                            for seg in batch_segs:
-                                translated = ""
-                                for attempt in range(3):
-                                    try:
-                                        translated = google_translate(seg['text'], dest='vi')
-                                        break
-                                    except Exception as e:
-                                        if attempt == 2: raise e
-                                        time.sleep(2)
-                                translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
-                                print(Fore.WHITE + f"  [Google] {translated}")
-                            save_translation_progress()
-                    except Exception as api_err:
-                        print(Fore.RED + f"  [Loi Mang] {str(api_err)}")
-                        print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
-                        for seg in batch_segs:
-                            translated = ""
-                            for attempt in range(3):
-                                try:
-                                    translated = google_translate(seg['text'], dest='vi')
-                                    break
-                                except Exception as e:
-                                    if attempt == 2: raise e
-                                    time.sleep(2)
-                            translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
-                            print(Fore.WHITE + f"  [Google] {translated}")
-                        save_translation_progress()
+                    return True
+
+                while True:
+                    if process_connect_hub_loop():
+                        break
             else:
                 print(Fore.CYAN + "  -> Su dung Google Translate (Mien phi)")
                 
