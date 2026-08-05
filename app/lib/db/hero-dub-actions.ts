@@ -72,6 +72,9 @@ export async function createDubTaskAction(data: {
   ttsVolume?: string;
   outputFolder?: string;
   translateContext?: string;
+  redesignThumbnailEnabled?: boolean;
+  thumbnailLogoSource?: string;
+  customThumbnailLogoUrl?: string;
   projectId?: number;
   scanConfigId?: number;
   brandingEnabled?: boolean;

@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { dubTasks, connectHubConnections, connectHubBridgeJobs, dubProjects } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: Request) {
   try {
@@ -60,7 +59,7 @@ export async function POST(request: Request) {
     promptText += `Hãy xuất ra tấm ảnh bìa hoàn thiện theo tỷ lệ chuẩn 16:9 sắc nét nhất.`;
 
     // 5. Khởi tạo Job trong bridge
-    const jobId = uuidv4();
+    const jobId = crypto.randomUUID();
     await db.insert(connectHubBridgeJobs).values({
       id: jobId,
       teamId: task.teamId,
