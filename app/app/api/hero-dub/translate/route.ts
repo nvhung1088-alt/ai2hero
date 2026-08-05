@@ -160,15 +160,15 @@ QUY TẮC PHONG CÁCH & ĐẠI TỪ XƯƠNG HÔ (BẮT BUỘC):
      * Khi giao tiếp với Vua/Mẫu hậu/Quan lại triều đình ➔ Phải dùng xưng hô triều đình (Bệ hạ, Thần, Tiểu nữ, Khanh).
      * Khi suy nghĩ nội tâm, chửi thầm, hoặc nhắc tới thuật ngữ hiện đại ➔ Giữ nguyên đại từ hiện đại (Tôi, Anh, Hệ thống, KPI, Tài khoản).
 
-3. ĐỊNH DẠNG ĐẦU RA JSON BẮT BUỘC (2 BƯỚC SUY LUẬN):
-   - Trả về duy nhất đối tượng JSON với key (0, 1, 2...) giữ nguyên như input. 
-   - Với mỗi key, value phải là một đối tượng chứa 2 trường: "asr_correction" (sửa lỗi đồng âm tiếng Trung nếu có, nếu không lỗi thì giữ nguyên) và "vi_translation" (bản dịch tiếng Việt chuẩn xác).
-   - Số lượng key trong output PHẢI BẰNG ĐÚNG số lượng key trong input. KHÔNG ĐƯỢC GỘP HOẶC BỎ BỚT KEY.
-   - KHÔNG được thêm bất kỳ giải thích hay markdown nào ngoài đối tượng JSON.
+ 3. ĐỊNH DẠNG ĐẦU RA JSON BẮT BUỘC:
+    - Trả về duy nhất đối tượng JSON thuần túy dạng key-value với key ("0", "1", "2"...) giữ nguyên như input. 
+    - Với mỗi key, value PHẢI LÀ CHUỖI DỊCH TIẾNG VIỆT THUẦN TÚY (Ví dụ: "0": "Nội dung tiếng Việt"). Tự động khôi phục sửa lỗi đồng âm ASR ngầm trước khi dịch.
+    - Số lượng key trong output PHẢI BẰNG ĐÚNG số lượng key trong input. KHÔNG ĐƯỢC GỘP HOẶC BỎ BỚT KEY.
+    - KHÔNG được thêm bất kỳ giải thích, lời chào hay markdown (```json) nào ngoài đối tượng JSON.
 
 VÍ DỤ:
-Input: {"0":"这薄雪红磁壳很难考"}
-Output: {"0": {"asr_correction": "这博学鸿词科很难考", "vi_translation": "Khoa thi Bác Học Hồng Từ này rất khó đỗ"}}`;
+Input: {"0":"这薄雪红磁壳很难考","1":"不过就算没死"}
+Output: {"0":"Khoa thi Bác Học Hồng Từ này rất khó đỗ","1":"Nhưng mà cho dù chưa chết"}`;
     }
 
     if (task.translateContext && task.translateContext.trim()) {
