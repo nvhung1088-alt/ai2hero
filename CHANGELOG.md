@@ -2,6 +2,7 @@
 
 ## 2026-08-05 — HeroDub: Redesign AI Thumbnail UI & Connect Hub Integration
 - **Connect Hub Image AI Selection**: Lọc và hiển thị danh sách các ứng dụng AI chuyên xử lý/sinh ảnh (`connectedAiImageApps`) từ Connect Hub lên form tạo tác vụ HeroDub.
+- **Browser AI Bridge Image Support Fix**: Bổ sung action `generate_image` vào Browser AI Bridge runner và connector definition, fix dứt điểm lỗi *"Action generate_image không được hỗ trợ bởi Browser AI Bridge"*.
 - **Image AI Test & Live Preview**: Bổ sung nút **Test kết nối & Thử nghiệm mẫu** gọi Server Action `testImageAiConnectionAction` sinh ảnh test thực tế từ Connect Hub và hiển thị ảnh mẫu trực tiếp trên form.
 - **Brand Logo & Project Target**: Tự động hiển thị dropdown chọn **Dự Án Thương Hiệu** lấy Logo khi nguồn logo được chọn là "Dự án".
 - **Logo Position Selection**: Thêm tùy chọn vị trí hiển thị Logo trên ảnh bìa (`Top-Left`, `Top-Right`, `Bottom-Left`, `Bottom-Right`, `Center`).
