@@ -1,7 +1,9 @@
-// content-gemini.js - Ai2Hero Bridge Content Script for Gemini Web
-console.log('[Ai2Hero Bridge] Gemini Content Script loaded.');
+if (!window.hasAi2HeroBridgeGemini) {
+  window.hasAi2HeroBridgeGemini = true;
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('[Ai2Hero Bridge] Gemini Content Script loaded.');
+
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'PING') {
     sendResponse({ status: 'READY', url: window.location.href });
     return true;
@@ -58,8 +60,30 @@ async function processGeminiJob(promptText, attachments) {
 
   // 3. Xử lý đính kèm nếu có (Ảnh/Video)
   if (attachments && Array.isArray(attachments) && attachments.length > 0) {
-    console.log('[Ai2Hero Bridge] Phao đính kèm:', attachments.length);
-    // TODO: Hỗ trợ upload ảnh/file qua FileInput DOM nếu cần
+    console.log(`[Ai2Hero Bridge] Xử lý ${attachments.length} đính kèm...`);
+    
+    for (const attachBase64 of attachments) {
+      if (typeof attachBase64 === 'string' && attachBase64.startsWith('data:')) {
+        try {
+          const res = await fetch(attachBase64);
+          const blob = await res.blob();
+          const file = new File([blob], "attachment.png", { type: blob.type });
+
+          const dt = new DataTransfer();
+          dt.items.add(file);
+
+          const pasteEvent = new ClipboardEvent('paste', {
+            clipboardData: dt,
+            bubbles: true,
+            cancelable: true
+          });
+          inputEl.dispatchEvent(pasteEvent);
+          await new Promise(r => setTimeout(r, 1000)); // Đợi Gemini xử lý ảnh
+        } catch (e) {
+          console.warn('[Ai2Hero Bridge] Không thể dán ảnh đính kèm:', e);
+        }
+      }
+    }
   }
 
   // 4. Dò tìm nút Gửi (Send Button)
@@ -129,7 +153,19 @@ function waitForGeminiResponse() {
       if (elements.length === 0) return '';
       // Lấy phần tử phản hồi cuối cùng
       const lastEl = elements[elements.length - 1];
-      return lastEl.innerText.trim();
+      
+      // Lấy ảnh nếu có
+      const images = lastEl.querySelectorAll('img:not([alt*="avatar"]):not([alt*="logo"])');
+      let imgMarkdown = '';
+      if (images.length > 0) {
+        images.forEach(img => {
+          if (img.src && !img.src.startsWith('data:image/svg')) {
+             imgMarkdown += `![Image](${img.src})\n`;
+          }
+        });
+      }
+      
+      return (lastEl.innerText.trim() + '\n' + imgMarkdown).trim();
     };
 
     const globalTimeout = setTimeout(() => {
@@ -163,4 +199,5 @@ function waitForGeminiResponse() {
       characterData: true
     });
   });
+}
 }

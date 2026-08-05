@@ -1312,7 +1312,8 @@ export async function testTranslateConnectionAction(
 export async function testImageAiConnectionAction(
   teamId: number,
   appSlug: string,
-  modelName: string
+  modelName: string,
+  sampleImageUrl?: string
 ) {
   try {
     const [connection] = await db
@@ -1328,7 +1329,11 @@ export async function testImageAiConnectionAction(
     const decryptedJson = decryptField(connection.encryptedCredentials) || '{}';
     const credentials = JSON.parse(decryptedJson);
 
-    const testPrompt = "A futuristic cinematic movie poster background with neon cyber lights, high detail 8k";
+    // Ảnh đính kèm mẫu mặc định nếu người dùng chưa chọn ảnh
+    const defaultSampleImage = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80";
+    const imageUrlToTest = sampleImageUrl && sampleImageUrl.startsWith('http') ? sampleImageUrl : defaultSampleImage;
+
+    const testPrompt = `Hãy thiết kế lại hình ảnh thumbnail này sang phiên bản Tiếng Việt Nam chuyên nghiệp. Giữ nguyên 100% hình dạng, màu sắc và tỷ lệ logo gốc từ ảnh đính kèm. Đảm bảo giữ nguyên tỷ lệ khung hình gốc, phong cách đẹp mắt và ấn tượng.`;
     const testJobId = crypto.randomUUID();
 
     const result = await executeAction(appSlug, credentials, 'generate_image', {
@@ -1337,8 +1342,9 @@ export async function testImageAiConnectionAction(
       teamId: teamId,
       connectionId: connection.id,
       prompt: testPrompt,
-      width: 512,
-      height: 512
+      attachments: [imageUrlToTest],
+      width: 1280,
+      height: 720
     });
 
     if (!result.success || !result.data) {

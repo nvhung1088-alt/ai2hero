@@ -1,7 +1,9 @@
-// content-chatgpt.js - Ai2Hero Bridge Content Script for ChatGPT Web
-console.log('[Ai2Hero Bridge] ChatGPT Content Script loaded.');
+if (!window.hasAi2HeroBridgeChatGPT) {
+  window.hasAi2HeroBridgeChatGPT = true;
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('[Ai2Hero Bridge] ChatGPT Content Script loaded.');
+
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'PING') {
     sendResponse({ status: 'READY', url: window.location.href });
     return true;
@@ -47,16 +49,40 @@ async function processChatGPTJob(promptText, attachments) {
     inputEl.value = promptText;
     inputEl.dispatchEvent(new Event('input', { bubbles: true }));
   } else {
-    inputEl.innerHTML = `<p>${promptText.replace(/\n/g, '<br>')}</p>`;
+    // Dành cho ChatGPT mới dùng contenteditable
+    inputEl.innerHTML = ''; // Clear text
+    document.execCommand('insertText', false, promptText);
     inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-    inputEl.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   await new Promise((r) => setTimeout(r, 600));
 
   // 3. Xử lý đính kèm nếu có
   if (attachments && Array.isArray(attachments) && attachments.length > 0) {
-    console.log('[Ai2Hero Bridge ChatGPT] Phao đính kèm:', attachments.length);
+    console.log(`[Ai2Hero Bridge ChatGPT] Xử lý ${attachments.length} đính kèm...`);
+    
+    for (const attachBase64 of attachments) {
+      if (typeof attachBase64 === 'string' && attachBase64.startsWith('data:')) {
+        try {
+          const res = await fetch(attachBase64);
+          const blob = await res.blob();
+          const file = new File([blob], "attachment.png", { type: blob.type });
+
+          const dt = new DataTransfer();
+          dt.items.add(file);
+
+          const pasteEvent = new ClipboardEvent('paste', {
+            clipboardData: dt,
+            bubbles: true,
+            cancelable: true
+          });
+          inputEl.dispatchEvent(pasteEvent);
+          await new Promise(r => setTimeout(r, 1000)); // Đợi ChatGPT xử lý ảnh upload
+        } catch (e) {
+          console.warn('[Ai2Hero Bridge] Không thể dán ảnh đính kèm:', e);
+        }
+      }
+    }
   }
 
   // 4. Dò tìm nút Gửi (Send Button)
@@ -117,7 +143,20 @@ function waitForChatGPTResponse() {
 
       if (elements.length === 0) return '';
       const lastEl = elements[elements.length - 1];
-      return lastEl.innerText.trim();
+      
+      // Kiểm tra xem có ảnh sinh ra không
+      const images = lastEl.querySelectorAll('img:not([alt*="avatar"]):not([alt*="logo"])');
+      let imgMarkdown = '';
+      if (images.length > 0) {
+        images.forEach(img => {
+          // Lấy src, lưu ý src gốc của DALL-E có thể ở attribute khác, nhưng chuẩn thường là src
+          if (img.src && !img.src.startsWith('data:image/svg')) {
+             imgMarkdown += `![Image](${img.src})\n`;
+          }
+        });
+      }
+
+      return (lastEl.innerText.trim() + '\n' + imgMarkdown).trim();
     };
 
     const globalTimeout = setTimeout(() => {
@@ -150,4 +189,5 @@ function waitForChatGPTResponse() {
       characterData: true
     });
   });
+}
 }

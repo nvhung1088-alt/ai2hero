@@ -62,43 +62,87 @@ async function pollJobAndExecute() {
     chrome.action.setBadgeBackgroundColor({ color: '#2196F3' });
 
     // 2. Tìm hoặc Mở Tab cho targetAi
-    const targetUrl = job.targetAi === 'chatgpt' 
-      ? 'https://chatgpt.com/*' 
-      : 'https://gemini.google.com/*';
-
-    const defaultOpenUrl = job.targetAi === 'chatgpt'
-      ? 'https://chatgpt.com/'
-      : 'https://gemini.google.com/app';
-
-    let tabs = await chrome.tabs.query({ url: targetUrl });
-    let tab = tabs.length > 0 ? tabs[0] : null;
-
-    if (!tab) {
-      console.log(`[Ai2Hero Bridge] Mở tab mới cho ${job.targetAi}...`);
-      tab = await chrome.tabs.create({ url: defaultOpenUrl, active: true });
-      await new Promise(r => setTimeout(r, 4000)); // Chờ trang load
-    }
-
-    // 3. Gửi Job tới Content Script
     let responseFromContent = null;
-    let retryCount = 0;
+    
+    try {
+      const targetUrl = job.targetAi === 'chatgpt' 
+        ? 'https://chatgpt.com/*' 
+        : 'https://gemini.google.com/*';
 
-    while (retryCount < 3) {
-      try {
-        responseFromContent = await chrome.tabs.sendMessage(tab.id, {
-          action: 'PROCESS_AI_JOB',
-          job
-        });
-        break;
-      } catch (err) {
-        console.warn(`[Ai2Hero Bridge] Chờ Content Script sẵn sàng... (Lần ${retryCount + 1})`);
-        retryCount++;
-        await new Promise(r => setTimeout(r, 2000));
+      const defaultOpenUrl = job.targetAi === 'chatgpt'
+        ? 'https://chatgpt.com/'
+        : 'https://gemini.google.com/app';
+
+      let tabs = await chrome.tabs.query({ url: targetUrl });
+      let tab = tabs.length > 0 ? tabs[0] : null;
+
+      if (!tab) {
+        console.log(`[Ai2Hero Bridge] Mở tab mới cho ${job.targetAi}...`);
+        tab = await chrome.tabs.create({ url: defaultOpenUrl, active: true });
+        await new Promise(r => setTimeout(r, 4000)); // Chờ trang load
       }
-    }
 
-    if (!responseFromContent) {
-      throw new Error('Content Script không phản hồi trên tab AI.');
+      // Xử lý đính kèm: Chuyển URL thành Base64 từ Background (để né CORS ở content script)
+      let processedAttachments = [];
+      if (job.attachments && Array.isArray(job.attachments)) {
+        for (const attach of job.attachments) {
+          if (typeof attach === 'string' && attach.startsWith('http')) {
+            try {
+               const imgRes = await fetch(attach);
+               const blob = await imgRes.blob();
+               const reader = new FileReader();
+               const base64Data = await new Promise(resolve => {
+                  reader.onloadend = () => resolve(reader.result);
+                  reader.readAsDataURL(blob);
+               });
+               processedAttachments.push(base64Data);
+            } catch (err) {
+               console.warn('[Ai2Hero Bridge] Lỗi tải ảnh đính kèm:', err);
+            }
+          } else {
+            processedAttachments.push(attach);
+          }
+        }
+      }
+      job.attachments = processedAttachments;
+
+      // 3. Gửi Job tới Content Script
+      let retryCount = 0;
+
+      while (retryCount < 3) {
+        try {
+          responseFromContent = await chrome.tabs.sendMessage(tab.id, {
+            action: 'PROCESS_AI_JOB',
+            job
+          });
+          break;
+        } catch (err) {
+          console.warn(`[Ai2Hero Bridge] SendMessage thất bại (Lần ${retryCount + 1}): ${err.message}. Đang tự động tiêm Script...`);
+          
+          // Tự động tiêm Script vào Tab nếu chưa có
+          const scriptFile = job.targetAi === 'chatgpt' ? 'content-chatgpt.js' : 'content-gemini.js';
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: [scriptFile]
+            });
+            console.log(`[Ai2Hero Bridge] Đã ép tiêm thành công ${scriptFile} vào Tab #${tab.id}`);
+            await new Promise(r => setTimeout(r, 1000)); // Chờ script khởi động
+          } catch (injectErr) {
+            console.warn('[Ai2Hero Bridge] Lỗi khi tự động tiêm Script:', injectErr);
+          }
+
+          retryCount++;
+        }
+      }
+
+      if (!responseFromContent) {
+        throw new Error('Content Script không phản hồi trên tab AI.');
+      }
+
+    } catch (jobError) {
+       // Bắt lỗi khi xử lý job (không tìm thấy tab, hoặc content script lỗi)
+       responseFromContent = { success: false, error: jobError.message };
     }
 
     // 4. Submit kết quả về Server
@@ -120,13 +164,13 @@ async function pollJobAndExecute() {
     if (submitRes.ok) {
       processedJobsCount++;
       await chrome.storage.local.set({ processedJobsCount });
-      console.log(`[Ai2Hero Bridge] Nộp kết quả Job #${job.id} THÀNH CÔNG!`);
+      console.log(`[Ai2Hero Bridge] Nộp kết quả Job #${job.id} thành công!`);
     } else {
       console.error(`[Ai2Hero Bridge] Lỗi nộp kết quả Job #${job.id}`);
     }
 
   } catch (err) {
-    console.error('[Ai2Hero Bridge] Poll error:', err);
+    console.error('[Ai2Hero Bridge] Poll network error:', err);
   } finally {
     isPolling = false;
   }

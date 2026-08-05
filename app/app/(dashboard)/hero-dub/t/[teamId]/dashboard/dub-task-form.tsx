@@ -267,10 +267,11 @@ export default function DubTaskForm({
     setIsTestingImageAi(true);
     setTestImageAiResult(null);
     try {
-      const res = await testImageAiConnectionAction(teamId, thumbnailAiAppSlug, thumbnailAiModel);
+      const sampleImg = selectedThumbnailUrl || localFilePaths || undefined;
+      const res = await testImageAiConnectionAction(teamId, thumbnailAiAppSlug, thumbnailAiModel, sampleImg);
       if (res.success) {
-        setTestImageAiResult({ success: true, msg: 'Kết nối Image AI thành công!', imageUrl: res.result });
-        showToast('Kết nối Image AI thành công!', 'success');
+        setTestImageAiResult({ success: true, msg: 'Kết nối & Thử nghiệm mẫu Thumbnail thành công!', imageUrl: res.result });
+        showToast('Kết nối & Thử nghiệm mẫu thành công!', 'success');
       } else {
         setTestImageAiResult({ success: false, msg: 'Lỗi: ' + res.error });
         showToast('Kết nối Image AI lỗi: ' + res.error, 'error');
