@@ -273,9 +273,18 @@ Output: {"0":"Khoa thi Bác Học Hồng Từ này rất khó đỗ","1":"Nhưng
         }
 
         const missingKeysCount = tempTexts.filter(t => t === '').length;
+        
+        // Điền fallback cho các key rỗng
+        const finalTexts = tempTexts.map((t, idx) => t === '' ? texts[idx] : t);
+
         if (missingKeysCount === 0) {
-          translatedTexts = tempTexts;
+          translatedTexts = finalTexts;
           console.log(`[API Translate] Attempt ${attempts} SUCCESS! All ${texts.length} keys translated cleanly.`);
+          break;
+        } else if (missingKeysCount < texts.length * 0.3) {
+          // Nếu chỉ thiếu một phần (dưới 30%), chấp nhận dùng fallback
+          translatedTexts = finalTexts;
+          console.warn(`[API Translate] Attempt ${attempts} PARTIAL SUCCESS: missing ${missingKeysCount} keys. Used original texts as fallback.`);
           break;
         } else {
           console.warn(`[API Translate] Attempt ${attempts} failed: missing ${missingKeysCount} keys out of ${texts.length}.`);
