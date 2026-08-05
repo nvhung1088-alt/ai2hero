@@ -1,4 +1,4 @@
-# AI2HERO — START
+﻿# AI2HERO — START
 > Cap nhat: 2026-06-28
 
 ## TRANG THAI
@@ -145,6 +145,9 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Gỡ bỏ hoàn toàn luồng code tính năng **Dịch & Redesign Thumbnail bằng AI** khỏi Hero Downloader (Xóa API, Schema DB `translatedThumbnailUrl`, UI Toolbar, Modal so sánh) giúp hệ thống quay về tối giản chỉ tải về 1 Ảnh bìa gốc + 1 Video MP4.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- **2026-08-05 (hero-dub - Translation Cascade Fallback)**:
+  - 🔄 **Cơ Chế Cứu Hộ 3 Tầng**: Triển khai kiến trúc State Machine trong Python Worker (`herodub_worker.py`). Luồng dịch tự động bẻ lái: Browser AI Bridge (Gửi toàn bộ 1 lần 100% video) ➔ Nếu lỗi (tự động Fallback chẻ nhỏ 30 câu/lần gọi DeepSeek API) ➔ Nếu lỗi tiếp (Fallback Google Translate).
+  - ⚡ **Rút gọn System Prompt siêu tốc**: Cập nhật Server API (`translate/route.ts`) tự động tối giản chỉ còn 3 quy tắc json thuần túy nếu là Browser AI Bridge, ngăn chặn tình trạng phình to Ram hoặc bị AI web từ chối. Hỗ trợ Worker linh hoạt đổi model cứu hộ qua tham số `fallbackModel` trong Body.
 - **2026-08-04 (connect-hub - Browser AI Bridge Connector & Chrome Extension)**:
   - 🌐 **Thêm Connector mới trong Connect Hub**: Tạo `browser-ai-bridge` trong registry và engine của Connect Hub, mở cổng chung cho toàn bộ các MVP (Hero-Dub, Hero-Video-Maker, AI Chat...) gọi AI miễn phí qua trình duyệt.
   - 🗄️ **Schema Database**: Bổ sung bảng `connectHubBridgeJobs` quản lý hàng đợi tác vụ dịch thuật & automation AI (text, ảnh, video) từ Vercel Serverless tới Chrome Extension.

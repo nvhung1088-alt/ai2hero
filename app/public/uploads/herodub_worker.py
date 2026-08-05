@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import time
 import json
@@ -687,6 +687,11 @@ def process_task(token, task):
                         elif i > 0:
                             prev_context = [seg['text'] for seg in current_untranslated[max(0, i-5):i]]
                             
+                        has_browser_ai_lock = False
+                        if is_browser_ai and not force_fallback_to_deepseek:
+                            acquire_resource_lock(token, task_id, "browser_ai", "Browser AI Bridge")
+                            has_browser_ai_lock = True
+                            
                         try:
                             payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
                             if force_fallback_to_deepseek:
@@ -694,6 +699,10 @@ def process_task(token, task):
                                 
                             timeout_val = 180 if (is_browser_ai and not force_fallback_to_deepseek) else 90
                             res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=timeout_val)
+                            
+                            if has_browser_ai_lock:
+                                release_resource_lock(token, task_id, "browser_ai")
+                                has_browser_ai_lock = False
                             
                             if res.status_code == 200:
                                 data = res.json()
@@ -734,6 +743,9 @@ def process_task(token, task):
                             else:
                                 raise Exception(f"HTTP Error {res.status_code}")
                         except Exception as api_err:
+                            if has_browser_ai_lock:
+                                release_resource_lock(token, task_id, "browser_ai")
+                                
                             print(Fore.RED + f"  [Loi AI/Mang] {str(api_err)}")
                             if is_browser_ai and not force_fallback_to_deepseek:
                                 print(Fore.YELLOW + "  [!] Browser AI that bai! Fallback sang DeepSeek (Batching 30 cau/lan)...")
