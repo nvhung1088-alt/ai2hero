@@ -24,7 +24,7 @@ import {
   getDubDictionariesAction,
   autoDetectDictionaryAction
 } from '@/lib/db/hero-dub-dictionary-actions';
-import { testTranslateConnectionAction } from '@/lib/db/hero-dub-actions';
+import { testTranslateConnectionAction, testImageAiConnectionAction } from '@/lib/db/hero-dub-actions';
 import { DubDictionary } from '@/lib/db/schema';
 
 interface DubTaskFormProps {
@@ -65,6 +65,7 @@ interface DubTaskFormProps {
   setSelectedAiModel: (_model: string) => void;
   connectedAiApps?: { slug: string; name: string; models: any[] }[];
   connectedAiTtsApps?: { slug: string; name: string; voices: string[] }[];
+  connectedAiImageApps?: { slug: string; name: string; models: any[] }[];
   
   ttsEnabled: boolean;
   setTtsEnabled: (_enabled: boolean) => void;
@@ -109,9 +110,17 @@ interface DubTaskFormProps {
   redesignThumbnailEnabled?: boolean;
   setRedesignThumbnailEnabled?: (_val: boolean) => void;
   thumbnailLogoSource?: string;
-  setThumbnailLogoSource?: (_val: string) => void;
+  setThumbnailLogoSource?: (_source: string) => void;
   customThumbnailLogoUrl?: string;
-  setCustomThumbnailLogoUrl?: (_val: string) => void;
+  setCustomThumbnailLogoUrl?: (_url: string) => void;
+  thumbnailAiAppSlug?: string;
+  setThumbnailAiAppSlug?: (_slug: string) => void;
+  thumbnailAiModel?: string;
+  setThumbnailAiModel?: (_model: string) => void;
+  thumbnailProjectId?: number | '';
+  setThumbnailProjectId?: (_id: number | '') => void;
+  thumbnailLogoPosition?: string;
+  setThumbnailLogoPosition?: (_pos: string) => void;
 }
 
 export default function DubTaskForm({
@@ -149,6 +158,7 @@ export default function DubTaskForm({
   setSelectedAiModel,
   connectedAiApps,
   connectedAiTtsApps,
+  connectedAiImageApps,
   ttsEnabled,
   setTtsEnabled,
   ttsEngine,
@@ -188,11 +198,23 @@ export default function DubTaskForm({
   setThumbnailLogoSource: externalSetLogoSource,
   customThumbnailLogoUrl: externalCustomLogoUrl,
   setCustomThumbnailLogoUrl: externalSetCustomLogoUrl,
+  thumbnailAiAppSlug: externalThumbnailAiAppSlug,
+  setThumbnailAiAppSlug: externalSetThumbnailAiAppSlug,
+  thumbnailAiModel: externalThumbnailAiModel,
+  setThumbnailAiModel: externalSetThumbnailAiModel,
+  thumbnailProjectId: externalThumbnailProjectId,
+  setThumbnailProjectId: externalSetThumbnailProjectId,
+  thumbnailLogoPosition: externalThumbnailLogoPosition,
+  setThumbnailLogoPosition: externalSetThumbnailLogoPosition,
 }: DubTaskFormProps) {
   // Local fallback states if not passed as props
   const [internalRedesignEnabled, setInternalRedesignEnabled] = React.useState(false);
   const [internalLogoSource, setInternalLogoSource] = React.useState('project');
   const [internalCustomLogoUrl, setInternalCustomLogoUrl] = React.useState('');
+  const [internalThumbnailAiAppSlug, setInternalThumbnailAiAppSlug] = React.useState('');
+  const [internalThumbnailAiModel, setInternalThumbnailAiModel] = React.useState('');
+  const [internalThumbnailProjectId, setInternalThumbnailProjectId] = React.useState<number | ''>('');
+  const [internalThumbnailLogoPosition, setInternalThumbnailLogoPosition] = React.useState('top-left');
 
   const redesignThumbnailEnabled = externalRedesignEnabled !== undefined ? externalRedesignEnabled : internalRedesignEnabled;
   const setRedesignThumbnailEnabled = externalSetRedesignEnabled || setInternalRedesignEnabled;
@@ -200,6 +222,14 @@ export default function DubTaskForm({
   const setThumbnailLogoSource = externalSetLogoSource || setInternalLogoSource;
   const customThumbnailLogoUrl = externalCustomLogoUrl !== undefined ? externalCustomLogoUrl : internalCustomLogoUrl;
   const setCustomThumbnailLogoUrl = externalSetCustomLogoUrl || setInternalCustomLogoUrl;
+  const thumbnailAiAppSlug = externalThumbnailAiAppSlug !== undefined ? externalThumbnailAiAppSlug : internalThumbnailAiAppSlug;
+  const setThumbnailAiAppSlug = externalSetThumbnailAiAppSlug || setInternalThumbnailAiAppSlug;
+  const thumbnailAiModel = externalThumbnailAiModel !== undefined ? externalThumbnailAiModel : internalThumbnailAiModel;
+  const setThumbnailAiModel = externalSetThumbnailAiModel || setInternalThumbnailAiModel;
+  const thumbnailProjectId = externalThumbnailProjectId !== undefined ? externalThumbnailProjectId : internalThumbnailProjectId;
+  const setThumbnailProjectId = externalSetThumbnailProjectId || setInternalThumbnailProjectId;
+  const thumbnailLogoPosition = externalThumbnailLogoPosition !== undefined ? externalThumbnailLogoPosition : internalThumbnailLogoPosition;
+  const setThumbnailLogoPosition = externalSetThumbnailLogoPosition || setInternalThumbnailLogoPosition;
 
   const [dbDictionaries, setDbDictionaries] = React.useState<DubDictionary[]>([]);
   const [selectedDictId, setSelectedDictId] = React.useState<string>('');
@@ -207,6 +237,9 @@ export default function DubTaskForm({
 
   const [isTestingConnection, setIsTestingConnection] = React.useState(false);
   const [testConnectionResult, setTestConnectionResult] = React.useState<{success?: boolean, msg?: string}|null>(null);
+
+  const [isTestingImageAi, setIsTestingImageAi] = React.useState(false);
+  const [testImageAiResult, setTestImageAiResult] = React.useState<{success?: boolean, msg?: string, imageUrl?: string}|null>(null);
 
   const handleTestConnection = async () => {
     if (!selectedAiAppSlug) return;
@@ -223,6 +256,29 @@ export default function DubTaskForm({
       setTestConnectionResult({ success: false, msg: 'Lỗi mạng: ' + err.message });
     } finally {
       setIsTestingConnection(false);
+    }
+  };
+
+  const handleTestImageConnection = async () => {
+    if (!thumbnailAiAppSlug) {
+      showToast('Vui lòng chọn Ứng dụng AI Chỉnh Ảnh trước!', 'error');
+      return;
+    }
+    setIsTestingImageAi(true);
+    setTestImageAiResult(null);
+    try {
+      const res = await testImageAiConnectionAction(teamId, thumbnailAiAppSlug, thumbnailAiModel);
+      if (res.success) {
+        setTestImageAiResult({ success: true, msg: 'Kết nối Image AI thành công!', imageUrl: res.result });
+        showToast('Kết nối Image AI thành công!', 'success');
+      } else {
+        setTestImageAiResult({ success: false, msg: 'Lỗi: ' + res.error });
+        showToast('Kết nối Image AI lỗi: ' + res.error, 'error');
+      }
+    } catch (err: any) {
+      setTestImageAiResult({ success: false, msg: 'Lỗi mạng: ' + err.message });
+    } finally {
+      setIsTestingImageAi(false);
     }
   };
 
@@ -893,6 +949,90 @@ export default function DubTaskForm({
           {redesignThumbnailEnabled && (
             <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200 bg-amber-500/5 p-3 rounded-xl border border-amber-500/20">
               <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[9px] font-extrabold text-amber-300 uppercase">Ứng dụng AI Chỉnh Ảnh (Connect Hub)</label>
+                  {(!connectedAiImageApps || connectedAiImageApps.length === 0) && (
+                    <Link href={`/t/${teamId}/connect-hub`} className="text-[9px] text-amber-500 hover:text-amber-400 flex items-center gap-1">
+                      Kết nối ngay <ExternalLink className="h-2.5 w-2.5" />
+                    </Link>
+                  )}
+                </div>
+                <select
+                  value={thumbnailAiAppSlug}
+                  onChange={(e) => {
+                    setThumbnailAiAppSlug(e.target.value);
+                    const app = connectedAiImageApps?.find(a => a.slug === e.target.value);
+                    if (app && app.models && app.models.length > 0) {
+                      setThumbnailAiModel(app.models[0].id || app.models[0].name);
+                    } else {
+                      setThumbnailAiModel('');
+                    }
+                  }}
+                  disabled={creatingTask}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                >
+                  <option value="">-- Chọn Ứng dụng Image AI --</option>
+                  {connectedAiImageApps?.map(app => (
+                    <option key={app.slug} value={app.slug}>
+                      {app.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {thumbnailAiAppSlug && (
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <label className="text-[9px] font-extrabold text-amber-300 uppercase">AI Model (Mô hình)</label>
+                  <select
+                    value={thumbnailAiModel}
+                    onChange={(e) => setThumbnailAiModel(e.target.value)}
+                    disabled={creatingTask || !thumbnailAiAppSlug}
+                    className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                  >
+                    {!thumbnailAiAppSlug ? (
+                      <option value="">Vui lòng chọn Ứng dụng AI trước</option>
+                    ) : (
+                      <>
+                        <option value="">-- Chọn Mô hình AI --</option>
+                        {connectedAiImageApps?.find(a => a.slug === thumbnailAiAppSlug)?.models?.map(m => (
+                          <option key={m.id || m.name} value={m.id || m.name}>
+                            {m.name || m.id}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+
+                  <div className="mt-2 text-right">
+                    <button
+                      type="button"
+                      onClick={handleTestImageConnection}
+                      disabled={isTestingImageAi}
+                      className="text-[10px] bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1 border border-amber-500/20 cursor-pointer"
+                    >
+                      {isTestingImageAi ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                      {isTestingImageAi ? 'Đang thử nghiệm tạo mẫu...' : 'Test kết nối & Thử nghiệm mẫu'}
+                    </button>
+                    {testImageAiResult && (
+                      <div className={`mt-2 p-2 rounded-lg text-[10px] text-left border ${testImageAiResult.success ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                        <div>{testImageAiResult.msg}</div>
+                        {testImageAiResult.imageUrl && (
+                          <div className="mt-2">
+                            <span className="block text-[9px] text-gray-400 mb-1">Mẫu ảnh AI sinh ra:</span>
+                            {testImageAiResult.imageUrl.startsWith('http') ? (
+                              <img src={testImageAiResult.imageUrl} alt="AI Preview" className="w-32 h-32 object-cover rounded-lg border border-amber-500/30" />
+                            ) : (
+                              <div className="p-1 bg-black/50 font-mono text-[8px] break-all max-h-20 overflow-y-auto rounded">{testImageAiResult.imageUrl}</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1.5 border-t border-amber-500/20 pt-3">
                 <label className="text-[9px] font-extrabold text-amber-300 uppercase">Nguồn Logo Mẫu Chèn Vào Ảnh</label>
                 <select
                   value={thumbnailLogoSource}
@@ -906,6 +1046,23 @@ export default function DubTaskForm({
                 </select>
               </div>
 
+              {thumbnailLogoSource === 'project' && (
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <label className="text-[9px] font-extrabold text-amber-300 uppercase">Chọn Dự Án Lấy Logo</label>
+                  <select
+                    value={thumbnailProjectId}
+                    onChange={(e) => setThumbnailProjectId(e.target.value === '' ? '' : parseInt(e.target.value))}
+                    disabled={creatingTask}
+                    className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                  >
+                    <option value="">-- Chọn Dự án (Thương hiệu) --</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} {p.logoUrl ? '(Có Logo)' : '(Chưa có Logo)'}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {thumbnailLogoSource === 'custom' && (
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-extrabold text-gray-400 uppercase">Đường dẫn Logo Tùy Chỉnh (URL / Path)</label>
@@ -917,6 +1074,24 @@ export default function DubTaskForm({
                     placeholder="VD: https://domain.com/logo.png hoặc C:\logo.png"
                     className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/55 font-mono"
                   />
+                </div>
+              )}
+
+              {thumbnailLogoSource !== 'none' && (
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-extrabold text-amber-300 uppercase">Vị Trí Hiển Thị Logo Trên Ảnh</label>
+                  <select
+                    value={thumbnailLogoPosition}
+                    onChange={(e) => setThumbnailLogoPosition(e.target.value)}
+                    disabled={creatingTask}
+                    className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                  >
+                    <option value="top-left">Góc trên bên trái (Top-Left) - Mặc định</option>
+                    <option value="top-right">Góc trên bên phải (Top-Right)</option>
+                    <option value="bottom-left">Góc dưới bên trái (Bottom-Left)</option>
+                    <option value="bottom-right">Góc dưới bên phải (Bottom-Right)</option>
+                    <option value="center">Ở giữa ảnh (Center)</option>
+                  </select>
                 </div>
               )}
             </div>

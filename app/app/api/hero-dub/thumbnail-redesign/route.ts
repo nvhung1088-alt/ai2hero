@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       teamId: task.teamId,
       connectionId: connection.id,
       callerModule: 'hero-dub',
-      targetAi: 'gemini',
+      targetAi: task.thumbnailAiAppSlug || 'gemini',
       prompt: promptText,
       attachments: attachments,
       status: 'pending',

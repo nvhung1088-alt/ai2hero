@@ -96,6 +96,14 @@ export default async function HeroDubDashboardPage({
       };
     });
 
+  const connectedAiImageApps = ALL_CONNECTORS
+    .filter(c => activeSlugs.includes(c.slug) && c.category === 'ai' && c.aiCapability?.includes('image') && c.aiModels && c.aiModels.length > 0)
+    .map(c => ({
+      slug: c.slug,
+      name: c.name,
+      models: c.aiModels?.filter(m => m.type === 'image') || []
+    }));
+
   return (
     <DashboardClient
       teamId={teamId}
@@ -103,6 +111,7 @@ export default async function HeroDubDashboardPage({
       teamName={team.name}
       connectedAiApps={connectedAiApps}
       connectedAiTtsApps={connectedAiTtsApps}
+      connectedAiImageApps={connectedAiImageApps}
       initialTasks={initialTasks}
       initialTotalCount={initialTotalCount}
       initialTaskStats={initialTaskStats}

@@ -75,6 +75,8 @@ export async function createDubTaskAction(data: {
   redesignThumbnailEnabled?: boolean;
   thumbnailLogoSource?: string;
   customThumbnailLogoUrl?: string;
+  thumbnailAiAppSlug?: string;
+  thumbnailAiModel?: string;
   projectId?: number;
   scanConfigId?: number;
   brandingEnabled?: boolean;
@@ -161,6 +163,8 @@ export async function createDubTaskAction(data: {
         redesignThumbnailEnabled: data.redesignThumbnailEnabled ?? false,
         thumbnailLogoSource: data.thumbnailLogoSource || 'project',
         customThumbnailLogoUrl: data.customThumbnailLogoUrl || null,
+        thumbnailAiAppSlug: data.thumbnailAiAppSlug || null,
+        thumbnailAiModel: data.thumbnailAiModel || null,
         status: 'pending',
         progress: '0',
         dedupeKey,
@@ -1304,4 +1308,60 @@ export async function testTranslateConnectionAction(
     return { success: false, error: err.message || 'Lỗi không xác định khi test.' };
   }
 }
+
+export async function testImageAiConnectionAction(
+  teamId: number,
+  appSlug: string,
+  modelName: string
+) {
+  try {
+    const [connection] = await db
+      .select()
+      .from(connectHubConnections)
+      .where(and(eq(connectHubConnections.teamId, teamId), eq(connectHubConnections.appSlug, appSlug)))
+      .limit(1);
+
+    if (!connection) {
+      return { success: false, error: 'Chưa cài đặt kết nối cho Ứng dụng Image AI này. Vui lòng kết nối trước.' };
+    }
+
+    const decryptedJson = decryptField(connection.encryptedCredentials) || '{}';
+    const credentials = JSON.parse(decryptedJson);
+
+    const testPrompt = "A futuristic cinematic movie poster background with neon cyber lights, high detail 8k";
+    const testJobId = crypto.randomUUID();
+
+    const result = await executeAction(appSlug, credentials, 'generate_image', {
+      jobId: testJobId,
+      model: modelName,
+      teamId: teamId,
+      connectionId: connection.id,
+      prompt: testPrompt,
+      width: 512,
+      height: 512
+    });
+
+    if (!result.success || !result.data) {
+      return { success: false, error: result.error || 'Test sinh ảnh thất bại' };
+    }
+
+    let imageUrl = '';
+    if (typeof result.data === 'string') {
+      imageUrl = result.data;
+    } else if (result.data.url) {
+      imageUrl = result.data.url;
+    } else if (result.data.image_url) {
+      imageUrl = result.data.image_url;
+    } else if (result.data.data && result.data.data[0]?.url) {
+      imageUrl = result.data.data[0].url;
+    } else {
+      imageUrl = JSON.stringify(result.data);
+    }
+
+    return { success: true, result: imageUrl };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Lỗi không xác định khi test Image AI.' };
+  }
+}
+
 

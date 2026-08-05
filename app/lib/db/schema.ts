@@ -2349,6 +2349,8 @@ export const dubScanConfigs = pgTable('dub_scan_configs', {
   customThumbnailLogoUrl: text('custom_thumbnail_logo_url'),
   aiAppSlug: varchar('ai_app_slug', { length: 100 }),
   aiModel: varchar('ai_model', { length: 100 }),
+  thumbnailAiAppSlug: varchar('thumbnail_ai_app_slug', { length: 100 }),
+  thumbnailAiModel: varchar('thumbnail_ai_model', { length: 100 }),
   lastScanAt: timestamp('last_scan_at'),
   scannedCount: integer('scanned_count').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
@@ -2395,6 +2397,8 @@ export const dubTasks = pgTable('dub_tasks', {
   redesignThumbnailEnabled: boolean('redesign_thumbnail_enabled').notNull().default(false),
   thumbnailLogoSource: varchar('thumbnail_logo_source', { length: 20 }).notNull().default('project'),
   customThumbnailLogoUrl: text('custom_thumbnail_logo_url'),
+  thumbnailAiAppSlug: varchar('thumbnail_ai_app_slug', { length: 100 }),
+  thumbnailAiModel: varchar('thumbnail_ai_model', { length: 100 }),
   
   // === Branding ===
   projectId: integer('project_id').references(() => dubProjects.id, { onDelete: 'set null' }),

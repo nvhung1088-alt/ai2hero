@@ -58,6 +58,7 @@ interface DashboardClientProps {
   teamName: string;
   connectedAiApps?: { slug: string; name: string; models: any[] }[];
   connectedAiTtsApps?: { slug: string; name: string; voices: string[] }[];
+  connectedAiImageApps?: { slug: string; name: string; models: any[] }[];
   initialTasks?: any[];
   initialTotalCount?: number;
   initialTaskStats?: { total: number; processing: number; pending: number; completed: number; failed: number };
@@ -70,6 +71,7 @@ export default function DashboardClient({
   userId,
   connectedAiApps,
   connectedAiTtsApps,
+  connectedAiImageApps,
   initialTasks = [],
   initialTotalCount = 0,
   initialTaskStats = { total: 0, processing: 0, pending: 0, completed: 0, failed: 0 },
@@ -248,6 +250,12 @@ export default function DashboardClient({
   const [selectedAiAppSlug, setSelectedAiAppSlug] = useState<string>('');
   const [selectedAiModel, setSelectedAiModel] = useState<string>('');
 
+  const [redesignThumbnailEnabled, setRedesignThumbnailEnabled] = useState<boolean>(false);
+  const [thumbnailLogoSource, setThumbnailLogoSource] = useState<string>('project');
+  const [customThumbnailLogoUrl, setCustomThumbnailLogoUrl] = useState<string>('');
+  const [thumbnailAiAppSlug, setThumbnailAiAppSlug] = useState<string>('');
+  const [thumbnailAiModel, setThumbnailAiModel] = useState<string>('');
+
   const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
 
   useEffect(() => {
@@ -281,6 +289,11 @@ export default function DashboardClient({
           
           if (s.selectedAiAppSlug !== undefined) setSelectedAiAppSlug(s.selectedAiAppSlug);
           if (s.selectedAiModel !== undefined) setSelectedAiModel(s.selectedAiModel);
+          if (s.redesignThumbnailEnabled !== undefined) setRedesignThumbnailEnabled(s.redesignThumbnailEnabled);
+          if (s.thumbnailLogoSource !== undefined) setThumbnailLogoSource(s.thumbnailLogoSource);
+          if (s.customThumbnailLogoUrl !== undefined) setCustomThumbnailLogoUrl(s.customThumbnailLogoUrl);
+          if (s.thumbnailAiAppSlug !== undefined) setThumbnailAiAppSlug(s.thumbnailAiAppSlug);
+          if (s.thumbnailAiModel !== undefined) setThumbnailAiModel(s.thumbnailAiModel);
           setHasLoadedSettings(true);
           return;
         }
@@ -311,11 +324,12 @@ export default function DashboardClient({
       const settings = {
         sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, subtitleMode, ttsEnabled, ttsEngine,
         ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder,
-        selectedAiAppSlug, selectedAiModel
+        selectedAiAppSlug, selectedAiModel,
+        redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel
       };
       localStorage.setItem('heroDubSettings', JSON.stringify(settings));
     }
-  }, [sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, hasLoadedSettings]);
+  }, [sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel, hasLoadedSettings]);
 
   const [creatingTask, setCreatingTask] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -342,6 +356,11 @@ export default function DashboardClient({
     translateContext?: string;
     aiAppSlug: string;
     aiModel: string;
+    redesignThumbnailEnabled?: boolean;
+    thumbnailLogoSource?: string;
+    customThumbnailLogoUrl?: string;
+    thumbnailAiAppSlug?: string;
+    thumbnailAiModel?: string;
     isActive: boolean;
     scannedCount: number;
     lastScanAt?: number | string | Date | null;
@@ -634,6 +653,11 @@ export default function DashboardClient({
           bgVolume: ttsEnabled ? bgVolume : undefined,
           ttsVolume: ttsEnabled ? ttsVolume : undefined,
           translateContext: translateContext,
+          redesignThumbnailEnabled,
+          thumbnailLogoSource,
+          customThumbnailLogoUrl,
+          thumbnailAiAppSlug,
+          thumbnailAiModel,
         });
 
         if (res.error) {
@@ -671,6 +695,11 @@ export default function DashboardClient({
             ttsVolume: ttsEnabled ? ttsVolume : undefined,
             outputFolder: outputFolder.trim() || undefined,
             translateContext: translateContext.trim() || undefined,
+            redesignThumbnailEnabled,
+            thumbnailLogoSource,
+            customThumbnailLogoUrl,
+            thumbnailAiAppSlug,
+            thumbnailAiModel,
             ...taskBranding,
           });
 
@@ -772,6 +801,11 @@ export default function DashboardClient({
         translateContext: translateContext.trim() || undefined,
         aiAppSlug: selectedAiAppSlug || undefined,
         aiModel: selectedAiModel || undefined,
+        redesignThumbnailEnabled,
+        thumbnailLogoSource,
+        customThumbnailLogoUrl,
+        thumbnailAiAppSlug,
+        thumbnailAiModel,
       });
 
       if (res.success) {
@@ -839,6 +873,13 @@ export default function DashboardClient({
     if (p.ttsVolume) setTtsVolume(p.ttsVolume);
     if (p.aiAppSlug) setSelectedAiAppSlug(p.aiAppSlug);
     if (p.aiModel) setSelectedAiModel(p.aiModel);
+    
+    setRedesignThumbnailEnabled(p.redesignThumbnailEnabled ?? false);
+    if (p.thumbnailLogoSource) setThumbnailLogoSource(p.thumbnailLogoSource);
+    if (p.customThumbnailLogoUrl) setCustomThumbnailLogoUrl(p.customThumbnailLogoUrl);
+    if (p.thumbnailAiAppSlug) setThumbnailAiAppSlug(p.thumbnailAiAppSlug);
+    if (p.thumbnailAiModel) setThumbnailAiModel(p.thumbnailAiModel);
+
     setUploadMode('folder'); 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1046,6 +1087,7 @@ export default function DashboardClient({
         setSelectedAiModel={setSelectedAiModel}
         connectedAiApps={connectedAiApps}
         connectedAiTtsApps={connectedAiTtsApps}
+        connectedAiImageApps={connectedAiImageApps}
         ttsEnabled={ttsEnabled}
         setTtsEnabled={setTtsEnabled}
         ttsEngine={ttsEngine}
@@ -1072,6 +1114,16 @@ export default function DashboardClient({
           await handleCreateTask(e);
           setIsTaskModalOpen(false);
         }}
+        redesignThumbnailEnabled={redesignThumbnailEnabled}
+        setRedesignThumbnailEnabled={setRedesignThumbnailEnabled}
+        thumbnailLogoSource={thumbnailLogoSource}
+        setThumbnailLogoSource={setThumbnailLogoSource}
+        customThumbnailLogoUrl={customThumbnailLogoUrl}
+        setCustomThumbnailLogoUrl={setCustomThumbnailLogoUrl}
+        thumbnailAiAppSlug={thumbnailAiAppSlug}
+        setThumbnailAiAppSlug={setThumbnailAiAppSlug}
+        thumbnailAiModel={thumbnailAiModel}
+        setThumbnailAiModel={setThumbnailAiModel}
         scanProjects={scanProjects}
         scanFolderPath={scanFolderPath}
         setScanFolderPath={setScanFolderPath}
