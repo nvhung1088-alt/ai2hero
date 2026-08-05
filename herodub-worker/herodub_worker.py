@@ -1309,6 +1309,9 @@ if __name__ == '__main__':
                                             "imageBase64": img_b64
                                         }, headers=headers, timeout=30)
 
+                                        if redesign_res.status_code not in [200, 202]:
+                                            print(Fore.RED + f"[!] API loi {redesign_res.status_code}: {redesign_res.text}")
+                                        
                                         res_json = redesign_res.json() if redesign_res.status_code in [200, 202] else {}
                                         job_id = res_json.get("jobId")
                                         new_thumb_url = res_json.get("resultThumbnailUrl")
@@ -1327,7 +1330,7 @@ if __name__ == '__main__':
                                                             new_thumb_url = p_json.get("resultThumbnailUrl")
                                                             break
                                                     elif poll_res.status_code != 202:
-                                                        print(Fore.YELLOW + f"[!] Polling báo loi ({poll_res.status_code}).")
+                                                        print(Fore.YELLOW + f"[!] Polling báo loi ({poll_res.status_code}): {poll_res.text}")
                                                         break
                                                 except Exception as p_err:
                                                     print(Fore.YELLOW + f"[!] Loi khi poll Thumbnail Job: {p_err}")
@@ -1338,7 +1341,7 @@ if __name__ == '__main__':
                                                 handler.write(img_data)
                                             print(Fore.GREEN + f"[✓] Da thiet ke & luu anh Thumbnail AI Tieng Viet moi: {os.path.basename(thumb_dest)}")
                                         else:
-                                            print(Fore.RED + f"[!] AI Redesign thiet ke thumbnail khong thanh cong. Su dung anh goc nhu phuong an du phong.")
+                                            print(Fore.RED + f"[!] AI Redesign thiet ke thumbnail khong thanh cong (Khong nhan duoc hinh anh). Su dung anh goc nhu phuong an du phong.")
                                             shutil.copy2(thumb_src, thumb_dest)
                                     except Exception as r_err:
                                         print(Fore.RED + f"[!] Loi khi thiet ke AI Thumbnail: {r_err}. Su dung anh goc du phong.")
