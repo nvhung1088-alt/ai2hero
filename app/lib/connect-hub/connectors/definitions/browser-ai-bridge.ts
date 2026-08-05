@@ -68,6 +68,26 @@ export const browserAiBridgeConnector: ConnectorDefinition = {
       ],
 
       testStrategy: 'direct',
+    },
+    {
+      slug: 'generate_image',
+      name: 'Sinh ảnh / Thiết kế lại ảnh',
+      description: 'Gửi yêu cầu thiết kế/sinh ảnh sang Gemini / ChatGPT trên trình duyệt.',
+      group: 'AI Vision & Image',
+      httpMethod: 'POST',
+      endpoint: '/bridge',
+      status: 'ready',
+      outputFields: ['content', 'targetAi', 'jobId'],
+      aiInstruction: 'Gửi prompt yêu cầu sinh ảnh sang AI Web trên trình duyệt.',
+      
+      inputSchema: [
+        { name: 'prompt', label: 'Nội dung Prompt', type: 'textarea', required: true, placeholder: 'Nhập yêu cầu tạo ảnh...' },
+        { name: 'targetAi', label: 'Nền tảng AI mục tiêu', type: 'select', required: true, options: ['gemini', 'chatgpt', 'claude'] },
+        { name: 'attachments', label: 'File đính kèm (JSON Base64/URL)', type: 'textarea', required: false },
+        { name: 'jobId', label: 'Job ID (Dùng khi Thử lại / Retry)', type: 'text', required: false },
+      ],
+
+      testStrategy: 'direct',
     }
   ],
 

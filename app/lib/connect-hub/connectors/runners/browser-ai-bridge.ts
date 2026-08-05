@@ -8,7 +8,7 @@ export async function runBrowserAiBridge(
   input: Record<string, any>,
   extraContext?: { teamId?: number; connectionId?: number; callerModule?: string }
 ): Promise<any> {
-  if (!['chat_completion', 'vision', 'image_generation'].includes(actionSlug)) {
+  if (!['chat_completion', 'vision', 'image_generation', 'generate_image'].includes(actionSlug)) {
     throw new Error(`Action "${actionSlug}" không được hỗ trợ bởi Browser AI Bridge.`);
   }
 
