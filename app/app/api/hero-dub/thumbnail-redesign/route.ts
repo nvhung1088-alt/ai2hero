@@ -23,15 +23,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
-    // 2. Tìm connection của browser-ai-bridge thuộc team này
+    // 2. Tìm connection của ứng dụng (Connect Hub / Browser Bridge) thuộc team này
+    const appSlugToFind = task.thumbnailAiAppSlug || 'connect-hub';
     const [connection] = await db
       .select()
       .from(connectHubConnections)
-      .where(and(eq(connectHubConnections.teamId, task.teamId), eq(connectHubConnections.appSlug, 'browser-ai-bridge'), eq(connectHubConnections.status, 'connected')))
+      .where(and(eq(connectHubConnections.teamId, task.teamId), eq(connectHubConnections.appSlug, appSlugToFind), eq(connectHubConnections.status, 'connected')))
       .limit(1);
 
     if (!connection) {
-      return NextResponse.json({ error: 'No active Browser AI Bridge connection found for this team' }, { status: 400 });
+      return NextResponse.json({ error: `No active connection found for ${appSlugToFind}` }, { status: 400 });
     }
 
     // 3. Chuẩn bị danh sách attachments
