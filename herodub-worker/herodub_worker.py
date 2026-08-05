@@ -656,8 +656,8 @@ def process_task(token, task):
                     json.dump(translated_segments, f, ensure_ascii=False, indent=2)
             
             if task.get("translateEngine") == "connect-hub":
-                print(Fore.CYAN + "  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 30 cau/lan)")
-                BATCH_SIZE = 30
+                print(Fore.CYAN + f"  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Gui toan bo {len(segments_to_translate)} cau 1 lan)")
+                BATCH_SIZE = max(1, len(segments_to_translate))
                 for i in range(0, len(segments_to_translate), BATCH_SIZE):
                     batch_segs = segments_to_translate[i:i+BATCH_SIZE]
                     texts = [seg['text'] for seg in batch_segs]

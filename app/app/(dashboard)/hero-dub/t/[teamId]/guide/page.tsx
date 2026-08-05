@@ -13,7 +13,7 @@ export default function HeroDubGuidePage() {
   const [selectedOs, setSelectedOs] = useState<'windows' | 'macos'>('windows');
   const [copiedText, setCopiedText] = useState(false);
 
-  const winCommand = `curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=12 & herodub-setup.bat --server https://ai2hero-flax.vercel.app`;
+  const winCommand = `curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=13 & herodub-setup.bat --server https://ai2hero-flax.vercel.app`;
   const macCommand = `curl -o herodub-setup.sh https://www.ai2hero.com/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh`;
 
   const handleCopy = (text: string) => {
@@ -100,10 +100,10 @@ export default function HeroDubGuidePage() {
                     <p className="text-[11px] text-green-400 font-medium mb-1.5">Cách 1: Tải và cài đặt mới (Chạy lần đầu)</p>
                     <div className="bg-black border border-white/10 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-green-400/90 text-[11px]">
                       <span className="select-all overflow-x-auto whitespace-nowrap">
-                        curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=12 & herodub-setup.bat --server https://ai2hero-flax.vercel.app
+                        curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=13 & herodub-setup.bat --server https://ai2hero-flax.vercel.app
                       </span>
                       <button
-                        onClick={() => handleCopy('curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=12 & herodub-setup.bat --server https://ai2hero-flax.vercel.app')}
+                        onClick={() => handleCopy('curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=13 & herodub-setup.bat --server https://ai2hero-flax.vercel.app')}
                         className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
                         title="Sao chép"
                       >
