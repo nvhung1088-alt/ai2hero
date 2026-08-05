@@ -131,7 +131,7 @@ export async function POST(request: Request) {
     // 4. Call Connect Hub Engine với System Role + User Message
     const inputObj: Record<string, string> = {};
     texts.forEach((t: string, i: number) => { inputObj[i.toString()] = t; });
-    const jsonInput = JSON.stringify(inputObj);
+    const jsonInput = JSON.stringify(inputObj, null, 2);
 
     let systemMessage = '';
 
@@ -164,11 +164,19 @@ QUY TẮC PHONG CÁCH & ĐẠI TỪ XƯƠNG HÔ (BẮT BUỘC):
     - Trả về duy nhất đối tượng JSON thuần túy dạng key-value với key ("0", "1", "2"...) giữ nguyên như input. 
     - Với mỗi key, value PHẢI LÀ CHUỖI DỊCH TIẾNG VIỆT THUẦN TÚY (Ví dụ: "0": "Nội dung tiếng Việt"). Tự động khôi phục sửa lỗi đồng âm ASR ngầm trước khi dịch.
     - Số lượng key trong output PHẢI BẰNG ĐÚNG số lượng key trong input. KHÔNG ĐƯỢC GỘP HOẶC BỎ BỚT KEY.
-    - KHÔNG được thêm bất kỳ giải thích, lời chào hay markdown (```json) nào ngoài đối tượng JSON.
+    - KHÔNG được thêm bất kỳ giải thích, lời chào hay markdown (\`\`\`json) nào ngoài đối tượng JSON.
 
 VÍ DỤ:
-Input: {"0":"这薄雪红磁壳很难考","1":"不过就算没死"}
-Output: {"0":"Khoa thi Bác Học Hồng Từ này rất khó đỗ","1":"Nhưng mà cho dù chưa chết"}`;
+Input: 
+{
+  "0": "这薄雪红磁壳很难考",
+  "1": "不过就算没死"
+}
+Output: 
+{
+  "0": "Khoa thi Bác Học Hồng Từ này rất khó đỗ",
+  "1": "Nhưng mà cho dù chưa chết"
+}`;
     }
 
     if (task.translateContext && task.translateContext.trim()) {
