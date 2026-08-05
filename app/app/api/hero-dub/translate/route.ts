@@ -272,9 +272,20 @@ Output: {"0": {"asr_correction": "这博学鸿词科很难考", "vi_translation"
     }
 
     if (translatedTexts.length === 0) {
-      console.error(`[API Translate] All ${MAX_ATTEMPTS} attempts failed. Last error: ${lastError}`);
+      console.error(`[API Translate] Tất cả ${MAX_ATTEMPTS} lần thử dịch thuật thất bại. Lỗi cuối cùng: ${lastError}`);
+      
+      let friendlyError = lastError;
+      if (lastError.includes('Content Script') || lastError.includes('sendMessage')) {
+        friendlyError = 'Không thể kết nối với Content Script trên Tab AI. Vui lòng mở sẵn Tab ChatGPT/Gemini và Reload lại Extension.';
+      } else if (lastError.includes('khung nhập liệu') || lastError.includes('input')) {
+        friendlyError = 'Không tìm thấy khung nhập liệu trên ChatGPT/Gemini. Vui lòng kiểm tra xem trang web có bị yêu cầu Đăng nhập lại hoặc CAPTCHA không.';
+      } else if (lastError.includes('Timeout')) {
+        friendlyError = 'AI trên trình duyệt không phản hồi đúng thời gian (Timeout). Vui lòng thử lại hoặc giảm bớt độ dài.';
+      }
+
       return NextResponse.json({ 
-        error: `Dịch thuật bằng DeepSeek thất bại sau ${MAX_ATTEMPTS} lần thử: ${lastError}. Đang tự động giữ nguyên khối để thử lại.`,
+        error: `Lỗi Dịch Thuật AI: ${friendlyError}`,
+        detail: lastError,
         isBlockError: true 
       }, { status: 500 });
     }
