@@ -1,6 +1,7 @@
 # AI2HERO — CHANGELOG
 
 ## 2026-08-05 — HeroDub: Redesign AI Thumbnail UI & Connect Hub Integration
+- **Extension ChatGPT Web Support**: Tạo mới file `content-chatgpt.js` và cập nhật `manifest.json` cho Chrome Extension **Ai2Hero Browser Bridge**, hỗ trợ nhận diện và dán prompt tự động vào ChatGPT Web (`chatgpt.com`).
 - **Connect Hub Image AI Selection**: Lọc và hiển thị danh sách các ứng dụng AI chuyên xử lý/sinh ảnh (`connectedAiImageApps`) từ Connect Hub lên form tạo tác vụ HeroDub.
 - **Browser AI Bridge Image Support Fix**: Bổ sung action `generate_image` vào Browser AI Bridge runner và connector definition, fix dứt điểm lỗi *"Action generate_image không được hỗ trợ bởi Browser AI Bridge"*.
 - **Keep Original Aspect Ratio**: Bỏ quy định cưỡng chế tỷ lệ 16:9, điều chỉnh Prompt yêu cầu AI giữ nguyên 100% tỷ lệ khung hình của tấm ảnh gốc.
