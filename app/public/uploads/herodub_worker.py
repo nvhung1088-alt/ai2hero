@@ -1296,20 +1296,77 @@ if __name__ == '__main__':
             shutil.copy2(final_output_path, dest_video)
             shutil.copy2(vi_srt_abs_path, dest_srt)
             
-            # Tự động tìm và copy ảnh thumbnail trùng tên trong thư mục gốc
+            # Tự động tìm và copy ảnh thumbnail trùng tên trong thư mục gốc (luôn đổi về đuôi .jpeg chuẩn)
             if source_url and not (source_url.startswith("http://") or source_url.startswith("https://")):
                 source_dir = os.path.dirname(source_url)
                 if os.path.isdir(source_dir):
                     for ext in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
                         thumb_src = os.path.join(source_dir, f"{base_name}{ext}")
                         if os.path.exists(thumb_src):
-                            thumb_dest = os.path.join(output_folder, f"{base_name}{ext}")
+                            thumb_dest = os.path.join(output_folder, f"{base_name}.jpeg")
                             try:
                                 shutil.copy2(thumb_src, thumb_dest)
-                                print(Fore.CYAN + f"[-] Da copy anh thumbnail: {os.path.basename(thumb_dest)}")
+                                print(Fore.CYAN + f"[-] Da copy anh thumbnail (doi ten trung video): {os.path.basename(thumb_dest)}")
                             except Exception as thumb_err:
                                 print(Fore.YELLOW + f"[!] Khong the copy thumbnail: {thumb_err}")
                             break
+
+            # THIẾT KẾ LẠI THUMBNAIL (AI) NẾU ĐƯỢC BẬT
+            if task.get("redesignThumbnailEnabled"):
+                print(Fore.CYAN + "[-] Dang thiet ke lai Anh Biai (Redesign Thumbnail AI)...")
+                try:
+                    thumb_src = None
+                    # Tìm ảnh thumbnail vừa copy hoặc ảnh gốc
+                    for ext in ['.jpeg', '.jpg', '.png', '.webp']:
+                        candidate = os.path.join(output_folder, f"{base_name}{ext}")
+                        if os.path.exists(candidate):
+                            thumb_src = candidate
+                            break
+
+                    if thumb_src:
+                        import base64
+                        with open(thumb_src, "rb") as f:
+                            image_base64 = f"data:image/jpeg;base64,{base64.b64encode(f.read()).decode('utf-8')}"
+
+                        logo_base64 = None
+                        logo_source = task.get("thumbnailLogoSource", "project")
+                        logo_url = None
+                        if logo_source == "project":
+                            logo_url = task.get("logoUrl")
+                        elif logo_source == "custom":
+                            logo_url = task.get("customThumbnailLogoUrl")
+
+                        if logo_url and os.path.exists(logo_url):
+                            with open(logo_url, "rb") as f:
+                                logo_base64 = f"data:image/png;base64,{base64.b64encode(f.read()).decode('utf-8')}"
+
+                        payload = {
+                            "taskId": task_id,
+                            "imageBase64": image_base64,
+                            "logoBase64": logo_base64,
+                            "logoSource": logo_source
+                        }
+
+                        res = requests.post(f"{API_BASE_URL}/hero-dub/thumbnail-redesign", json=payload, headers=headers, timeout=120)
+                        if res.status_code == 200:
+                            data = res.json()
+                            result_url = data.get("resultThumbnailUrl")
+                            if result_url:
+                                target_thumb_file = os.path.join(output_folder, f"{base_name}.jpeg")
+                                if result_url.startswith("data:image"):
+                                    b64_str = result_url.split(",")[1] if "," in result_url else result_url
+                                    with open(target_thumb_file, "wb") as f:
+                                        f.write(base64.b64decode(b64_str))
+                                elif result_url.startswith("http"):
+                                    img_resp = requests.get(result_url, timeout=30)
+                                    if img_resp.status_code == 200:
+                                        with open(target_thumb_file, "wb") as f:
+                                            f.write(img_resp.content)
+                                print(Fore.GREEN + f"  [✓] Da thiet ke va doi ten anh thumbnail AI: {os.path.basename(target_thumb_file)}")
+                        else:
+                            print(Fore.RED + f"  [!] Loi Redesign Thumbnail: HTTP {res.status_code}")
+                except Exception as thumb_ai_err:
+                    print(Fore.YELLOW + f"  [!] Thiet ke lai Thumbnail bi loi (bo qua): {thumb_ai_err}")
             
             final_output_path = dest_video
             vi_srt_abs_path = dest_srt

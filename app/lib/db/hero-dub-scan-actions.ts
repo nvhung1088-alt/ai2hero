@@ -35,6 +35,9 @@ export async function saveDubScanConfigAction(data: {
   ttsVolume?: string;
   outputFolder?: string;
   translateContext?: string;
+  redesignThumbnailEnabled?: boolean;
+  thumbnailLogoSource?: string;
+  customThumbnailLogoUrl?: string;
   aiAppSlug?: string;
   aiModel?: string;
   isActive?: boolean;
@@ -59,6 +62,9 @@ export async function saveDubScanConfigAction(data: {
           ttsVolume: data.ttsVolume,
           outputFolder: data.outputFolder,
           translateContext: data.translateContext,
+          redesignThumbnailEnabled: data.redesignThumbnailEnabled,
+          thumbnailLogoSource: data.thumbnailLogoSource,
+          customThumbnailLogoUrl: data.customThumbnailLogoUrl,
           aiAppSlug: data.aiAppSlug,
           aiModel: data.aiModel,
           isActive: data.isActive !== undefined ? data.isActive : true,
@@ -83,6 +89,9 @@ export async function saveDubScanConfigAction(data: {
         ttsVolume: data.ttsVolume,
         outputFolder: data.outputFolder,
         translateContext: data.translateContext,
+        redesignThumbnailEnabled: data.redesignThumbnailEnabled ?? false,
+        thumbnailLogoSource: data.thumbnailLogoSource || 'project',
+        customThumbnailLogoUrl: data.customThumbnailLogoUrl || null,
         aiAppSlug: data.aiAppSlug,
         aiModel: data.aiModel,
         isActive: data.isActive !== undefined ? data.isActive : true,

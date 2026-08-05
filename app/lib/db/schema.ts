@@ -2344,6 +2344,9 @@ export const dubScanConfigs = pgTable('dub_scan_configs', {
   ttsVolume: varchar('tts_volume', { length: 20 }),
   outputFolder: text('output_folder'),
   translateContext: text('translate_context'),
+  redesignThumbnailEnabled: boolean('redesign_thumbnail_enabled').notNull().default(false),
+  thumbnailLogoSource: varchar('thumbnail_logo_source', { length: 20 }).notNull().default('project'),
+  customThumbnailLogoUrl: text('custom_thumbnail_logo_url'),
   aiAppSlug: varchar('ai_app_slug', { length: 100 }),
   aiModel: varchar('ai_model', { length: 100 }),
   lastScanAt: timestamp('last_scan_at'),
@@ -2388,6 +2391,11 @@ export const dubTasks = pgTable('dub_tasks', {
   ttsVolume: varchar('tts_volume', { length: 20 }),
   translateContext: text('translate_context'),
   
+  // === Thumbnail ===
+  redesignThumbnailEnabled: boolean('redesign_thumbnail_enabled').notNull().default(false),
+  thumbnailLogoSource: varchar('thumbnail_logo_source', { length: 20 }).notNull().default('project'),
+  customThumbnailLogoUrl: text('custom_thumbnail_logo_url'),
+  
   // === Branding ===
   projectId: integer('project_id').references(() => dubProjects.id, { onDelete: 'set null' }),
   scanConfigId: integer('scan_config_id').references(() => dubScanConfigs.id, { onDelete: 'set null' }),
@@ -2408,6 +2416,7 @@ export const dubTasks = pgTable('dub_tasks', {
   // === Output ===
   resultVideoUrl: text('result_video_url'),
   resultSrtUrl: text('result_srt_url'),
+  resultThumbnailUrl: text('result_thumbnail_url'),
   resultPreview: jsonb('result_preview'), // { duration, thumbnail, subtitleCount }
   estimatedCost: integer('estimated_cost'), // cents
   actualCost: integer('actual_cost'), // cents

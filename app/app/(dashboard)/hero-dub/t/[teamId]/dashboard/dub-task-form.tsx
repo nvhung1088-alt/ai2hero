@@ -104,6 +104,14 @@ interface DubTaskFormProps {
   handleDeleteScanProject: (_id: string) => void;
   
   teamId: number;
+  
+  // Props cho Thumbnail (optional fallback)
+  redesignThumbnailEnabled?: boolean;
+  setRedesignThumbnailEnabled?: (_val: boolean) => void;
+  thumbnailLogoSource?: string;
+  setThumbnailLogoSource?: (_val: string) => void;
+  customThumbnailLogoUrl?: string;
+  setCustomThumbnailLogoUrl?: (_val: string) => void;
 }
 
 export default function DubTaskForm({
@@ -174,7 +182,25 @@ export default function DubTaskForm({
   handleEditScanProject,
   handleDeleteScanProject,
   teamId,
+  redesignThumbnailEnabled: externalRedesignEnabled,
+  setRedesignThumbnailEnabled: externalSetRedesignEnabled,
+  thumbnailLogoSource: externalLogoSource,
+  setThumbnailLogoSource: externalSetLogoSource,
+  customThumbnailLogoUrl: externalCustomLogoUrl,
+  setCustomThumbnailLogoUrl: externalSetCustomLogoUrl,
 }: DubTaskFormProps) {
+  // Local fallback states if not passed as props
+  const [internalRedesignEnabled, setInternalRedesignEnabled] = React.useState(false);
+  const [internalLogoSource, setInternalLogoSource] = React.useState('project');
+  const [internalCustomLogoUrl, setInternalCustomLogoUrl] = React.useState('');
+
+  const redesignThumbnailEnabled = externalRedesignEnabled !== undefined ? externalRedesignEnabled : internalRedesignEnabled;
+  const setRedesignThumbnailEnabled = externalSetRedesignEnabled || setInternalRedesignEnabled;
+  const thumbnailLogoSource = externalLogoSource !== undefined ? externalLogoSource : internalLogoSource;
+  const setThumbnailLogoSource = externalSetLogoSource || setInternalLogoSource;
+  const customThumbnailLogoUrl = externalCustomLogoUrl !== undefined ? externalCustomLogoUrl : internalCustomLogoUrl;
+  const setCustomThumbnailLogoUrl = externalSetCustomLogoUrl || setInternalCustomLogoUrl;
+
   const [dbDictionaries, setDbDictionaries] = React.useState<DubDictionary[]>([]);
   const [selectedDictId, setSelectedDictId] = React.useState<string>('');
   const [isDetectingDict, setIsDetectingDict] = React.useState(false);
@@ -841,7 +867,53 @@ export default function DubTaskForm({
                   <option value="2.0">Lớn (2.0)</option>
                   <option value="2.5">Rất lớn (2.5)</option>
                 </select>
+        {/* Thiết kế lại Ảnh Bìa (AI Thumbnail) */}
+        <div className="space-y-3 pt-2 border-t border-white/5">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+              <span>🖼️ Thiết kế lại Ảnh Bìa (AI Thumbnail)</span>
+            </label>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={redesignThumbnailEnabled}
+                onChange={(e) => setRedesignThumbnailEnabled(e.target.checked)}
+                disabled={creatingTask}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
+
+          {redesignThumbnailEnabled && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200 bg-amber-500/5 p-3 rounded-xl border border-amber-500/20">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-extrabold text-amber-300 uppercase">Nguồn Logo Mẫu Chèn Vào Ảnh</label>
+                <select
+                  value={thumbnailLogoSource}
+                  onChange={(e) => setThumbnailLogoSource(e.target.value)}
+                  disabled={creatingTask}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                >
+                  <option value="project">Dùng Logo Thương Hiệu (Lấy từ Dự án đã chọn)</option>
+                  <option value="custom">Tải lên Logo Tùy Chỉnh (Nhập URL Logo)</option>
+                  <option value="none">Không chèn logo (Chỉ dịch chữ trên ảnh)</option>
+                </select>
               </div>
+
+              {thumbnailLogoSource === 'custom' && (
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-extrabold text-gray-400 uppercase">Đường dẫn Logo Tùy Chỉnh (URL / Path)</label>
+                  <input
+                    type="text"
+                    value={customThumbnailLogoUrl}
+                    onChange={(e) => setCustomThumbnailLogoUrl(e.target.value)}
+                    disabled={creatingTask}
+                    placeholder="VD: https://domain.com/logo.png hoặc C:\logo.png"
+                    className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/55 font-mono"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
