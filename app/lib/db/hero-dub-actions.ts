@@ -4,6 +4,7 @@ import { db } from './drizzle';
 import { dubTasks, dubWorkers, teams, users, extensionLinkCodes, connectHubConnections, dubProjects, dubScanConfigs, dubResourceLocks } from './schema';
 import { decryptField } from '../sim-crypto';
 import { eq, and, desc, sql, isNull, gt, lt, inArray, notInArray, or } from 'drizzle-orm';
+import { executeAction } from '@/lib/connect-hub/connectors/engine';
 import { SignJWT, jwtVerify } from 'jose';
 import { createHash, randomBytes } from 'crypto';
 import { getPresignedUploadUrl } from '@/lib/storage/r2';
@@ -1244,4 +1245,57 @@ export async function releaseResourceLockAction(
 }
 
 
+export async function testTranslateConnectionAction(
+  teamId: number,
+  appSlug: string,
+  modelName: string
+) {
+  try {
+    const [connection] = await db
+      .select()
+      .from(connectHubConnections)
+      .where(and(eq(connectHubConnections.teamId, teamId), eq(connectHubConnections.appSlug, appSlug)))
+      .limit(1);
+
+    if (!connection) {
+      return { success: false, error: 'Chưa cài đặt kết nối cho Ứng dụng AI này. Vui lòng kết nối trước.' };
+    }
+
+    const decryptedJson = decryptField(connection.encryptedCredentials) || '{}';
+    const credentials = JSON.parse(decryptedJson);
+
+    const testPrompt = `Hãy dịch câu sau sang tiếng Việt: "Hello, this is a test connection from HeroDub."`;
+    
+    // Tạo giả một jobId test ngẫu nhiên để nó không trùng lặp và không bị block
+    const testJobId = crypto.randomUUID();
+
+    const result = await executeAction(appSlug, credentials, 'chat_completion', {
+      jobId: testJobId,
+      model: modelName,
+      teamId: teamId,
+      connectionId: connection.id,
+      messages: [
+        { role: 'user', content: testPrompt }
+      ],
+    });
+
+    if (!result.success || !result.data) {
+      return { success: false, error: result.error || 'Test failed' };
+    }
+
+    // Kết quả thường nằm trong result.data.choices[0].message.content hoặc result.data.content
+    let responseText = '';
+    if (result.data.choices && result.data.choices.length > 0) {
+      responseText = result.data.choices[0].message?.content || '';
+    } else if (result.data.content) {
+      responseText = result.data.content;
+    } else {
+      responseText = JSON.stringify(result.data);
+    }
+
+    return { success: true, result: responseText };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Lỗi không xác định khi test.' };
+  }
+}
 

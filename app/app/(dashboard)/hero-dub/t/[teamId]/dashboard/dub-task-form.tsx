@@ -24,6 +24,7 @@ import {
   getDubDictionariesAction,
   autoDetectDictionaryAction
 } from '@/lib/db/hero-dub-dictionary-actions';
+import { testTranslateConnectionAction } from '@/lib/db/hero-dub-actions';
 import { DubDictionary } from '@/lib/db/schema';
 
 interface DubTaskFormProps {
@@ -177,6 +178,27 @@ export default function DubTaskForm({
   const [dbDictionaries, setDbDictionaries] = React.useState<DubDictionary[]>([]);
   const [selectedDictId, setSelectedDictId] = React.useState<string>('');
   const [isDetectingDict, setIsDetectingDict] = React.useState(false);
+
+  const [isTestingConnection, setIsTestingConnection] = React.useState(false);
+  const [testConnectionResult, setTestConnectionResult] = React.useState<{success?: boolean, msg?: string}|null>(null);
+
+  const handleTestConnection = async () => {
+    if (!selectedAiAppSlug) return;
+    setIsTestingConnection(true);
+    setTestConnectionResult(null);
+    try {
+      const res = await testTranslateConnectionAction(teamId, selectedAiAppSlug, selectedAiModel);
+      if (res.success) {
+        setTestConnectionResult({ success: true, msg: 'Kết nối OK: ' + res.result });
+      } else {
+        setTestConnectionResult({ success: false, msg: 'Lỗi: ' + res.error });
+      }
+    } catch (err: any) {
+      setTestConnectionResult({ success: false, msg: 'Lỗi mạng: ' + err.message });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
 
   React.useEffect(() => {
     if (teamId) {
@@ -578,6 +600,25 @@ export default function DubTaskForm({
               )}
             </select>
           </div>
+          
+          {selectedAiAppSlug && (
+            <div className="mt-2 text-right">
+              <button
+                type="button"
+                onClick={handleTestConnection}
+                disabled={isTestingConnection}
+                className="text-[10px] bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1 border border-amber-500/20"
+              >
+                {isTestingConnection ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                {isTestingConnection ? 'Đang kiểm tra...' : 'Test kết nối AI'}
+              </button>
+              {testConnectionResult && (
+                <div className={`mt-2 p-2 rounded-lg text-[10px] text-left border ${testConnectionResult.success ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                  {testConnectionResult.msg}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
