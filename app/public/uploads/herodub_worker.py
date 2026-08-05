@@ -1304,13 +1304,13 @@ if __name__ == '__main__':
                                             b64_data = base64.b64encode(img_f.read()).decode('utf-8')
                                             img_b64 = f"data:image/jpeg;base64,{b64_data}"
 
-                                        redesign_res = requests.post(f"{API_BASE_URL}/hero-dub/thumbnail-redesign", json={
+                                        redesign_res = requests.post(f"{API_BASE_URL}/thumbnail-redesign", json={
                                             "taskId": task_id,
                                             "imageBase64": img_b64
                                         }, headers=headers, timeout=30)
 
                                         if redesign_res.status_code not in [200, 202]:
-                                            print(Fore.RED + f"[!] API loi {redesign_res.status_code}: {redesign_res.text}")
+                                            print(Fore.RED + f"[!] API loi {redesign_res.status_code}: {redesign_res.text[:150]}")
                                         
                                         res_json = redesign_res.json() if redesign_res.status_code in [200, 202] else {}
                                         job_id = res_json.get("jobId")
@@ -1323,14 +1323,14 @@ if __name__ == '__main__':
                                             while time.time() - poll_start < 120:
                                                 time.sleep(3)
                                                 try:
-                                                    poll_res = requests.get(f"{API_BASE_URL}/hero-dub/thumbnail-redesign?jobId={job_id}", headers=headers, timeout=15)
+                                                    poll_res = requests.get(f"{API_BASE_URL}/thumbnail-redesign?jobId={job_id}", headers=headers, timeout=15)
                                                     if poll_res.status_code == 200:
                                                         p_json = poll_res.json()
                                                         if p_json.get("success"):
                                                             new_thumb_url = p_json.get("resultThumbnailUrl")
                                                             break
                                                     elif poll_res.status_code != 202:
-                                                        print(Fore.YELLOW + f"[!] Polling báo loi ({poll_res.status_code}): {poll_res.text}")
+                                                        print(Fore.YELLOW + f"[!] Polling báo loi ({poll_res.status_code}): {poll_res.text[:150]}")
                                                         break
                                                 except Exception as p_err:
                                                     print(Fore.YELLOW + f"[!] Loi khi poll Thumbnail Job: {p_err}")
