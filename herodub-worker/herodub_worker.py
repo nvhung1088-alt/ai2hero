@@ -1307,18 +1307,36 @@ if __name__ == '__main__':
                                         redesign_res = requests.post(f"{API_BASE_URL}/hero-dub/thumbnail-redesign", json={
                                             "taskId": task_id,
                                             "imageBase64": img_b64
-                                        }, headers=headers, timeout=120)
+                                        }, headers=headers, timeout=30)
 
-                                        if redesign_res.status_code == 200 and redesign_res.json().get("success"):
-                                            new_thumb_url = redesign_res.json().get("resultThumbnailUrl")
-                                            if new_thumb_url and (new_thumb_url.startswith("http://") or new_thumb_url.startswith("https://")):
-                                                img_data = requests.get(new_thumb_url, timeout=30).content
-                                                with open(thumb_dest, 'wb') as handler:
-                                                    handler.write(img_data)
-                                                print(Fore.GREEN + f"[✓] Da thiet ke & luu anh Thumbnail AI Tieng Viet moi: {os.path.basename(thumb_dest)}")
-                                            else:
-                                                shutil.copy2(thumb_src, thumb_dest)
-                                                print(Fore.CYAN + f"[-] Da copy anh thumbnail goc: {os.path.basename(thumb_dest)}")
+                                        res_json = redesign_res.json() if redesign_res.status_code in [200, 202] else {}
+                                        job_id = res_json.get("jobId")
+                                        new_thumb_url = res_json.get("resultThumbnailUrl")
+
+                                        # Nếu server trả về 202 Accepted (Đang xử lý), Polling liên tục tới khi nhận xong
+                                        if redesign_res.status_code == 202 and job_id:
+                                            print(Fore.CYAN + f"[-] Extension dang thiet ke anh bia (Job #{job_id[:8]}). Dang cho ket qua...")
+                                            poll_start = time.time()
+                                            while time.time() - poll_start < 120:
+                                                time.sleep(3)
+                                                try:
+                                                    poll_res = requests.get(f"{API_BASE_URL}/hero-dub/thumbnail-redesign?jobId={job_id}", headers=headers, timeout=15)
+                                                    if poll_res.status_code == 200:
+                                                        p_json = poll_res.json()
+                                                        if p_json.get("success"):
+                                                            new_thumb_url = p_json.get("resultThumbnailUrl")
+                                                            break
+                                                    elif poll_res.status_code != 202:
+                                                        print(Fore.YELLOW + f"[!] Polling báo loi ({poll_res.status_code}), dung anh goc.")
+                                                        break
+                                                except Exception as p_err:
+                                                    print(Fore.YELLOW + f"[!] Loi khi poll Thumbnail Job: {p_err}")
+
+                                        if new_thumb_url and (new_thumb_url.startswith("http://") or new_thumb_url.startswith("https://")):
+                                            img_data = requests.get(new_thumb_url, timeout=30).content
+                                            with open(thumb_dest, 'wb') as handler:
+                                                handler.write(img_data)
+                                            print(Fore.GREEN + f"[✓] Da thiet ke & luu anh Thumbnail AI Tieng Viet moi: {os.path.basename(thumb_dest)}")
                                         else:
                                             print(Fore.YELLOW + f"[!] AI Redesign thiet ke thumbnail khong thanh cong, dung anh goc.")
                                             shutil.copy2(thumb_src, thumb_dest)

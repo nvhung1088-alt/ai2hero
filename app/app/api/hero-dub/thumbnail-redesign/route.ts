@@ -86,12 +86,12 @@ export async function POST(request: Request) {
 
     console.log(`[Thumbnail Redesign API] Created Bridge Job ${jobId} for task #${taskId}`);
 
-    // 6. Polling chờ Extension hoàn thành tác vụ (Tối đa 90s)
+    // 6. Polling ngắn chờ Extension xử lý (Tối đa 6s để tránh Vercel 504 Timeout)
     const startTime = Date.now();
-    const TIMEOUT_MS = 90000;
+    const TIMEOUT_MS = 6000;
 
     while (Date.now() - startTime < TIMEOUT_MS) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
       const [updatedJob] = await db
         .select()
@@ -100,7 +100,6 @@ export async function POST(request: Request) {
         .limit(1);
 
       if (updatedJob && updatedJob.status === 'done' && updatedJob.result) {
-        // Cập nhật kết quả thumbnail vào DB
         await db
           .update(dubTasks)
           .set({ resultThumbnailUrl: updatedJob.result })
@@ -118,10 +117,57 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ error: 'Thumbnail redesign request timed out' }, { status: 504 });
+    // Nếu sau 6s chưa xong, trả về 202 Accepted để Client/Worker tiếp tục Poll
+    return NextResponse.json({
+      status: 'pending',
+      jobId: jobId,
+      taskId: taskId,
+      message: 'Yêu cầu đang được xử lý bất đồng bộ trên Extension...'
+    }, { status: 202 });
 
   } catch (error: any) {
     console.error('[Thumbnail Redesign API Error]:', error);
     return NextResponse.json({ error: 'Internal Server Error: ' + error.message }, { status: 500 });
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const jobId = searchParams.get('jobId');
+
+    if (!jobId) {
+      return NextResponse.json({ error: 'jobId parameter is required' }, { status: 400 });
+    }
+
+    const [job] = await db
+      .select()
+      .from(connectHubBridgeJobs)
+      .where(eq(connectHubBridgeJobs.id, jobId))
+      .limit(1);
+
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    if (job.status === 'done' && job.result) {
+      return NextResponse.json({
+        success: true,
+        resultThumbnailUrl: job.result,
+        message: 'Thiết kế lại Thumbnail AI thành công!'
+      });
+    }
+
+    if (job.status === 'failed') {
+      return NextResponse.json({ error: job.error || 'AI Bridge processing failed' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      status: 'pending',
+      jobId: job.id,
+      message: 'Đang xử lý...'
+    });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

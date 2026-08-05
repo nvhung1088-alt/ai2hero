@@ -267,7 +267,7 @@ export default function DubTaskForm({
     setIsTestingImageAi(true);
     setTestImageAiResult(null);
     try {
-      const sampleImg = selectedThumbnailUrl || localFilePaths || undefined;
+      const sampleImg = (localFilePaths && localFilePaths.length > 0 ? localFilePaths[0] : undefined) || (customThumbnailLogoUrl && customThumbnailLogoUrl.startsWith('http') ? customThumbnailLogoUrl : undefined);
       const res = await testImageAiConnectionAction(teamId, thumbnailAiAppSlug, thumbnailAiModel, sampleImg);
       if (res.success) {
         setTestImageAiResult({ success: true, msg: 'Kết nối & Thử nghiệm mẫu Thumbnail thành công!', imageUrl: res.result });
