@@ -43,29 +43,42 @@ export async function POST(request: Request) {
       attachments.push({ type: 'image', name: 'logo_brand', base64: logoBase64 });
     }
 
-    // 4. Chuẩn bị Prompt
-    let promptText = `Bạn là một chuyên gia đồ họa banner phim điện ảnh. Hãy thiết kế lại tấm ảnh thumbnail (ảnh bìa) đính kèm này:\n` +
-      `1. GIỮ NGUYÊN nhân vật, phông nền và bố cục nghệ thuật của tấm ảnh gốc.\n` +
-      `2. THAY THẾ toàn bộ các câu chữ tiếng Trung trên ảnh sang tiếng Việt chuẩn văn phong phim Tiên Hiệp/Cổ Trang/Hành động, mượt mà và gây tò mò cho khán giả.\n`;
+    // 4. Chuẩn bị Prompt Thiết kế Thumbnail Chuyên Nghiệp
+    let promptText = `Bạn là một Chuyên gia Thiết kế Banner & Thumbnail Phim hàng đầu. Hãy thiết kế lại tấm ảnh thumbnail (ảnh bìa) đính kèm này theo các yêu cầu nghiêm ngặt sau:\n\n` +
+      `1. GIỮ NGUYÊN BỐ CỤC & ẢNH NỀN: Giữ nguyên 100% phông nền, nhân vật và biểu cảm nghệ thuật của tấm ảnh gốc. Không thay đổi nhân vật hay ánh sáng phông nền.\n` +
+      `2. THAY THẾ CHỮ SANG TIẾNG VIỆT: Phát hiện toàn bộ các câu chữ/tiêu đề trên ảnh gốc và DỊCH SANG TIẾNG VIỆT với văn phong giật gân, cuốn hút, hấp dẫn và tự nhiên.\n` +
+      `3. TYPOGRAPHY & FONT CHỮ: Sử dụng phông chữ tiếng Việt nghệ thuật, ấn tượng, có hiệu ứng nổi bật (Glow/Shadow/3D) phù hợp với bối cảnh và màu sắc tấm ảnh.\n`;
 
     if (task.translateContext && task.translateContext.trim()) {
-      promptText += `3. TUÂN THỦ TÊN PHIM VÀ BỐI CẢNH DO NGƯỜI DÙNG CUNG CẤP:\n${task.translateContext.trim()}\n`;
+      promptText += `4. TUÂN THỦ TÊN PHIM VÀ BỐI CẢNH DO NGƯỜI DÙNG CUNG CẤP:\n${task.translateContext.trim()}\n`;
     }
 
     if (logoBase64 && logoSource !== 'none') {
-      promptText += `4. CHÈN LOGO THƯƠNG HIỆU: Hãy chèn tấm ảnh logo được đính kèm thứ 2 vào góc trên bên trái (top-left) của banner sao cho nổi bật, chuyên nghiệp và không che mất mặt nhân vật.\n`;
+      const posMap: Record<string, string> = {
+        'top-left': 'góc trên bên trái (top-left)',
+        'top-right': 'góc trên bên phải (top-right)',
+        'bottom-left': 'góc dưới bên trái (bottom-left)',
+        'bottom-right': 'góc dưới bên phải (bottom-right)',
+        'center': 'ở chính giữa banner (center)',
+      };
+      const posText = posMap[task.thumbnailLogoPosition || 'top-left'] || 'góc trên bên trái (top-left)';
+      promptText += `5. CHÈN LOGO THƯƠNG HIỆU: Hãy chèn tấm ảnh logo đính kèm thứ 2 vào ${posText}. GIỮ NGUYÊN 100% HÌNH DẠNG, MÀU SẮC VÀ TỶ LỆ LOGO GỐC, tuyệt đối không biến dạng logo và không che mặt nhân vật.\n`;
     }
 
-    promptText += `Hãy xuất ra tấm ảnh bìa hoàn thiện theo tỷ lệ chuẩn 16:9 sắc nét nhất.`;
+    promptText += `\nHãy xuất ra tấm ảnh bìa hoàn thiện đẹp mắt, chuyên nghiệp nhất theo tỷ lệ 16:9.`;
 
-    // 5. Khởi tạo Job trong bridge
+    // 5. Khởi tạo Job trong bridge với targetAi lấy từ model (chatgpt / gemini / claude)
+    const targetAiModel = (task.thumbnailAiModel && ['gemini', 'chatgpt', 'claude'].includes(task.thumbnailAiModel.toLowerCase()))
+      ? task.thumbnailAiModel.toLowerCase()
+      : 'gemini';
+
     const jobId = crypto.randomUUID();
     await db.insert(connectHubBridgeJobs).values({
       id: jobId,
       teamId: task.teamId,
       connectionId: connection.id,
       callerModule: 'hero-dub',
-      targetAi: task.thumbnailAiAppSlug || 'gemini',
+      targetAi: targetAiModel,
       prompt: promptText,
       attachments: attachments,
       status: 'pending',

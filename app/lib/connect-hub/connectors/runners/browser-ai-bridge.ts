@@ -23,7 +23,12 @@ export async function runBrowserAiBridge(
     throw new Error('Nội dung Prompt là bắt buộc.');
   }
 
-  const targetAi = input.targetAi || 'gemini';
+  let targetAi = 'gemini';
+  if (input.targetAi && ['gemini', 'chatgpt', 'claude'].includes(input.targetAi)) {
+    targetAi = input.targetAi;
+  } else if (input.model && ['gemini', 'chatgpt', 'claude'].includes(input.model.toLowerCase())) {
+    targetAi = input.model.toLowerCase();
+  }
   const attachments = input.attachments ? (typeof input.attachments === 'string' ? JSON.parse(input.attachments) : input.attachments) : null;
   const teamId = input.teamId || extraContext?.teamId;
   const connectionId = input.connectionId || extraContext?.connectionId;
