@@ -656,120 +656,110 @@ def process_task(token, task):
                     json.dump(translated_segments, f, ensure_ascii=False, indent=2)
             
             if task.get("translateEngine") == "connect-hub":
-                llm_model = task.get("llmModel", "")
-                is_browser_ai = "browser-ai-bridge" in llm_model
-                
-                # Bien co hieu cho fallback
-                force_fallback_to_deepseek = False
-                
-                def process_connect_hub_loop():
-                    nonlocal force_fallback_to_deepseek
+                print(Fore.CYAN + "  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 30 cau/lan)")
+                BATCH_SIZE = 30
+                for i in range(0, len(segments_to_translate), BATCH_SIZE):
+                    batch_segs = segments_to_translate[i:i+BATCH_SIZE]
+                    texts = [seg['text'] for seg in batch_segs]
                     
-                    # Cap nhat danh sach can dich
-                    current_untranslated = extracted_segments[len(translated_segments):]
-                    if len(current_untranslated) == 0: return True
-                    
-                    BATCH_SIZE = len(current_untranslated) if (is_browser_ai and not force_fallback_to_deepseek) else 30
-                    
-                    if is_browser_ai and not force_fallback_to_deepseek:
-                        print(Fore.CYAN + f"  -> Su dung Connect Hub (Browser AI Bridge) (Gui toan bo {BATCH_SIZE} cau 1 lan)")
-                    else:
-                        print(Fore.CYAN + f"  -> Su dung Connect Hub (Server-side LLM) (Batching {BATCH_SIZE} cau/lan)")
-                    
-                    for i in range(0, len(current_untranslated), BATCH_SIZE):
-                        batch_segs = current_untranslated[i:i+BATCH_SIZE]
-                        texts = [seg['text'] for seg in batch_segs]
+                    # Trích xuất Sliding Window Context (5 câu cuối của đoạn trước)
+                    prev_context = []
+                    if translated_count > 0 and i == 0:
+                        # Lấy từ translated_segments (batch trước đó được lưu)
+                        prev_context = [seg['text'] for seg in translated_segments[-5:]]
+                    elif i > 0:
+                        # Lấy từ segments_to_translate
+                        prev_context = [seg['text'] for seg in segments_to_translate[max(0, i-5):i]]
+
+                    try:
+                        payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
                         
-                        # Trich xuat Sliding Window Context (5 cau cuoi cua doan truoc)
-                        prev_context = []
-                        if len(translated_segments) > 0 and i == 0:
-                            prev_context = [seg['text'] for seg in translated_segments[-5:]]
-                        elif i > 0:
-                            prev_context = [seg['text'] for seg in current_untranslated[max(0, i-5):i]]
-                            
-                        has_browser_ai_lock = False
-                        if is_browser_ai and not force_fallback_to_deepseek:
-                            acquire_resource_lock(token, task_id, "browser_ai", "Browser AI Bridge")
-                            has_browser_ai_lock = True
-                            
-                        try:
-                            payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
-                            if force_fallback_to_deepseek:
-                                payload["fallbackModel"] = "deepseek|deepseek-chat"
+                        api_attempts = 0
+                        while api_attempts < 60:
+                            res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=90)
+                            if res.status_code == 200 and res.json().get("isPending"):
+                                pending_job_id = res.json().get("jobId")
+                                if pending_job_id:
+                                    payload["jobId"] = pending_job_id
+                                print(Fore.CYAN + f"  [!] Dang cho Chrome Extension xu ly tren trinh duyet... (Lan {api_attempts+1}/60)")
+                                time.sleep(5)
+                                api_attempts += 1
+                            else:
+                                break
                                 
-                            timeout_val = 180 if (is_browser_ai and not force_fallback_to_deepseek) else 90
-                            res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=timeout_val)
-                            
-                            if has_browser_ai_lock:
-                                release_resource_lock(token, task_id, "browser_ai")
-                                has_browser_ai_lock = False
-                            
-                            if res.status_code == 200:
-                                data = res.json()
-                                if data.get("success") and data.get("translatedTexts"):
-                                    translated_array = data.get("translatedTexts")
-                                    import re
+                        if res.status_code == 200:
+                            data = res.json()
+                            if data.get("success") and data.get("translatedTexts"):
+                                translated_array = data.get("translatedTexts")
+                                import re
+                                
+                                for j, seg in enumerate(batch_segs):
+                                    translated = translated_array[j] if j < len(translated_array) else seg['text']
                                     
-                                    for j, seg in enumerate(batch_segs):
-                                        translated = translated_array[j] if j < len(translated_array) else seg['text']
-                                        
-                                        # Co che nhan dien loi (Self-Correction)
-                                        is_failed = False
-                                        if translated.strip() == seg['text'].strip():
+                                    # Co che nhan dien loi (Self-Correction): Kiem tra neu LLM luoi bieng hoac tra ve tieng Trung
+                                    is_failed = False
+                                    if translated.strip() == seg['text'].strip():
+                                        is_failed = True
+                                    else:
+                                        ch_chars = len(re.findall(r'[\u4e00-\u9fff]', translated))
+                                        if ch_chars > 2 or (ch_chars > 0 and ch_chars > len(translated) * 0.15):
                                             is_failed = True
-                                        else:
-                                            ch_chars = len(re.findall(r'[\u4e00-\u9fff]', translated))
-                                            if ch_chars > 2 or (ch_chars > 0 and ch_chars > len(translated) * 0.15):
-                                                is_failed = True
-                                        
-                                        if is_failed:
-                                            try:
-                                                fixed_translated = google_translate(seg['text'], dest='vi')
-                                                print(Fore.YELLOW + f"  [Sua loi LLM bang Google] {seg['text']} -> {fixed_translated}")
-                                                translated = fixed_translated
-                                            except:
-                                                print(Fore.WHITE + f"  [Connect Hub] {translated}")
-                                        else:
+                                    
+                                    if is_failed:
+                                        try:
+                                            fixed_translated = google_translate(seg['text'], dest='vi')
+                                            print(Fore.YELLOW + f"  [Sua loi LLM bang Google] {seg['text']} -> {fixed_translated}")
+                                            translated = fixed_translated
+                                        except:
                                             print(Fore.WHITE + f"  [Connect Hub] {translated}")
-                                            
-                                        translated_segments.append({
-                                            "start": seg['start'],
-                                            "end": seg['end'],
-                                            "text": translated
-                                        })
-                                    save_translation_progress()
-                                else:
-                                    raise Exception(data.get("error", "AI Error"))
+                                    else:
+                                        print(Fore.WHITE + f"  [Connect Hub] {translated}")
+                                        
+                                    translated_segments.append({
+                                        "start": seg['start'],
+                                        "end": seg['end'],
+                                        "text": translated
+                                    })
+                                save_translation_progress()
                             else:
-                                raise Exception(f"HTTP Error {res.status_code}")
-                        except Exception as api_err:
-                            if has_browser_ai_lock:
-                                release_resource_lock(token, task_id, "browser_ai")
-                                
-                            print(Fore.RED + f"  [Loi AI/Mang] {str(api_err)}")
-                            if is_browser_ai and not force_fallback_to_deepseek:
-                                print(Fore.YELLOW + "  [!] Browser AI that bai! Fallback sang DeepSeek (Batching 30 cau/lan)...")
-                                force_fallback_to_deepseek = True
-                                return False # Bao cho vong lap ngoai chay lai
-                            else:
+                                print(Fore.RED + f"  [Loi AI] {data.get('error')}")
+                                # fallback Google Translate cho batch nay
                                 print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
                                 for seg in batch_segs:
-                                    translated = ""
-                                    for attempt in range(3):
-                                        try:
-                                            translated = google_translate(seg['text'], dest='vi')
-                                            break
-                                        except Exception as e:
-                                            if attempt == 2: raise e
-                                            time.sleep(2)
+                                    translated = google_translate(seg['text'], dest='vi')
                                     translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
                                     print(Fore.WHITE + f"  [Google] {translated}")
                                 save_translation_progress()
-                    return True
-
-                while True:
-                    if process_connect_hub_loop():
-                        break
+                        else:
+                            print(Fore.RED + f"  [Loi HTTP] {res.status_code}")
+                            print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
+                            for seg in batch_segs:
+                                translated = ""
+                                for attempt in range(3):
+                                    try:
+                                        translated = google_translate(seg['text'], dest='vi')
+                                        break
+                                    except Exception as e:
+                                        if attempt == 2: raise e
+                                        time.sleep(2)
+                                translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
+                                print(Fore.WHITE + f"  [Google] {translated}")
+                            save_translation_progress()
+                    except Exception as api_err:
+                        print(Fore.RED + f"  [Loi Mang] {str(api_err)}")
+                        print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
+                        for seg in batch_segs:
+                            translated = ""
+                            for attempt in range(3):
+                                try:
+                                    translated = google_translate(seg['text'], dest='vi')
+                                    break
+                                except Exception as e:
+                                    if attempt == 2: raise e
+                                    time.sleep(2)
+                            translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
+                            print(Fore.WHITE + f"  [Google] {translated}")
+                        save_translation_progress()
             else:
                 print(Fore.CYAN + "  -> Su dung Google Translate (Mien phi)")
                 
@@ -1296,77 +1286,69 @@ if __name__ == '__main__':
             shutil.copy2(final_output_path, dest_video)
             shutil.copy2(vi_srt_abs_path, dest_srt)
             
-            # Tự động tìm và copy ảnh thumbnail trùng tên trong thư mục gốc (luôn đổi về đuôi .jpeg chuẩn)
+            # Tự động tìm và copy ảnh thumbnail trùng tên trong thư mục gốc
             if source_url and not (source_url.startswith("http://") or source_url.startswith("https://")):
                 source_dir = os.path.dirname(source_url)
                 if os.path.isdir(source_dir):
                     for ext in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
                         thumb_src = os.path.join(source_dir, f"{base_name}{ext}")
                         if os.path.exists(thumb_src):
-                            thumb_dest = os.path.join(output_folder, f"{base_name}.jpeg")
+                            thumb_dest = os.path.join(output_folder, f"{base_name}{ext}")
                             try:
-                                shutil.copy2(thumb_src, thumb_dest)
-                                print(Fore.CYAN + f"[-] Da copy anh thumbnail (doi ten trung video): {os.path.basename(thumb_dest)}")
+                                # Kiểm tra xem Task có yêu cầu Thiết kế lại Thumbnail AI hay không
+                                if task.get("redesignThumbnailEnabled"):
+                                    print(Fore.CYAN + "[-] Phat hien yeu cau Thiet ke lai Thumbnail AI. Dang gui sang Extension...")
+                                    try:
+                                        import base64
+                                        with open(thumb_src, "rb") as img_f:
+                                            b64_data = base64.b64encode(img_f.read()).decode('utf-8')
+                                            img_b64 = f"data:image/jpeg;base64,{b64_data}"
+
+                                        redesign_res = requests.post(f"{API_BASE_URL}/hero-dub/thumbnail-redesign", json={
+                                            "taskId": task_id,
+                                            "imageBase64": img_b64
+                                        }, headers=headers, timeout=30)
+
+                                        res_json = redesign_res.json() if redesign_res.status_code in [200, 202] else {}
+                                        job_id = res_json.get("jobId")
+                                        new_thumb_url = res_json.get("resultThumbnailUrl")
+
+                                        # Nếu server trả về 202 Accepted (Đang xử lý), Polling liên tục tới khi nhận xong
+                                        if redesign_res.status_code == 202 and job_id:
+                                            print(Fore.CYAN + f"[-] Extension dang thiet ke anh bia (Job #{job_id[:8]}). Dang cho ket qua...")
+                                            poll_start = time.time()
+                                            while time.time() - poll_start < 120:
+                                                time.sleep(3)
+                                                try:
+                                                    poll_res = requests.get(f"{API_BASE_URL}/hero-dub/thumbnail-redesign?jobId={job_id}", headers=headers, timeout=15)
+                                                    if poll_res.status_code == 200:
+                                                        p_json = poll_res.json()
+                                                        if p_json.get("success"):
+                                                            new_thumb_url = p_json.get("resultThumbnailUrl")
+                                                            break
+                                                    elif poll_res.status_code != 202:
+                                                        print(Fore.YELLOW + f"[!] Polling báo loi ({poll_res.status_code}).")
+                                                        break
+                                                except Exception as p_err:
+                                                    print(Fore.YELLOW + f"[!] Loi khi poll Thumbnail Job: {p_err}")
+
+                                        if new_thumb_url and (new_thumb_url.startswith("http://") or new_thumb_url.startswith("https://")):
+                                            img_data = requests.get(new_thumb_url, timeout=30).content
+                                            with open(thumb_dest, 'wb') as handler:
+                                                handler.write(img_data)
+                                            print(Fore.GREEN + f"[✓] Da thiet ke & luu anh Thumbnail AI Tieng Viet moi: {os.path.basename(thumb_dest)}")
+                                        else:
+                                            print(Fore.RED + f"[!] AI Redesign thiet ke thumbnail khong thanh cong. Su dung anh goc nhu phuong an du phong.")
+                                            shutil.copy2(thumb_src, thumb_dest)
+                                    except Exception as r_err:
+                                        print(Fore.RED + f"[!] Loi khi thiet ke AI Thumbnail: {r_err}. Su dung anh goc du phong.")
+                                        shutil.copy2(thumb_src, thumb_dest)
+                                else:
+                                    shutil.copy2(thumb_src, thumb_dest)
+                                    print(Fore.CYAN + f"[-] Da copy anh thumbnail (doi ten trung video): {os.path.basename(thumb_dest)}")
                             except Exception as thumb_err:
                                 print(Fore.YELLOW + f"[!] Khong the copy thumbnail: {thumb_err}")
                             break
-
-            # THIẾT KẾ LẠI THUMBNAIL (AI) NẾU ĐƯỢC BẬT
-            if task.get("redesignThumbnailEnabled"):
-                print(Fore.CYAN + "[-] Dang thiet ke lai Anh Biai (Redesign Thumbnail AI)...")
-                try:
-                    thumb_src = None
-                    # Tìm ảnh thumbnail vừa copy hoặc ảnh gốc
-                    for ext in ['.jpeg', '.jpg', '.png', '.webp']:
-                        candidate = os.path.join(output_folder, f"{base_name}{ext}")
-                        if os.path.exists(candidate):
-                            thumb_src = candidate
-                            break
-
-                    if thumb_src:
-                        import base64
-                        with open(thumb_src, "rb") as f:
-                            image_base64 = f"data:image/jpeg;base64,{base64.b64encode(f.read()).decode('utf-8')}"
-
-                        logo_base64 = None
-                        logo_source = task.get("thumbnailLogoSource", "project")
-                        logo_url = None
-                        if logo_source == "project":
-                            logo_url = task.get("logoUrl")
-                        elif logo_source == "custom":
-                            logo_url = task.get("customThumbnailLogoUrl")
-
-                        if logo_url and os.path.exists(logo_url):
-                            with open(logo_url, "rb") as f:
-                                logo_base64 = f"data:image/png;base64,{base64.b64encode(f.read()).decode('utf-8')}"
-
-                        payload = {
-                            "taskId": task_id,
-                            "imageBase64": image_base64,
-                            "logoBase64": logo_base64,
-                            "logoSource": logo_source
-                        }
-
-                        res = requests.post(f"{API_BASE_URL}/hero-dub/thumbnail-redesign", json=payload, headers=headers, timeout=120)
-                        if res.status_code == 200:
-                            data = res.json()
-                            result_url = data.get("resultThumbnailUrl")
-                            if result_url:
-                                target_thumb_file = os.path.join(output_folder, f"{base_name}.jpeg")
-                                if result_url.startswith("data:image"):
-                                    b64_str = result_url.split(",")[1] if "," in result_url else result_url
-                                    with open(target_thumb_file, "wb") as f:
-                                        f.write(base64.b64decode(b64_str))
-                                elif result_url.startswith("http"):
-                                    img_resp = requests.get(result_url, timeout=30)
-                                    if img_resp.status_code == 200:
-                                        with open(target_thumb_file, "wb") as f:
-                                            f.write(img_resp.content)
-                                print(Fore.GREEN + f"  [✓] Da thiet ke va doi ten anh thumbnail AI: {os.path.basename(target_thumb_file)}")
-                        else:
-                            print(Fore.RED + f"  [!] Loi Redesign Thumbnail: HTTP {res.status_code}")
-                except Exception as thumb_ai_err:
-                    print(Fore.YELLOW + f"  [!] Thiet ke lai Thumbnail bi loi (bo qua): {thumb_ai_err}")
             
             final_output_path = dest_video
             vi_srt_abs_path = dest_srt

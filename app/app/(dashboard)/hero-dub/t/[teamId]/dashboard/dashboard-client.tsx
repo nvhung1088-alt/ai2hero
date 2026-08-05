@@ -402,7 +402,7 @@ export default function DashboardClient({
   };
   const [guideOs, setGuideOs] = useState<'windows' | 'macos'>('windows');
 
-  const winCmd = 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=10 & herodub-setup.bat --server https://ai2hero-flax.vercel.app';
+  const winCmd = 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=12 & herodub-setup.bat --server https://ai2hero-flax.vercel.app';
   const macCmd = 'curl -o herodub-setup.sh https://www.ai2hero.com/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh';
 
   const handleCopyGuideCommand = () => {

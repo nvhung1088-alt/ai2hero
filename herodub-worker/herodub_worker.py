@@ -1295,8 +1295,8 @@ if __name__ == '__main__':
                         if os.path.exists(thumb_src):
                             thumb_dest = os.path.join(output_folder, f"{base_name}{ext}")
                             try:
-                                # Kiểm tra xem Task có cài đặt Ứng dụng AI Chỉnh Ảnh Thumbnail hay không
-                                if task.get("thumbnailAiAppSlug") or task.get("thumbnailAiModel"):
+                                # Kiểm tra xem Task có yêu cầu Thiết kế lại Thumbnail AI hay không
+                                if task.get("redesignThumbnailEnabled"):
                                     print(Fore.CYAN + "[-] Phat hien yeu cau Thiet ke lai Thumbnail AI. Dang gui sang Extension...")
                                     try:
                                         import base64
@@ -1327,7 +1327,7 @@ if __name__ == '__main__':
                                                             new_thumb_url = p_json.get("resultThumbnailUrl")
                                                             break
                                                     elif poll_res.status_code != 202:
-                                                        print(Fore.YELLOW + f"[!] Polling báo loi ({poll_res.status_code}), dung anh goc.")
+                                                        print(Fore.YELLOW + f"[!] Polling báo loi ({poll_res.status_code}).")
                                                         break
                                                 except Exception as p_err:
                                                     print(Fore.YELLOW + f"[!] Loi khi poll Thumbnail Job: {p_err}")
@@ -1338,14 +1338,14 @@ if __name__ == '__main__':
                                                 handler.write(img_data)
                                             print(Fore.GREEN + f"[✓] Da thiet ke & luu anh Thumbnail AI Tieng Viet moi: {os.path.basename(thumb_dest)}")
                                         else:
-                                            print(Fore.YELLOW + f"[!] AI Redesign thiet ke thumbnail khong thanh cong, dung anh goc.")
+                                            print(Fore.RED + f"[!] AI Redesign thiet ke thumbnail khong thanh cong. Su dung anh goc nhu phuong an du phong.")
                                             shutil.copy2(thumb_src, thumb_dest)
                                     except Exception as r_err:
-                                        print(Fore.YELLOW + f"[!] Loi khi thiet ke AI Thumbnail: {r_err}, dung anh goc.")
+                                        print(Fore.RED + f"[!] Loi khi thiet ke AI Thumbnail: {r_err}. Su dung anh goc du phong.")
                                         shutil.copy2(thumb_src, thumb_dest)
                                 else:
                                     shutil.copy2(thumb_src, thumb_dest)
-                                    print(Fore.CYAN + f"[-] Da copy anh thumbnail: {os.path.basename(thumb_dest)}")
+                                    print(Fore.CYAN + f"[-] Da copy anh thumbnail (doi ten trung video): {os.path.basename(thumb_dest)}")
                             except Exception as thumb_err:
                                 print(Fore.YELLOW + f"[!] Khong the copy thumbnail: {thumb_err}")
                             break
