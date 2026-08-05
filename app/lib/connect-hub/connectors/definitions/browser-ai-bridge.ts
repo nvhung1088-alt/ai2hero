@@ -8,11 +8,11 @@ export const browserAiBridgeConnector: ConnectorDefinition = {
   description: 'Điều khiển Gemini / ChatGPT / Claude trực tiếp trên trình duyệt cá nhân qua Chrome Extension hoàn toàn miễn phí.',
   aiCapability: ['text', 'image'],
   aiModels: [
-    { name: 'gemini', label: 'Gemini (Text)', type: 'text' },
-    { name: 'gemini', label: 'Gemini (Vision & Image)', type: 'image' },
-    { name: 'chatgpt', label: 'ChatGPT (Text)', type: 'text' },
-    { name: 'chatgpt', label: 'ChatGPT (Vision & Image)', type: 'image' },
-    { name: 'claude', label: 'Claude (Text)', type: 'text' }
+    { name: 'gemini', type: 'text' },
+    { name: 'gemini', type: 'image' },
+    { name: 'chatgpt', type: 'text' },
+    { name: 'chatgpt', type: 'image' },
+    { name: 'claude', type: 'text' }
   ],
   
   authType: 'bearer_token',
@@ -42,7 +42,7 @@ export const browserAiBridgeConnector: ConnectorDefinition = {
       
       inputSchema: [
         { name: 'prompt', label: 'Nội dung Prompt', type: 'textarea', required: true, placeholder: 'Nhập yêu cầu cho AI...' },
-        { name: 'targetAi', label: 'Nền tảng AI mục tiêu', type: 'select', required: true, options: ['gemini', 'chatgpt', 'claude'], default: 'gemini' },
+        { name: 'targetAi', label: 'Nền tảng AI mục tiêu', type: 'select', required: true, options: ['gemini', 'chatgpt', 'claude'] },
         { name: 'attachments', label: 'File đính kèm (JSON Base64/URL)', type: 'textarea', required: false, placeholder: '[{"type":"image","base64":"data:image/png;base64,..."}]', helpText: 'Định dạng lấy ảnh qua Link mạng: [{"type": "image", "url": "https://link-anh-cua-anh.jpg"}]' },
         { name: 'jobId', label: 'Job ID (Dùng khi Thử lại / Retry)', type: 'text', required: false, placeholder: 'Nhập Job ID cũ nếu có' },
       ],
@@ -62,7 +62,7 @@ export const browserAiBridgeConnector: ConnectorDefinition = {
       
       inputSchema: [
         { name: 'prompt', label: 'Yêu cầu xử lý ảnh', type: 'textarea', required: true, placeholder: 'Phân tích chi tiết hình ảnh này / Trích xuất văn bản / Chỉnh sửa ảnh theo ý tôi...' },
-        { name: 'targetAi', label: 'Nền tảng AI mục tiêu', type: 'select', required: true, options: ['gemini', 'chatgpt', 'claude'], default: 'gemini' },
+        { name: 'targetAi', label: 'Nền tảng AI mục tiêu', type: 'select', required: true, options: ['gemini', 'chatgpt', 'claude'] },
         { name: 'attachments', label: 'Ảnh đính kèm (JSON Base64/URL)', type: 'textarea', required: true, placeholder: '[{"type":"image","url":"https://.../img.png"}]', helpText: 'Định dạng lấy ảnh qua Link mạng: [{"type": "image", "url": "https://link-anh-cua-anh.jpg"}]' },
         { name: 'jobId', label: 'Job ID (Dùng khi Thử lại / Retry)', type: 'text', required: false, placeholder: 'Nhập Job ID cũ nếu có' },
       ],
