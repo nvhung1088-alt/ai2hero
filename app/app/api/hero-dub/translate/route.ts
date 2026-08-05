@@ -180,6 +180,8 @@ Output: {"0": {"asr_correction": "这博学鸿词科很难考", "vi_translation"
       const result = await executeAction(appSlug, credentials, 'chat_completion', {
         jobId, // Truyền jobId từ worker xuống để không tạo nhiều job mới khi polling
         model: modelName,
+        teamId: auth.teamId,
+        connectionId: connection.id,
         messages: [
           { role: 'system', content: systemMessage },
           { role: 'user', content: userMessage }
