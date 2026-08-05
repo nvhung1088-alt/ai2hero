@@ -235,16 +235,18 @@ Output: {"0": {"asr_correction": "这博学鸿词科很难考", "vi_translation"
         try {
           parsed = JSON.parse(cleanOutput);
         } catch (jsonErr) {
-          console.warn(`[API Translate] JSON.parse tiêu chuẩn bị lỗi, dùng Regex Fallback Extractor...`);
-          parsed = {};
-          const pairRegex = /"(\d+)":\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g;
-          let match;
-          while ((match = pairRegex.exec(cleanOutput)) !== null) {
-            try {
-              parsed[match[1]] = JSON.parse(`"${match[2]}"`);
-            } catch {
-              parsed[match[1]] = match[2];
+          console.warn(`[API Translate] JSON.parse tiêu chuẩn bị lỗi, dùng Substring Fallback Extractor...`);
+          try {
+            const firstBraceIdx = cleanOutput.indexOf('{');
+            const lastBraceIdx = cleanOutput.lastIndexOf('}');
+            if (firstBraceIdx !== -1 && lastBraceIdx !== -1 && lastBraceIdx > firstBraceIdx) {
+              const jsonString = cleanOutput.substring(firstBraceIdx, lastBraceIdx + 1);
+              parsed = JSON.parse(jsonString);
+            } else {
+              throw new Error("Không tìm thấy cấu trúc {...} trong output");
             }
+          } catch (subErr: any) {
+            console.warn(`[API Translate] Substring Fallback Extractor thất bại: ${subErr.message}`);
           }
         }
 
