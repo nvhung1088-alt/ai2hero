@@ -106,11 +106,11 @@ export default function DubGuidePanel({
               <p className="text-[11px] text-amber-500 font-medium mb-1.5">Cách 2: Khởi chạy lại (Nếu đã cài đặt trước đó)</p>
               <div className="bg-black/80 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-amber-500/90 text-[11px] shadow-inner">
                 <span className="select-all overflow-x-auto whitespace-nowrap">
-                  {guideOs === 'windows' ? 'cd /d "%USERPROFILE%\\HeroDubWorker" && python herodub_worker.py' : 'cd ~/HeroDubWorker && python3 herodub_worker.py'}
+                  {guideOs === 'windows' ? 'cd /d "%USERPROFILE%\\HeroDubWorker_3001" && python herodub_worker.py --server https://ai2hero-flax.vercel.app/api/hero-dub' : 'cd ~/HeroDubWorker_3001 && python3 herodub_worker.py --server https://ai2hero-flax.vercel.app/api/hero-dub'}
                 </span>
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(guideOs === 'windows' ? 'cd /d "%USERPROFILE%\\HeroDubWorker" && python herodub_worker.py' : 'cd ~/HeroDubWorker && python3 herodub_worker.py');
+                    navigator.clipboard.writeText(guideOs === 'windows' ? 'cd /d "%USERPROFILE%\\HeroDubWorker_3001" && python herodub_worker.py --server https://ai2hero-flax.vercel.app/api/hero-dub' : 'cd ~/HeroDubWorker_3001 && python3 herodub_worker.py --server https://ai2hero-flax.vercel.app/api/hero-dub');
                     handleCopyGuideCommand();
                   }}
                   className="p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
@@ -125,11 +125,11 @@ export default function DubGuidePanel({
               <p className="text-[11px] text-cyan-400 font-medium mb-1.5">Cách 3 (Song Song): Chạy thêm Worker #2 (Đa luồng)</p>
               <div className="bg-black/80 border border-cyan-500/20 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-cyan-400/90 text-[11px] shadow-inner">
                 <span className="select-all overflow-x-auto whitespace-nowrap">
-                  {guideOs === 'windows' ? 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=15 & herodub-setup.bat --server https://ai2hero-flax.vercel.app --port 3002' : 'curl -o herodub-setup.sh https://ai2hero-flax.vercel.app/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh --server https://ai2hero-flax.vercel.app --port 3002'}
+                  {guideOs === 'windows' ? 'cd /d "%USERPROFILE%\\HeroDubWorker_3002" && python herodub_worker.py --server https://ai2hero-flax.vercel.app/api/hero-dub --port 3002' : 'cd ~/HeroDubWorker_3002 && python3 herodub_worker.py --server https://ai2hero-flax.vercel.app/api/hero-dub --port 3002'}
                 </span>
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(guideOs === 'windows' ? 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=15 & herodub-setup.bat --server https://ai2hero-flax.vercel.app --port 3002' : 'curl -o herodub-setup.sh https://ai2hero-flax.vercel.app/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh --server https://ai2hero-flax.vercel.app --port 3002');
+                    navigator.clipboard.writeText(guideOs === 'windows' ? 'cd /d "%USERPROFILE%\\HeroDubWorker_3002" && python herodub_worker.py --server https://ai2hero-flax.vercel.app/api/hero-dub --port 3002' : 'cd ~/HeroDubWorker_3002 && python3 herodub_worker.py --server https://ai2hero-flax.vercel.app/api/hero-dub --port 3002');
                     handleCopyGuideCommand();
                   }}
                   className="p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
