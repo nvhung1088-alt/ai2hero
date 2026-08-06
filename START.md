@@ -1955,4 +1955,6 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 
 - **2026-06-28**: Sửa lỗi Backend getProjectTasksAction (TypeError Drizzle), sửa Worker quét vô tận (Cập nhật failed -> pending), sửa lỗi UI hiển thị Date serialization và Crash Progress component, hoàn thiện mở thư mục Local.
 - **2026-07-27**: Hoàn thành Hotfix & Refactor Hero Downloader (PLAN_HOTFIX_HERO_DOWNLOADER.md): Động hóa model Image AI trong API route thumbnail, loại bỏ 100% window.location.reload() bằng immutable state update, thay thế prompt() native bằng inline URL input, và thay thế confirm() native bằng Premium Dark Mode Confirm Modal.
+- **2026-08-06**: Hoàn thành Tối ưu Polling & Tích hợp Global Traffic Manager (PLAN_OPTIMIZE_POLLING.md): Tạo Server-side RAM cache (60s TTL) cho `TrafficConfig` chống nổ DB; Đấu nối `pollIntervalMs` & `pollingMode` vào 6 API routes lõi (`connect-hub/bridge`, `hero-dub/tasks`, `hero-downloader/worker/tasks`, `hero-drive/worker`, `hero-dub/scan-configs`, `extension/pending-scan`); Chuyển Bridge Extension từ `setInterval(3s)` sang Adaptive Polling đệ quy `setTimeout`; Tối ưu các Python Workers (Hero Dub, Downloader, Drive) tự nới rộng thời gian sleep khi nhàn rỗi (giảm ~90% Edge Requests trên Vercel từ 100k xuống ~10k/ngày).
+
 

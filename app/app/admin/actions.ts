@@ -291,10 +291,31 @@ export async function setGlobalPollingModeAction(config: Partial<TrafficConfig>)
         },
       });
 
+    await invalidateTrafficConfigCache();
     revalidatePath('/admin/traffic');
     return { success: true, config: newValue, message: `Đã cập nhật cấu hình Traffic Management thành công!` };
   } catch (error: any) {
     return { error: error.message || 'Lỗi khi cập nhật cấu hình Traffic.' };
   }
 }
+
+let cachedTrafficConfig: TrafficConfig | null = null;
+let trafficConfigCacheExpiry = 0;
+
+export async function getCachedTrafficConfig(): Promise<TrafficConfig> {
+  const now = Date.now();
+  if (cachedTrafficConfig && now < trafficConfigCacheExpiry) {
+    return cachedTrafficConfig;
+  }
+  const config = await getGlobalPollingModeAction();
+  cachedTrafficConfig = config;
+  trafficConfigCacheExpiry = now + 60000; // 60s TTL
+  return config;
+}
+
+export async function invalidateTrafficConfigCache(): Promise<void> {
+  cachedTrafficConfig = null;
+  trafficConfigCacheExpiry = 0;
+}
+
 

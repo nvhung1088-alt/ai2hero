@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
+import { getCachedTrafficConfig } from '@/app/admin/actions';
 import {
   driveProjects,
   driveFolderMappings,
@@ -307,11 +308,17 @@ export async function GET(req: NextRequest) {
         };
       });
 
+      const trafficConfig = await getCachedTrafficConfig();
+
       return NextResponse.json({
         success: true,
         mappings: mappingsWithScanStatus,
         mappingTokens,
         files: filesWithTokens,
+        pollingMode: trafficConfig.mode,
+        pollIntervalMs: trafficConfig.pollIntervalMs,
+        idleTimeoutMinutes: trafficConfig.idleTimeoutMinutes,
+        maxBackoffMinutes: trafficConfig.maxBackoffMinutes,
       });
     }
 

@@ -313,6 +313,8 @@ def main():
             res = requests.get(api_url, headers=WORKER_HEADERS, timeout=120)
             if res.status_code == 200:
                 data = res.json()
+                if isinstance(data, dict) and data.get("pollIntervalMs"):
+                    poll_interval = max(20, int(data.get("pollIntervalMs")) // 1000)
                 if data.get("success"):
                     mappings = data.get("mappings", [])
                     mapping_tokens = data.get("mappingTokens", {})
@@ -366,15 +368,20 @@ def main():
                             else:
                                 print(f"   ✅ Quét hoàn tất, thư mục hiện chưa có file mới")
                                 
-                                # Luôn gửi sync rỗng để Server cập nhật lastScanAt = now và status = 'idle'
-                                sync_url = f"{server_url}/api/hero-drive/worker?action=sync"
-                                try:
-                                    requests.post(sync_url, headers=WORKER_HEADERS, json={
-                                        "mappingId": mapping_id,
-                                        "items": []
-                                    }, timeout=120)
-                                except Exception as e:
-                                    pass
+                                # Chỉ gửi sync rỗng định kỳ 10 phút (600s) để Server biết worker còn sống
+                                if 'LAST_EMPTY_SYNC' not in globals():
+                                    globals()['LAST_EMPTY_SYNC'] = {}
+                                last_sync_t = globals()['LAST_EMPTY_SYNC'].get(mapping_id, 0)
+                                if time.time() - last_sync_t > 600:
+                                    sync_url = f"{server_url}/api/hero-drive/worker?action=sync"
+                                    try:
+                                        requests.post(sync_url, headers=WORKER_HEADERS, json={
+                                            "mappingId": mapping_id,
+                                            "items": []
+                                        }, timeout=120)
+                                        globals()['LAST_EMPTY_SYNC'][mapping_id] = time.time()
+                                    except Exception as e:
+                                        pass
 
                     # 2. Upload Pending Files (Ưu tiên file nhỏ ảnh/txt trước, file lớn video sau; tối ưu băng thông)
                     if pending_files:

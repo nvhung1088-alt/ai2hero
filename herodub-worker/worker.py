@@ -276,8 +276,11 @@ def main():
             url = f"{SERVER_URL.rstrip('/')}/api/hero-dub/tasks"
             res = requests.get(url, headers=get_headers())
             
+            poll_interval = 15.0
             if res.status_code == 200:
                 data = res.json()
+                if isinstance(data, dict) and data.get("pollIntervalMs"):
+                    poll_interval = max(10.0, float(data.get("pollIntervalMs")) / 1000.0)
                 task = data.get('task')
                 if task:
                     process_task(task)
@@ -288,8 +291,9 @@ def main():
                 
         except Exception as e:
             print(f"[-] Lỗi trong vòng lặp chính của Worker: {str(e)}")
+            poll_interval = 30.0
             
-        time.sleep(10) # Nghỉ 10 giây trước khi poll tiếp
+        time.sleep(poll_interval)
 
 if __name__ == "__main__":
     try:

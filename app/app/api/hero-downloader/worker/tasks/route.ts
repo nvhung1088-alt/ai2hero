@@ -3,6 +3,7 @@ import { db } from '@/lib/db/drizzle';
 import { downloaderProjects, downloaderVideos, downloaderSettings, downloaderCookies } from '@/lib/db/schema';
 import { eq, and, isNull, lt, asc, desc, inArray, notInArray, or, notLike, isNotNull } from 'drizzle-orm';
 import { jwtVerify } from 'jose';
+import { getCachedTrafficConfig } from '@/app/admin/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -245,6 +246,7 @@ function getScanIntervalMs(intervalStr: string): number {
 
     // Ghép tất cả các file cookie lại với nhau để hỗ trợ đa nền tảng (Youtube + Bilibili + Tiktok...)
     const combinedCookieData = cookies.map(c => c.cookieData).join('\n\n');
+    const trafficConfig = await getCachedTrafficConfig();
 
     return NextResponse.json({
       success: true,
@@ -252,6 +254,10 @@ function getScanIntervalMs(intervalStr: string): number {
       downloadTasks,
       maxConcurrentDownloads,
       cookieData: combinedCookieData || null,
+      pollingMode: trafficConfig.mode,
+      pollIntervalMs: trafficConfig.pollIntervalMs,
+      idleTimeoutMinutes: trafficConfig.idleTimeoutMinutes,
+      maxBackoffMinutes: trafficConfig.maxBackoffMinutes,
     });
   } catch (error: any) {
     console.error('[API Downloader Worker Tasks] Error:', error);

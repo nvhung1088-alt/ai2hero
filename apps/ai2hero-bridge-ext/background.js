@@ -2,13 +2,18 @@
 
 let isPolling = false;
 let processedJobsCount = 0;
+let nextPollTimeout = null;
+let currentPollIntervalMs = 15000;
 
 console.log('[Ai2Hero Bridge] Background Worker Started.');
 
-// Quản lý Polling Loop
-setInterval(() => {
-  pollJobAndExecute();
-}, 3000);
+// Adaptive Polling Loop
+function scheduleNextPoll(delayMs) {
+  if (nextPollTimeout) clearTimeout(nextPollTimeout);
+  nextPollTimeout = setTimeout(pollJobAndExecute, delayMs || currentPollIntervalMs);
+}
+
+scheduleNextPoll(1000);
 
 async function pollJobAndExecute() {
   if (isPolling) return;
@@ -20,6 +25,7 @@ async function pollJobAndExecute() {
   if (!bridgeToken) {
     chrome.action.setBadgeText({ text: 'OFF' });
     chrome.action.setBadgeBackgroundColor({ color: '#888888' });
+    scheduleNextPoll(30000);
     return;
   }
 
@@ -39,20 +45,26 @@ async function pollJobAndExecute() {
       chrome.action.setBadgeText({ text: 'ERR' });
       chrome.action.setBadgeBackgroundColor({ color: '#FF0000' });
       console.warn('[Ai2Hero Bridge] Bridge Token không hợp lệ!');
+      scheduleNextPoll(60000);
       return;
     }
 
     if (!res.ok) {
       chrome.action.setBadgeText({ text: 'WAIT' });
       chrome.action.setBadgeBackgroundColor({ color: '#FFA500' });
+      scheduleNextPoll(30000);
       return;
     }
 
     const data = await res.json();
+    if (data.pollIntervalMs && typeof data.pollIntervalMs === 'number') {
+      currentPollIntervalMs = Math.max(10000, data.pollIntervalMs);
+    }
 
     if (!data.success || !data.job) {
       chrome.action.setBadgeText({ text: 'ON' });
       chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+      scheduleNextPoll(currentPollIntervalMs);
       return; // Không có job
     }
 
@@ -171,7 +183,9 @@ async function pollJobAndExecute() {
 
   } catch (err) {
     console.error('[Ai2Hero Bridge] Poll network error:', err);
+    scheduleNextPoll(currentPollIntervalMs);
   } finally {
     isPolling = false;
+    scheduleNextPoll(2000);
   }
 }

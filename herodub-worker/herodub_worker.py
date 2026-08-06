@@ -1488,7 +1488,7 @@ def poll_scan_folders_thread(token):
         except Exception as e:
             pass # Ignore errors in background thread
         
-        time.sleep(60) # Kiem tra moi 60 giay
+        time.sleep(120) # Kiem tra moi 120 giay
 
 
 def poll_tasks(token):

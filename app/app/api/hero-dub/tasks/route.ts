@@ -12,22 +12,7 @@ function extractBearerToken(request: Request): string | null {
   return authHeader.substring(7);
 }
 
-import { db } from '@/lib/db/drizzle';
-import { systemSettings } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-
-async function getPollingConfig() {
-  try {
-    const res = await db.select().from(systemSettings).where(eq(systemSettings.key, 'global_polling_mode')).limit(1);
-    if (res.length > 0 && res[0].value) {
-      const val = res[0].value as any;
-      const mode = (val?.mode as 'normal' | 'eco' | 'emergency') || 'normal';
-      const pollIntervalMs = mode === 'emergency' ? 60000 : mode === 'eco' ? 30000 : 15000;
-      return { mode, pollIntervalMs };
-    }
-  } catch (e) {}
-  return { mode: 'normal', pollIntervalMs: 15000 };
-}
+import { getCachedTrafficConfig } from '@/app/admin/actions';
 
 // 1. GET: Poll pending task
 export async function GET(request: Request) {
@@ -41,18 +26,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: 401 });
   }
 
-  const pollingConfig = await getPollingConfig();
+  const pollingConfig = await getCachedTrafficConfig();
 
   try {
     const result = await pollPendingTaskAction(auth.workerId, auth.teamId);
     if (result.error) {
-      return NextResponse.json({ error: result.error, ...pollingConfig }, { status: 400 });
+      return NextResponse.json({
+        error: result.error,
+        pollingMode: pollingConfig.mode,
+        pollIntervalMs: pollingConfig.pollIntervalMs,
+        idleTimeoutMinutes: pollingConfig.idleTimeoutMinutes,
+        maxBackoffMinutes: pollingConfig.maxBackoffMinutes,
+      }, { status: 400 });
     }
     return NextResponse.json({
       success: true,
       task: result.task,
       pollingMode: pollingConfig.mode,
       pollIntervalMs: pollingConfig.pollIntervalMs,
+      idleTimeoutMinutes: pollingConfig.idleTimeoutMinutes,
+      maxBackoffMinutes: pollingConfig.maxBackoffMinutes,
     });
   } catch (error: any) {
     console.error('[API Tasks] Poll error:', error);

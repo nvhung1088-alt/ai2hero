@@ -3,6 +3,7 @@ import { db } from '@/lib/db/drizzle';
 import { connectHubConnections, connectHubBridgeJobs } from '@/lib/db/schema';
 import { and, eq, asc } from 'drizzle-orm';
 import { decryptField } from '@/lib/sim-crypto';
+import { getCachedTrafficConfig } from '@/app/admin/actions';
 
 function extractBearerToken(request: Request): string | null {
   const authHeader = request.headers.get('Authorization');
@@ -50,6 +51,8 @@ export async function GET(request: Request) {
   }
 
   try {
+    const trafficConfig = await getCachedTrafficConfig();
+
     // 1. Tìm job pending cũ nhất của connection này
     const [pendingJob] = await db
       .select()
@@ -59,7 +62,14 @@ export async function GET(request: Request) {
       .limit(1);
 
     if (!pendingJob) {
-      return NextResponse.json({ success: true, job: null });
+      return NextResponse.json({
+        success: true,
+        job: null,
+        pollingMode: trafficConfig.mode,
+        pollIntervalMs: trafficConfig.pollIntervalMs,
+        idleTimeoutMinutes: trafficConfig.idleTimeoutMinutes,
+        maxBackoffMinutes: trafficConfig.maxBackoffMinutes,
+      });
     }
 
     // 2. Đổi trạng thái sang processing
@@ -77,6 +87,8 @@ export async function GET(request: Request) {
         attachments: pendingJob.attachments,
         createdAt: pendingJob.createdAt,
       },
+      pollingMode: trafficConfig.mode,
+      pollIntervalMs: trafficConfig.pollIntervalMs,
     });
   } catch (error: any) {
     console.error('[Bridge API GET Error]:', error);

@@ -115,14 +115,26 @@ async function processChatGPTJob(promptText, attachments) {
   console.log('[Ai2Hero Bridge] Đã bấm Gửi sang ChatGPT. Đang chờ phản hồi...');
 
   // 5. Chờ câu trả lời từ ChatGPT
-  return await waitForChatGPTResponse();
+  return await waitForChatGPTResponse(promptText);
 }
 
-function waitForChatGPTResponse() {
-  return new Promise((resolve, reject) => {
+function waitForChatGPTResponse(promptText = '') {
+  return new Promise(async (resolve, reject) => {
     let lastText = '';
     let quietTimer = null;
-    const MAX_WAIT_MS = 180000;
+    
+    // Đọc hiểu ý đồ để phân bổ thời gian đợi an toàn
+    const textLower = promptText.toLowerCase();
+    const isImageGen = textLower.includes('thiết kế') || textLower.includes('thumbnail') || textLower.includes('ảnh') || textLower.includes('image');
+    
+    // 1. CHỜ MÙ (Initial Wait): Bắt buộc đứng im không cào DOM để tránh nhầm DOM cũ
+    const initialWait = isImageGen ? 45000 : 10000; // 45s cho ảnh, 10s cho dịch
+    console.log(`[Ai2Hero Bridge] Bắt buộc chờ ${initialWait/1000}s cho AI xử lý trước khi theo dõi...`);
+    await new Promise(r => setTimeout(r, initialWait));
+    console.log(`[Ai2Hero Bridge] Hết thời gian chờ bắt buộc, bắt đầu theo dõi DOM...`);
+
+    const MAX_WAIT_MS = 240000;
+    const quietWait = isImageGen ? 15000 : 5000;
 
     const responseSelectors = [
       '[data-message-author-role="assistant"] .markdown',
@@ -175,11 +187,12 @@ function waitForChatGPTResponse() {
         lastText = currentText;
         if (quietTimer) clearTimeout(quietTimer);
 
+        // Đợi không thấy chữ mới nhảy nữa -> Đã gõ/sinh xong
         quietTimer = setTimeout(() => {
           observer.disconnect();
           clearTimeout(globalTimeout);
           resolve(currentText);
-        }, 2500);
+        }, quietWait);
       }
     });
 
