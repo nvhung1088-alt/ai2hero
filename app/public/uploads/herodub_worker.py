@@ -656,8 +656,8 @@ def process_task(token, task):
                     json.dump(translated_segments, f, ensure_ascii=False, indent=2)
             
             if task.get("translateEngine") == "connect-hub":
-                print(Fore.CYAN + f"  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Gui toan bo {len(segments_to_translate)} cau 1 lan)")
-                BATCH_SIZE = max(1, len(segments_to_translate))
+                print(Fore.CYAN + f"  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 200 cau/lan)")
+                BATCH_SIZE = 200
                 for i in range(0, len(segments_to_translate), BATCH_SIZE):
                     batch_segs = segments_to_translate[i:i+BATCH_SIZE]
                     texts = [seg['text'] for seg in batch_segs]
@@ -1488,7 +1488,7 @@ def poll_scan_folders_thread(token):
         except Exception as e:
             pass # Ignore errors in background thread
         
-        time.sleep(60) # Kiem tra moi 60 giay
+        time.sleep(120) # Kiem tra moi 120 giay
 
 
 def poll_tasks(token):
