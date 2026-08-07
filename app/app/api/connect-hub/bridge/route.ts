@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { connectHubConnections, connectHubBridgeJobs } from '@/lib/db/schema';
-import { and, eq, asc } from 'drizzle-orm';
+import { and, eq, asc, or, lt } from 'drizzle-orm';
 import { decryptField } from '@/lib/sim-crypto';
 import { getCachedTrafficConfig } from '@/app/admin/actions';
 
@@ -51,6 +51,30 @@ export async function GET(request: Request) {
   }
 
   try {
+    // 0. Auto-cleanup: Dọn sạch các job pending/processing quá 10 phút của connection này
+    try {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      await db
+        .update(connectHubBridgeJobs)
+        .set({
+          status: 'failed',
+          error: 'Job expired (no response from extension for 10 minutes)',
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(connectHubBridgeJobs.connectionId, connection.id),
+            or(
+              eq(connectHubBridgeJobs.status, 'pending'),
+              eq(connectHubBridgeJobs.status, 'processing')
+            ),
+            lt(connectHubBridgeJobs.createdAt, tenMinutesAgo)
+          )
+        );
+    } catch (cleanErr) {
+      console.error('[Bridge API Auto-Cleanup Error]:', cleanErr);
+    }
+
     const trafficConfig = await getCachedTrafficConfig();
 
     // 1. Tìm job pending cũ nhất của connection này

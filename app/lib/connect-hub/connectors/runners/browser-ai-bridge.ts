@@ -85,9 +85,9 @@ export async function runBrowserAiBridge(
     jobRecord = newJob;
   }
 
-  // 3. Vòng lặp chờ Extension xử lý (tối đa 6 giây để tránh Vercel 504 Timeout)
+  // 3. Vòng lặp chờ Extension xử lý (tối đa 12 giây để tránh Vercel 504 Timeout)
   const startTime = Date.now();
-  const TIMEOUT_MS = 6000; // 6s an toàn tuyệt đối tránh Vercel HTTP 504 Timeout
+  const TIMEOUT_MS = 12000; // 12s an toàn tránh Vercel HTTP 504 Timeout
 
   while (Date.now() - startTime < TIMEOUT_MS) {
     await new Promise((resolve) => setTimeout(resolve, 2000)); // Poll DB mỗi 2 giây
