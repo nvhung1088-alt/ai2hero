@@ -656,8 +656,8 @@ def process_task(token, task):
                     json.dump(translated_segments, f, ensure_ascii=False, indent=2)
             
             if task.get("translateEngine") == "connect-hub":
-                print(Fore.CYAN + f"  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Gui toan bo {len(segments_to_translate)} cau 1 lan)")
-                BATCH_SIZE = max(1, len(segments_to_translate))
+                print(Fore.CYAN + f"  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 200 cau/lan)")
+                BATCH_SIZE = 200
                 for i in range(0, len(segments_to_translate), BATCH_SIZE):
                     batch_segs = segments_to_translate[i:i+BATCH_SIZE]
                     texts = [seg['text'] for seg in batch_segs]
@@ -677,8 +677,21 @@ def process_task(token, task):
                         api_attempts = 0
                         while api_attempts < 60:
                             res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=90)
-                            if res.status_code == 200 and res.json().get("isPending"):
-                                pending_job_id = res.json().get("jobId")
+                            
+                            res_json = None
+                            try:
+                                res_json = res.json()
+                            except Exception:
+                                pass
+                                
+                            if res_json and "AUTH_REQUIRED" in str(res_json.get("error", "")):
+                                print(Fore.RED + "\n[!] LOI DANG NHAP: Trinh duyet Chrome Extension cua ban chua dang nhap Gemini / ChatGPT!")
+                                print(Fore.RED + "[!] Vui long mo trinh duyet Chrome, dang nhap vao tai khoan Gemini/ChatGPT phu hop.")
+                                input(Fore.YELLOW + "Nhan ENTER de thoat va chay lai sau khi da dang nhap...")
+                                sys.exit(1)
+
+                            if res.status_code == 200 and res_json and res_json.get("isPending"):
+                                pending_job_id = res_json.get("jobId")
                                 if pending_job_id:
                                     payload["jobId"] = pending_job_id
                                 print(Fore.CYAN + f"  [!] Dang cho Chrome Extension xu ly tren trinh duyet... (Lan {api_attempts+1}/60)")

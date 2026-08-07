@@ -60,9 +60,21 @@ export async function runBrowserAiBridge(
         };
       }
       if (existing.status === 'failed') {
-        throw new Error(`Job #${jobId} báo lỗi từ Extension: ${existing.error || 'Unknown error'}`);
+        console.log(`Resetting failed job #${jobId} back to pending for retry.`);
+        const [updated] = await db
+          .update(connectHubBridgeJobs)
+          .set({
+            status: 'pending',
+            error: null,
+            result: null,
+            updatedAt: new Date()
+          })
+          .where(eq(connectHubBridgeJobs.id, jobId))
+          .returning();
+        jobRecord = updated;
+      } else {
+        jobRecord = existing;
       }
-      jobRecord = existing;
     }
   }
 
