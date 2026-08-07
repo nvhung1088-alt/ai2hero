@@ -1,0 +1,7 @@
+# robots.txt - thohong.top & donghangtietkiem.com
+User-agent: *
+Allow: /
+Disallow: /admin/
+
+Sitemap: https://donghangtietkiem.com/sitemap.xml
+Sitemap: https://thohong.top/sitemap.xml
