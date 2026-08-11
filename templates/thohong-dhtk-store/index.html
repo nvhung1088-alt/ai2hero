@@ -8,9 +8,9 @@
     <meta name="keywords" content="tổng kho sỉ lẻ, đặt hàng thông minh, dhtk, thỏ hồng, đồng hàng tiết kiệm, pancake pos, đồng bộ tồn kho, giá sỉ">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
-    <!-- Canonical Tag (Được cập nhật động theo domain) -->
+    <!-- Canonical Tag & Sitemap (Được cập nhật động theo domain) -->
     <link rel="canonical" id="canonicalTag" href="https://donghangtietkiem.com/">
-    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml">
+    <link rel="sitemap" type="application/xml" id="sitemapTag" title="Sitemap" href="https://donghangtietkiem.com/sitemap.xml">
 
     <!-- Open Graph / Zalo / Facebook Sharing -->
     <meta property="og:type" content="website">
@@ -27,16 +27,38 @@
     <meta name="twitter:description" id="twitterDescription" content="Hệ thống đặt hàng sỉ lẻ thông minh, tự động tính toán chiết khấu, đồng bộ tồn kho POS Pancake trực tuyến.">
     <meta name="twitter:image" id="twitterImage" content="/media__1784598666512.png">
 
-    <!-- Structured Data (Schema.org JSON-LD) -->
+    <!-- Structured Data (Schema.org JSON-LD Local Store) -->
     <script type="application/ld+json" id="schemaStore">
     {
       "@context": "https://schema.org",
       "@type": "Store",
-      "name": "Tổng Kho Sỉ Lẻ Thông Minh (ĐHTK / Thỏ Hồng)",
-      "url": "https://donghangtietkiem.com/",
-      "description": "Hệ thống đặt hàng sỉ lẻ thông minh, tự động tính toán chiết khấu sỉ lẻ và đồng bộ tồn kho POS Pancake.",
+      "@id": "https://www.thohong.top/#store",
+      "name": "Tổng Kho Sỉ Lẻ Thỏ Hồng Store",
+      "url": "https://www.thohong.top/",
+      "image": "https://www.thohong.top/media__1784598666512.png",
+      "description": "Hệ thống đặt hàng sỉ lẻ thông minh Tổng Kho Sỉ Lẻ Thỏ Hồng, tự động tính toán chiết khấu sỉ/lẻ và đồng bộ tồn kho POS Pancake.",
+      "telephone": "+84968988636",
       "priceRange": "VNĐ",
-      "inLanguage": "vi-VN"
+      "inLanguage": "vi-VN",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "33b ngõ 357 Tam Trinh, Tương Mai",
+        "addressLocality": "Hà Nội",
+        "addressRegion": "Hà Nội",
+        "postalCode": "100000",
+        "addressCountry": "VN"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": 20.988404,
+        "longitude": 105.856983
+      },
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "opens": "08:00",
+        "closes": "21:00"
+      }
     }
     </script>
 
@@ -45,7 +67,7 @@
         (function initSEO() {
             var host = window.location.hostname;
             var isThoHong = host.indexOf('thohong') !== -1;
-            var currentOrigin = window.location.origin || (isThoHong ? 'https://thohong.top' : 'https://donghangtietkiem.com');
+            var currentOrigin = window.location.origin || (isThoHong ? 'https://www.thohong.top' : 'https://www.donghangtietkiem.com');
             
             var brandName = isThoHong ? "Tổng Kho Sỉ Lẻ Thỏ Hồng" : "Đồng Hàng Tiết Kiệm (ĐHTK)";
             var fullTitle = brandName + " - Hệ Thống Đặt Hàng Thông Minh";
@@ -59,12 +81,50 @@
             
             setAttr('seoDescription', 'content', desc);
             setAttr('canonicalTag', 'href', currentOrigin + '/');
+            setAttr('sitemapTag', 'href', currentOrigin + '/sitemap.xml');
             setAttr('ogTitle', 'content', fullTitle);
             setAttr('ogDescription', 'content', desc);
-            setAttr('ogUrl', 'content', currentOrigin);
+            setAttr('ogUrl', 'content', currentOrigin + '/');
             setAttr('ogSiteName', 'content', brandName);
             setAttr('twitterTitle', 'content', fullTitle);
             setAttr('twitterDescription', 'content', desc);
+
+            // Cập nhật Schema.org JSON-LD động
+            var schemaEl = document.getElementById('schemaStore');
+            if (schemaEl) {
+                var schemaData = {
+                    "@context": "https://schema.org",
+                    "@type": "Store",
+                    "@id": currentOrigin + "/#store",
+                    "name": brandName + " Store",
+                    "url": currentOrigin + "/",
+                    "image": currentOrigin + "/media__1784598666512.png",
+                    "description": desc,
+                    "telephone": "+84968988636",
+                    "priceRange": "VNĐ",
+                    "inLanguage": "vi-VN",
+                    "address": {
+                        "@type": "PostalAddress",
+                        "streetAddress": "33b ngõ 357 Tam Trinh, Tương Mai",
+                        "addressLocality": "Hà Nội",
+                        "addressRegion": "Hà Nội",
+                        "postalCode": "100000",
+                        "addressCountry": "VN"
+                    },
+                    "geo": {
+                        "@type": "GeoCoordinates",
+                        "latitude": 20.988404,
+                        "longitude": 105.856983
+                    },
+                    "openingHoursSpecification": {
+                        "@type": "OpeningHoursSpecification",
+                        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+                        "opens": "08:00",
+                        "closes": "21:00"
+                    }
+                };
+                schemaEl.textContent = JSON.stringify(schemaData, null, 2);
+            }
         })();
     </script>
 
@@ -173,8 +233,8 @@
 </head>
 <body id="bodyWrap">
 
-    <!-- Thẻ H1 Chuẩn SEO cho Cấu trúc Ngữ nghĩa HTML5 -->
-    <h1 class="sr-only" id="mainH1">Tổng Kho Sỉ Lẻ Thông Minh - Đồng Hàng Tiết Kiệm & Thỏ Hồng Store</h1>
+    <!-- Cấu trúc Ngữ nghĩa HTML5 Chuẩn SEO -->
+    <div class="sr-only" id="mainHeaderLabel">Tổng Kho Sỉ Lẻ Thông Minh - Đồng Hàng Tiết Kiệm & Thỏ Hồng Store</div>
 
     <!-- Màn hình chờ lúc mới vào Web -->
     <div id="globalLoader" class="global-loader">
@@ -184,7 +244,7 @@
 
     <header>
         <div class="container header-content">
-            <a href="/" class="logo" id="logoContainer">ĐH<span>TK</span></a>
+            <a href="/" class="logo" id="logoContainer" aria-label="Trang chủ Tổng Kho Sỉ Lẻ Thỏ Hồng Store / ĐHTK">ĐH<span>TK</span></a>
             <div style="display:flex; align-items:center; gap:10px;">
                 <button class="admin-toggle" onclick="promptAdmin()" id="adminLoginBtn" title="Quản trị">🔐 Admin</button>
                 <div class="cart-icon" onclick="toggleCart()">
