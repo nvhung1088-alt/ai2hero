@@ -4,6 +4,14 @@
 ## TRANG THAI
 Mode:         Build
 Ten du an:    AI2Hero Platform (Free AI MVP Super App)
+
+### [ĐHTK] SEO Tối Ưu Tự Động (2026-08-11)
+- **Status:** `Beta`
+- **Mô tả:** Tích hợp Server-to-Server Google Indexing API bằng JWT, cùng giao diện Admin Off-Page SEO.
+- **Tiến độ:**
+  - `[x]` On-Page: Cập nhật Schema JSON-LD, Sitemap tuyệt đối, ALT img, H1 (Điểm 100/100).
+  - `[x]` Off-Page: Viết API route `app/api/seo/indexing/route.ts` ký JWT và push Google (60s index).
+  - `[x]` UI Admin: Tạo giao diện `/admin/seo/off-page` để quản trị push tín hiệu thủ công.
 ### 3. HeroVideo (MVP Mới - Ngân hàng nguyên liệu Video)
 - **Status:** `Beta`
 - **Mô tả:** Extension thu thập video không logo từ Tiktok/Douyin, tự động đồng bộ (sync) trực tiếp vào tài khoản AI2Hero.

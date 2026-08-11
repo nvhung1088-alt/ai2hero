@@ -304,11 +304,15 @@ def extract_vocals_demucs(workspace, audio_path, ffmpeg_exe):
 
 def get_video_props(video_path):
     import subprocess, json
-    cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height,r_frame_rate", "-of", "json", video_path]
-    out = subprocess.check_output(cmd).decode('utf-8')
-    data = json.loads(out)
-    stream = data['streams'][0]
-    return stream['width'], stream['height'], stream['r_frame_rate']
+    try:
+        cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height,r_frame_rate,bit_rate:format=bit_rate", "-of", "json", video_path]
+        out = subprocess.check_output(cmd).decode('utf-8')
+        data = json.loads(out)
+        stream = data['streams'][0]
+        bitrate = stream.get('bit_rate') or data.get('format', {}).get('bit_rate')
+        return stream['width'], stream['height'], stream['r_frame_rate'], bitrate
+    except Exception:
+        return 1920, 1080, "30/1", None
 
 def standardize_and_cache_video(video_path, target_width, target_height, target_fps):
     import hashlib, os, subprocess
@@ -335,20 +339,20 @@ def standardize_and_cache_video(video_path, target_width, target_height, target_
         "ffmpeg", "-y", "-i", video_path,
         "-vf", scale_pad_filter,
         "-r", str(target_fps),
-        "-c:v", "libx264", "-preset", "fast",
-        "-c:a", "aac", "-ar", "48000",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-c:a", "aac", "-b:a", "128k", "-ar", "48000",
         cache_filepath
     ]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return cache_filepath
 
 def detect_best_encoder():
-    """Auto-detect GPU encoder kha dung, tra ve (vcodec, extra_args)"""
+    """Auto-detect GPU encoder kha dung, tra ve (vcodec, extra_args) voi Rate Control toi uu dung luong"""
     import subprocess
     candidates = [
-        ("h264_nvenc", {"preset": "p4"}),
-        ("h264_amf",   {}),
-        ("h264_qsv",   {"preset": "fast"}),
+        ("h264_nvenc", {"preset": "p4", "rc": "vbr", "cq": "24", "b:v": "4M", "maxrate": "6M", "bufsize": "12M"}),
+        ("h264_amf",   {"rc": "cqp", "qp_i": "24", "qp_p": "24"}),
+        ("h264_qsv",   {"preset": "fast", "global_quality": "24"}),
     ]
     for codec, extra in candidates:
         try:
@@ -362,8 +366,8 @@ def detect_best_encoder():
                 return codec, extra
         except:
             pass
-    print(Fore.YELLOW + "  [CPU] Khong tim thay GPU encoder, su dung libx264 ultrafast")
-    return "libx264", {"preset": "ultrafast"}
+    print(Fore.YELLOW + "  [CPU] Khong tim thay GPU encoder, su dung libx264 preset fast (CRF 24)")
+    return "libx264", {"preset": "fast", "crf": "24"}
 
 def process_task(token, task):
     import shutil
@@ -656,8 +660,9 @@ def process_task(token, task):
                     json.dump(translated_segments, f, ensure_ascii=False, indent=2)
             
             if task.get("translateEngine") == "connect-hub":
-                print(Fore.CYAN + f"  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 200 cau/lan)")
-                BATCH_SIZE = 200
+                llm_model_name = task.get("llmModel") or "Connect Hub (Server-side LLM)"
+                print(Fore.CYAN + f"  -> Su dung {llm_model_name} de dich thuat (Batching 30 cau/lan)")
+                BATCH_SIZE = 30
                 for i in range(0, len(segments_to_translate), BATCH_SIZE):
                     batch_segs = segments_to_translate[i:i+BATCH_SIZE]
                     texts = [seg['text'] for seg in batch_segs]
@@ -1147,7 +1152,7 @@ if __name__ == '__main__':
         if branding_enabled and logo_url and os.path.exists(logo_url):
             print(Fore.CYAN + "  -> Dang ap dung Logo (Watermark)...")
             try:
-                tw, th, tfps = get_video_props("input.mp4")
+                tw, th, tfps, orig_bitrate = get_video_props("input.mp4")
                 logo_w = max(50, int(tw * 0.15)) # 15% width
             except:
                 logo_w = 150 # fallback
@@ -1164,8 +1169,22 @@ if __name__ == '__main__':
 
         
         vcodec_val, encoder_extra = detect_best_encoder()
+        
+        # Doc bitrate video goc (neu co) va khong de bitrate khi render vuot qua bitrate goc + 15%
+        try:
+            _, _, _, orig_bitrate = get_video_props("input.mp4")
+            if orig_bitrate and int(orig_bitrate) > 500000:
+                target_b = int(orig_bitrate)
+                max_b = int(target_b * 1.15)
+                encoder_extra["b:v"] = f"{target_b}"
+                encoder_extra["maxrate"] = f"{max_b}"
+                encoder_extra["bufsize"] = f"{max_b * 2}"
+        except Exception:
+            pass
 
         def build_and_run_render(vc, extra_args):
+            render_kwargs = {"acodec": "aac", "b:a": "128k"}
+            render_kwargs.update(extra_args)
             if has_dubbed:
                 bg_audio_file = "audio.wav"
                 bg_volume = db_bg_volume
@@ -1177,12 +1196,12 @@ if __name__ == '__main__':
                     a_bg = ffmpeg.input(bg_audio_file).audio.filter('volume', bg_volume)
                     a_fg = ffmpeg.input("dubbed_audio.wav").audio.filter('volume', db_tts_volume)
                     mixed_audio = ffmpeg.filter([a_bg, a_fg], 'amix', inputs=2, duration='first').filter('volume', 2.0)
-                    st = ffmpeg.output(video_sub, mixed_audio, "temp_output.mp4", vcodec=vc, acodec="aac", **extra_args)
+                    st = ffmpeg.output(video_sub, mixed_audio, "temp_output.mp4", vcodec=vc, **render_kwargs)
                 else:
                     audio_dub = ffmpeg.input("dubbed_audio.wav").audio
-                    st = ffmpeg.output(video_sub, audio_dub, "temp_output.mp4", vcodec=vc, acodec="aac", **extra_args)
+                    st = ffmpeg.output(video_sub, audio_dub, "temp_output.mp4", vcodec=vc, **render_kwargs)
             else:
-                st = ffmpeg.output(video_sub, video.audio, "temp_output.mp4", vcodec=vc, acodec="aac", **extra_args)
+                st = ffmpeg.output(video_sub, video.audio, "temp_output.mp4", vcodec=vc, **render_kwargs)
             ffmpeg.run(st, overwrite_output=True, quiet=True)
 
         if has_dubbed:
@@ -1197,8 +1216,8 @@ if __name__ == '__main__':
             build_and_run_render(vcodec_val, encoder_extra)
         except Exception as render_err:
             if vcodec_val != "libx264":
-                print(Fore.YELLOW + f"  [!] Fallback sang CPU ultrafast do GPU render gap loi: {render_err}")
-                build_and_run_render("libx264", {"preset": "ultrafast"})
+                print(Fore.YELLOW + f"  [!] Fallback sang CPU fast (CRF 24) do GPU render gap loi: {render_err}")
+                build_and_run_render("libx264", {"preset": "fast", "crf": "24"})
             else:
                 raise render_err
         
@@ -1207,7 +1226,7 @@ if __name__ == '__main__':
         if branding_enabled and ((intro_url and os.path.exists(intro_url)) or (outro_url and os.path.exists(outro_url))):
             print(Fore.CYAN + "  -> Dang gop Video Intro/Outro...")
             try:
-                tw, th, tfps = get_video_props("temp_output.mp4")
+                tw, th, tfps, _ = get_video_props("temp_output.mp4")
                 inputs = []
                 filter_chains = []
                 idx = 0
@@ -1231,13 +1250,15 @@ if __name__ == '__main__':
                     filter_chains.extend([inputs[-1].video, inputs[-1].audio])
                     idx += 1
                 
+                concat_render_kwargs = {"acodec": "aac", "b:a": "128k"}
+                concat_render_kwargs.update(encoder_extra)
                 joined = ffmpeg.concat(*filter_chains, v=1, a=1).node
-                out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec=vcodec_val, acodec="aac", **encoder_extra)
+                out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec=vcodec_val, **concat_render_kwargs)
                 try:
                     ffmpeg.run(out_stream, overwrite_output=True, quiet=True)
                 except Exception:
                     if vcodec_val != "libx264":
-                        out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec="libx264", acodec="aac", preset="ultrafast")
+                        out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec="libx264", acodec="aac", preset="fast", crf="24", **{"b:a": "128k"})
                         ffmpeg.run(out_stream, overwrite_output=True, quiet=True)
                     else:
                         raise

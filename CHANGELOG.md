@@ -1,5 +1,12 @@
 # AI2HERO — CHANGELOG
 
+## 2026-08-07 — HeroWeb & SEO: On-Page SEO Optimization & Vercel Deployment (thohong.top & donghangtietkiem.com)
+- **Dynamic SEO Metadata & Canonical Tag**: Thêm đoạn script JS tự động cập nhật thẻ `<link rel="canonical">`, `<title>`, `<meta name="description">` và OpenGraph/Twitter Cards linh hoạt dựa trên hostname khi trang tải (`thohong.top` vs `donghangtietkiem.com`).
+- **Semantic HTML5 & H1 Structure**: Thêm thẻ `<h1 class="sr-only">` chuẩn ngữ nghĩa HTML5 chứa tên thương hiệu và chủ đề chính cho Googlebot.
+- **Structured Data (Schema.org JSON-LD)**: Thêm khối dữ liệu cấu trúc `Store` dạng JSON-LD giúp Google hiển thị Rich Results trên trang kết quả tìm kiếm.
+- **Robots.txt & Sitemap.xml**: Tạo file `robots.txt` và `sitemap.xml` chuẩn khai báo sơ đồ trang web cho cả 2 tên miền, đồng bộ tại `public/`, `app/public/` và `templates/thohong-dhtk-store/`.
+- **Automatic Vercel Deployment**: Push commit trực tiếp lên GitHub repo `nvhung1088-alt/ai2hero`, tự động trigger Vercel deploy bản SEO mới thành công.
+
 ## 2026-08-05 — HeroDub: Redesign AI Thumbnail UI & Connect Hub Integration
 - **Extension ChatGPT Web Support**: Tạo mới file `content-chatgpt.js` và cập nhật `manifest.json` cho Chrome Extension **Ai2Hero Browser Bridge**, hỗ trợ nhận diện và dán prompt tự động vào ChatGPT Web (`chatgpt.com`).
 - **Connect Hub Image AI Selection**: Lọc và hiển thị danh sách các ứng dụng AI chuyên xử lý/sinh ảnh (`connectedAiImageApps`) từ Connect Hub lên form tạo tác vụ HeroDub.
