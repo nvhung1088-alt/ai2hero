@@ -1,5 +1,5 @@
 # AI2HERO — START
-> Cap nhat: 2026-08-07
+> Cap nhat: 2026-06-28
 
 ## TRANG THAI
 Mode:         Build
@@ -123,7 +123,6 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Cập nhật giao diện Dashboard, hỗ trợ toggle kích hoạt lồng tiếng, chọn engine và giọng đọc phù hợp.
   - `[x]` Xây dựng trang Lịch sử hoạt động (Activity History) với tính năng phân trang, auto-refresh và quản lý tiến độ.
   - `[x]` [Phase 5] Bổ sung công nghệ TTS cao cấp: Tích hợp ElevenLabs API (Cảm xúc điện ảnh), Google Cloud TTS, FPT AI, Viettel AI vào Connect Hub thành công.
-  - `[x]` Tối ưu dung lượng Video Render (`herodub_worker.py`): Khắc phục sự cố video phình từ 500MB lên 1.5GB bằng cách thêm Rate Control (CRF 24 / NVENC CQ 24), tự động giới hạn Max Bitrate theo bitrate gốc của video và giới hạn bitrate AAC 128k.
   - `[x]` Tích hợp 3 Chế độ Tốc độ STT (⚡ Nhanh / ⚖️ Ổn định / 💎 Chất lượng) trên Dashboard UI và Worker cục bộ.
   - `[x]` Tích hợp 3 Chế độ Tạp âm & Nhạc nền (🎤 Ít tạp âm / 🎬 Bình thường / 💥 Nhiều tạp âm) trên Dashboard UI và Worker cục bộ.
 
@@ -1957,7 +1956,5 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - **2026-06-28**: Sửa lỗi Backend getProjectTasksAction (TypeError Drizzle), sửa Worker quét vô tận (Cập nhật failed -> pending), sửa lỗi UI hiển thị Date serialization và Crash Progress component, hoàn thiện mở thư mục Local.
 - **2026-07-27**: Hoàn thành Hotfix & Refactor Hero Downloader (PLAN_HOTFIX_HERO_DOWNLOADER.md): Động hóa model Image AI trong API route thumbnail, loại bỏ 100% window.location.reload() bằng immutable state update, thay thế prompt() native bằng inline URL input, và thay thế confirm() native bằng Premium Dark Mode Confirm Modal.
 - **2026-08-06**: Hoàn thành Tối ưu Polling & Tích hợp Global Traffic Manager (PLAN_OPTIMIZE_POLLING.md): Tạo Server-side RAM cache (60s TTL) cho `TrafficConfig` chống nổ DB; Đấu nối `pollIntervalMs` & `pollingMode` vào 6 API routes lõi (`connect-hub/bridge`, `hero-dub/tasks`, `hero-downloader/worker/tasks`, `hero-drive/worker`, `hero-dub/scan-configs`, `extension/pending-scan`); Chuyển Bridge Extension từ `setInterval(3s)` sang Adaptive Polling đệ quy `setTimeout`; Tối ưu các Python Workers (Hero Dub, Downloader, Drive) tự nới rộng thời gian sleep khi nhàn rỗi (giảm ~90% Edge Requests trên Vercel từ 100k xuống ~10k/ngày).
-- **2026-08-11**: Hoàn thành Tối ưu hóa On-Page SEO (100/100 Điểm) cho `thohong.top` và `donghangtietkiem.com`: Chuẩn hóa 1 thẻ H1 duy nhất trên trang chủ; Động hóa và mở rộng Schema.org JSON-LD Local Store đầy đủ thông tin địa chỉ 33b Tam Trinh, hotline, giờ mở cửa, và tọa độ Google Maps; Bổ sung thuộc tính `aria-label` cho logo & `alt` hình ảnh; Động hóa thẻ `<link rel="sitemap">` theo URL tuyệt đối chuẩn theo domain active.
-
 
 
