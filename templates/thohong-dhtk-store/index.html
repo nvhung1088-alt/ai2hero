@@ -570,15 +570,28 @@
                     </div>
                 </div>
 
-                <!-- Tab: Auto Content & Post -->
+                <!-- Tab: Auto Content & Post (DeepSeek Powered) -->
                 <div id="tab-autocontent" class="apanel-content" style="display:none;">
-                    <h3 style="margin-bottom:1rem;">✍️ Auto Content Generator & Social Push</h3>
+                    <h3 style="margin-bottom:1rem;">✍️ Auto Content Generator (Powered by DeepSeek AI)</h3>
                     <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:1rem; margin-bottom:1rem; font-size:0.85rem; color:#1e40af;">
-                        🤖 Tự động viết bài chuẩn SEO từ danh mục sản phẩm và tự động đẩy bài sang các kênh truyền thông/Social.
+                        🤖 Tự động gọi **DeepSeek V3 / R1 API** để sinh bài viết chuẩn SEO 1000+ từ và tự động đẩy bài sang các kênh Social.
                     </div>
                     <div style="display:flex; flex-direction:column; gap:12px;">
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:2;">
+                                <label style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:4px;">DeepSeek API Key (sk-...):</label>
+                                <input type="password" id="autocontent_deepseek_key" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx" style="width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:8px; font-family:monospace;">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Model AI:</label>
+                                <select id="autocontent_model" style="width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:8px;">
+                                    <option value="deepseek-chat">DeepSeek V3 (Siêu tốc)</option>
+                                    <option value="deepseek-reasoner">DeepSeek R1 (Tư duy sâu)</option>
+                                </select>
+                            </div>
+                        </div>
                         <div>
-                            <label style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Chủ đề hoặc Sản phẩm cần viết bài:</label>
+                            <label style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Chủ đề hoặc Tên Sản phẩm cần viết bài:</label>
                             <input type="text" id="autocontent_topic" placeholder="Ví dụ: Đánh giá chi tiết mẫu áo khoác chống nước hot nhất 2026..." style="width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:8px;">
                         </div>
                         <div>
@@ -586,10 +599,10 @@
                             <input type="text" id="autocontent_keywords" placeholder="áo khoác giá sỉ, tổng kho sỉ lẻ đhtk, thỏ hồng shop" style="width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:8px;">
                         </div>
                         <div style="display:flex; gap:10px;">
-                            <button class="btn" style="background:#7c3aed; color:white; flex:1;" onclick="generateSEOArticle()">✨ Tạo bài viết AI Chuẩn SEO</button>
+                            <button class="btn" style="background:#7c3aed; color:white; flex:1;" onclick="generateSEOArticle()">✨ Viết bài chuẩn SEO qua DeepSeek</button>
                             <button class="btn" style="background:#059669; color:white; flex:1;" onclick="pushToSocial()">📢 Tự động Đăng bài & Syndication</button>
                         </div>
-                        <div id="autocontent_output" style="background:#f8fafc; border:1px solid #e2e8f0; padding:1rem; border-radius:8px; display:none; min-height:100px;"></div>
+                        <div id="autocontent_output" style="background:#ffffff; border:1px solid #cbd5e1; padding:1rem; border-radius:8px; display:none; min-height:120px; max-height:350px; overflow-y:auto; line-height:1.6;"></div>
                     </div>
                 </div>
 
@@ -2276,19 +2289,67 @@
             alert('⚡ Đã đẩy (Push) IndexNow tới Bing & Yandex thành công!');
         }
 
-        function generateSEOArticle() {
+        async function generateSEOArticle() {
+            const apiKey = document.getElementById('autocontent_deepseek_key').value.trim() || localStorage.getItem('dhtk_deepseek_key');
+            const model = document.getElementById('autocontent_model').value;
             const topic = document.getElementById('autocontent_topic').value.trim();
             const keywords = document.getElementById('autocontent_keywords').value.trim();
             const out = document.getElementById('autocontent_output');
+
+            if (!apiKey) return alert('Vui lòng nhập DeepSeek API Key (sk-...)!');
             if (!topic) return alert('Vui lòng nhập chủ đề bài viết!');
 
+            // Save Key for convenience
+            localStorage.setItem('dhtk_deepseek_key', apiKey);
+            document.getElementById('autocontent_deepseek_key').value = apiKey;
+
             out.style.display = 'block';
-            out.innerHTML = `<strong>✨ Bài viết AI Chuẩn SEO đang được tạo:</strong><br><br>` +
-                `<h3>${topic}</h3>` +
-                `<p>Chào mừng bạn đến với bài viết đánh giá chuyên sâu. Từ khóa ưu tiên: <em>${keywords || 'tổng kho sỉ lẻ'}</em>.</p>` +
-                `<p>Hệ thống tự động đồng bộ giá sỉ và tồn kho POS Pancake trực tuyến 24/7...</p>` +
-                `<hr style="margin:10px 0;"><span style="color:#10b981;">✅ Đã tạo thành công bài viết 800 từ chuẩn SEO!</span>`;
+            out.innerHTML = `<span style="color:#7c3aed; font-weight:600;">⏳ Đang kết nối DeepSeek AI (${model})... Đang suy nghĩ và tạo bài viết chuẩn SEO...</span>`;
+
+            try {
+                const promptText = `Bạn là chuyên gia Content SEO xuất sắc. Hãy viết 1 bài viết chuẩn SEO chi tiết (~800-1000 từ) bằng HTML format (dùng <h1>, <h2>, <h3>, <p>, <ul>, <li>, <strong>) về chủ đề: "${topic}".
+Các từ khóa SEO cần chèn tự nhiên: "${keywords || 'tổng kho sỉ lẻ, giá sỉ tốt nhất'}".
+Bài viết phải hấp dẫn, chuyên nghiệp, chuẩn cấu trúc E-E-A-T của Google, thúc đẩy mua sỉ/lẻ tại ĐHTK & Thỏ Hồng Shop. Trả về trực tiếp thẻ HTML, không cần bọc codeblock \`\`\`html.`;
+
+                const response = await fetch('https://api.deepseek.com/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [
+                            { role: 'system', content: 'You are a professional SEO Content Writer producing HTML format articles.' },
+                            { role: 'user', content: promptText }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 2500
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.choices && data.choices.length > 0) {
+                    const articleHTML = data.choices[0].message.content;
+                    out.innerHTML = `<div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:10px; border-radius:6px; margin-bottom:10px; color:#166534; font-weight:600;">✅ Bài viết được sinh thành công bởi DeepSeek AI!</div>` +
+                        articleHTML;
+                } else {
+                    const err = data.error ? data.error.message : 'DeepSeek API trả về lỗi';
+                    out.innerHTML = `<span style="color:#ef4444; font-weight:600;">❌ Lỗi DeepSeek API: ${err}</span>`;
+                }
+            } catch(e) {
+                out.innerHTML = `<span style="color:#ef4444; font-weight:600;">❌ Lỗi kết nối tới DeepSeek API: ${e.message}. Kiểm tra lại CORS hoặc API Key.</span>`;
+            }
         }
+
+        // Auto load saved DeepSeek Key
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('dhtk_deepseek_key');
+            if (savedKey && document.getElementById('autocontent_deepseek_key')) {
+                document.getElementById('autocontent_deepseek_key').value = savedKey;
+            }
+        });
 
         function pushToSocial() {
             const topic = document.getElementById('autocontent_topic').value.trim();
