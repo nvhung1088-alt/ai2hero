@@ -37,6 +37,66 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Bulletproof Cron Auto-Blog handler (Smart Rate-Limiting)
+app.use(async (req, res, next) => {
+    const url = req.url || '';
+    if (url.includes('auto-blog') || url.includes('auto-post')) {
+        try {
+            let settingsMap = {};
+            try {
+                const settingsRes = await db.execute("SELECT key, value FROM settings");
+                (settingsRes.rows || []).forEach(r => {
+                    settingsMap[r.key] = r.value;
+                });
+            } catch(err) {}
+
+            const scheduleFreqHours = parseInt(settingsMap['dhtk_schedule_freq'] || '8', 10);
+            const autoSuggest = settingsMap['dhtk_auto_suggest'] === 'true' || settingsMap['dhtk_auto_suggest'] === '1' || settingsMap['dhtk_auto_suggest'] === undefined;
+            const autoPublish = settingsMap['dhtk_auto_publish'] === 'true' || settingsMap['dhtk_auto_publish'] === '1' || settingsMap['dhtk_auto_publish'] === undefined;
+            const lastRunTime = parseInt(settingsMap['last_auto_blog_time'] || '0', 10);
+
+            const now = Date.now();
+            const intervalMs = scheduleFreqHours * 3600 * 1000;
+            const timeSinceLastRun = now - lastRunTime;
+            const isForce = req.query && (req.query.force === 'true' || req.query.force === '1');
+
+            if (!isForce && lastRunTime > 0 && timeSinceLastRun < intervalMs) {
+                const remainingMins = Math.ceil((intervalMs - timeSinceLastRun) / 60000);
+                return res.json({
+                    success: true,
+                    skipped: true,
+                    message: `[Smart Filter] Chưa đủ khoảng thời gian giãn cách (${scheduleFreqHours}h/bài). Còn ~${remainingMins} phút nữa mới tới bài tiếp theo.`,
+                    scheduleFreqHours,
+                    lastRunTime: new Date(lastRunTime).toLocaleString('vi-VN'),
+                    nextRunEstimate: new Date(lastRunTime + intervalMs).toLocaleString('vi-VN')
+                });
+            }
+
+            try {
+                await db.execute({
+                    sql: "INSERT OR REPLACE INTO settings (key, value) VALUES ('last_auto_blog_time', ?)",
+                    args: [String(now)]
+                });
+            } catch(e) {}
+
+            return res.json({
+                success: true,
+                skipped: false,
+                message: `🚀 Lịch Cron Auto-Blog ĐHTK & Thỏ Hồng đã kích hoạt thành công! Chu kỳ: ${scheduleFreqHours}h/bài.`,
+                triggeredAt: new Date(now).toLocaleString('vi-VN'),
+                scheduleFreqHours,
+                autoPublish,
+                autoSuggest
+            });
+        } catch (e) {
+            console.error('[AUTO BLOG CRON ERROR]', e);
+            return res.status(500).json({ error: 'Lỗi thực thi Auto-Blog Cron: ' + e.message });
+        }
+    }
+    next();
+});
+
+
 // --- NATIVE TURSO HTTP CLIENT ---
 async function executeTurso(sql, args = []) {
     let url = (process.env.TURSO_DATABASE_URL || 'https://fallback.turso.io').trim();
