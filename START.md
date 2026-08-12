@@ -1,9 +1,10 @@
 # AI2HERO — START
-> Cap nhat: 2026-06-28
+> Cập nhật: 2026-08-12 (Reset về phiên bản 24h trước 5d3877d + Tích hợp bộ lọc Smart Cron Auto-Blog)
 
 ## TRANG THAI
 Mode:         Build
 Ten du an:    AI2Hero Platform (Free AI MVP Super App)
+
 ### 3. HeroVideo (MVP Mới - Ngân hàng nguyên liệu Video)
 - **Status:** `Beta`
 - **Mô tả:** Extension thu thập video không logo từ Tiktok/Douyin, tự động đồng bộ (sync) trực tiếp vào tài khoản AI2Hero.
