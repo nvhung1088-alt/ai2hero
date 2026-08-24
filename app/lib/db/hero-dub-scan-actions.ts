@@ -1,8 +1,8 @@
 'use server';
 
 import { db } from './drizzle';
-import { dubScanConfigs } from './schema';
-import { eq, and } from 'drizzle-orm';
+import { dubScanConfigs, dubTasks } from './schema';
+import { eq, and, or } from 'drizzle-orm';
 
 export async function getDubScanConfigsAction(teamId: number) {
   try {
@@ -76,6 +76,30 @@ export async function saveDubScanConfigAction(data: {
           isActive: data.isActive !== undefined ? data.isActive : true,
         })
         .where(eq(dubScanConfigs.id, configId));
+
+      // Tự động đồng bộ cấu hình mới cho các task đang pending / failed thuộc dự án này
+      await db.update(dubTasks)
+        .set({
+          sourceLang: data.sourceLang,
+          targetLang: data.targetLang,
+          asrEngine: data.asrEngine,
+          subtitleMode: data.subtitleMode,
+          ttsEnabled: data.ttsEnabled,
+          ttsEngine: data.ttsEngine,
+          ttsVoice: data.ttsVoice,
+          ttsSpeed: data.ttsSpeed,
+          bgVolume: data.bgVolume,
+          ttsVolume: data.ttsVolume,
+          videoSlowdown: data.videoSlowdown || '1.0',
+          outputFolder: data.outputFolder,
+          translateContext: data.translateContext,
+        })
+        .where(
+          and(
+            eq(dubTasks.scanConfigId, configId),
+            or(eq(dubTasks.status, 'pending'), eq(dubTasks.status, 'failed'))
+          )
+        );
     } else {
       await db.insert(dubScanConfigs).values({
         teamId: data.teamId,

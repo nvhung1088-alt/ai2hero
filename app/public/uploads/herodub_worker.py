@@ -442,12 +442,26 @@ def process_task(token, task):
     except:
         video_slowdown = 1.0
 
-    if not os.path.exists(local_input):
+    slowdown_tag = f"spd{int(video_slowdown*100)}" if video_slowdown < 0.999 else "spd100"
+    speed_marker = os.path.join(workspace, f"speed_{slowdown_tag}.done")
+
+    if not os.path.exists(local_input) or not os.path.exists(speed_marker):
         if not os.path.exists(source_url):
             print(Fore.RED + f"[-] Loi: Khong tim thay file {source_url} tren may tinh!")
             requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Khong tim thay file tren o cung: {source_url}"}, headers=headers)
             return
         
+        # Xóa các file trung gian cũ nếu tốc độ đã thay đổi
+        import glob
+        for old_file in ["input.mp4", "audio.wav", "vocals.wav", "no_vocals.wav"]:
+            fpath = os.path.join(workspace, old_file)
+            if os.path.exists(fpath):
+                try: os.remove(fpath)
+                except: pass
+        for marker in glob.glob(os.path.join(workspace, "speed_*.done")):
+            try: os.remove(marker)
+            except: pass
+
         # Tiền xử lý giảm tốc độ video gốc nếu cấu hình < 1.0 (ví dụ 0.90x = giảm 10%)
         if video_slowdown < 0.999:
             print(Fore.CYAN + f"[-] Dang tien xu ly giam toc do video goc xuong {int(video_slowdown * 100)}% ({video_slowdown:.2f}x) de toi uu long tieng...")
@@ -477,6 +491,12 @@ def process_task(token, task):
                 pass
         else:
             shutil.copy2(source_url, local_input)
+        
+        try:
+            with open(speed_marker, "w") as f:
+                f.write(slowdown_tag)
+        except:
+            pass
 
     # 1. TRANSCRIBING
     duration_sec = 0
