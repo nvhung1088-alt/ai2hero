@@ -436,12 +436,47 @@ def process_task(token, task):
     requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "downloading", "progress": 10}, headers=headers)
 
     local_input = os.path.join(workspace, "input.mp4")
+    video_slowdown_str = task.get("videoSlowdown") or task.get("video_slowdown") or "1.0"
+    try:
+        video_slowdown = float(video_slowdown_str)
+    except:
+        video_slowdown = 1.0
+
     if not os.path.exists(local_input):
         if not os.path.exists(source_url):
             print(Fore.RED + f"[-] Loi: Khong tim thay file {source_url} tren may tinh!")
             requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "failed", "error": f"Khong tim thay file tren o cung: {source_url}"}, headers=headers)
             return
-        shutil.copy2(source_url, local_input)
+        
+        # Tiền xử lý giảm tốc độ video gốc nếu cấu hình < 1.0 (ví dụ 0.90x = giảm 10%)
+        if video_slowdown < 0.999:
+            print(Fore.CYAN + f"[-] Dang tien xu ly giam toc do video goc xuong {int(video_slowdown * 100)}% ({video_slowdown:.2f}x) de toi uu long tieng...")
+            raw_temp = os.path.join(workspace, "input_raw.mp4")
+            shutil.copy2(source_url, raw_temp)
+            speed = video_slowdown
+            setpts_val = 1.0 / speed
+            cmd = [
+                "ffmpeg", "-y", "-i", raw_temp,
+                "-vf", f"setpts={setpts_val:.6f}*PTS",
+                "-af", f"atempo={speed:.4f}",
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                local_input
+            ]
+            import subprocess
+            res_slow = subprocess.run(cmd, capture_output=True)
+            if res_slow.returncode != 0:
+                print(Fore.YELLOW + f"[!] Giam toc video that bai, fallback sang video goc: {res_slow.stderr.decode('utf-8', errors='ignore')[:200]}")
+                shutil.copy2(raw_temp, local_input)
+            else:
+                print(Fore.GREEN + f"  [✓] Da giam toc do video thanh cong ({video_slowdown:.2f}x)!")
+            try:
+                if os.path.exists(raw_temp):
+                    os.remove(raw_temp)
+            except:
+                pass
+        else:
+            shutil.copy2(source_url, local_input)
 
     # 1. TRANSCRIBING
     duration_sec = 0
@@ -467,7 +502,8 @@ def process_task(token, task):
             noise_level = parts[2]
 
     safe_engine = asr_engine.replace(":", "_").replace("/", "_")
-    extracted_segments_file = os.path.join(workspace, f"extracted_segments_{safe_engine}_{source_lang}.json")
+    slowdown_tag = f"spd{int(video_slowdown*100)}" if video_slowdown < 0.999 else "spd100"
+    extracted_segments_file = os.path.join(workspace, f"extracted_segments_{safe_engine}_{source_lang}_{slowdown_tag}.json")
     
     try:
         import json

@@ -33,6 +33,7 @@ export async function saveDubScanConfigAction(data: {
   ttsSpeed?: string;
   bgVolume?: string;
   ttsVolume?: string;
+  videoSlowdown?: string;
   outputFolder?: string;
   translateContext?: string;
   redesignThumbnailEnabled?: boolean;
@@ -62,6 +63,7 @@ export async function saveDubScanConfigAction(data: {
           ttsSpeed: data.ttsSpeed,
           bgVolume: data.bgVolume,
           ttsVolume: data.ttsVolume,
+          videoSlowdown: data.videoSlowdown || '1.0',
           outputFolder: data.outputFolder,
           translateContext: data.translateContext,
           redesignThumbnailEnabled: data.redesignThumbnailEnabled,
@@ -91,6 +93,7 @@ export async function saveDubScanConfigAction(data: {
         ttsSpeed: data.ttsSpeed,
         bgVolume: data.bgVolume,
         ttsVolume: data.ttsVolume,
+        videoSlowdown: data.videoSlowdown || '1.0',
         outputFolder: data.outputFolder,
         translateContext: data.translateContext,
         redesignThumbnailEnabled: data.redesignThumbnailEnabled ?? false,

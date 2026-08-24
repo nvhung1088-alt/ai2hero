@@ -496,10 +496,10 @@ flowchart TD
 ### Trang & Chức Năng
 
 #### `/hero-dub/t/[teamId]/dashboard` — Bảng điều khiển chính
-- **Chức năng**: Quản lý các worker local, tạo tác vụ dịch video từ link, xem danh sách và trạng thái xử lý video.
-- **Vai trò**: Control center cho dịch thuật phụ đề.
-- **Đọc data từ**: `dubTasks`, `dubWorkers`.
-- **Ghi data**: Tạo tác vụ dịch (`dubTasks`), sinh mã kết nối worker (`extensionLinkCodes`).
+- **Chức năng**: Quản lý các worker local, tạo tác vụ dịch video từ file/folder, cấu hình ASR/STT, điều chỉnh giảm tốc độ video gốc (5-20%), dịch thuật LLM Connect Hub, lồng tiếng AI Edge-TTS, xem danh sách và trạng thái xử lý video.
+- **Vai trò**: Control center cho dịch thuật phụ đề & lồng tiếng AI.
+- **Đọc data từ**: `dubTasks`, `dubWorkers`, `dubScanConfigs`, `dubProjects`.
+- **Ghi data**: Tạo tác vụ dịch (`dubTasks`), lưu cấu hình quét tự động (`dubScanConfigs`), sinh mã kết nối worker (`extensionLinkCodes`).
 - **Liên kết**: Guide page, R2 Storage public URL (tải kết quả).
 
 #### `/hero-dub/t/[teamId]/guide` — Hướng dẫn cài đặt

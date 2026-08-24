@@ -53,6 +53,7 @@ export async function POST(request: Request) {
       const ttsSpeed = config.ttsSpeed || config.tts_speed || '1.2';
       const bgVolume = config.bgVolume || config.bg_volume;
       const ttsVolume = config.ttsVolume || config.tts_volume;
+      const videoSlowdown = config.videoSlowdown || config.video_slowdown || '1.0';
       const outputFolder = config.outputFolder || config.output_folder;
       const translateContext = config.translateContext || config.translate_context;
 
@@ -96,6 +97,7 @@ export async function POST(request: Request) {
         ttsSpeed,
         bgVolume,
         ttsVolume,
+        videoSlowdown,
         outputFolder: outputFolder?.trim() || undefined,
         scanConfigId,
         redesignThumbnailEnabled: config.redesignThumbnailEnabled ?? config.redesign_thumbnail_enabled ?? false,

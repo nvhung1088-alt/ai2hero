@@ -147,6 +147,7 @@ export default function DashboardClient({
   const [asrEngine, setAsrEngine] = useState('faster-whisper');
   const [sttPreset, setSttPreset] = useState<'fast' | 'balanced' | 'quality'>('balanced');
   const [noiseLevel, setNoiseLevel] = useState<'clean' | 'normal' | 'noisy'>('normal');
+  const [videoSlowdown, setVideoSlowdown] = useState<string>('1.0');
   const [subtitleMode, setSubtitleMode] = useState('burn_subtitle');
   const [translateContext, setTranslateContext] = useState('');
 
@@ -278,6 +279,7 @@ export default function DashboardClient({
           }
           if (s.sttPreset) setSttPreset(s.sttPreset);
           if (s.noiseLevel) setNoiseLevel(s.noiseLevel);
+          if (s.videoSlowdown) setVideoSlowdown(s.videoSlowdown);
           if (s.subtitleMode) setSubtitleMode(s.subtitleMode);
           if (s.ttsEnabled !== undefined) setTtsEnabled(s.ttsEnabled);
           if (s.ttsEngine) setTtsEngine(s.ttsEngine);
@@ -322,14 +324,14 @@ export default function DashboardClient({
   useEffect(() => {
     if (hasLoadedSettings) {
       const settings = {
-        sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, subtitleMode, ttsEnabled, ttsEngine,
+        sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, videoSlowdown, subtitleMode, ttsEnabled, ttsEngine,
         ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder,
         selectedAiAppSlug, selectedAiModel,
         redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel
       };
       localStorage.setItem('heroDubSettings', JSON.stringify(settings));
     }
-  }, [sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel, hasLoadedSettings]);
+  }, [sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, videoSlowdown, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel, hasLoadedSettings]);
 
   const [creatingTask, setCreatingTask] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -352,6 +354,7 @@ export default function DashboardClient({
     ttsSpeed: string;
     bgVolume: string;
     ttsVolume: string;
+    videoSlowdown?: string;
     outputFolder?: string;
     translateContext?: string;
     aiAppSlug: string;
@@ -616,6 +619,7 @@ export default function DashboardClient({
     if (task.ttsSpeed) setTtsSpeed(task.ttsSpeed);
     if (task.bgVolume) setBgVolume(task.bgVolume);
     if (task.ttsVolume) setTtsVolume(task.ttsVolume);
+    if (task.videoSlowdown) setVideoSlowdown(task.videoSlowdown);
 
     setUploadMode('file');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -657,6 +661,7 @@ export default function DashboardClient({
           ttsSpeed: ttsEnabled ? ttsSpeed : undefined,
           bgVolume: ttsEnabled ? bgVolume : undefined,
           ttsVolume: ttsEnabled ? ttsVolume : undefined,
+          videoSlowdown: videoSlowdown || '1.0',
           translateContext: translateContext,
           redesignThumbnailEnabled,
           thumbnailLogoSource,
@@ -698,6 +703,7 @@ export default function DashboardClient({
             ttsSpeed: ttsEnabled ? ttsSpeed : undefined,
             bgVolume: ttsEnabled ? bgVolume : undefined,
             ttsVolume: ttsEnabled ? ttsVolume : undefined,
+            videoSlowdown: videoSlowdown || '1.0',
             outputFolder: outputFolder.trim() || undefined,
             translateContext: translateContext.trim() || undefined,
             redesignThumbnailEnabled,
@@ -802,6 +808,7 @@ export default function DashboardClient({
         ttsSpeed: ttsSpeed || undefined,
         bgVolume: bgVolume || undefined,
         ttsVolume: ttsVolume || undefined,
+        videoSlowdown: videoSlowdown || '1.0',
         outputFolder: outputFolder.trim() || undefined,
         translateContext: translateContext.trim() || undefined,
         aiAppSlug: selectedAiAppSlug || undefined,
@@ -876,6 +883,7 @@ export default function DashboardClient({
     if (p.ttsSpeed) setTtsSpeed(p.ttsSpeed);
     if (p.bgVolume) setBgVolume(p.bgVolume);
     if (p.ttsVolume) setTtsVolume(p.ttsVolume);
+    if (p.videoSlowdown) setVideoSlowdown(p.videoSlowdown);
     if (p.aiAppSlug) setSelectedAiAppSlug(p.aiAppSlug);
     if (p.aiModel) setSelectedAiModel(p.aiModel);
     
@@ -1105,6 +1113,8 @@ export default function DashboardClient({
         setBgVolume={setBgVolume}
         ttsVolume={ttsVolume}
         setTtsVolume={setTtsVolume}
+        videoSlowdown={videoSlowdown}
+        setVideoSlowdown={setVideoSlowdown}
         handlePreviewVoice={handlePreviewVoice}
         brandingEnabled={brandingEnabled}
         setBrandingEnabled={setBrandingEnabled}

@@ -2342,6 +2342,7 @@ export const dubScanConfigs = pgTable('dub_scan_configs', {
   ttsSpeed: varchar('tts_speed', { length: 20 }),
   bgVolume: varchar('bg_volume', { length: 20 }),
   ttsVolume: varchar('tts_volume', { length: 20 }),
+  videoSlowdown: varchar('video_slowdown', { length: 10 }).notNull().default('1.0'),
   outputFolder: text('output_folder'),
   translateContext: text('translate_context'),
   redesignThumbnailEnabled: boolean('redesign_thumbnail_enabled').notNull().default(false),
@@ -2391,6 +2392,7 @@ export const dubTasks = pgTable('dub_tasks', {
   ttsSpeed: varchar('tts_speed', { length: 10 }).notNull().default('1.2'),
   bgVolume: varchar('bg_volume', { length: 20 }),
   ttsVolume: varchar('tts_volume', { length: 20 }),
+  videoSlowdown: varchar('video_slowdown', { length: 10 }).notNull().default('1.0'),
   translateContext: text('translate_context'),
   
   // === Thumbnail ===

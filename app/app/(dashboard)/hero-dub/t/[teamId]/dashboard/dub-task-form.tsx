@@ -79,6 +79,8 @@ interface DubTaskFormProps {
   setBgVolume: (_vol: string) => void;
   ttsVolume: string;
   setTtsVolume: (_vol: string) => void;
+  videoSlowdown: string;
+  setVideoSlowdown: (_slowdown: string) => void;
   handlePreviewVoice: () => void;
   
   brandingEnabled: boolean;
@@ -171,6 +173,8 @@ export default function DubTaskForm({
   setBgVolume,
   ttsVolume,
   setTtsVolume,
+  videoSlowdown,
+  setVideoSlowdown,
   handlePreviewVoice,
   brandingEnabled,
   setBrandingEnabled,
@@ -629,6 +633,71 @@ export default function DubTaskForm({
                 {noiseLevel === 'clean' && '🎤 Ít tạp âm: Thích hợp cho podcast, hội thảo, phỏng vấn, âm thanh sạch. Tốc độ giữ nguyên 100%.'}
                 {noiseLevel === 'normal' && '🎬 Bình thường: Thích hợp cho vlog, video review, giáo trình. Tốc độ giảm nhẹ còn ~90-95%.'}
                 {noiseLevel === 'noisy' && '💥 Nhiều tạp âm: Sử dụng AI Demucs tách riêng giọng nói khỏi nhạc nền trước khi nhận dạng. Phù hợp phim ảnh, video nhạc nền to, cháy nổ. Tốc độ: ~60-80% (thêm bước tách nền).'}
+              </p>
+
+              <label className="text-[9px] font-bold text-gray-400 uppercase flex items-center justify-between pt-2">
+                <span>Tốc độ Video Gốc (Giảm tốc để lồng tiếng mượt hơn)</span>
+                <span className="text-[8px] text-amber-500/80 normal-case">Pre-slowdown</span>
+              </label>
+              <div className="grid grid-cols-4 gap-1.5 bg-black/25 p-1 rounded-xl border border-white/5">
+                <button
+                  type="button"
+                  disabled={creatingTask}
+                  onClick={() => setVideoSlowdown('1.0')}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                    videoSlowdown === '1.0'
+                      ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                      : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[11px]">⚡ 100%</span>
+                  <span className="text-[7.5px] text-gray-500 mt-0.5">Gốc (Không đổi)</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={creatingTask}
+                  onClick={() => setVideoSlowdown('0.95')}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                    videoSlowdown === '0.95'
+                      ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                      : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[11px]">✨ 95%</span>
+                  <span className="text-[7.5px] text-gray-500 mt-0.5">Giảm 5%</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={creatingTask}
+                  onClick={() => setVideoSlowdown('0.90')}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                    videoSlowdown === '0.90'
+                      ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                      : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[11px]">🔥 90%</span>
+                  <span className="text-[7.5px] text-amber-500/90 font-bold mt-0.5">Khuyên dùng</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={creatingTask}
+                  onClick={() => setVideoSlowdown('0.85')}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all ${
+                    videoSlowdown === '0.85'
+                      ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold'
+                      : 'border border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-[11px]">🎬 85%</span>
+                  <span className="text-[7.5px] text-gray-500 mt-0.5">Giảm 15%</span>
+                </button>
+              </div>
+              <p className="text-[8.5px] text-gray-500 leading-relaxed px-1">
+                {videoSlowdown === '1.0' && '⚡ 100%: Giữ nguyên thời lượng video gốc.'}
+                {videoSlowdown === '0.95' && '✨ 95%: Giảm nhẹ 5% tốc độ, mắt thường không nhận ra, giúp câu lồng tiếng tiếng Việt đọc thoải mái hơn.'}
+                {videoSlowdown === '0.90' && '🔥 90% (Khuyên dùng): Giãn thời lượng 10%, Whisper nhận dạng chuẩn hơn và giọng đọc lồng tiếng AI đọc cực kỳ êm ái, rõ từng từ.'}
+                {videoSlowdown === '0.85' && '🎬 85%: Phù hợp phim hành động, hoạt hình hoặc diễn viên nói rất nhanh, cho phép phụ đề và lồng tiếng không bị nuốt chữ.'}
               </p>
             </div>
           )}

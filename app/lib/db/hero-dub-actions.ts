@@ -70,6 +70,7 @@ export async function createDubTaskAction(data: {
   ttsSpeed?: string;
   bgVolume?: string;
   ttsVolume?: string;
+  videoSlowdown?: string;
   outputFolder?: string;
   translateContext?: string;
   redesignThumbnailEnabled?: boolean;
@@ -125,6 +126,9 @@ export async function createDubTaskAction(data: {
       if (data.translateContext && existing.translateContext !== data.translateContext) {
         updatePayload.translateContext = data.translateContext;
       }
+      if (data.videoSlowdown && existing.videoSlowdown !== data.videoSlowdown) {
+        updatePayload.videoSlowdown = data.videoSlowdown;
+      }
       if (Object.keys(updatePayload).length > 0) {
         await db
           .update(dubTasks)
@@ -158,6 +162,7 @@ export async function createDubTaskAction(data: {
         ttsSpeed: data.ttsSpeed || '1.2',
         bgVolume: data.bgVolume,
         ttsVolume: data.ttsVolume,
+        videoSlowdown: data.videoSlowdown || '1.0',
         outputFolder: data.outputFolder,
         translateContext: data.translateContext || null,
         redesignThumbnailEnabled: data.redesignThumbnailEnabled ?? false,
@@ -442,6 +447,7 @@ export async function updateAndRetryDubTaskAction(taskId: number, teamId: number
     if (data.ttsSpeed !== undefined) updateData.ttsSpeed = data.ttsSpeed;
     if (data.bgVolume !== undefined) updateData.bgVolume = data.bgVolume;
     if (data.ttsVolume !== undefined) updateData.ttsVolume = data.ttsVolume;
+    if (data.videoSlowdown !== undefined) updateData.videoSlowdown = data.videoSlowdown;
     if (data.translateContext !== undefined) updateData.translateContext = data.translateContext;
 
     await db
