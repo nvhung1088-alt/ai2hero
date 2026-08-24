@@ -519,21 +519,17 @@
                                 }
                             }
                             if (allUrls.length === 0) return "";
-                            function getScore(u) {
-                                let score = 100;
-                                if (u.includes('1080') || u.includes('1080p') || u.includes('1920')) score += 1000;
-                                if (u.includes('720') || u.includes('720p')) score += 500;
-                                if (u.includes('origin_cover') || u.includes('raw_cover')) score += 200;
-                                if (!u.includes('360p') && !u.includes('323:430')) score += 100;
-                                if (u.includes('360p')) score -= 50;
-                                if (u.includes('323:430')) score -= 100;
-                                return score;
+                            let raw = allUrls[0];
+                            if (raw.startsWith("//")) raw = "https:" + raw;
+                            // Chuẩn hóa sang link Full HD 1080p trên CDN public không bị bóp 360p
+                            let hd = raw.replace(/https?:\/\/[^/]+douyinpic\.com/i, 'https://p3.douyinpic.com');
+                            hd = hd.split('?')[0];
+                            if (hd.includes('~tplv-')) {
+                                hd = hd.replace(/~tplv-[^.]+(?:\.jpeg|\.webp|\.jpg)?/i, '~tplv-dy-1080p.jpeg');
+                            } else {
+                                hd = hd + '~tplv-dy-1080p.jpeg';
                             }
-                            allUrls.sort((a, b) => getScore(b) - getScore(a));
-                            let best = allUrls[0];
-                            if (best.startsWith("//")) best = "https:" + best;
-                            best = best.replace(/(\?|&)image_process=[^&]+/g, '');
-                            return best;
+                            return hd;
                         }
 
                         const rawCover = findBestDouyinCover(videoObj);

@@ -22,6 +22,17 @@ function getHighResThumbnailUrl(rawUrl?: string | null): string | null {
   if (url.startsWith('//')) {
     url = 'https:' + url;
   }
+  // Douyin CDN: Chuyển sang CDN public p3.douyinpic.com, bỏ chữ ký URL và ép template ~tplv-dy-1080p.jpeg để luôn nhận ảnh 1080p Full HD
+  if (url.includes('douyinpic.com') || url.includes('byteimg.com')) {
+    url = url.replace(/https?:\/\/[^/]+douyinpic\.com/i, 'https://p3.douyinpic.com');
+    url = url.split('?')[0];
+    if (url.includes('~tplv-')) {
+      url = url.replace(/~tplv-[^.]+(?:\.jpeg|\.webp|\.jpg)?/i, '~tplv-dy-1080p.jpeg');
+    } else {
+      url = url + '~tplv-dy-1080p.jpeg';
+    }
+    return url;
+  }
   // Bilibili CDN: loại bỏ đuôi resizer @... (ví dụ @380w_240h_1c.webp) để lấy ảnh gốc HD
   if (url.includes('hdslb.com')) {
     url = url.replace(/@[^/]+$/, '');
@@ -29,10 +40,6 @@ function getHighResThumbnailUrl(rawUrl?: string | null): string | null {
   // YouTube: nâng cấp lên maxresdefault (1080p)
   if (url.includes('i.ytimg.com') || url.includes('youtube.com')) {
     url = url.replace(/\/(hqdefault|mqdefault|sddefault)\.jpg/i, '/maxresdefault.jpg');
-  }
-  // Douyin: loại bỏ tham số bóp ảnh image_process nếu có
-  if (url.includes('douyinpic.com') || url.includes('byteimg.com')) {
-    url = url.replace(/(\?|&)image_process=[^&]+/g, '');
   }
   return url;
 }

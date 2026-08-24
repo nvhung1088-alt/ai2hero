@@ -79,9 +79,14 @@ def _download_thumbnail(thumbnail_url: str, base_filepath: str):
         if "i.ytimg.com" in thumbnail_url or "youtube.com" in thumbnail_url:
             thumbnail_url = re.sub(r'/(hqdefault|mqdefault|sddefault)\.jpg', '/maxresdefault.jpg', thumbnail_url)
 
-        # Douyin: loại bỏ tham số bóp ảnh
+        # Douyin: Chuẩn hóa sang CDN public p3.douyinpic.com với template 1080p Full HD
         if "douyinpic.com" in thumbnail_url or "byteimg.com" in thumbnail_url:
-            thumbnail_url = re.sub(r'(\?|&)image_process=[^&]+', '', thumbnail_url)
+            thumbnail_url = re.sub(r'https?://[^/]+douyinpic\.com', 'https://p3.douyinpic.com', thumbnail_url)
+            thumbnail_url = thumbnail_url.split('?')[0]
+            if '~tplv-' in thumbnail_url:
+                thumbnail_url = re.sub(r'~tplv-[^.]+(?:\.jpeg|\.webp|\.jpg)?', '~tplv-dy-1080p.jpeg', thumbnail_url)
+            else:
+                thumbnail_url = thumbnail_url + '~tplv-dy-1080p.jpeg'
 
         ext = thumbnail_url.split('?')[0].split('.')[-1]
         if ext.lower() not in ['jpg', 'jpeg', 'png', 'webp']:
