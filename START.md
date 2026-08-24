@@ -144,7 +144,20 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Khắc phục lỗi body scroll lock do popup video bằng cách tự động dọn sạch các tham số URL (`vid=...`) trước khi cào.
   - `[x]` Sửa lỗi biên dịch TypeScript lỗi gán kiểu string cho Date trong PairingWidget của cả 3 module (`connect-hub`, `hero-dub`, `hero-video-maker`).
   - `[x]` Nâng cấp Python Local Worker (`worker.py`): Tự động phát hiện và hỗ trợ lựa chọn môi trường máy chủ kết nối động (AI2Hero Cloud / Localhost) trong quá trình pairing và lưu trữ trực tiếp vào cấu hình `config.json`.
-  - `[x]` Gỡ bỏ hoàn toàn luồng code tính năng **Dịch & Redesign Thumbnail bằng AI** khỏi Hero Downloader (Xóa API, Schema DB `translatedThumbnailUrl`, UI Toolbar, Modal so sánh) giúp hệ thống quay về tối giản chỉ tải về 1 Ảnh bìa gốc + 1 Video MP4.
+  - `[x]` Nâng cấp chất lượng ảnh Thumbnail (Master HD / 4K):
+    - **Douyin**: Chuyển đổi Extension ưu tiên lấy ảnh gốc master (`origin_cover` / `raw_cover`) 1080p thay vì ảnh nén xem trước (`cover` 300px), loại bỏ tham số resizer.
+    - **Bilibili**: Tự động loại bỏ hậu tố `@...` trên CDN Bilibili để tải về trực tiếp file ảnh gốc sắc nét nguyên bản.
+    - **YouTube**: Nâng cấp thuật toán `_get_best_thumbnail` tự động chọn ảnh có độ phân giải cao nhất (`maxresdefault.jpg` 1080p).
+    - **Local Worker**: Động hóa header `Referer` chống lỗi chặn bot 403 của CDN, sửa lỗi lọc file video `local_path` không bị nhận nhầm sang `.jpg`, và bổ sung cơ chế fallback tự động tải ảnh bìa khi `yt-dlp` không xuất file ảnh.
+  - `[x]` Triển khai quy trình Tự động hóa 100% (Zero-Click Web Trigger Pipeline):
+    - Tự động đồng bộ Token xác thực từ Web Dashboard xuống Extension qua `AI2HERO_AUTO_PAIR_EXTENSION` không cần thao tác ghép nối thủ công.
+    - Tích hợp sự kiện kích hoạt tức thì `AI2HERO_TRIGGER_SCAN_NOW` khi bấm "Quét ngay" hoặc bật "Chạy tự động" từ Web Dashboard.
+    - Extension tự động mở tab Douyin chạy ngầm, tự động cuộn trang cào toàn bộ video + Poster HD 1080p, tự động đồng bộ lên Server và tự động đóng tab.
+    - Python Worker tự động phát hiện video mới trong hàng đợi và tải về máy tính mà không cần người dùng thao tác bằng tay.
+  - `[x]` Cải tiến triệt để tính năng "Xóa tất cả video" (`clearDownloaderVideosAction`):
+    - Xóa sạch 100% video của dự án trong Database (`downloaderVideos`).
+    - Tự động reset bộ đếm `totalVideos = 0`, `downloadedVideos = 0`, `lastScanAt = null` trong `downloaderProjects`.
+    - Cập nhật State React ngay lập tức để Sidebar và danh sách hiển thị trống trơn, sẵn sàng cho phiên quét mới hoàn toàn từ đầu.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
 - **2026-08-05 (hero-dub - Translation Cascade Fallback)**:

@@ -43,6 +43,30 @@
         if (event.data && event.data.type === 'HERO_VIDEO_ENSURE_WORKSPACE_FOLDER') {
             setWorkspaceSubfolder(event.data.workspaceSlug, event.data.customSubfolder);
         }
+
+        // [AI2HERO] Tự động đồng bộ Token từ Web Dashboard (Zero-config Auto-Pairing)
+        if (event.data && event.data.type === 'AI2HERO_AUTO_PAIR_EXTENSION') {
+            const { token, teamId, apiBase } = event.data;
+            if (token && teamId) {
+                chrome.storage.local.set({
+                    herovideo_token: token,
+                    herovideo_workspace: teamId,
+                    herovideo_api_base: apiBase || window.location.origin
+                }, function() {
+                    console.log('[AI2Hero] ✅ Extension đã tự động kết nối với Web Dashboard thành công!');
+                });
+            }
+        }
+
+        // [AI2HERO] Nhận lệnh kích hoạt quét ngay từ Web Dashboard
+        if (event.data && event.data.type === 'AI2HERO_TRIGGER_SCAN_NOW') {
+            try {
+                chrome.runtime.sendMessage({
+                    action: 'FORCE_SCAN_PROJECT_NOW',
+                    projectId: event.data.projectId
+                });
+            } catch(e) {}
+        }
     });
 
     var _videoObj = [];
@@ -483,17 +507,36 @@
                             return;
                         }
                         
-                        let rawCover = "";
-                        if (videoObj.cover && videoObj.cover.url_list && videoObj.cover.url_list.length > 0) {
-                            rawCover = videoObj.cover.url_list[0];
-                        } else if (videoObj.origin_cover && videoObj.origin_cover.url_list && videoObj.origin_cover.url_list.length > 0) {
-                            rawCover = videoObj.origin_cover.url_list[0];
-                        } else if (videoObj.dynamic_cover && videoObj.dynamic_cover.url_list && videoObj.dynamic_cover.url_list.length > 0) {
-                            rawCover = videoObj.dynamic_cover.url_list[0];
+                        function findBestDouyinCover(vObj) {
+                            if (!vObj) return "";
+                            const allUrls = [];
+                            const candidates = [vObj.cover, vObj.raw_cover, vObj.origin_cover, vObj.dynamic_cover];
+                            for (const c of candidates) {
+                                if (c && Array.isArray(c.url_list)) {
+                                    for (const u of c.url_list) {
+                                        if (typeof u === 'string' && u.length > 10) allUrls.push(u);
+                                    }
+                                }
+                            }
+                            if (allUrls.length === 0) return "";
+                            function getScore(u) {
+                                let score = 100;
+                                if (u.includes('1080') || u.includes('1080p') || u.includes('1920')) score += 1000;
+                                if (u.includes('720') || u.includes('720p')) score += 500;
+                                if (u.includes('origin_cover') || u.includes('raw_cover')) score += 200;
+                                if (!u.includes('360p') && !u.includes('323:430')) score += 100;
+                                if (u.includes('360p')) score -= 50;
+                                if (u.includes('323:430')) score -= 100;
+                                return score;
+                            }
+                            allUrls.sort((a, b) => getScore(b) - getScore(a));
+                            let best = allUrls[0];
+                            if (best.startsWith("//")) best = "https:" + best;
+                            best = best.replace(/(\?|&)image_process=[^&]+/g, '');
+                            return best;
                         }
-                        if (rawCover && rawCover.startsWith("//")) {
-                            rawCover = "https:" + rawCover;
-                        }
+
+                        const rawCover = findBestDouyinCover(videoObj);
 
                         _douyinVideoIds.add(id);
                         _douyinVideos.push({
@@ -563,8 +606,12 @@
                     if (_douyinVideoIds.has(id)) return;
 
                     let pic = item.pic || '';
-                    if (pic.startsWith('//')) {
-                        pic = 'https:' + pic;
+                    if (pic) {
+                        if (pic.startsWith('//')) {
+                            pic = 'https:' + pic;
+                        }
+                        // Bilibili: Loại bỏ @... suffix để lấy ảnh master full HD / 4K gốc từ CDN
+                        pic = pic.replace(/@[^/]+$/, '');
                     }
 
                     const videoUrl = `https://www.bilibili.com/video/${bvid}`;

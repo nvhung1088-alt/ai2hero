@@ -149,18 +149,19 @@ export async function clearDownloaderVideosAction(projectId: number, teamId: num
       return { error: 'Project not found' };
     }
 
-    // 2. Delete videos
+    // 2. Delete all videos from DB
     await db
       .delete(downloaderVideos)
       .where(eq(downloaderVideos.projectId, projectId));
 
-    // 3. Reset counts in project
-    await db
+    // 3. Reset counts in project table
+    const [updatedProject] = await db
       .update(downloaderProjects)
-      .set({ totalVideos: 0, downloadedVideos: 0, lastScanAt: null })
-      .where(eq(downloaderProjects.id, projectId));
+      .set({ totalVideos: 0, downloadedVideos: 0, lastScanAt: null, updatedAt: new Date() })
+      .where(eq(downloaderProjects.id, projectId))
+      .returning();
 
-    return { success: true };
+    return { success: true, project: updatedProject };
   } catch (error: any) {
     console.error('[hero-downloader-actions] clearDownloaderVideosAction error:', error);
     return { error: 'Failed to clear videos: ' + error.message };

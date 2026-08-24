@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { downloaderVideos, downloaderProjects } from '@/lib/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, ilike } from 'drizzle-orm';
 import { verifyExtensionToken } from '@/lib/db/extension-actions';
 
 const corsHeaders = {
@@ -14,6 +14,27 @@ function extractBearerToken(request: NextRequest): string | null {
   const auth = request.headers.get('Authorization');
   if (!auth || !auth.startsWith('Bearer ')) return null;
   return auth.slice(7).trim();
+}
+
+function getHighResThumbnailUrl(rawUrl?: string | null): string | null {
+  if (!rawUrl) return null;
+  let url = rawUrl.trim();
+  if (url.startsWith('//')) {
+    url = 'https:' + url;
+  }
+  // Bilibili CDN: loại bỏ đuôi resizer @... (ví dụ @380w_240h_1c.webp) để lấy ảnh gốc HD
+  if (url.includes('hdslb.com')) {
+    url = url.replace(/@[^/]+$/, '');
+  }
+  // YouTube: nâng cấp lên maxresdefault (1080p)
+  if (url.includes('i.ytimg.com') || url.includes('youtube.com')) {
+    url = url.replace(/\/(hqdefault|mqdefault|sddefault)\.jpg/i, '/maxresdefault.jpg');
+  }
+  // Douyin: loại bỏ tham số bóp ảnh image_process nếu có
+  if (url.includes('douyinpic.com') || url.includes('byteimg.com')) {
+    url = url.replace(/(\?|&)image_process=[^&]+/g, '');
+  }
+  return url;
 }
 
 export async function OPTIONS() {
@@ -118,11 +139,21 @@ export async function POST(req: NextRequest) {
     const videosToInsert = [];
     for (const vid of videos) {
       const id = vid.video_id || extractId(vid.original_url || '');
+      const newThumbUrl = getHighResThumbnailUrl(vid.cover || vid.cover_url || vid.thumbnail);
+      const vidIsBilibili = vid.platform === 'bilibili' || (id && String(id).startsWith('BV'));
+      
       if (id && existingIds.has(id)) {
-        continue; // Skip duplicate
+        // Tự động nâng cấp thumbnail HD cho video cũ nếu link mới sắc nét hơn
+        if (newThumbUrl && !newThumbUrl.includes('360p') && !newThumbUrl.includes('323:430')) {
+          try {
+            await db.update(downloaderVideos)
+              .set({ thumbnailUrl: newThumbUrl, ...(vidIsBilibili ? {} : { directMp4Url: vid.direct_mp4_url || undefined }) })
+              .where(and(eq(downloaderVideos.projectId, project.id), ilike(downloaderVideos.videoUrl, `%${id}%`)));
+          } catch(e) {}
+        }
+        continue; // Skip duplicate insert
       }
       
-      const vidIsBilibili = vid.platform === 'bilibili' || (id && String(id).startsWith('BV'));
       let normalizedPageUrl = vid.original_url || vid.play_addr || '';
       if (!normalizedPageUrl || !normalizedPageUrl.startsWith('http')) {
         normalizedPageUrl = vidIsBilibili 
@@ -138,7 +169,7 @@ export async function POST(req: NextRequest) {
         videoUrl: normalizedPageUrl, 
         directMp4Url: vidIsBilibili ? null : (vid.direct_mp4_url || null),
         author: vid.author || null,     
-        thumbnailUrl: vid.cover || vid.cover_url || vid.thumbnail || null,
+        thumbnailUrl: newThumbUrl,
         status: 'pending',
         progress: 0,
       });

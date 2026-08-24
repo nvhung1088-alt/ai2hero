@@ -8,6 +8,7 @@ import { EditProjectModal } from './edit-project-modal';
 import { PollingBanner } from '@/components/polling-banner';
 
 import { getDownloaderVideosAction, updateDownloaderVideoStatusAction, updateDownloaderProjectAction, createDownloaderVideoAction, stopAllDownloaderVideosAction, clearDownloaderVideosAction, forceScanDownloaderProjectAction, retryAllFailedVideosAction } from '@/lib/db/hero-downloader-actions';
+import { getOrCreateDirectExtensionToken } from '@/lib/db/extension-actions';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 
 import { getStatusRank } from '../_shared/downloader-ui-helpers';
@@ -103,6 +104,25 @@ export default function DownloaderDashboardClient({
     setCurrentPage(1);
   }, [activeProjectId, videoFilter]);
 
+  // Tự động kết nối và đồng bộ Token xác thực xuống Chrome Extension (Zero-config Auto-Pairing)
+  useEffect(() => {
+    async function autoPairExtension() {
+      try {
+        const res = await getOrCreateDirectExtensionToken(teamId);
+        if (res.success && res.accessToken) {
+          window.postMessage({
+            type: 'AI2HERO_AUTO_PAIR_EXTENSION',
+            token: res.accessToken,
+            teamId: teamId,
+            apiBase: window.location.origin
+          }, '*');
+        }
+      } catch (e) {
+        console.error('Failed to auto-pair extension:', e);
+      }
+    }
+    autoPairExtension();
+  }, [teamId]);
 
   const isFirstRender = useRef(true);
 
@@ -212,6 +232,9 @@ export default function DownloaderDashboardClient({
     
     if (res.success) {
       showToast(isRunning ? 'Đã tạm dừng tiến trình quét' : 'Đã bật tiến trình quét. Worker sẽ bắt đầu ngay!', 'success');
+      if (newStatus === 'active') {
+        window.postMessage({ type: 'AI2HERO_TRIGGER_SCAN_NOW', projectId: activeProject.id }, '*');
+      }
     } else {
       showToast('Lỗi: ' + res.error, 'error');
       // Revert status on error
@@ -226,6 +249,7 @@ export default function DownloaderDashboardClient({
     if (res.success && res.project) {
       showToast('Đã kích hoạt quét ngay! Trình duyệt extension hoặc worker sẽ chạy trong giây lát.', 'success');
       setProjects(prev => prev.map(p => p.id === activeProjectId ? { ...p, status: 'active', lastScanAt: null } : p));
+      window.postMessage({ type: 'AI2HERO_TRIGGER_SCAN_NOW', projectId: activeProjectId }, '*');
     } else {
       showToast('Lỗi khi kích hoạt quét ngay: ' + res.error, 'error');
     }
@@ -255,15 +279,20 @@ export default function DownloaderDashboardClient({
     setConfirmModal({
       isOpen: true,
       title: 'Xóa toàn bộ video',
-      message: 'Bạn có chắc chắn muốn xóa toàn bộ video trong dự án này? Thao tác này không thể hoàn tác!',
+      message: `Bạn có chắc chắn muốn xóa toàn bộ ${videos.length} video của dự án "${activeProject.name}" khỏi cơ sở dữ liệu? Toàn bộ danh sách sẽ được làm mới hoàn toàn để quét lại từ đầu!`,
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        showToast('Đang xóa sạch toàn bộ video...', 'success');
         const res = await clearDownloaderVideosAction(activeProject.id, teamId);
         if (res.success) {
-          showToast('Đã xóa toàn bộ video', 'success');
-          const fetchRes = await getDownloaderVideosAction(teamId, activeProject.id);
-          if (fetchRes.success && fetchRes.videos) setVideos(fetchRes.videos);
-          else setVideos([]);
+          showToast('Đã xóa sạch toàn bộ video trong cơ sở dữ liệu!', 'success');
+          setVideos([]);
+          setProjects(prev => prev.map(p => p.id === activeProject.id ? { 
+            ...p, 
+            totalVideos: 0, 
+            downloadedVideos: 0, 
+            lastScanAt: null 
+          } : p));
           setCurrentPage(1);
         } else {
           showToast('Lỗi khi xóa video: ' + res.error, 'error');

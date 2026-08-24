@@ -1480,12 +1480,17 @@ function finalizeScan(tabId, projectId, token, apiBase) {
     }).catch(console.error);
 }
 
-// Lắng nghe tín hiệu hoàn thành quét kênh từ content-script
+// Lắng nghe tín hiệu hoàn thành quét kênh hoặc lệnh kích hoạt quét tức thì
 chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     if (message.action === 'DOUYIN_SCAN_COMPLETE') {
         const tabId = sender.tab?.id;
         if (tabId) {
             handleScanSegmentComplete(tabId);
         }
+    }
+    if (message.action === 'FORCE_SCAN_PROJECT_NOW') {
+        console.log('[AI2Hero] Nhận lệnh FORCE_SCAN_PROJECT_NOW từ Web Dashboard. Bắt đầu quét ngay...');
+        isScanningSyncing = false;
+        pollPendingScanLoop();
     }
 });

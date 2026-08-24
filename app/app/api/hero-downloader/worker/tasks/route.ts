@@ -116,13 +116,16 @@ function getScanIntervalMs(intervalStr: string): number {
       });
 
     // Lấy 100 URL gần nhất của mỗi dự án để Worker tự động dừng (break-on-existing)
-    for (let i = 0; i < pendingScansList.length; i++) {
+    // Lưu ý: Các dự án Douyin được cào chủ động qua Extension trên trình duyệt, không gửi vào scanTasks của Worker để tránh spam log
+    const workerScannableList = pendingScansList.filter(p => !p.scannedByExtension);
+
+    for (let i = 0; i < workerScannableList.length; i++) {
       const recent = await db.select({ videoUrl: downloaderVideos.videoUrl })
         .from(downloaderVideos)
-        .where(eq(downloaderVideos.projectId, pendingScansList[i].id))
+        .where(eq(downloaderVideos.projectId, workerScannableList[i].id))
         .orderBy(desc(downloaderVideos.createdAt))
         .limit(100);
-      pendingScansList[i].recentUrls = recent.map(r => r.videoUrl);
+      workerScannableList[i].recentUrls = recent.map(r => r.videoUrl);
     }
 
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
@@ -250,7 +253,7 @@ function getScanIntervalMs(intervalStr: string): number {
 
     return NextResponse.json({
       success: true,
-      scanTasks: pendingScansList,
+      scanTasks: workerScannableList,
       downloadTasks,
       maxConcurrentDownloads,
       cookieData: combinedCookieData || null,

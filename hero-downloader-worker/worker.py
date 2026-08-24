@@ -168,10 +168,8 @@ def run_worker_loop(token):
                         
                         def scan_thread_target(p=proj, cd=cookie_data):
                             try:
-                                is_ext = p.get("scannedByExtension") or (p.get("platform") in ["douyin", "bilibili"]) or ("bilibili.com" in p.get("sourceUrl", "")) or ("douyin.com" in p.get("sourceUrl", ""))
-                                if is_ext:
-                                    print(Fore.CYAN + f"[-] Dự án '{p.get('name')}' đang được hệ thống quét tự động qua Chrome Extension...")
-                                else:
+                                is_ext = p.get("scannedByExtension") or (p.get("platform") in ["douyin"]) or ("douyin.com" in p.get("sourceUrl", ""))
+                                if not is_ext:
                                     videos = scan_project_videos(p, cd)
                                     # Gửi kết quả về
                                     api_patch_update(token, "scan_complete", {

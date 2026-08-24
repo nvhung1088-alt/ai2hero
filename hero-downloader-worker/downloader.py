@@ -58,7 +58,7 @@ def _has_existing_thumbnail(downloads_dir, video_id):
     return False
 
 def _download_thumbnail(thumbnail_url: str, base_filepath: str):
-    """Tải ảnh thumbnail về cùng thư mục với video (chỉ tải khi chưa có)."""
+    """Tải ảnh thumbnail chất lượng cao nhất về cùng thư mục với video (chỉ tải khi chưa có)."""
     if not thumbnail_url:
         return
     try:
@@ -71,6 +71,18 @@ def _download_thumbnail(thumbnail_url: str, base_filepath: str):
         if thumbnail_url.startswith("//"):
             thumbnail_url = "https:" + thumbnail_url
 
+        # Bilibili: loại bỏ @... suffix để tải ảnh master full HD/4K gốc
+        if "hdslb.com" in thumbnail_url:
+            thumbnail_url = re.sub(r'@[^/]+$', '', thumbnail_url)
+
+        # YouTube: nâng cấp lên maxresdefault (1080p)
+        if "i.ytimg.com" in thumbnail_url or "youtube.com" in thumbnail_url:
+            thumbnail_url = re.sub(r'/(hqdefault|mqdefault|sddefault)\.jpg', '/maxresdefault.jpg', thumbnail_url)
+
+        # Douyin: loại bỏ tham số bóp ảnh
+        if "douyinpic.com" in thumbnail_url or "byteimg.com" in thumbnail_url:
+            thumbnail_url = re.sub(r'(\?|&)image_process=[^&]+', '', thumbnail_url)
+
         ext = thumbnail_url.split('?')[0].split('.')[-1]
         if ext.lower() not in ['jpg', 'jpeg', 'png', 'webp']:
             ext = 'jpg'
@@ -80,18 +92,59 @@ def _download_thumbnail(thumbnail_url: str, base_filepath: str):
         if os.path.exists(thumb_path):
             return
             
+        # Chọn Referer động theo nền tảng tránh bị CDN chặn 403
+        referer = 'https://www.bilibili.com/'
+        if 'douyin' in thumbnail_url:
+            referer = 'https://www.douyin.com/'
+        elif 'tiktok' in thumbnail_url:
+            referer = 'https://www.tiktok.com/'
+        elif 'youtube' in thumbnail_url or 'ytimg' in thumbnail_url:
+            referer = 'https://www.youtube.com/'
+
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': 'https://www.bilibili.com/'
+            'Referer': referer
         }
-        res = requests.get(thumbnail_url, headers=headers, stream=True, timeout=10)
+        res = requests.get(thumbnail_url, headers=headers, stream=True, timeout=15)
         res.raise_for_status()
         with open(thumb_path, 'wb') as f:
             for chunk in res.iter_content(chunk_size=8192):
                 f.write(chunk)
-        print(Fore.CYAN + f"[*] Da tai xong thumbnail: {os.path.basename(thumb_path)}")
+        print(Fore.CYAN + f"[*] Da tai xong thumbnail HD: {os.path.basename(thumb_path)}")
     except Exception as e:
         print(Fore.YELLOW + f"[!] Khong the tai thumbnail: {e}")
+
+def _extract_frame_from_video(video_filepath: str, output_thumb_path: str) -> bool:
+    """Trích xuất 1 khung hình Master HD 1080p từ video bằng ffmpeg."""
+    try:
+        import shutil, subprocess
+        if not shutil.which('ffmpeg') or not os.path.exists(video_filepath):
+            return False
+        cmd = ['ffmpeg', '-y', '-ss', '00:00:01', '-i', video_filepath, '-frames:v', '1', '-q:v', '2', output_thumb_path]
+        res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return res.returncode == 0 and os.path.exists(output_thumb_path) and os.path.getsize(output_thumb_path) > 1000
+    except Exception:
+        return False
+
+def _ensure_hd_thumbnail(video_filepath: str, thumbnail_url: str = None):
+    """Đảm bảo file ảnh thumbnail đạt chuẩn (ưu tiên ảnh Poster gốc của tác giả, fallback trích xuất video nếu không có ảnh)."""
+    if not video_filepath or not os.path.exists(video_filepath):
+        return
+
+    dir_name = os.path.dirname(video_filepath)
+    file_name = os.path.basename(video_filepath)
+    video_id = file_name.split('_')[0] if '_' in file_name else ''
+    default_thumb_path = os.path.splitext(video_filepath)[0] + ".jpg"
+
+    # 1. Tải ảnh Poster từ URL nếu có
+    if thumbnail_url and not _has_existing_thumbnail(dir_name, video_id):
+        _download_thumbnail(thumbnail_url, video_filepath)
+
+    # 2. Fallback: Nếu không có ảnh bìa hoặc tải ảnh thất bại, mới trích xuất 1 frame từ video
+    if not _has_existing_thumbnail(dir_name, video_id):
+        ok = _extract_frame_from_video(video_filepath, default_thumb_path)
+        if ok:
+            print(Fore.GREEN + f"[*] Da trich xuat anh thumbnail tu video cho ID {video_id}")
 
 def download_direct_mp4(video, url, update_callback):
     """Tải trực tiếp file MP4 từ CDN link bằng requests (không cần yt-dlp)."""
@@ -147,6 +200,11 @@ def download_direct_mp4(video, url, update_callback):
                     
         import sys
         sys.stdout.write("\n")
+
+        # Đảm bảo có Thumbnail HD 1080p (tự trích xuất từ video nếu ảnh từ URL < 720p hoặc thiếu)
+        if video.get('downloadThumbnail', True):
+            _ensure_hd_thumbnail(filepath, video.get('thumbnailUrl'))
+
         update_callback(video_id, status='completed', progress=100, local_path=filepath, speed='', actual_size_bytes=downloaded)
         print(Fore.GREEN + f"[OK] Tai xong video ID {video_id} (Direct)")
         return True
@@ -295,12 +353,17 @@ def download_video(video, update_callback, cookie_data: str = None):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
-        # Tìm file đã tải
+        # Tìm file video đã tải (chỉ lấy các định dạng video, bỏ qua ảnh thumbnail .jpg/.webp/.png)
+        video_exts = ('.mp4', '.mkv', '.webm', '.flv', '.mov', '.avi', '.ts')
         local_path = None
         for f in os.listdir(downloads_dir):
-            if f.startswith(f"{video_id}_") and not f.endswith('.part') and not f.endswith('.ytdl'):
+            if f.startswith(f"{video_id}_") and f.lower().endswith(video_exts) and not f.endswith('.part') and not f.endswith('.ytdl'):
                 local_path = os.path.join(downloads_dir, f)
                 break
+
+        # Đảm bảo có Thumbnail HD 1080p (tự trích xuất từ video nếu ảnh từ URL < 720p hoặc thiếu)
+        if local_path and video.get('downloadThumbnail', True):
+            _ensure_hd_thumbnail(local_path, video.get('thumbnailUrl'))
 
         if local_path:
             actual_size = os.path.getsize(local_path) if os.path.exists(local_path) else None

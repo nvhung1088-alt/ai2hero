@@ -225,3 +225,36 @@ export async function revokeExtensionToken(
     return { success: false, error: err.message };
   }
 }
+
+// ─── Hàm 6: Lấy hoặc tạo trực tiếp Extension Token cho Web Dashboard Auto-Pairing ───
+export async function getOrCreateDirectExtensionToken(
+  teamId: number
+): Promise<{ success: boolean; accessToken?: string; teamId?: number; error?: string }> {
+  try {
+    const expiresAt = new Date(Date.now() + EXTENSION_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+    const accessToken = await new SignJWT({
+      teamId,
+      userId: 1,
+      type: 'extension',
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime(`${EXTENSION_TOKEN_EXPIRY_DAYS}d`)
+      .sign(key);
+
+    const tokenHash = createHash('sha256').update(accessToken).digest('hex');
+
+    await db.insert(extensionTokens).values({
+      teamId,
+      createdByUserId: 1,
+      tokenHash,
+      deviceName: 'Auto Web Pairing',
+      expiresAt,
+    });
+
+    return { success: true, accessToken, teamId };
+  } catch (err: any) {
+    console.error('[extension-actions] getOrCreateDirectExtensionToken error:', err);
+    return { success: false, error: err.message };
+  }
+}

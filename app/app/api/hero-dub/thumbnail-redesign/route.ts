@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         'bottom-right': 'góc dưới bên phải (bottom-right)',
         'center': 'ở chính giữa banner (center)',
       };
-      const posText = posMap[task.thumbnailLogoPosition || 'top-left'] || 'góc trên bên trái (top-left)';
+      const posText = posMap[(task as any).thumbnailLogoPosition || 'top-left'] || 'góc trên bên trái (top-left)';
       promptText += `5. CHÈN LOGO THƯƠNG HIỆU: Hãy chèn tấm ảnh logo đính kèm thứ 2 vào ${posText}. GIỮ NGUYÊN 100% HÌNH DẠNG, MÀU SẮC VÀ TỶ LỆ LOGO GỐC, tuyệt đối không biến dạng logo và không che mặt nhân vật.\n`;
     }
 
