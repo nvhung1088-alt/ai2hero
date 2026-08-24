@@ -355,10 +355,11 @@ def standardize_and_cache_video(video_path, target_width, target_height, target_
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return cache_filepath
 
-def detect_best_encoder(target_kbps=2500):
-    """Auto-detect GPU encoder kha dung, tra ve (vcodec, extra_args) voi Rate Control toi uu dung luong"""
+def detect_best_encoder(target_kbps=2000):
+    """Auto-detect GPU encoder kha dung, tra ve (vcodec, extra_args) voi Rate Control VBR toi uu dung luong triet de"""
     import subprocess
     
+    target_str = f"{target_kbps}k"
     maxrate_str = f"{target_kbps}k"
     bufsize_str = f"{target_kbps * 2}k"
     
@@ -366,19 +367,22 @@ def detect_best_encoder(target_kbps=2500):
         ("h264_nvenc", {
             "preset": "p4",
             "rc": "vbr",
-            "cq": "26",
-            "b:v": "0",
+            "b:v": target_str,
             "maxrate": maxrate_str,
-            "bufsize": bufsize_str
+            "bufsize": bufsize_str,
+            "cq": "26"
         }),
         ("h264_amf", {
-            "rc": "cqp",
-            "qp_i": "26",
-            "qp_p": "26",
+            "rc": "vbr_latency",
+            "b:v": target_str,
+            "maxrate": maxrate_str,
+            "bufsize": bufsize_str,
             "quality": "speed"
         }),
         ("h264_qsv", {
             "preset": "fast",
+            "b:v": target_str,
+            "maxrate": maxrate_str,
             "global_quality": "26"
         }),
     ]
@@ -390,14 +394,15 @@ def detect_best_encoder(target_kbps=2500):
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10
             )
             if r.returncode == 0:
-                print(Fore.GREEN + f"  [GPU] Su dung encoder phan cung: {codec} (Target Bitrate: {target_kbps} kbps)")
+                print(Fore.GREEN + f"  [GPU] Su dung encoder phan cung: {codec} (Target Bitrate: {target_kbps} kbps, Maxrate: {maxrate_str})")
                 return codec, extra
         except:
             pass
-    print(Fore.YELLOW + f"  [CPU] Su dung libx264 veryfast (CRF 24, Maxrate: {target_kbps} kbps)")
+    print(Fore.YELLOW + f"  [CPU] Su dung libx264 veryfast (CRF 25, Target Bitrate: {target_kbps} kbps)")
     return "libx264", {
         "preset": "veryfast",
-        "crf": "24",
+        "crf": "25",
+        "b:v": target_str,
         "maxrate": maxrate_str,
         "bufsize": bufsize_str
     }
