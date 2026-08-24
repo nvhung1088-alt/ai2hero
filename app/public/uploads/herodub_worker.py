@@ -304,11 +304,24 @@ def extract_vocals_demucs(workspace, audio_path, ffmpeg_exe):
 
 def get_video_props(video_path):
     import subprocess, json
-    cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height,r_frame_rate", "-of", "json", video_path]
+    cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height,r_frame_rate,bit_rate:format=bit_rate", "-of", "json", video_path]
     out = subprocess.check_output(cmd).decode('utf-8')
     data = json.loads(out)
     stream = data['streams'][0]
-    return stream['width'], stream['height'], stream['r_frame_rate']
+    
+    bitrate_kbps = None
+    if 'bit_rate' in stream and stream['bit_rate']:
+        try:
+            bitrate_kbps = int(int(stream['bit_rate']) / 1000)
+        except:
+            pass
+    if not bitrate_kbps and 'format' in data and 'bit_rate' in data['format'] and data['format']['bit_rate']:
+        try:
+            bitrate_kbps = int(int(data['format']['bit_rate']) / 1000)
+        except:
+            pass
+            
+    return stream['width'], stream['height'], stream['r_frame_rate'], bitrate_kbps
 
 def standardize_and_cache_video(video_path, target_width, target_height, target_fps):
     import hashlib, os, subprocess
@@ -335,20 +348,39 @@ def standardize_and_cache_video(video_path, target_width, target_height, target_
         "ffmpeg", "-y", "-i", video_path,
         "-vf", scale_pad_filter,
         "-r", str(target_fps),
-        "-c:v", "libx264", "-preset", "fast",
-        "-c:a", "aac", "-ar", "48000",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+        "-c:a", "aac", "-b:a", "128k", "-ar", "48000",
         cache_filepath
     ]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return cache_filepath
 
-def detect_best_encoder():
-    """Auto-detect GPU encoder kha dung, tra ve (vcodec, extra_args)"""
+def detect_best_encoder(target_kbps=2500):
+    """Auto-detect GPU encoder kha dung, tra ve (vcodec, extra_args) voi Rate Control toi uu dung luong"""
     import subprocess
+    
+    maxrate_str = f"{target_kbps}k"
+    bufsize_str = f"{target_kbps * 2}k"
+    
     candidates = [
-        ("h264_nvenc", {"preset": "p4"}),
-        ("h264_amf",   {}),
-        ("h264_qsv",   {"preset": "fast"}),
+        ("h264_nvenc", {
+            "preset": "p4",
+            "rc": "vbr",
+            "cq": "26",
+            "b:v": "0",
+            "maxrate": maxrate_str,
+            "bufsize": bufsize_str
+        }),
+        ("h264_amf", {
+            "rc": "cqp",
+            "qp_i": "26",
+            "qp_p": "26",
+            "quality": "speed"
+        }),
+        ("h264_qsv", {
+            "preset": "fast",
+            "global_quality": "26"
+        }),
     ]
     for codec, extra in candidates:
         try:
@@ -358,12 +390,17 @@ def detect_best_encoder():
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10
             )
             if r.returncode == 0:
-                print(Fore.GREEN + f"  [GPU] Su dung encoder phan cung: {codec}")
+                print(Fore.GREEN + f"  [GPU] Su dung encoder phan cung: {codec} (Target Bitrate: {target_kbps} kbps)")
                 return codec, extra
         except:
             pass
-    print(Fore.YELLOW + "  [CPU] Khong tim thay GPU encoder, su dung libx264 ultrafast")
-    return "libx264", {"preset": "ultrafast"}
+    print(Fore.YELLOW + f"  [CPU] Su dung libx264 veryfast (CRF 24, Maxrate: {target_kbps} kbps)")
+    return "libx264", {
+        "preset": "veryfast",
+        "crf": "24",
+        "maxrate": maxrate_str,
+        "bufsize": bufsize_str
+    }
 
 def process_task(token, task):
     import shutil
@@ -1144,10 +1181,27 @@ if __name__ == '__main__':
         video = ffmpeg.input("input.mp4")
         video_sub = video.video.filter('subtitles', 'vi.srt', force_style="FontSize=20,PrimaryColour=&HFFFFFF,BackColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=10")
         
+        # Trich xuat thong tin video goc va tinh toan target bitrate thong minh
+        try:
+            tw, th, tfps, orig_bitrate = get_video_props("input.mp4")
+        except Exception:
+            tw, th, tfps, orig_bitrate = 1920, 1080, "30", None
+
+        # Tinh toan target bitrate khong vuot qua 1.15x bitrate goc
+        if orig_bitrate and orig_bitrate > 300:
+            target_kbps = min(int(orig_bitrate * 1.15), 3500)
+            target_kbps = max(target_kbps, 800)
+        else:
+            if th >= 1080 or tw >= 1080:
+                target_kbps = 2500
+            elif th >= 720 or tw >= 720:
+                target_kbps = 1600
+            else:
+                target_kbps = 900
+
         if branding_enabled and logo_url and os.path.exists(logo_url):
             print(Fore.CYAN + "  -> Dang ap dung Logo (Watermark)...")
             try:
-                tw, th, tfps = get_video_props("input.mp4")
                 logo_w = max(50, int(tw * 0.15)) # 15% width
             except:
                 logo_w = 150 # fallback
@@ -1162,8 +1216,7 @@ if __name__ == '__main__':
             elif logo_pos == 'bottom-right':
                 video_sub = ffmpeg.overlay(video_sub, logo, x='main_w-overlay_w-20', y='main_h-overlay_h-20')
 
-        
-        vcodec_val, encoder_extra = detect_best_encoder()
+        vcodec_val, encoder_extra = detect_best_encoder(target_kbps)
 
         def build_and_run_render(vc, extra_args):
             if has_dubbed:
@@ -1177,28 +1230,34 @@ if __name__ == '__main__':
                     a_bg = ffmpeg.input(bg_audio_file).audio.filter('volume', bg_volume)
                     a_fg = ffmpeg.input("dubbed_audio.wav").audio.filter('volume', db_tts_volume)
                     mixed_audio = ffmpeg.filter([a_bg, a_fg], 'amix', inputs=2, duration='first').filter('volume', 2.0)
-                    st = ffmpeg.output(video_sub, mixed_audio, "temp_output.mp4", vcodec=vc, acodec="aac", **extra_args)
+                    st = ffmpeg.output(video_sub, mixed_audio, "temp_output.mp4", vcodec=vc, acodec="aac", audio_bitrate="128k", **extra_args)
                 else:
                     audio_dub = ffmpeg.input("dubbed_audio.wav").audio
-                    st = ffmpeg.output(video_sub, audio_dub, "temp_output.mp4", vcodec=vc, acodec="aac", **extra_args)
+                    st = ffmpeg.output(video_sub, audio_dub, "temp_output.mp4", vcodec=vc, acodec="aac", audio_bitrate="128k", **extra_args)
             else:
-                st = ffmpeg.output(video_sub, video.audio, "temp_output.mp4", vcodec=vc, acodec="aac", **extra_args)
+                st = ffmpeg.output(video_sub, video.audio, "temp_output.mp4", vcodec=vc, acodec="aac", audio_bitrate="128k", **extra_args)
             ffmpeg.run(st, overwrite_output=True, quiet=True)
 
         if has_dubbed:
-            print(Fore.CYAN + "  -> Dang render voi phu de va am thanh long tieng AI...")
+            print(Fore.CYAN + f"  -> Dang render voi phu de va am thanh long tieng AI (Dung luong muc tieu: ~{target_kbps} kbps)...")
             demucs_bg = os.path.join("demucs_out", "htdemucs", "audio", "no_vocals.wav")
             if os.path.exists(demucs_bg) and os.path.getsize(demucs_bg) > 0:
                 print(Fore.GREEN + "  -> Su dung nhac nen da duoc tach giong noi (Demucs)!")
         else:
-            print(Fore.CYAN + "  -> Dang render phu de vao video (Giu nguyen am thanh goc)...")
+            print(Fore.CYAN + f"  -> Dang render phu de vao video (Giu nguyen am thanh goc, Dung luong muc tieu: ~{target_kbps} kbps)...")
 
         try:
             build_and_run_render(vcodec_val, encoder_extra)
         except Exception as render_err:
             if vcodec_val != "libx264":
-                print(Fore.YELLOW + f"  [!] Fallback sang CPU ultrafast do GPU render gap loi: {render_err}")
-                build_and_run_render("libx264", {"preset": "ultrafast"})
+                print(Fore.YELLOW + f"  [!] Fallback sang CPU veryfast do GPU render gap loi: {render_err}")
+                cpu_fallback_args = {
+                    "preset": "veryfast",
+                    "crf": "24",
+                    "maxrate": f"{target_kbps}k",
+                    "bufsize": f"{target_kbps * 2}k"
+                }
+                build_and_run_render("libx264", cpu_fallback_args)
             else:
                 raise render_err
         
@@ -1207,7 +1266,7 @@ if __name__ == '__main__':
         if branding_enabled and ((intro_url and os.path.exists(intro_url)) or (outro_url and os.path.exists(outro_url))):
             print(Fore.CYAN + "  -> Dang gop Video Intro/Outro...")
             try:
-                tw, th, tfps = get_video_props("temp_output.mp4")
+                tw, th, tfps, _ = get_video_props("temp_output.mp4")
                 inputs = []
                 filter_chains = []
                 idx = 0
@@ -1232,12 +1291,17 @@ if __name__ == '__main__':
                     idx += 1
                 
                 joined = ffmpeg.concat(*filter_chains, v=1, a=1).node
-                out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec=vcodec_val, acodec="aac", **encoder_extra)
+                out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec=vcodec_val, acodec="aac", audio_bitrate="128k", **encoder_extra)
                 try:
                     ffmpeg.run(out_stream, overwrite_output=True, quiet=True)
                 except Exception:
                     if vcodec_val != "libx264":
-                        out_stream = ffmpeg.output(joined[0], joined[1], "output.mp4", vcodec="libx264", acodec="aac", preset="ultrafast")
+                        out_stream = ffmpeg.output(
+                            joined[0], joined[1], "output.mp4",
+                            vcodec="libx264", acodec="aac", audio_bitrate="128k",
+                            preset="veryfast", crf="24",
+                            maxrate=f"{target_kbps}k", bufsize=f"{target_kbps * 2}k"
+                        )
                         ffmpeg.run(out_stream, overwrite_output=True, quiet=True)
                     else:
                         raise

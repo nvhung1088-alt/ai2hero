@@ -126,6 +126,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` [Phase 5] Bổ sung công nghệ TTS cao cấp: Tích hợp ElevenLabs API (Cảm xúc điện ảnh), Google Cloud TTS, FPT AI, Viettel AI vào Connect Hub thành công.
   - `[x]` Tích hợp 3 Chế độ Tốc độ STT (⚡ Nhanh / ⚖️ Ổn định / 💎 Chất lượng) trên Dashboard UI và Worker cục bộ.
   - `[x]` Tích hợp 3 Chế độ Tạp âm & Nhạc nền (🎤 Ít tạp âm / 🎬 Bình thường / 💥 Nhiều tạp âm) trên Dashboard UI và Worker cục bộ.
+  - `[x]` 🚀 **Tối ưu hóa Dung Lượng Video Render (Rate Control & Adaptive Bitrate)**: Khắc phục triệt để lỗi video đầu ra bị phình to (100MB ➔ 400MB). Bổ sung `get_video_props` tự động đo bitrate video gốc và khống chế trần bitrate không vượt quá 1.15x video gốc. Bổ sung Rate Control chuẩn cho mọi encoder (`h264_nvenc`: `rc=vbr, cq=26, b:v=0`, `h264_amf`: `rc=cqp, qp=26`, `h264_qsv`: `global_quality=26`, `libx264`: `preset=veryfast, crf=24`), cố định âm thanh `aac` 128 kbps, và nâng cấp script cài đặt `herodub-setup.bat?v=16` trên toàn bộ hệ thống.
 
 ### 10. Hero Downloader (MVP Mới - Trình tải & Cào video Bilibili / Douyin)
 - **Status:** `Beta`
