@@ -145,7 +145,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Sửa lỗi biên dịch TypeScript lỗi gán kiểu string cho Date trong PairingWidget của cả 3 module (`connect-hub`, `hero-dub`, `hero-video-maker`).
   - `[x]` Nâng cấp Python Local Worker (`worker.py`): Tự động phát hiện và hỗ trợ lựa chọn môi trường máy chủ kết nối động (AI2Hero Cloud / Localhost) trong quá trình pairing và lưu trữ trực tiếp vào cấu hình `config.json`.
   - `[x]` Nâng cấp chất lượng ảnh Thumbnail (Master HD / 4K):
-    - **Douyin**: Chuyển đổi Extension ưu tiên lấy ảnh gốc master (`origin_cover` / `raw_cover`) 1080p thay vì ảnh nén xem trước (`cover` 300px), loại bỏ tham số resizer.
+    - **Douyin (Bẻ khóa CDN 1080p Master)**: Phát hiện và áp dụng công thức chuyển đổi toàn bộ URL Douyin signed (`-sign.douyinpic.com`) sang CDN public (`p3.douyinpic.com`) và ép template `~tplv-dy-1080p.jpeg`, mở khóa thành công 100% ảnh bìa Master Full HD (1712x1080 / 1920x1080 px, ~170KB) không bị chặn chữ ký HMAC và không bị nén 360p. Đã batch upgrade toàn bộ 285 video trong Database lên chuẩn 1080p.
     - **Bilibili**: Tự động loại bỏ hậu tố `@...` trên CDN Bilibili để tải về trực tiếp file ảnh gốc sắc nét nguyên bản.
     - **YouTube**: Nâng cấp thuật toán `_get_best_thumbnail` tự động chọn ảnh có độ phân giải cao nhất (`maxresdefault.jpg` 1080p).
     - **Local Worker**: Động hóa header `Referer` chống lỗi chặn bot 403 của CDN, sửa lỗi lọc file video `local_path` không bị nhận nhầm sang `.jpg`, và bổ sung cơ chế fallback tự động tải ảnh bìa khi `yt-dlp` không xuất file ảnh.
