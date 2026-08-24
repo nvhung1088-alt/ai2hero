@@ -158,6 +158,9 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
     - Xóa sạch 100% video của dự án trong Database (`downloaderVideos`).
     - Tự động reset bộ đếm `totalVideos = 0`, `downloadedVideos = 0`, `lastScanAt = null` trong `downloaderProjects`.
     - Cập nhật State React ngay lập tức để Sidebar và danh sách hiển thị trống trơn, sẵn sàng cho phiên quét mới hoàn toàn từ đầu.
+  - `[x]` Khắc phục triệt để lỗi quét trùng lặp video Douyin (Duplicate Batch Uploads):
+    - **Nguyên nhân**: Hàm `uploadCrawlBatch` trong Extension thiếu Mutex Lock và không xóa buffer trước `await fetch()`, dẫn tới mỗi lượt cuộn trang bắn cùng một lô video lên Server 5 lần đồng thời gây trùng lặp 233 video trong Database.
+    - **Giải pháp**: Bổ sung cờ khóa `isBatchUploading` và cơ chế `splice` trích xuất buffer tức thì trước khi gửi request. Chạy SQL dọn dẹp sạch toàn bộ 233 bản ghi trùng lặp trong Database, khôi phục số lượng video của dự án về đúng **200 video gốc duy nhất**.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
 - **2026-08-05 (hero-dub - Translation Cascade Fallback)**:
