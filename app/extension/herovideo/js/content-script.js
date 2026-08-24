@@ -807,16 +807,19 @@
         }
 
         // 5. Batch Upload: Nếu gom được từ 10 video, bắn ngay lên Server
-        if (_douyinVideos.length >= 10) {
+        if (_douyinVideos.length >= 10 && !isBatchUploading) {
             uploadCrawlBatch(false);
         }
     }
 
+    let isBatchUploading = false;
     async function uploadCrawlBatch(isFinal = false) {
-        if (!_douyinVideos.length) return;
+        if (isBatchUploading || !_douyinVideos.length) return;
+        isBatchUploading = true;
 
-        const videosToUpload = [..._douyinVideos];
-        const countToUpload = videosToUpload.length;
+        // Xóa ngay các video này ra khỏi buffer để các lượt cuộn tiếp theo không bao giờ gửi lại trùng lặp
+        const countToUpload = _douyinVideos.length;
+        const videosToUpload = _douyinVideos.splice(0, countToUpload);
 
         console.log(`[AI2Hero Crawler] Đang gửi đồng bộ ${countToUpload} video lên Server...`);
 
@@ -841,15 +844,17 @@
                 totalSyncedVideos += countToUpload;
                 const syncedEl = document.getElementById('crawl-stat-synced');
                 if (syncedEl) syncedEl.innerText = totalSyncedVideos;
-
-                // Xóa phần video đã gửi thành công ra khỏi buffer
-                _douyinVideos.splice(0, countToUpload);
                 console.log(`[AI2Hero Crawler] Đã đồng bộ thành công ${countToUpload} video.`);
             } else {
                 console.error("[AI2Hero Crawler] Lỗi từ API:", data.error);
+                // Nếu lỗi thì hoàn lại vào buffer
+                _douyinVideos.unshift(...videosToUpload);
             }
         } catch (e) {
             console.error("[AI2Hero Crawler] Không thể gửi video lên Server:", e);
+            _douyinVideos.unshift(...videosToUpload);
+        } finally {
+            isBatchUploading = false;
         }
     }
 
