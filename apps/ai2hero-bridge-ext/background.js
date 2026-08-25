@@ -283,6 +283,33 @@ async function executeAiJobOnTab(job) {
       throw new Error(`Content Script trên tab ${targetAi} không phản hồi.`);
     }
 
+    // 4. Nếu kết quả trả về có ảnh trực tuyến (https://...), background service worker tải ngay sang Base64 để chống 403 Forbidden
+    if (responseFromContent && responseFromContent.result && typeof responseFromContent.result === 'string') {
+      const imgMatch = responseFromContent.result.match(/!\[.*?\]\((https?:\/\/[^\s\)]+)\)/);
+      if (imgMatch && imgMatch[1]) {
+        const onlineImgUrl = imgMatch[1];
+        console.log(`[Ai2Hero Bridge] Đang chuyển đổi ảnh online sang Base64 trong background: ${onlineImgUrl.slice(0, 60)}...`);
+        try {
+          const imgRes = await fetch(onlineImgUrl);
+          if (imgRes.ok) {
+            const blob = await imgRes.blob();
+            if (blob.size > 2000) {
+              const reader = new FileReader();
+              const base64Data = await new Promise((resolve, reject) => {
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+              responseFromContent.result = responseFromContent.result.replace(onlineImgUrl, base64Data);
+              console.log(`[Ai2Hero Bridge] ✅ Đã chuyển đổi thành công ảnh sang Base64 (${blob.size} bytes) chống 403 Forbidden!`);
+            }
+          }
+        } catch (fetchErr) {
+          console.warn('[Ai2Hero Bridge] Không thể fetch ảnh trong background:', fetchErr);
+        }
+      }
+    }
+
     return {
       success: responseFromContent.success,
       result: responseFromContent.result,
