@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import json
+import re
 import platform
 import socket
 import requests
@@ -203,7 +204,14 @@ def generate_publishing_suite(task, translated_segments, thumb_src, duration_sec
     AI Publishing Suite: Tự động viết lại Tiêu đề Tiếng Việt giật tít, Mô tả nội dung, Bộ Hashtags và Thiết kế lại Thumbnail.
     """
     task_id = task.get("id")
-    source_title = task.get("sourceTitle") or task.get("source_title") or f"video_{task_id}"
+    raw_source_title = task.get("sourceTitle") or task.get("source_title") or f"video_{task_id}"
+    # Làm sạch tên file chỉ giữ lại tên video, loại bỏ đường dẫn thư mục và đuôi mở rộng
+    clean_source_title = os.path.basename(raw_source_title)
+    for ext in ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.webm']:
+        if clean_source_title.lower().endswith(ext):
+            clean_source_title = clean_source_title[:-len(ext)]
+    clean_source_title = clean_source_title.strip()
+
     context_str = task.get("translateContext", "")
 
     # 1. Trích xuất 10-15 câu thoại phụ đề tiếng Việt tiêu biểu
@@ -219,38 +227,35 @@ def generate_publishing_suite(task, translated_segments, thumb_src, duration_sec
     img_b64 = None
     if thumb_src and os.path.exists(thumb_src):
         try:
-            import base64
             with open(thumb_src, "rb") as img_f:
                 b64_data = base64.b64encode(img_f.read()).decode('utf-8')
                 img_b64 = f"data:image/jpeg;base64,{b64_data}"
         except Exception as e:
             print(Fore.YELLOW + f"  [!] Khong the doc anh thumbnail: {e}")
 
-    # 3. Tạo Multi-Modal Prompt
-    prompt = f"""Bạn là Giám đốc Sáng tạo Nội dung & Biên tập viên Phim chuyên nghiệp.
-Dưới đây là thông tin video:
-- Tiêu đề gốc: "{source_title}"
-- Bối cảnh/Từ điển: {context_str}
-- Các câu thoại tiêu biểu trong video (đã dịch sang tiếng Việt):
+    # 3. Tạo Multi-Modal Prompt với mệnh lệnh JSON nghiêm ngặt
+    prompt = f"""[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH, KHÔNG HỎI LẠI NGƯỜI DÙNG]
+
+Hãy đóng vai Giám đốc Sáng tạo Nội dung Phim. Dưới đây là thông tin video:
+- Tiêu đề gốc: {clean_source_title}
+- Các câu thoại tiêu biểu đã dịch sang tiếng Việt:
 {subs_text}
 
-YÊU CẦU BẮT BUỘC:
-1. VIẾT LẠI TIÊU ĐỀ VIDEO: Dịch và viết lại sang tiếng Việt thật giật tít, hấp dẫn, kịch tính, chuẩn SEO YouTube/TikTok (dưới 85 ký tự, khơi gợi tò mò, không dùng từ sáo rỗng).
-2. MÔ TẢ NỘI DUNG (Description): Đoạn văn ngắn 3-4 câu giới thiệu tình huống kịch tính nhất của video, kích thích khán giả xem hết.
-3. BỘ HASHTAGS: 6-8 hashtag chuẩn xu hướng bắt đầu bằng dấu # (Ví dụ: #phimngan #reviewphim #tomtatphim #xuhuong #phimhay).
-4. THIẾT KẾ LẠI ẢNH BÌA: Nếu có ảnh bìa đính kèm, hãy phân tích ảnh, xóa/dịch chữ tiếng Trung sang tiếng Việt nghệ thuật nổi bật, giữ nguyên 100% nhân vật và bố cục.
+Nhiệm vụ của bạn:
+1. "new_title": Viết lại Tiêu đề Tiếng Việt cực kỳ giật tít, hấp dẫn, chuẩn SEO YouTube/TikTok (dưới 80 ký tự, khơi gợi tò mò).
+2. "description": Viết đoạn mô tả ngắn 3-4 câu tóm tắt tình huống kịch tính nhất của video để khán giả xem hết.
+3. "hashtags": Tạo bộ 6-8 hashtag xu hướng (bắt đầu bằng dấu #).
 
-ĐỊNH DẠNG TRẢ VỀ: Trả về ĐÚNG MÃ JSON thuần túy (KHÔNG bọc trong markdown code block ```json, KHÔNG thêm lời chào hay giải thích):
+CHỈ TRẢ VỀ MÃ JSON THEO ĐÚNG CẤU TRÚC SAU (KHÔNG THÊM BẤT KỲ VĂN BẢN NÀO KHÁC):
 {{
-  "new_title": "Tiêu đề tiếng Việt giật tít",
-  "description": "Đoạn mô tả ngắn 3-4 câu...",
-  "hashtags": "#phimngan #reviewphim #tomtatphim #xuhuong #phimhay",
-  "summary": "Tóm tắt ngắn 1 câu"
+  "new_title": "Tiêu đề tiếng Việt giật tít tại đây",
+  "description": "Đoạn mô tả ngắn 3-4 câu tại đây...",
+  "hashtags": "#phimngan #reviewphim #tomtatphim #xuhuong #phimhay"
 }}"""
 
     result = {
-        "new_title": source_title,
-        "description": f"Video thuyết minh: {source_title}. Theo dõi những tình tiết hấp dẫn và kịch tính nhất trong tập này!",
+        "new_title": clean_source_title,
+        "description": f"Video thuyết minh: {clean_source_title}. Theo dõi những tình tiết hấp dẫn và kịch tính nhất trong tập này!",
         "hashtags": "#phimngan #reviewphim #tomtatphim #xuhuong #phimhay",
         "new_thumbnail_url": None
     }
@@ -261,7 +266,7 @@ YÊU CẦU BẮT BUỘC:
         attachments = [img_b64] if img_b64 else []
         ws_res = bridge_server.execute_job(prompt, attachments=attachments, target_ai="gemini", timeout=90)
         if ws_res and ws_res.get("success") and ws_res.get("result"):
-            raw_out = ws_res.get("result", "").strip()
+            raw_out = str(ws_res.get("result", "")).strip()
             raw_out = re.sub(r"^```(?:json)?\s*", "", raw_out, flags=re.IGNORECASE)
             raw_out = re.sub(r"\s*```$", "", raw_out, flags=re.IGNORECASE).strip()
             
@@ -271,6 +276,7 @@ YÊU CẦU BẮT BUỘC:
                 result["new_thumbnail_url"] = img_match.group(1)
                 raw_out = re.sub(r'!\[.*?\]\(https?://[^\s\)]+\)', '', raw_out).strip()
 
+            parsed_success = False
             try:
                 # Tìm JSON block trong response
                 json_match = re.search(r'(\{[\s\S]*\})', raw_out)
@@ -284,8 +290,28 @@ YÊU CẦU BẮT BUỘC:
                         if parsed.get("hashtags"):
                             result["hashtags"] = parsed.get("hashtags").strip()
                         print(Fore.GREEN + f"  [⚡ WebSocket Publishing Suite] Da tao Tieu de moi: {result['new_title']}")
+                        parsed_success = True
             except Exception as parse_e:
                 print(Fore.YELLOW + f"  [!] Parse Publishing Suite JSON error ({parse_e}).")
+
+            # Fallback thông minh nếu Gemini trả về văn bản thường
+            if not parsed_success and len(raw_out) > 10:
+                print(Fore.YELLOW + f"  [!] Gemini tra ve text thuong, dang tu dong trich xuat tu lieu...")
+                lines = [line.strip() for line in raw_out.split('\n') if line.strip()]
+                # Tìm dòng tiêu đề
+                for line in lines:
+                    if any(kw in line.lower() for kw in ['tiêu đề:', 'title:', '1.']):
+                        clean_line = re.sub(r'^(?:tiêu đề|title|1\.)[:\s*-]+', '', line, flags=re.IGNORECASE).strip('"\' ')
+                        if len(clean_line) > 5:
+                            result["new_title"] = clean_line[:90]
+                            break
+                # Tìm hashtags
+                tags = re.findall(r'#\w+', raw_out)
+                if tags:
+                    result["hashtags"] = " ".join(tags[:8])
+                # Lấy mô tả
+                if len(lines) > 1:
+                    result["description"] = "\n".join(lines[1:5])
 
     return result
 
