@@ -53,6 +53,15 @@ class LocalWebSocketBridgeServer:
         except Exception:
             pass
 
+    def _recv_exact(self, sock, num_bytes):
+        buf = bytearray()
+        while len(buf) < num_bytes:
+            chunk = sock.recv(num_bytes - len(buf))
+            if not chunk:
+                return None
+            buf.extend(chunk)
+        return bytes(buf)
+
     def _handle_client(self, sock):
         try:
             request = sock.recv(2048).decode("utf-8", errors="ignore")
@@ -80,33 +89,46 @@ class LocalWebSocketBridgeServer:
                 print(Fore.GREEN + "[*] Chrome Extension da ket noi truc tiep qua WebSocket Local (Port 8765)!")
 
             while self.is_running:
-                data = sock.recv(65536)
-                if not data:
+                head = self._recv_exact(sock, 2)
+                if not head:
                     break
-                opcode = data[0] & 0x0F
+                opcode = head[0] & 0x0F
                 if opcode == 0x8: # Close frame
                     break
-                elif opcode == 0x1: # Text frame
-                    mask = (data[1] & 0x80) != 0
-                    payload_len = data[1] & 0x7F
-                    offset = 2
-                    if payload_len == 126:
-                        payload_len = struct.unpack(">H", data[2:4])[0]
-                        offset = 4
-                    elif payload_len == 127:
-                        payload_len = struct.unpack(">Q", data[2:10])[0]
-                        offset = 10
+                
+                mask = (head[1] & 0x80) != 0
+                payload_len = head[1] & 0x7F
+                
+                if payload_len == 126:
+                    ext_len_bytes = self._recv_exact(sock, 2)
+                    if not ext_len_bytes:
+                        break
+                    payload_len = struct.unpack(">H", ext_len_bytes)[0]
+                elif payload_len == 127:
+                    ext_len_bytes = self._recv_exact(sock, 8)
+                    if not ext_len_bytes:
+                        break
+                    payload_len = struct.unpack(">Q", ext_len_bytes)[0]
 
-                    if mask:
-                        mask_key = data[offset:offset+4]
-                        offset += 4
-                        raw_payload = bytearray(data[offset:offset+payload_len])
-                        for i in range(len(raw_payload)):
-                            raw_payload[i] ^= mask_key[i % 4]
-                        message_str = raw_payload.decode("utf-8", errors="ignore")
-                    else:
-                        message_str = data[offset:offset+payload_len].decode("utf-8", errors="ignore")
+                mask_key = None
+                if mask:
+                    mask_key = self._recv_exact(sock, 4)
+                    if not mask_key:
+                        break
 
+                raw_payload = self._recv_exact(sock, payload_len)
+                if raw_payload is None:
+                    break
+
+                if mask and mask_key:
+                    unmasked = bytearray(raw_payload)
+                    for i in range(len(unmasked)):
+                        unmasked[i] ^= mask_key[i % 4]
+                    message_str = unmasked.decode("utf-8", errors="ignore")
+                else:
+                    message_str = raw_payload.decode("utf-8", errors="ignore")
+
+                if opcode == 0x1: # Text frame
                     try:
                         msg_json = json.loads(message_str)
                         if msg_json.get("type") == "JOB_RESULT":
