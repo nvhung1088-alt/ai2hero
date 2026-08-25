@@ -28,7 +28,7 @@ export default function DubGuidePanel({
 }: DubGuidePanelProps) {
   if (!showGuide) return null;
 
-  const winCmd = 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=16 & herodub-setup.bat --server https://ai2hero-flax.vercel.app';
+  const winCmd = 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=22 & herodub-setup.bat --server https://ai2hero-flax.vercel.app';
   const macCmd = 'curl -o herodub-setup.sh https://www.ai2hero.com/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh';
 
   return (
@@ -84,14 +84,14 @@ export default function DubGuidePanel({
 
           <div className="space-y-4">
             <div>
-              <p className="text-[11px] text-green-400 font-medium mb-1.5">Cách 1: Tải và cài đặt mới (Chạy lần đầu hoặc Cập nhật v16)</p>
+              <p className="text-[11px] text-green-400 font-medium mb-1.5">Cách 1: Tải và cài đặt mới (Chạy lần đầu hoặc Cập nhật v22)</p>
               <div className="bg-black border border-white/10 rounded-xl p-3 flex items-center justify-between gap-4 font-mono text-green-400/90 text-[11px] shadow-inner">
                 <span className="select-all overflow-x-auto whitespace-nowrap">
-                  {guideOs === 'windows' ? 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=16 & herodub-setup.bat --server https://ai2hero-flax.vercel.app' : 'curl -o herodub-setup.sh https://ai2hero-flax.vercel.app/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh --server https://ai2hero-flax.vercel.app'}
+                  {guideOs === 'windows' ? winCmd : macCmd}
                 </span>
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(guideOs === 'windows' ? 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=16 & herodub-setup.bat --server https://ai2hero-flax.vercel.app' : 'curl -o herodub-setup.sh https://ai2hero-flax.vercel.app/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh --server https://ai2hero-flax.vercel.app');
+                    navigator.clipboard.writeText(guideOs === 'windows' ? winCmd : macCmd);
                     handleCopyGuideCommand();
                   }}
                   className="p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
