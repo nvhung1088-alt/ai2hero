@@ -1379,8 +1379,16 @@ export async function testImageAiConnectionAction(
       imageUrl = result.data.image_url;
     } else if (result.data.data && result.data.data[0]?.url) {
       imageUrl = result.data.data[0].url;
+    } else if (result.data.choices && result.data.choices[0]?.message?.content) {
+      imageUrl = result.data.choices[0].message.content;
     } else {
       imageUrl = JSON.stringify(result.data);
+    }
+
+    // Trích xuất URL ảnh từ markdown ![...](https://...)
+    const imgMatch = imageUrl.match(/!\[.*?\]\((https?:\/\/[^\s\)]+)\)/);
+    if (imgMatch) {
+      imageUrl = imgMatch[1];
     }
 
     return { success: true, result: imageUrl };

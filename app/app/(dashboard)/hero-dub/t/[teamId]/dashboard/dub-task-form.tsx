@@ -359,8 +359,21 @@ export default function DubTaskForm({
       const sampleImg = (localFilePaths && localFilePaths.length > 0 ? localFilePaths[0] : undefined) || (customThumbnailLogoUrl && customThumbnailLogoUrl.startsWith('http') ? customThumbnailLogoUrl : undefined);
       const res = await testImageAiConnectionAction(teamId, thumbnailAiAppSlug, thumbnailAiModel, sampleImg);
       if (res.success) {
-        setTestImageAiResult({ success: true, msg: 'Kết nối & Thử nghiệm mẫu Thumbnail thành công!', imageUrl: res.result });
-        showToast('Kết nối & Thử nghiệm mẫu thành công!', 'success');
+        let imgUrl = res.result || '';
+        let isPending = typeof imgUrl === 'string' && imgUrl.includes('[PENDING]');
+        let cleanMsg = isPending 
+          ? '⏳ Đã gửi lệnh tạo ảnh sang Extension. Bạn vui lòng mở tab Gemini Web để duyệt lệnh tạo ảnh!' 
+          : 'Kết nối & Thử nghiệm mẫu Thumbnail thành công!';
+        
+        // Trích xuất URL ảnh nếu có
+        let finalImg = imgUrl;
+        const imgMatch = typeof imgUrl === 'string' ? imgUrl.match(/https?:\/\/[^\s"'<>\)]+\.(?:jpg|jpeg|png|webp)/i) : null;
+        if (imgMatch) {
+          finalImg = imgMatch[0];
+        }
+
+        setTestImageAiResult({ success: true, msg: cleanMsg, imageUrl: isPending ? undefined : finalImg });
+        showToast(isPending ? 'Đang gửi lệnh tới Extension...' : 'Kết nối & Thử nghiệm thành công!', isPending ? 'info' : 'success');
       } else {
         setTestImageAiResult({ success: false, msg: 'Lỗi: ' + res.error });
         showToast('Kết nối Image AI lỗi: ' + res.error, 'error');
