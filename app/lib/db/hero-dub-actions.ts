@@ -1389,4 +1389,80 @@ export async function testImageAiConnectionAction(
   }
 }
 
+export async function testPublishingSuiteAction(
+  teamId: number,
+  appSlug?: string,
+  modelName?: string
+) {
+  try {
+    const effectiveAppSlug = appSlug || 'browser-ai-bridge';
+    const effectiveModel = modelName || 'gemini';
+
+    const [connection] = await db
+      .select()
+      .from(connectHubConnections)
+      .where(and(eq(connectHubConnections.teamId, teamId), eq(connectHubConnections.appSlug, effectiveAppSlug)))
+      .limit(1);
+
+    if (!connection) {
+      return { success: false, error: `Chưa cài đặt kết nối cho Ứng dụng ${effectiveAppSlug}. Vui lòng kiểm tra Connect Hub.` };
+    }
+
+    const decryptedJson = decryptField(connection.encryptedCredentials) || '{}';
+    const credentials = JSON.parse(decryptedJson);
+
+    const testPrompt = `[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH, KHÔNG HỎI LẠI]
+
+Hãy đóng vai Giám đốc Sáng tạo Nội dung Phim. Dưới đây là thông tin video mẫu:
+- Tiêu đề gốc: 1270_ai_co_the_tu_choi_xem_xay_nha_trong_mua_bao
+- Các câu thoại tiêu biểu:
+- Ai có thể từ chối việc trước khi đi ngủ lướt qua một video xây dựng giữa rừng mưa
+- Tiếng ồn trắng tự nhiên này lập tức khiến thần kinh căng thẳng được thư giãn
+- Ăn uống no nê, anh ấy nằm vào chiếc chăn ấm áp lắng nghe tiếng mưa rơi
+
+Nhiệm vụ của bạn:
+1. "new_title": Đặt lại Tiêu đề Tiếng Việt cực kỳ giật tít, hấp dẫn, chuẩn SEO YouTube/TikTok (dưới 80 ký tự, khơi gợi tò mò).
+2. "description": Viết đoạn mô tả ngắn 3-4 câu tóm tắt tình huống kịch tính nhất của video để khán giả xem hết.
+3. "hashtags": Tạo bộ 6-8 hashtag xu hướng (bắt đầu bằng dấu #).
+
+CHỈ TRẢ VỀ MÃ JSON THEO ĐÚNG CẤU TRÚC SAU (KHÔNG THÊM BẤT KỲ VĂN BẢN NÀO KHÁC):
+{
+  "new_title": "Tiêu đề tiếng Việt giật tít tại đây",
+  "description": "Đoạn mô tả ngắn 3-4 câu tại đây...",
+  "hashtags": "#phimngan #reviewphim #tomtatphim #xuhuong #phimhay"
+}`;
+
+    const testJobId = crypto.randomUUID();
+
+    const result = await executeAction(effectiveAppSlug, credentials, 'chat_completion', {
+      jobId: testJobId,
+      model: effectiveModel,
+      teamId: teamId,
+      connectionId: connection.id,
+      prompt: testPrompt,
+      attachments: [],
+      messages: [{ role: 'user', content: testPrompt }]
+    });
+
+    if (!result.success || !result.data) {
+      return { success: false, error: result.error || 'Test sinh tư liệu thất bại' };
+    }
+
+    let rawOut = '';
+    if (typeof result.data === 'string') {
+      rawOut = result.data;
+    } else if (result.data.content) {
+      rawOut = result.data.content;
+    } else if (result.data.choices && result.data.choices[0]?.message?.content) {
+      rawOut = result.data.choices[0].message.content;
+    } else {
+      rawOut = JSON.stringify(result.data);
+    }
+
+    return { success: true, result: rawOut };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Lỗi không xác định khi test Tư Liệu Đăng Bài.' };
+  }
+}
+
 

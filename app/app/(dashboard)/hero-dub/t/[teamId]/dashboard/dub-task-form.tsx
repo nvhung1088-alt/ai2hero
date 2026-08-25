@@ -17,14 +17,16 @@ import {
   Plus,
   X,
   BookOpen,
-  Sparkles
+  Sparkles,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 import {
   getDubDictionariesAction,
   autoDetectDictionaryAction
 } from '@/lib/db/hero-dub-dictionary-actions';
-import { testTranslateConnectionAction, testImageAiConnectionAction } from '@/lib/db/hero-dub-actions';
+import { testTranslateConnectionAction, testImageAiConnectionAction, testPublishingSuiteAction } from '@/lib/db/hero-dub-actions';
 import { DubDictionary } from '@/lib/db/schema';
 
 interface DubTaskFormProps {
@@ -251,6 +253,40 @@ export default function DubTaskForm({
 
   const [isTestingImageAi, setIsTestingImageAi] = React.useState(false);
   const [testImageAiResult, setTestImageAiResult] = React.useState<{success?: boolean, msg?: string, imageUrl?: string}|null>(null);
+
+  const [isTestingPublishingSuite, setIsTestingPublishingSuite] = React.useState(false);
+  const [testPublishingResult, setTestPublishingResult] = React.useState<{success?: boolean, msg?: string, new_title?: string, description?: string, hashtags?: string}|null>(null);
+
+  const handleTestPublishingSuite = async () => {
+    setIsTestingPublishingSuite(true);
+    setTestPublishingResult(null);
+    try {
+      const res = await testPublishingSuiteAction(teamId, selectedAiAppSlug || 'browser-ai-bridge', selectedAiModel || 'gemini');
+      if (res.success && res.result) {
+        let parsed: any = {};
+        try {
+          const jsonMatch = res.result.match(/\{[\s\S]*\}/);
+          if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+        } catch (e) {}
+
+        setTestPublishingResult({
+          success: true,
+          msg: 'AI đã tạo thành công bộ Tư liệu Đăng bài mẫu!',
+          new_title: parsed.new_title || 'Thử Nghiệm Sinh Tiêu Đề Mới',
+          description: parsed.description || res.result,
+          hashtags: parsed.hashtags || '#phimngan #reviewphim #tomtatphim #xuhuong #phimhay'
+        });
+        showToast('Sinh thử Tư liệu Đăng bài thành công!', 'success');
+      } else {
+        setTestPublishingResult({ success: false, msg: 'Lỗi: ' + res.error });
+        showToast('Lỗi sinh tư liệu: ' + res.error, 'error');
+      }
+    } catch (err: any) {
+      setTestPublishingResult({ success: false, msg: 'Lỗi mạng: ' + err.message });
+    } finally {
+      setIsTestingPublishingSuite(false);
+    }
+  };
 
   const handleTestConnection = async () => {
     if (!selectedAiAppSlug) return;
@@ -1023,8 +1059,45 @@ export default function DubTaskForm({
             </label>
           </div>
           {publishingPackEnabled && (
-            <div className="text-[10px] text-gray-400 bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
-              💡 Sau khi dịch & lồng tiếng, AI sẽ tự động giật tít lại Tiêu đề tiếng Việt chuẩn SEO, viết bài Mô tả tóm tắt nội dung kịch tính, tạo bộ 6-8 Hashtags xu hướng và xuất sẵn file <code className="text-amber-300 font-mono">.txt</code> để bạn chỉ cần copy đăng bài lên YouTube, TikTok, Facebook!
+            <div className="space-y-2.5">
+              <div className="text-[10px] text-gray-400 bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
+                💡 Sau khi dịch & lồng tiếng, AI sẽ tự động giật tít lại Tiêu đề tiếng Việt chuẩn SEO, viết bài Mô tả tóm tắt nội dung kịch tính, tạo bộ 6-8 Hashtags xu hướng và xuất sẵn file <code className="text-amber-300 font-mono">.txt</code> để bạn chỉ cần copy đăng bài lên YouTube, TikTok, Facebook!
+              </div>
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={handleTestPublishingSuite}
+                  disabled={isTestingPublishingSuite}
+                  className="text-[10px] bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1 border border-amber-500/20 cursor-pointer"
+                >
+                  {isTestingPublishingSuite ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                  {isTestingPublishingSuite ? 'Đang gửi yêu cầu sang AI...' : '⚡ Test Thử Nghiệm Tạo Tư Liệu Mẫu'}
+                </button>
+                {testPublishingResult && (
+                  <div className={`mt-2 p-3 rounded-xl text-[11px] text-left border space-y-2 animate-in fade-in slide-in-from-top-1 ${testPublishingResult.success ? 'bg-green-500/10 border-green-500/20 text-green-300' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                    <div className="font-bold flex items-center gap-1.5 text-xs">
+                      {testPublishingResult.success ? <CheckCircle2 className="h-3.5 w-3.5 text-green-400" /> : <AlertCircle className="h-3.5 w-3.5 text-red-400" />}
+                      {testPublishingResult.msg}
+                    </div>
+                    {testPublishingResult.success && (
+                      <div className="space-y-2 bg-black/40 p-2.5 rounded-lg border border-white/5 font-sans">
+                        <div>
+                          <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider block">📌 Tiêu Đề Mới:</span>
+                          <div className="font-extrabold text-white text-xs mt-0.5">{testPublishingResult.new_title}</div>
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider block">📝 Mô Tả Nội Dung:</span>
+                          <div className="text-gray-300 text-[10px] leading-relaxed mt-0.5 whitespace-pre-line">{testPublishingResult.description}</div>
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider block">🏷️ Hashtags:</span>
+                          <div className="text-amber-300 font-mono text-[10px] mt-0.5">{testPublishingResult.hashtags}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
