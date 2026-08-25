@@ -12,6 +12,172 @@ from colorama import init, Fore, Style
 init(autoreset=True)
 
 # ---------------------------------------------------------
+# LOCAL WEBSOCKET BRIDGE SERVER (PORT 8765)
+# ---------------------------------------------------------
+import hashlib
+import base64
+import struct
+import threading
+
+class LocalWebSocketBridgeServer:
+    """
+    Lightweight zero-dependency WebSocket Server for Chrome Extension Local Bridge (Port 8765)
+    """
+    def __init__(self, host="127.0.0.1", port=8765):
+        self.host = host
+        self.port = port
+        self.clients = set()
+        self.lock = threading.Lock()
+        self.pending_jobs = {}
+        self.server_socket = None
+        self.is_running = False
+
+    def start(self):
+        if self.is_running:
+            return
+        self.is_running = True
+        thread = threading.Thread(target=self._run_server, daemon=True)
+        thread.start()
+        print(Fore.CYAN + f"[*] Local WebSocket Bridge Server dang chay tai ws://{self.host}:{self.port}")
+
+    def _run_server(self):
+        try:
+            self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.server_socket.bind((self.host, self.port))
+            self.server_socket.listen(5)
+            while self.is_running:
+                client_sock, addr = self.server_socket.accept()
+                threading.Thread(target=self._handle_client, args=(client_sock,), daemon=True).start()
+        except Exception:
+            pass
+
+    def _handle_client(self, sock):
+        try:
+            request = sock.recv(2048).decode("utf-8", errors="ignore")
+            if "Sec-WebSocket-Key:" not in request:
+                sock.close()
+                return
+
+            key = request.split("Sec-WebSocket-Key: ")[1].split("\r\n")[0].strip()
+            accept_key = base64.b64encode(
+                hashlib.sha1((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode("utf-8")).digest()
+            ).decode("utf-8")
+
+            handshake = (
+                "HTTP/1.1 101 Switching Protocols\r\n"
+                "Upgrade: websocket\r\n"
+                "Connection: Upgrade\r\n"
+                f"Sec-WebSocket-Accept: {accept_key}\r\n\r\n"
+            )
+            sock.sendall(handshake.encode("utf-8"))
+
+            with self.lock:
+                self.clients.add(sock)
+            print(Fore.GREEN + "[*] Chrome Extension da ket noi truc tiep qua WebSocket Local (Port 8765)!")
+
+            while self.is_running:
+                data = sock.recv(65536)
+                if not data:
+                    break
+                opcode = data[0] & 0x0F
+                if opcode == 0x8: # Close frame
+                    break
+                elif opcode == 0x1: # Text frame
+                    mask = (data[1] & 0x80) != 0
+                    payload_len = data[1] & 0x7F
+                    offset = 2
+                    if payload_len == 126:
+                        payload_len = struct.unpack(">H", data[2:4])[0]
+                        offset = 4
+                    elif payload_len == 127:
+                        payload_len = struct.unpack(">Q", data[2:10])[0]
+                        offset = 10
+
+                    if mask:
+                        mask_key = data[offset:offset+4]
+                        offset += 4
+                        raw_payload = bytearray(data[offset:offset+payload_len])
+                        for i in range(len(raw_payload)):
+                            raw_payload[i] ^= mask_key[i % 4]
+                        message_str = raw_payload.decode("utf-8", errors="ignore")
+                    else:
+                        message_str = data[offset:offset+payload_len].decode("utf-8", errors="ignore")
+
+                    try:
+                        msg_json = json.loads(message_str)
+                        if msg_json.get("type") == "JOB_RESULT":
+                            job_id = msg_json.get("jobId")
+                            if job_id and job_id in self.pending_jobs:
+                                self.pending_jobs[job_id]["result"] = msg_json
+                                self.pending_jobs[job_id]["event"].set()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        finally:
+            with self.lock:
+                if sock in self.clients:
+                    self.clients.remove(sock)
+            try:
+                sock.close()
+            except Exception:
+                pass
+
+    def send_frame(self, sock, message_str):
+        payload = message_str.encode("utf-8")
+        header = bytearray([0x81])
+        length = len(payload)
+        if length <= 125:
+            header.append(length)
+        elif length <= 65535:
+            header.append(126)
+            header.extend(struct.pack(">H", length))
+        else:
+            header.append(127)
+            header.extend(struct.pack(">Q", length))
+        sock.sendall(header + payload)
+
+    def is_connected(self):
+        with self.lock:
+            return len(self.clients) > 0
+
+    def execute_job(self, prompt, target_ai="gemini", attachments=None, timeout=90):
+        with self.lock:
+            if not self.clients:
+                return None
+            client_sock = next(iter(self.clients))
+
+        job_id = "ws_" + str(int(time.time() * 1000))
+        event = threading.Event()
+        self.pending_jobs[job_id] = {"event": event, "result": None}
+
+        msg = {
+            "action": "PROCESS_AI_JOB",
+            "job": {
+                "id": job_id,
+                "targetAi": target_ai,
+                "prompt": prompt,
+                "attachments": attachments or [],
+                "autoNewChat": True
+            }
+        }
+
+        try:
+            self.send_frame(client_sock, json.dumps(msg, ensure_ascii=False))
+            if event.wait(timeout=timeout):
+                res = self.pending_jobs[job_id].get("result", {})
+                return res
+        except Exception as e:
+            print(Fore.YELLOW + f"[!] WebSocket Bridge send error: {e}")
+        finally:
+            self.pending_jobs.pop(job_id, None)
+
+        return None
+
+bridge_server = LocalWebSocketBridgeServer()
+
+# ---------------------------------------------------------
 # TU DONG CAI DAT THU VIEN NEU THIEU
 # ---------------------------------------------------------
 try:
@@ -856,48 +1022,76 @@ def process_task(token, task):
 
                     translated_array = None
                     
-                    # Thử gọi API Connect Hub với Smart Retry (3 lần)
-                    for hub_attempt in range(3):
-                        try:
-                            payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
-                            api_attempts = 0
-                            while api_attempts < 60:
-                                res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=60)
-                                
-                                res_json = None
-                                try:
-                                    res_json = res.json()
-                                except Exception:
-                                    pass
-                                    
-                                if res_json and "AUTH_REQUIRED" in str(res_json.get("error", "")):
-                                    print(Fore.RED + "\n[!] LOI DANG NHAP: Trinh duyet Chrome Extension cua ban chua dang nhap Gemini / ChatGPT!")
-                                    input(Fore.YELLOW + "Nhan ENTER de thoat va chay lai sau khi da dang nhap...")
-                                    sys.exit(1)
+                    # 1. Ưu tiên: Bắn trực tiếp qua Local WebSocket Bridge nếu Extension đang kết nối (siêu tốc 2-4s)
+                    if bridge_server.is_connected():
+                        print(Fore.CYAN + f"  [⚡ WebSocket Local] Dang ban truc tiep {len(texts)} cau sang Chrome Extension (Gemini)...")
+                        ws_input = {str(k): t for k, t in enumerate(texts)}
+                        context_str = f"\nBối cảnh phim: {task.get('translateContext', '')}" if task.get('translateContext') else ""
+                        ws_prompt = f"""Bạn là chuyên gia dịch thuật phụ đề phim chuyên nghiệp. Hãy dịch các câu thoại tiếng Trung sau sang tiếng Việt mượt mà, đúng văn phong phim:{context_str}
 
-                                if res.status_code == 200 and res_json and res_json.get("isPending"):
-                                    pending_job_id = res_json.get("jobId")
-                                    if pending_job_id:
-                                        payload["jobId"] = pending_job_id
-                                    print(Fore.CYAN + f"  [!] Dang cho Chrome Extension xu ly tren trinh duyet... (Lan {api_attempts+1}/60)")
-                                    time.sleep(5)
-                                    api_attempts += 1
-                                else:
-                                    break
+QUY TẮC BẮT BUỘC:
+1. Trả về đúng định dạng JSON gốc (key "0", "1"... giữ nguyên, chỉ thay value bằng chuỗi dịch tiếng Việt).
+2. KHÔNG giải thích, KHÔNG thêm lời chào, KHÔNG bọc trong markdown code block (```json). Chỉ trả về mã JSON thuần túy để máy đọc.
+
+Dữ liệu:
+{json.dumps(ws_input, ensure_ascii=False, indent=2)}"""
+
+                        ws_res = bridge_server.execute_job(ws_prompt, target_ai="gemini", timeout=90)
+                        if ws_res and ws_res.get("success") and ws_res.get("result"):
+                            raw_out = ws_res.get("result", "").strip()
+                            raw_out = re.sub(r"^```(?:json)?\s*", "", raw_out, flags=re.IGNORECASE)
+                            raw_out = re.sub(r"\s*```$", "", raw_out, flags=re.IGNORECASE).strip()
+                            try:
+                                parsed = json.loads(raw_out)
+                                if isinstance(parsed, dict):
+                                    translated_array = [str(parsed.get(str(k), texts[k])) for k in range(len(texts))]
+                                    print(Fore.GREEN + f"  [⚡ WebSocket Local] Nhan ket qua sieu toc thanh cong ({len(translated_array)} cau)!")
+                            except Exception as parse_err:
+                                print(Fore.YELLOW + f"  [!] Parse ket qua WebSocket error ({parse_err}). Chuyen sang Cloud API...")
+
+                    # 2. Thử gọi API Connect Hub với Smart Retry (3 lần) nếu WebSocket chưa có kết quả
+                    if not translated_array:
+                        for hub_attempt in range(3):
+                            try:
+                                payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
+                                api_attempts = 0
+                                while api_attempts < 60:
+                                    res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=60)
                                     
-                            if res.status_code == 200:
-                                data = res.json()
-                                if data.get("success") and data.get("translatedTexts"):
-                                    translated_array = data.get("translatedTexts")
-                                    break
+                                    res_json = None
+                                    try:
+                                        res_json = res.json()
+                                    except Exception:
+                                        pass
+                                        
+                                    if res_json and "AUTH_REQUIRED" in str(res_json.get("error", "")):
+                                        print(Fore.RED + "\n[!] LOI DANG NHAP: Trinh duyet Chrome Extension cua ban chua dang nhap Gemini / ChatGPT!")
+                                        input(Fore.YELLOW + "Nhan ENTER de thoat va chay lai sau khi da dang nhap...")
+                                        sys.exit(1)
+
+                                    if res.status_code == 200 and res_json and res_json.get("isPending"):
+                                        pending_job_id = res_json.get("jobId")
+                                        if pending_job_id:
+                                            payload["jobId"] = pending_job_id
+                                        print(Fore.CYAN + f"  [!] Dang cho Chrome Extension xu ly tren trinh duyet... (Lan {api_attempts+1}/60)")
+                                        time.sleep(5)
+                                        api_attempts += 1
+                                    else:
+                                        break
+                                        
+                                if res.status_code == 200:
+                                    data = res.json()
+                                    if data.get("success") and data.get("translatedTexts"):
+                                        translated_array = data.get("translatedTexts")
+                                        break
+                                    else:
+                                        print(Fore.YELLOW + f"  [!] Connect Hub tra ve loi ({data.get('error')}). Thu lai {hub_attempt+1}/3 sau 3s...")
                                 else:
-                                    print(Fore.YELLOW + f"  [!] Connect Hub tra ve loi ({data.get('error')}). Thu lai {hub_attempt+1}/3 sau 3s...")
-                            else:
-                                print(Fore.YELLOW + f"  [!] Connect Hub HTTP {res.status_code}. Thu lai {hub_attempt+1}/3 sau 3s...")
-                        except Exception as req_err:
-                            print(Fore.YELLOW + f"  [!] Mang Connect Hub loi ({str(req_err)}). Thu lai {hub_attempt+1}/3 sau 3s...")
-                            
-                        time.sleep(3)
+                                    print(Fore.YELLOW + f"  [!] Connect Hub HTTP {res.status_code}. Thu lai {hub_attempt+1}/3 sau 3s...")
+                            except Exception as req_err:
+                                print(Fore.YELLOW + f"  [!] Mang Connect Hub loi ({str(req_err)}). Thu lai {hub_attempt+1}/3 sau 3s...")
+                                
+                            time.sleep(3)
                         
                     # Nếu Connect Hub thành công
                     if translated_array and len(translated_array) > 0:
@@ -1952,6 +2146,9 @@ if __name__ == "__main__":
             
         if token:
             GLOBAL_TOKEN = token
+            # Khoi dong WebSocket Bridge Server (Port 8765) cho Chrome Extension
+            bridge_server.start()
+
             if not scan_thread_started:
                 # Khoi dong luong quet thu muc
                 t = threading.Thread(target=poll_scan_folders_thread, args=(token,), daemon=True)

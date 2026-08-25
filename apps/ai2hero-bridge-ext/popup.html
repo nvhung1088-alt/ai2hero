@@ -5,37 +5,55 @@
   <title>Ai2Hero Bridge Settings</title>
   <style>
     body {
-      width: 320px;
+      width: 340px;
       font-family: system-ui, -apple-system, sans-serif;
       margin: 0;
       padding: 16px;
       background-color: #0f172a;
       color: #f8fafc;
+      box-sizing: border-box;
     }
     h2 {
-      font-size: 15px;
+      font-size: 14px;
       margin-top: 0;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       color: #fbbf24;
       display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: space-between;
+    }
+    .version-tag {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background-color: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-top: 12px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .form-group {
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
     label {
       display: block;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
       color: #94a3b8;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
       text-transform: uppercase;
     }
     input {
       width: 100%;
       box-sizing: border-box;
-      padding: 8px 10px;
+      padding: 7px 10px;
       border-radius: 8px;
       border: 1px solid #334155;
       background-color: #1e293b;
@@ -44,26 +62,39 @@
       outline: none;
     }
     input:focus {
-      border-color: #fbbf24;
+      border-color: #38bdf8;
     }
-    button {
+    .btn-primary {
       width: 100%;
-      padding: 9px;
+      padding: 8px;
       border: none;
       border-radius: 8px;
-      background: linear-gradient(135deg, #f59e0b, #d97706);
+      background: linear-gradient(135deg, #0284c7, #0369a1);
       color: white;
       font-weight: 700;
-      font-size: 12px;
+      font-size: 11px;
       cursor: pointer;
       margin-top: 4px;
+      transition: all 0.2s;
     }
-    button:hover {
-      opacity: 0.9;
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-test {
+      width: 100%;
+      padding: 7px;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      background-color: #1e293b;
+      color: #fbbf24;
+      font-weight: 600;
+      font-size: 11px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.2s;
     }
+    .btn-test:hover { background-color: #334155; }
     .status-card {
-      margin-top: 14px;
-      padding: 10px;
+      margin-top: 12px;
+      padding: 8px 10px;
       border-radius: 8px;
       background-color: #1e293b;
       border: 1px solid #334155;
@@ -71,39 +102,61 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 6px;
     }
     .badge {
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-weight: 700;
       font-size: 10px;
     }
-    .badge-on { background-color: #064e3b; color: #34d399; }
-    .badge-off { background-color: #7f1d1d; color: #f87171; }
+    .badge-ws-on { background-color: #064e3b; color: #34d399; }
+    .badge-ws-off { background-color: #451a03; color: #fbbf24; }
+    .badge-cloud-on { background-color: #1e3a8a; color: #60a5fa; }
+    .badge-cloud-off { background-color: #334155; color: #94a3b8; }
   </style>
 </head>
 <body>
-  <h2>🌐 Ai2Hero Browser Bridge</h2>
-  
+  <h2>
+    <span>🌐 Ai2Hero AI Bridge</span>
+    <span class="version-tag">v2.0 WS</span>
+  </h2>
+
+  <!-- Status Section -->
+  <div class="status-card">
+    <span>⚡ WebSocket Local (Worker):</span>
+    <span id="wsStatusBadge" class="badge badge-ws-off">Đang kết nối...</span>
+  </div>
+
+  <div class="status-card">
+    <span>☁️ Cloud Connect Hub:</span>
+    <span id="cloudStatusBadge" class="badge badge-cloud-off">Chưa lưu token</span>
+  </div>
+
+  <!-- WebSocket Configuration -->
+  <div class="section-title">1. Local WebSocket Bridge (Khuyên dùng)</div>
+  <div class="form-group">
+    <label for="wsUrl">WebSocket URL</label>
+    <input type="text" id="wsUrl" placeholder="ws://127.0.0.1:8765">
+  </div>
+
+  <!-- Cloud Configuration -->
+  <div class="section-title">2. Cloud Connect Hub Fallback</div>
   <div class="form-group">
     <label for="serverUrl">Server URL</label>
     <input type="text" id="serverUrl" placeholder="https://ai2hero-flax.vercel.app">
   </div>
 
   <div class="form-group">
-    <label for="bridgeToken">Bridge Token (Connect Hub)</label>
+    <label for="bridgeToken">Bridge Token</label>
     <input type="password" id="bridgeToken" placeholder="Nhập Bridge Token...">
   </div>
 
-  <button id="saveBtn">LƯU CẤU HÌNH</button>
+  <button id="saveBtn" class="btn-primary">LƯU CẤU HÌNH</button>
+  <button id="testBtn" class="btn-test">⚡ GỬI TEST PROMPT TỚI GEMINI</button>
 
-  <div class="status-card">
-    <span>Trạng thái:</span>
-    <span id="statusBadge" class="badge badge-off">Chưa lưu token</span>
-  </div>
-
-  <div style="margin-top: 8px; font-size: 10px; color: #64748b; text-align: center;">
-    Đã xử lý thành công: <strong id="jobCount" style="color: #fbbf24;">0</strong> tác vụ
+  <div style="margin-top: 10px; font-size: 10px; color: #64748b; text-align: center;">
+    Đã xử lý thành công: <strong id="jobCount" style="color: #38bdf8;">0</strong> tác vụ
   </div>
 
   <script src="popup.js"></script>

@@ -1,38 +1,135 @@
-// background.js - Ai2Hero Bridge Background Service Worker
+// background.js - Ai2Hero Bridge Service Worker (WebSocket Local Realtime + Cloud HTTP Fallback)
 
-let isPolling = false;
+let wsClient = null;
+let isWsConnected = false;
+let isHttpPolling = false;
 let processedJobsCount = 0;
 let nextPollTimeout = null;
 let currentPollIntervalMs = 15000;
 
-console.log('[Ai2Hero Bridge] Background Worker Started.');
+console.log('[Ai2Hero Bridge] Background Worker v2.0 (WebSocket + KeepAlive) Started.');
 
-// Adaptive Polling Loop
-function scheduleNextPoll(delayMs) {
-  if (nextPollTimeout) clearTimeout(nextPollTimeout);
-  nextPollTimeout = setTimeout(pollJobAndExecute, delayMs || currentPollIntervalMs);
-}
+// 1. Keep-Alive Alarm: Đảm bảo Service Worker MV3 không bị Chrome cho ngủ đông
+chrome.alarms.create('bridgeKeepAlive', { periodInMinutes: 0.33 }); // ~20s
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'bridgeKeepAlive') {
+    // Ping WS nếu đang kết nối
+    if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+      wsClient.send(JSON.stringify({ type: 'PING', timestamp: Date.now() }));
+    }
+  }
+});
 
-scheduleNextPoll(1000);
+// 2. Khởi tạo kết nối WebSocket Local (ws://127.0.0.1:8765)
+async function initWebSocketClient() {
+  const storage = await chrome.storage.local.get(['wsUrl', 'enableWsBridge']);
+  const enableWs = storage.enableWsBridge !== false; // Mặc định bật
+  const wsUrl = storage.wsUrl || 'ws://127.0.0.1:8765';
 
-async function pollJobAndExecute() {
-  if (isPolling) return;
-
-  const storage = await chrome.storage.local.get(['serverUrl', 'bridgeToken']);
-  const serverUrl = (storage.serverUrl || 'https://ai2hero-flax.vercel.app').replace(/\/$/, '');
-  const bridgeToken = storage.bridgeToken;
-
-  if (!bridgeToken) {
-    chrome.action.setBadgeText({ text: 'OFF' });
-    chrome.action.setBadgeBackgroundColor({ color: '#888888' });
-    scheduleNextPoll(30000);
+  if (!enableWs) {
+    if (wsClient) {
+      wsClient.close();
+      wsClient = null;
+    }
+    isWsConnected = false;
     return;
   }
 
-  isPolling = true;
+  if (wsClient && (wsClient.readyState === WebSocket.OPEN || wsClient.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
 
   try {
-    // 1. Poll lấy job pending từ Server Connect Hub
+    console.log(`[Ai2Hero Bridge] Đang kết nối WebSocket tới ${wsUrl}...`);
+    wsClient = new WebSocket(wsUrl);
+
+    wsClient.onopen = () => {
+      console.log('[Ai2Hero Bridge] ✅ Kết nối WebSocket Local thành công!');
+      isWsConnected = true;
+      updateBadgeStatus();
+      wsClient.send(JSON.stringify({ type: 'CLIENT_HELLO', client: 'Ai2Hero-Chrome-Extension', version: '2.0.0' }));
+    };
+
+    wsClient.onmessage = async (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'PONG' || message.type === 'HEARTBEAT') return;
+
+        if (message.action === 'PROCESS_AI_JOB' || message.type === 'EXECUTE_JOB') {
+          const job = message.job || message;
+          console.log(`[Ai2Hero Bridge WS] Nhận Job #${job.id} từ Local Worker (Target: ${job.targetAi || 'gemini'})`);
+          
+          updateBadgeStatus('BUSY');
+
+          const response = await executeAiJobOnTab(job);
+
+          // Nộp kết quả ngay lập tức qua WebSocket
+          if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+            wsClient.send(JSON.stringify({
+              type: 'JOB_RESULT',
+              jobId: job.id,
+              success: response.success,
+              result: response.result || null,
+              error: response.error || null,
+              durationMs: response.durationMs
+            }));
+            console.log(`[Ai2Hero Bridge WS] Đã gửi kết quả Job #${job.id} qua WebSocket.`);
+          }
+
+          processedJobsCount++;
+          await chrome.storage.local.set({ processedJobsCount });
+          updateBadgeStatus();
+        }
+      } catch (err) {
+        console.error('[Ai2Hero Bridge WS] Lỗi xử lý message:', err);
+      }
+    };
+
+    wsClient.onclose = () => {
+      isWsConnected = false;
+      updateBadgeStatus();
+      // Tự động thử kết nối lại sau 3s
+      setTimeout(initWebSocketClient, 3000);
+    };
+
+    wsClient.onerror = (err) => {
+      isWsConnected = false;
+      updateBadgeStatus();
+    };
+  } catch (e) {
+    isWsConnected = false;
+    setTimeout(initWebSocketClient, 5000);
+  }
+}
+
+// Khởi chạy WebSocket ngay khi worker bật
+initWebSocketClient();
+
+// 3. Cloud HTTP Polling Fallback (Cho chế độ Connect Hub Cloud)
+function scheduleNextHttpPoll(delayMs) {
+  if (nextPollTimeout) clearTimeout(nextPollTimeout);
+  nextPollTimeout = setTimeout(pollCloudJobAndExecute, delayMs || currentPollIntervalMs);
+}
+
+scheduleNextHttpPoll(2000);
+
+async function pollCloudJobAndExecute() {
+  if (isHttpPolling) return;
+
+  const storage = await chrome.storage.local.get(['serverUrl', 'bridgeToken', 'enableCloudPoll']);
+  const enableCloud = storage.enableCloudPoll !== false;
+  const serverUrl = (storage.serverUrl || 'https://ai2hero-flax.vercel.app').replace(/\/$/, '');
+  const bridgeToken = storage.bridgeToken;
+
+  if (!enableCloud || !bridgeToken) {
+    updateBadgeStatus();
+    scheduleNextHttpPoll(30000);
+    return;
+  }
+
+  isHttpPolling = true;
+
+  try {
     const res = await fetch(`${serverUrl}/api/connect-hub/bridge`, {
       method: 'GET',
       headers: {
@@ -42,17 +139,14 @@ async function pollJobAndExecute() {
     });
 
     if (res.status === 401) {
-      chrome.action.setBadgeText({ text: 'ERR' });
-      chrome.action.setBadgeBackgroundColor({ color: '#FF0000' });
-      console.warn('[Ai2Hero Bridge] Bridge Token không hợp lệ!');
-      scheduleNextPoll(60000);
+      console.warn('[Ai2Hero Bridge Cloud] Bridge Token không hợp lệ!');
+      updateBadgeStatus('ERR');
+      scheduleNextHttpPoll(60000);
       return;
     }
 
     if (!res.ok) {
-      chrome.action.setBadgeText({ text: 'WAIT' });
-      chrome.action.setBadgeBackgroundColor({ color: '#FFA500' });
-      scheduleNextPoll(30000);
+      scheduleNextHttpPoll(30000);
       return;
     }
 
@@ -62,109 +156,25 @@ async function pollJobAndExecute() {
     }
 
     if (!data.success || !data.job) {
-      chrome.action.setBadgeText({ text: 'ON' });
-      chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
-      scheduleNextPoll(currentPollIntervalMs);
-      return; // Không có job
+      updateBadgeStatus();
+      scheduleNextHttpPoll(currentPollIntervalMs);
+      return;
     }
 
     const job = data.job;
-    console.log(`[Ai2Hero Bridge] Nhận Job #${job.id} (Target: ${job.targetAi})`);
-    chrome.action.setBadgeText({ text: 'BUSY' });
-    chrome.action.setBadgeBackgroundColor({ color: '#2196F3' });
+    console.log(`[Ai2Hero Bridge Cloud] Nhận Job #${job.id} (Target: ${job.targetAi})`);
+    updateBadgeStatus('BUSY');
 
-    // 2. Tìm hoặc Mở Tab cho targetAi
-    let responseFromContent = null;
-    
-    try {
-      const targetUrl = job.targetAi === 'chatgpt' 
-        ? 'https://chatgpt.com/*' 
-        : 'https://gemini.google.com/*';
+    const response = await executeAiJobOnTab(job);
 
-      const defaultOpenUrl = job.targetAi === 'chatgpt'
-        ? 'https://chatgpt.com/'
-        : 'https://gemini.google.com/app';
-
-      let tabs = await chrome.tabs.query({ url: targetUrl });
-      let tab = tabs.length > 0 ? tabs[0] : null;
-
-      if (!tab) {
-        console.log(`[Ai2Hero Bridge] Mở tab mới cho ${job.targetAi}...`);
-        tab = await chrome.tabs.create({ url: defaultOpenUrl, active: true });
-        await new Promise(r => setTimeout(r, 4000)); // Chờ trang load
-      }
-
-      // Xử lý đính kèm: Chuyển URL thành Base64 từ Background (để né CORS ở content script)
-      let processedAttachments = [];
-      if (job.attachments && Array.isArray(job.attachments)) {
-        for (const attach of job.attachments) {
-          if (typeof attach === 'string' && attach.startsWith('http')) {
-            try {
-               const imgRes = await fetch(attach);
-               const blob = await imgRes.blob();
-               const reader = new FileReader();
-               const base64Data = await new Promise(resolve => {
-                  reader.onloadend = () => resolve(reader.result);
-                  reader.readAsDataURL(blob);
-               });
-               processedAttachments.push(base64Data);
-            } catch (err) {
-               console.warn('[Ai2Hero Bridge] Lỗi tải ảnh đính kèm:', err);
-            }
-          } else {
-            processedAttachments.push(attach);
-          }
-        }
-      }
-      job.attachments = processedAttachments;
-
-      // 3. Gửi Job tới Content Script
-      let retryCount = 0;
-
-      while (retryCount < 3) {
-        try {
-          responseFromContent = await chrome.tabs.sendMessage(tab.id, {
-            action: 'PROCESS_AI_JOB',
-            job
-          });
-          break;
-        } catch (err) {
-          console.warn(`[Ai2Hero Bridge] SendMessage thất bại (Lần ${retryCount + 1}): ${err.message}. Đang tự động tiêm Script...`);
-          
-          // Tự động tiêm Script vào Tab nếu chưa có
-          const scriptFile = job.targetAi === 'chatgpt' ? 'content-chatgpt.js' : 'content-gemini.js';
-          try {
-            await chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              files: [scriptFile]
-            });
-            console.log(`[Ai2Hero Bridge] Đã ép tiêm thành công ${scriptFile} vào Tab #${tab.id}`);
-            await new Promise(r => setTimeout(r, 1000)); // Chờ script khởi động
-          } catch (injectErr) {
-            console.warn('[Ai2Hero Bridge] Lỗi khi tự động tiêm Script:', injectErr);
-          }
-
-          retryCount++;
-        }
-      }
-
-      if (!responseFromContent) {
-        throw new Error('Content Script không phản hồi trên tab AI.');
-      }
-
-    } catch (jobError) {
-       // Bắt lỗi khi xử lý job (không tìm thấy tab, hoặc content script lỗi)
-       responseFromContent = { success: false, error: jobError.message };
-    }
-
-    // 4. Submit kết quả về Server
+    // Submit kết quả về Cloud API
     const submitBody = {
       jobId: job.id,
-      result: responseFromContent.success ? responseFromContent.result : null,
-      error: responseFromContent.success ? null : responseFromContent.error
+      result: response.success ? response.result : null,
+      error: response.success ? null : response.error
     };
 
-    const submitRes = await fetch(`${serverUrl}/api/connect-hub/bridge`, {
+    await fetch(`${serverUrl}/api/connect-hub/bridge`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${bridgeToken}`,
@@ -173,19 +183,133 @@ async function pollJobAndExecute() {
       body: JSON.stringify(submitBody)
     });
 
-    if (submitRes.ok) {
-      processedJobsCount++;
-      await chrome.storage.local.set({ processedJobsCount });
-      console.log(`[Ai2Hero Bridge] Nộp kết quả Job #${job.id} thành công!`);
-    } else {
-      console.error(`[Ai2Hero Bridge] Lỗi nộp kết quả Job #${job.id}`);
-    }
+    processedJobsCount++;
+    await chrome.storage.local.set({ processedJobsCount });
+    console.log(`[Ai2Hero Bridge Cloud] Nộp kết quả Job #${job.id} thành công!`);
 
   } catch (err) {
-    console.error('[Ai2Hero Bridge] Poll network error:', err);
-    scheduleNextPoll(currentPollIntervalMs);
+    console.error('[Ai2Hero Bridge Cloud] Poll network error:', err);
   } finally {
-    isPolling = false;
-    scheduleNextPoll(2000);
+    isHttpPolling = false;
+    scheduleNextHttpPoll(isWsConnected ? 30000 : 2000);
+  }
+}
+
+// 4. Hàm thực thi Job trên Tab AI (Gemini / ChatGPT)
+async function executeAiJobOnTab(job) {
+  const startTime = Date.now();
+  try {
+    const targetAi = (job.targetAi || 'gemini').toLowerCase();
+    const targetUrl = targetAi === 'chatgpt' ? 'https://chatgpt.com/*' : 'https://gemini.google.com/*';
+    const defaultOpenUrl = targetAi === 'chatgpt' ? 'https://chatgpt.com/' : 'https://gemini.google.com/app';
+    const scriptFile = targetAi === 'chatgpt' ? 'content-chatgpt.js' : 'content-gemini.js';
+
+    // 1. Tìm hoặc mở Tab AI
+    let tabs = await chrome.tabs.query({ url: targetUrl });
+    let tab = tabs.length > 0 ? tabs[0] : null;
+
+    if (!tab) {
+      console.log(`[Ai2Hero Bridge] Đang mở tab mới cho ${targetAi}...`);
+      tab = await chrome.tabs.create({ url: defaultOpenUrl, active: true });
+      await new Promise(r => setTimeout(r, 4500)); // Chờ tab tải DOM
+    }
+
+    // 2. Chuyển đổi URLs đính kèm thành Base64 blobs trong background (để tránh lỗi CORS)
+    let processedAttachments = [];
+    if (job.attachments && Array.isArray(job.attachments)) {
+      for (const attach of job.attachments) {
+        let attachUrl = null;
+        if (typeof attach === 'string' && attach.startsWith('http')) {
+          attachUrl = attach;
+        } else if (attach && attach.url && typeof attach.url === 'string' && attach.url.startsWith('http')) {
+          attachUrl = attach.url;
+        }
+
+        if (attachUrl) {
+          try {
+            const imgRes = await fetch(attachUrl);
+            const blob = await imgRes.blob();
+            const reader = new FileReader();
+            const base64Data = await new Promise((resolve, reject) => {
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+            processedAttachments.push({ type: 'image', base64: base64Data });
+          } catch (err) {
+            console.warn('[Ai2Hero Bridge] Lỗi tải ảnh đính kèm từ URL:', err);
+          }
+        } else {
+          processedAttachments.push(attach);
+        }
+      }
+    }
+    job.attachments = processedAttachments;
+
+    // 3. Gửi Job tới Content Script
+    let responseFromContent = null;
+    let retryCount = 0;
+
+    while (retryCount < 3) {
+      try {
+        responseFromContent = await chrome.tabs.sendMessage(tab.id, {
+          action: 'PROCESS_AI_JOB',
+          job
+        });
+        break;
+      } catch (err) {
+        console.warn(`[Ai2Hero Bridge] SendMessage thất bại (Lần ${retryCount + 1}): ${err.message}. Đang tiêm Script...`);
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: [scriptFile]
+          });
+          await new Promise(r => setTimeout(r, 1000));
+        } catch (injectErr) {
+          console.warn('[Ai2Hero Bridge] Lỗi khi tiêm Script:', injectErr);
+        }
+        retryCount++;
+      }
+    }
+
+    if (!responseFromContent) {
+      throw new Error(`Content Script trên tab ${targetAi} không phản hồi.`);
+    }
+
+    return {
+      success: responseFromContent.success,
+      result: responseFromContent.result,
+      error: responseFromContent.error,
+      durationMs: Date.now() - startTime
+    };
+
+  } catch (err) {
+    return {
+      success: false,
+      error: err.message || 'Lỗi không xác định khi thực thi trên Tab AI',
+      durationMs: Date.now() - startTime
+    };
+  }
+}
+
+// 5. Cập nhật Badge giao diện Extension
+function updateBadgeStatus(forceStatus) {
+  if (forceStatus === 'BUSY') {
+    chrome.action.setBadgeText({ text: 'BUSY' });
+    chrome.action.setBadgeBackgroundColor({ color: '#f59e0b' });
+    return;
+  }
+  if (forceStatus === 'ERR') {
+    chrome.action.setBadgeText({ text: 'ERR' });
+    chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
+    return;
+  }
+
+  if (isWsConnected) {
+    chrome.action.setBadgeText({ text: 'WS' });
+    chrome.action.setBadgeBackgroundColor({ color: '#10b981' }); // Green
+  } else {
+    chrome.action.setBadgeText({ text: 'ON' });
+    chrome.action.setBadgeBackgroundColor({ color: '#3b82f6' }); // Blue
   }
 }

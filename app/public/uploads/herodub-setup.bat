@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 echo ==============================================
 echo   HERODUB LOCAL WORKER INSTALLER
-echo   Version: 1.2 (Rate-Control & GPU Auto-Tune)
+echo   Version: 1.2 (Rate-Control ^& GPU Auto-Tune)
 echo ==============================================
 
 :: Parse arguments
@@ -37,8 +37,8 @@ if errorlevel 1 (
 for /f "tokens=*" %%v in ('python --version 2^>^&1') do echo [OK] Phat hien: %%v
 
 :: Tai Worker Script moi nhat
-echo [INFO] Dang tai herodub_worker.py tu ai2hero.com (v16 - Bitrate Optimized)...
-curl -s -L -o herodub_worker.py "https://ai2hero-flax.vercel.app/uploads/herodub_worker.py?v=16"
+echo [INFO] Dang tai herodub_worker.py tu ai2hero.com (v17 - WebSocket Realtime Bridge)...
+curl -s -L -o herodub_worker.py "https://ai2hero-flax.vercel.app/uploads/herodub_worker.py?v=17"
 
 if not exist herodub_worker.py (
     echo [ERROR] Khong the tai script. Kiem tra ket noi Internet.

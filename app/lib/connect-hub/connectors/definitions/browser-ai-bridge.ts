@@ -93,13 +93,21 @@ export const browserAiBridgeConnector: ConnectorDefinition = {
 
   popular: true,
   setupGuide: `
-    <h3>Hướng dẫn kết nối Browser AI Bridge:</h3>
+    <h3>Hướng dẫn kết nối Browser AI Bridge v2.0 (WebSocket + Cloud):</h3>
     <ol>
-      <li>Đặt một chuỗi <b>Bridge Token</b> bất kỳ ở ô trên (Ví dụ: <code>my_secret_token_123</code>).</li>
-      <li>Bấm <b>Lưu & Kết nối</b>.</li>
-      <li>Cài đặt <b>Ai2Hero Chrome Extension</b> vào trình duyệt của bạn.</li>
-      <li>Mở Extension Popup, nhập Server URL và dán đúng <b>Bridge Token</b> ở bước 1 vào.</li>
-      <li>Đảm bảo trình duyệt luôn mở tab <a href="https://gemini.google.com" target="_blank">gemini.google.com</a> hoặc <a href="https://chatgpt.com" target="_blank">chatgpt.com</a>.</li>
+      <li><b>Chế độ 1 - WebSocket Local (Siêu tốc 2-4s - Khuyên dùng):</b>
+        <ul>
+          <li>Cài đặt <b>Ai2Hero Chrome Extension</b> vào trình duyệt Chrome.</li>
+          <li>Khi bạn chạy Worker (HeroDub / Python Worker), Worker sẽ tự động mở cổng WebSocket tại <code>ws://127.0.0.1:8765</code>.</li>
+          <li>Extension tự động kết nối và hiển thị badge <code>WS (Xanh lá)</code>. Mở sẵn tab <a href="https://gemini.google.com" target="_blank">gemini.google.com</a> để AI tự động nhận việc.</li>
+        </ul>
+      </li>
+      <li><b>Chế độ 2 - Cloud Connect Hub Fallback:</b>
+        <ul>
+          <li>Đặt một chuỗi <b>Bridge Token</b> bất kỳ ở ô trên (Ví dụ: <code>my_secret_token_123</code>) và bấm <b>Lưu & Kết nối</b>.</li>
+          <li>Mở Extension Popup, dán đúng <b>Bridge Token</b> để làm kênh dự phòng khi không chạy Worker trên cùng máy.</li>
+        </ul>
+      </li>
     </ol>
   `,
   lifecycle: {
