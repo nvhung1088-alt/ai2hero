@@ -263,18 +263,60 @@ export default function DubTaskForm({
     try {
       const res = await testPublishingSuiteAction(teamId, selectedAiAppSlug || 'browser-ai-bridge', selectedAiModel || 'gemini');
       if (res.success && res.result) {
-        let parsed: any = {};
-        try {
-          const jsonMatch = res.result.match(/\{[\s\S]*\}/);
-          if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
-        } catch (e) {}
+        let raw: any = res.result;
+        let parsedTitle = '';
+        let parsedDesc = '';
+        let parsedTags = '';
+
+        // Thử parse nhiều tầng nếu chuỗi bọc trong JSON wrapper
+        for (let i = 0; i < 3; i++) {
+          if (typeof raw === 'object' && raw !== null) {
+            if (raw.new_title || raw.description || raw.hashtags) {
+              parsedTitle = raw.new_title || '';
+              parsedDesc = raw.description || '';
+              parsedTags = raw.hashtags || '';
+              break;
+            }
+            if (raw.choices && raw.choices[0]?.message?.content) {
+              raw = raw.choices[0].message.content;
+            } else if (raw.content) {
+              raw = raw.content;
+            } else if (raw.data) {
+              raw = raw.data;
+            } else {
+              break;
+            }
+          } else if (typeof raw === 'string') {
+            const cleanStr = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+            try {
+              raw = JSON.parse(cleanStr);
+            } catch (e) {
+              const match = cleanStr.match(/\{[\s\S]*\}/);
+              if (match) {
+                try {
+                  raw = JSON.parse(match[0]);
+                } catch (e2) {
+                  break;
+                }
+              } else {
+                break;
+              }
+            }
+          }
+        }
+
+        if (!parsedTitle && typeof raw === 'object' && raw !== null) {
+          parsedTitle = raw.new_title || '';
+          parsedDesc = raw.description || '';
+          parsedTags = raw.hashtags || '';
+        }
 
         setTestPublishingResult({
           success: true,
           msg: 'AI đã tạo thành công bộ Tư liệu Đăng bài mẫu!',
-          new_title: parsed.new_title || 'Thử Nghiệm Sinh Tiêu Đề Mới',
-          description: parsed.description || res.result,
-          hashtags: parsed.hashtags || '#phimngan #reviewphim #tomtatphim #xuhuong #phimhay'
+          new_title: parsedTitle || 'Mưa Rừng Nhiệt Đới & Túp Lều Ấm: Đỉnh Cao Của Sự Thư Giãn',
+          description: parsedDesc || (typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2)),
+          hashtags: parsedTags || '#xaynhatrongmua #tiengmuabinhyen #asmo #thugian #reviewphim #xuhuong #phimhay'
         });
         showToast('Sinh thử Tư liệu Đăng bài thành công!', 'success');
       } else {

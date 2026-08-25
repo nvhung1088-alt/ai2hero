@@ -1451,10 +1451,12 @@ CHỈ TRẢ VỀ MÃ JSON THEO ĐÚNG CẤU TRÚC SAU (KHÔNG THÊM BẤT KỲ V
     let rawOut = '';
     if (typeof result.data === 'string') {
       rawOut = result.data;
-    } else if (result.data.content) {
-      rawOut = result.data.content;
-    } else if (result.data.choices && result.data.choices[0]?.message?.content) {
+    } else if (result.data?.choices && result.data.choices[0]?.message?.content) {
       rawOut = result.data.choices[0].message.content;
+    } else if (result.data?.content) {
+      rawOut = result.data.content;
+    } else if (result.data?.result) {
+      rawOut = result.data.result;
     } else {
       rawOut = JSON.stringify(result.data);
     }
