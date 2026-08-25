@@ -63,13 +63,14 @@ if (!window.hasAi2HeroBridgeGemini) {
       throw new Error('Không tìm thấy khung nhập liệu trên giao diện Gemini Web. Vui lòng đảm bảo bạn đang ở trang chat và đã đăng nhập.');
     }
 
-    // 2. Xóa đính kèm cũ nếu lượt gửi này không yêu cầu đính kèm
-    if (!attachments || !Array.isArray(attachments) || attachments.length === 0) {
-      const removeButtons = document.querySelectorAll('button[aria-label*="Xóa"], button[aria-label*="Remove"], button[aria-label*="Delete"], button[aria-label*="close"], .remove-button, [data-test-id*="remove-attachment"]');
-      removeButtons.forEach((btn) => {
-        try { btn.click(); } catch(e) {}
-      });
-    }
+    // 2. Xóa TẤT CẢ các file đính kèm / preview chips cũ còn nằm trong khung nhập trước khi xử lý
+    const allRemoveBtns = document.querySelectorAll(
+      'button[aria-label*="Xóa"], button[aria-label*="Remove"], button[aria-label*="Delete"], button[aria-label*="close"], .remove-button, [data-test-id*="remove-attachment"], mat-chip button, .uploader-preview button, button[aria-label*="Hủy"], button[aria-label*="Clear"]'
+    );
+    allRemoveBtns.forEach((btn) => {
+      try { btn.click(); } catch(e) {}
+    });
+    await new Promise((r) => setTimeout(r, 200));
 
     // 3. Điền Prompt vào khung nhập một cách an toàn và chuẩn xác (kích hoạt Lit/Angular state)
     inputEl.focus();
@@ -98,9 +99,9 @@ if (!window.hasAi2HeroBridgeGemini) {
       inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
     }
 
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 300));
 
-    // 3. Xử lý đính kèm nếu có (Ảnh/Video)
+    // 4. Xử lý đính kèm nếu có (Chỉ đính kèm duy nhất ảnh của job hiện tại)
     if (attachments && Array.isArray(attachments) && attachments.length > 0) {
       console.log(`[Ai2Hero Bridge] Đang dán ${attachments.length} file đính kèm...`);
 
@@ -117,7 +118,7 @@ if (!window.hasAi2HeroBridgeGemini) {
             const res = await fetch(base64Data);
             const blob = await res.blob();
             const ext = blob.type.split('/')[1] || 'png';
-            const file = new File([blob], `attachment_${Date.now()}.${ext}`, { type: blob.type });
+            const file = new File([blob], `thumb_${Date.now()}.${ext}`, { type: blob.type });
 
             const dt = new DataTransfer();
             dt.items.add(file);
@@ -333,21 +334,44 @@ if (!window.hasAi2HeroBridgeGemini) {
   async function triggerNewChat() {
     console.log('[Ai2Hero Bridge] Đang làm mới phiên chat (New Chat)...');
     const newChatSelectors = [
+      'a[href="/app"]',
+      'a[href="/"]',
       'button[aria-label*="Cuộc trò chuyện mới"]',
       'button[aria-label*="New chat"]',
+      'div[role="button"][aria-label*="Cuộc trò chuyện mới"]',
+      'div[role="button"][aria-label*="New chat"]',
       'a[aria-label*="Cuộc trò chuyện mới"]',
       'a[aria-label*="New chat"]',
       '.new-chat-button',
-      '[data-test-id="new-chat-button"]'
+      '[data-test-id="new-chat-button"]',
+      'side-nav a[href*="app"]',
+      'bard-sidenav button'
     ];
 
     for (const sel of newChatSelectors) {
-      const el = document.querySelector(sel);
-      if (el && el.offsetParent !== null) {
-        el.click();
-        await new Promise((r) => setTimeout(r, 600));
-        return;
+      const els = document.querySelectorAll(sel);
+      for (const el of els) {
+        if (el.offsetParent !== null) {
+          try {
+            el.click();
+            await new Promise((r) => setTimeout(r, 800));
+            return;
+          } catch(e) {}
+        }
       }
+    }
+
+    // Dọn dẹp thủ công input và attachment nếu không bấm được nút
+    const allRemoveBtns = document.querySelectorAll(
+      'button[aria-label*="Xóa"], button[aria-label*="Remove"], button[aria-label*="Delete"], button[aria-label*="close"], .remove-button, [data-test-id*="remove-attachment"], mat-chip button, .uploader-preview button'
+    );
+    allRemoveBtns.forEach((btn) => {
+      try { btn.click(); } catch(e) {}
+    });
+
+    const input = document.querySelector('rich-textarea div[contenteditable="true"], div[contenteditable="true"]');
+    if (input) {
+      input.innerHTML = '';
     }
   }
 

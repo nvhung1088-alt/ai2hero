@@ -287,9 +287,23 @@ CHỈ TRẢ VỀ MÃ JSON THEO ĐÚNG CẤU TRÚC SAU (KHÔNG THÊM BẤT KỲ V
                 if len(lines) > 1:
                     result["description"] = "\n".join(lines[1:5])
 
+    # Rào chắn an toàn: Nếu vẫn còn chữ tiếng Trung, tự động lấy câu phụ đề tiếng Việt đầu tiên
+    if re.search(r'[\u4e00-\u9fff]', result["new_title"]):
+        if translated_segments and len(translated_segments) > 0:
+            for seg in translated_segments[:5]:
+                t = seg.get('text', '').strip()
+                if t and not re.search(r'[\u4e00-\u9fff]', t) and len(t) > 8:
+                    prefix = f"video_{task_id}"
+                    num_match = re.match(r'^(\d+)_', clean_source_title)
+                    if num_match:
+                        prefix = num_match.group(1)
+                    result["new_title"] = f"{prefix}_{t[:70]}"
+                    result["description"] = f"Video thuyết minh: {t}. Theo dõi hành trình kịch tính và thư giãn giải tỏa căng thẳng!"
+                    break
+
     return result
 
-def redesign_thumbnail_image(task, thumb_src, new_title, bridge_server):
+def redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, bridge_server):
     """
     LUỒNG 2: Thiết kế lại Ảnh bìa (IMAGE-ONLY, Chỉ chạy khi bật cờ redesignThumbnailEnabled).
     """
@@ -310,11 +324,26 @@ def redesign_thumbnail_image(task, thumb_src, new_title, bridge_server):
         print(Fore.YELLOW + f"  [!] Khong the doc anh thumbnail: {e}")
         return None
 
-    print(Fore.CYAN + f"  [⚡ WebSocket Image Redesign] Dang gui anh bia sang Gemini de thiet ke lai theo tieu de moi: '{new_title}'...")
-    image_prompt = f"""Đây là ảnh bìa (thumbnail) của video: "{new_title}".
+    # Đảm bảo tiêu đề thay vào ảnh 100% là tiếng Việt sạch (loại bỏ chữ tiếng Trung nếu có)
+    clean_viet_title = new_title
+    if re.search(r'[\u4e00-\u9fff]', clean_viet_title) or clean_viet_title.startswith("video_"):
+        if translated_segments and len(translated_segments) > 0:
+            for seg in translated_segments[:5]:
+                t = seg.get('text', '').strip()
+                if t and not re.search(r'[\u4e00-\u9fff]', t) and len(t) > 8:
+                    clean_viet_title = t[:50]
+                    break
+        if re.search(r'[\u4e00-\u9fff]', clean_viet_title):
+            clean_viet_title = "Sinh Tồn Nơi Hoang Dã"
+
+    # Lọc bỏ tiền tố mã số ví dụ 1276_ để chữ trên ảnh bìa ngắn gọn, nghệ thuật
+    display_title_on_image = re.sub(r'^\d+_', '', clean_viet_title).strip()
+
+    print(Fore.CYAN + f"  [⚡ WebSocket Image Redesign] Dang gui anh bia sang Gemini de thiet ke lai theo tieu de moi: '{display_title_on_image}'...")
+    image_prompt = f"""Đây là ảnh bìa (thumbnail) của video: "{display_title_on_image}".
 Hãy chỉnh sửa và thiết kế lại ảnh bìa này:
 1. Xóa toàn bộ chữ tiếng Trung Quốc có trên ảnh gốc.
-2. Thay thế bằng dòng chữ tiêu đề tiếng Việt nổi bật nghệ thuật: "{new_title}".
+2. Thay thế bằng dòng chữ tiêu đề tiếng Việt nổi bật nghệ thuật: "{display_title_on_image}".
 3. Giữ nguyên 100% nhân vật chính, phong cách và bối cảnh của ảnh."""
 
     ws_res = bridge_server.execute_job(image_prompt, attachments=[img_b64], target_ai="gemini", timeout=90)
@@ -1830,7 +1859,7 @@ if __name__ == '__main__':
     new_title = copy_pack.get("new_title") or task.get("sourceTitle") or f"video_{task_id}"
 
     # Luồng 2: Thiết kế lại Thumbnail (Image-Only, nếu được bật)
-    new_thumb_url = redesign_thumbnail_image(task, thumb_src, new_title, bridge_server)
+    new_thumb_url = redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, bridge_server)
     pub_pack = {
         "new_title": new_title,
         "description": copy_pack.get("description", ""),
