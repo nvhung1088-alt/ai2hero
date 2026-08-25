@@ -1903,6 +1903,18 @@ if __name__ == '__main__':
             final_output_path = dest_video
             vi_srt_abs_path = dest_srt
             print(Fore.CYAN + f"[-] Da luu toan bo tu lieu vao: {output_folder}")
+
+            # Tự động dọn dẹp xóa các file tiếng Trung cũ trong thư mục output (nếu có)
+            raw_src_base = os.path.splitext(os.path.basename(source_url))[0] if source_url else ""
+            if raw_src_base and raw_src_base != base_name:
+                for ext in ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.webm', '.srt', '.jpg', '.jpeg', '.png', '.webp', '.txt']:
+                    old_file_in_output = os.path.join(output_folder, f"{raw_src_base}{ext}")
+                    if os.path.exists(old_file_in_output) and os.path.abspath(old_file_in_output) not in [os.path.abspath(dest_video), os.path.abspath(dest_srt), os.path.abspath(dest_thumb), os.path.abspath(dest_txt)]:
+                        try:
+                            os.remove(old_file_in_output)
+                            print(Fore.CYAN + f"[-] Da xoa file tieng Trung cu trong thu muc dich: {os.path.basename(old_file_in_output)}")
+                        except Exception as rm_err:
+                            pass
         except Exception as e:
             print(Fore.YELLOW + f"[!] Khong the luu vao thu muc dich {output_folder}: {e}")
 
