@@ -1171,10 +1171,31 @@ def process_task(token, task):
                     json.dump(translated_segments, f, ensure_ascii=False, indent=2)
             
             if task.get("translateEngine") == "connect-hub":
-                print(Fore.CYAN + f"  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 40 cau/lan)")
-                BATCH_SIZE = 40
                 import re
                 
+                # 1. Phân loại chiến lược dịch thuật (Translation Strategy Routing)
+                is_browser_bridge = (
+                    "browser-ai-bridge" in str(task.get("aiAppSlug", "")).lower() or
+                    "browser-ai-bridge" in str(task.get("llmModel", "")).lower() or
+                    "browser-ai-bridge" in str(task.get("appSlug", "")).lower() or
+                    task.get("aiAppSlug") == "browser-ai-bridge" or
+                    task.get("translateAiAppSlug") == "browser-ai-bridge" or
+                    str(task.get("llmModel", "")).lower() in ["gemini", "chatgpt"]
+                )
+
+                # Quy tắc Batch Size động:
+                # - Browser AI Bridge (Gemini/ChatGPT Web): Gom nhóm 200 câu/lần siêu tốc
+                # - DeepSeek / OpenAI API: Gom nhóm 40 câu/lần + 5 câu Sliding Window Context
+                if is_browser_bridge:
+                    BATCH_SIZE = 200
+                    print(Fore.CYAN + f"  -> Chế độ: Browser AI Bridge (Gemini Web) - Gom nhóm siêu tốc BATCH {BATCH_SIZE} câu/lần")
+                else:
+                    BATCH_SIZE = 40
+                    selected_model = task.get("aiModel") or task.get("llmModel") or "DeepSeek / Cloud LLM"
+                    print(Fore.CYAN + f"  -> Chế độ: Cloud API ({selected_model}) - Gom nhóm BATCH {BATCH_SIZE} câu + 5 câu Ngữ cảnh")
+
+                target_ai = "chatgpt" if "chatgpt" in str(task.get("aiModel") or task.get("llmModel") or "").lower() else "gemini"
+
                 for i in range(0, len(segments_to_translate), BATCH_SIZE):
                     batch_segs = segments_to_translate[i:i+BATCH_SIZE]
                     texts = [seg['text'] for seg in batch_segs]
@@ -1188,23 +1209,12 @@ def process_task(token, task):
 
                     translated_array = None
                     
-                    # 1. Bắn qua Local WebSocket Bridge nếu chọn Browser AI Bridge hoặc Gemini/ChatGPT trên giao diện
-                    is_browser_bridge_requested = (
-                        "browser-ai-bridge" in str(task.get("aiAppSlug", "")).lower() or
-                        "browser-ai-bridge" in str(task.get("llmModel", "")).lower() or
-                        "browser-ai-bridge" in str(task.get("appSlug", "")).lower() or
-                        task.get("aiAppSlug") == "browser-ai-bridge" or
-                        task.get("translateAiAppSlug") == "browser-ai-bridge" or
-                        str(task.get("llmModel", "")).lower() in ["gemini", "chatgpt"]
-                    )
-                    
-                    target_ai = "chatgpt" if "chatgpt" in str(task.get("aiModel") or task.get("llmModel") or "").lower() else "gemini"
-                    
-                    if is_browser_bridge_requested and bridge_server.is_connected():
+                    # NHÁNH 1: Bắn qua Local WebSocket Bridge nếu chọn Browser AI Bridge (200 câu/lần)
+                    if is_browser_bridge and bridge_server.is_connected():
                         print(Fore.CYAN + f"  [⚡ WebSocket Local] Dang ban truc tiep {len(texts)} cau sang Chrome Extension ({target_ai.upper()})...")
                         ws_input = {str(k): t for k, t in enumerate(texts)}
                         context_str = f"\nBối cảnh phim: {task.get('translateContext', '')}" if task.get('translateContext') else ""
-                        ws_prompt = f"""Bạn là chuyên gia dịch thuật phụ đề phim chuyên nghiệp. Hãy dịch các câu thoại sau sang tiếng Việt mượt mà, tự nhiên, đúng văn phong phim:{context_str}
+                        ws_prompt = f"""Bạn là chuyên gia dịch thuật phụ đề phim chuyên nghiệp. Hãy dịch toàn bộ các câu thoại sau sang tiếng Việt mượt mà, tự nhiên, đúng văn phong phim:{context_str}
 
 QUY TẮC BẮT BUỘC:
 1. Trả về đúng định dạng JSON gốc (key "0", "1"... giữ nguyên, chỉ thay value bằng chuỗi dịch tiếng Việt).
@@ -1213,25 +1223,26 @@ QUY TẮC BẮT BUỘC:
 Dữ liệu:
 {json.dumps(ws_input, ensure_ascii=False, indent=2)}"""
 
-                        ws_res = bridge_server.execute_job(ws_prompt, target_ai=target_ai, timeout=90)
+                        # Tăng timeout 120s thích ứng cho batch lớn 200 câu
+                        ws_timeout = 120 if len(texts) > 50 else 90
+                        ws_res = bridge_server.execute_job(ws_prompt, target_ai=target_ai, timeout=ws_timeout)
                         if ws_res and ws_res.get("success") and ws_res.get("result"):
                             raw_out = ws_res.get("result", "").strip()
                             raw_out = re.sub(r"^```(?:json)?\s*", "", raw_out, flags=re.IGNORECASE)
                             raw_out = re.sub(r"\s*```$", "", raw_out, flags=re.IGNORECASE).strip()
                             try:
-                                parsed = json.loads(raw_out)
-                                if isinstance(parsed, dict):
-                                    translated_array = [str(parsed.get(str(k), texts[k])) for k in range(len(texts))]
-                                    print(Fore.GREEN + f"  [⚡ WebSocket Local] Nhan ket qua sieu toc thanh cong ({len(translated_array)} cau)!")
+                                json_match = re.search(r'(\{[\s\S]*\})', raw_out)
+                                if json_match:
+                                    parsed = json.loads(json_match.group(1))
+                                    if isinstance(parsed, dict):
+                                        translated_array = [str(parsed.get(str(k), texts[k])) for k in range(len(texts))]
+                                        print(Fore.GREEN + f"  [⚡ WebSocket Local] Nhan ket qua sieu toc thanh cong ({len(translated_array)} cau)!")
                             except Exception as parse_err:
-                                print(Fore.YELLOW + f"  [!] Parse ket qua WebSocket error ({parse_err}). Chuyen sang Cloud API...")
-                    elif is_browser_bridge_requested:
+                                print(Fore.YELLOW + f"  [!] Parse ket qua WebSocket error ({parse_err}). Chuyen sang Cloud Fallback...")
+                    elif is_browser_bridge:
                         print(Fore.YELLOW + "  [!] Browser AI Bridge duoc chon nhung Extension chua bat. Chuyen sang Cloud API...")
-                    else:
-                        selected_model = task.get("llmModel", "Connect Hub LLM")
-                        print(Fore.CYAN + f"  [☁️ Connect Hub Cloud] Dang goi API {selected_model}...")
 
-                    # 2. Thử gọi API Connect Hub với Smart Retry (3 lần) nếu WebSocket chưa có kết quả (hoặc chọn DeepSeek/OpenAI)
+                    # NHÁNH 2: Gọi Connect Hub Cloud API (DeepSeek / OpenAI API)
                     if not translated_array:
                         for hub_attempt in range(3):
                             try:
@@ -1265,6 +1276,7 @@ Dữ liệu:
                                     data = res.json()
                                     if data.get("success") and data.get("translatedTexts"):
                                         translated_array = data.get("translatedTexts")
+                                        print(Fore.GREEN + f"  [☁️ Connect Hub Cloud] Nhan ket qua API thanh cong ({len(translated_array)} cau)!")
                                         break
                                     else:
                                         print(Fore.YELLOW + f"  [!] Connect Hub tra ve loi ({data.get('error')}). Thu lai {hub_attempt+1}/3 sau 3s...")
@@ -1275,7 +1287,7 @@ Dữ liệu:
                                 
                             time.sleep(3)
                         
-                    # Nếu Connect Hub thành công
+                    # NHÁNH 3: Nếu Connect Hub thành công hoặc chuyển Fallback sang Google
                     if translated_array and len(translated_array) > 0:
                         for j, seg in enumerate(batch_segs):
                             translated = translated_array[j] if j < len(translated_array) else seg['text']
@@ -1303,7 +1315,7 @@ Dữ liệu:
                             })
                         save_translation_progress()
                     else:
-                        # Fallback sang Google Translate Batch (Không bao giờ bị 429)
+                        # Fallback khẩn cấp sang Google Translate Batch (Không bao giờ bị 429)
                         print(Fore.YELLOW + f"  [!] Connect Hub khong phan hoi, Fallback sang Google Translate Batch ({len(texts)} cau)...")
                         batch_translated = google_translate_batch(texts, dest='vi')
                         for j, seg in enumerate(batch_segs):
