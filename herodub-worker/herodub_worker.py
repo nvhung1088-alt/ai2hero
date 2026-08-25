@@ -478,9 +478,10 @@ def process_task(token, task):
                 local_input
             ]
             import subprocess
-            res_slow = subprocess.run(cmd, capture_output=True)
+            res_slow = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
             if res_slow.returncode != 0:
-                print(Fore.YELLOW + f"[!] Giam toc video that bai, fallback sang video goc: {res_slow.stderr.decode('utf-8', errors='ignore')[:200]}")
+                err_text = res_slow.stderr.decode('utf-8', errors='ignore') if res_slow.stderr else 'Unknown error'
+                print(Fore.YELLOW + f"[!] Giam toc video that bai, fallback sang video goc: {err_text[:200]}")
                 shutil.copy2(raw_temp, local_input)
             else:
                 print(Fore.GREEN + f"  [✓] Da giam toc do video thanh cong ({video_slowdown:.2f}x)!")
