@@ -166,14 +166,13 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
     - **Giải pháp**: Bổ sung cờ khóa `isBatchUploading` và cơ chế `splice` trích xuất buffer tức thì trước khi gửi request. Chạy SQL dọn dẹp sạch toàn bộ 233 bản ghi trùng lặp trong Database, khôi phục số lượng video của dự án về đúng **200 video gốc duy nhất**.
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
-- **2026-08-25 (hero-dub / connect-hub - AI Publishing Suite: Re-Title, Description, Hashtags, Thumbnail & TXT Export)**:
-  - 🎬 **AI Publishing Engine**: Triển khai trọn gói luồng đóng gói tư liệu đăng bài tự động sau khi dịch & lồng tiếng TTS xong. Worker tự động gửi (Tiêu đề gốc + Phụ đề tiếng Việt tiêu biểu + Ảnh bìa gốc) qua WebSocket sang Gemini.
-  - ✍️ **Re-Title & Description & Hashtags Generator**: Gemini tự động giật tít Tiêu đề tiếng Việt kịch tính chuẩn SEO, viết bài Mô tả tóm tắt nội dung khơi gợi tò mò và sinh bộ 6-8 Hashtags xu hướng.
+- **2026-08-25 (hero-dub / connect-hub - AI Publishing Suite: 2-Stage Split Flow & Multiline Paste Fix)**:
+  - ⚡ **Tách Biệt 2 Luồng Độc Lập**:
+    - **Luồng 1 (Copywriting - Text Only)**: Gửi tiêu đề gốc + các câu thoại tiếng Việt sang Gemini sinh JSON Tiêu đề SEO + Mô tả + Hashtags siêu tốc (1-2s).
+    - **Luồng 2 (Image Redesign - Image Only)**: Chỉ kích hoạt khi bật `redesignThumbnailEnabled`, gửi ảnh bìa gốc + tiêu đề tiếng Việt mới sang Gemini với prompt chuyên biệt chỉnh sửa ảnh.
+  - 📋 **Fix Lỗi Nhập Prompt Đa Dòng**: Nâng cấp `content-gemini.js` sử dụng Clipboard DataTransfer paste + cấu trúc Paragraph HTML, giải quyết triệt để lỗi Gemini Web chỉ nhận mỗi dòng đầu tiên khi gửi prompt dài.
   - 📝 **Tự Động Xuất File `.txt` Tư Liệu Đăng Bài**: Xuất file `[Tên_Video_Mới].txt` (chuẩn UTF-8) chứa trọn bộ Tiêu đề, Mô tả, Hashtags và thông số video vào cùng thư mục đầu ra.
-  - 🖼️ **Thumbnail Redesign Integration**: Tự động lưu ảnh bìa thiết kế mới `[Tên_Video_Mới].jpg` đi kèm video.
-  - 🗄️ **Database & API**: Mở rộng bảng `dubTasks` với các trường `translatedTitle`, `videoDescription`, `videoHashtags`, `publishingPackEnabled` và tích hợp vào `/api/hero-dub/tasks` PATCH handler.
-  - 🖥️ **Web Dashboard UI**: Bổ sung hiển thị Tiêu đề tiếng Việt nổi bật trên bảng tác vụ, nút 1-click **"📋 Copy Bài Đăng"** (sao chép trọn bộ Title + Desc + Tags), nút **"📋 Copy Tiêu Đề"**, và toggle cấu hình trong Form tạo tác vụ.
-  - 🟢 **Verification**: `py_compile` Python worker và `npx tsc --noEmit` Next.js đều đạt 100% không lỗi.
+  - 🟢 **Verification**: `py_compile` Python worker, `node --check` Extension JS và `npx tsc --noEmit` Next.js đều đạt 100% không lỗi.
 
 - **2026-08-25 (connect-hub / hero-dub - Browser AI Bridge v2.0: Local WebSocket Realtime & Gemini Controller Upgrade)**:
   - ⚡ **Local WebSocket Realtime Bridge (Port 8765)**: Triển khai server WebSocket native (zero-dependency) trong Python Worker (`herodub_worker.py`), cho phép Chrome Extension kết nối trực tiếp với Worker qua `ws://127.0.0.1:8765`, giảm độ trễ từ 15s xuống **< 50ms**, loại bỏ triệt để nguy cơ Vercel Serverless 504 Timeout và gánh nặng database reads.
