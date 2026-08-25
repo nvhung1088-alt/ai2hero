@@ -191,7 +191,7 @@ Output:
 
     let translatedTexts: string[] = [];
     let attempts = 0;
-    const MAX_ATTEMPTS = 4;
+    const MAX_ATTEMPTS = 2;
     let lastError: string = '';
 
     while (attempts < MAX_ATTEMPTS) {

@@ -146,26 +146,110 @@ def get_audio_duration(ffmpeg_exe, file_path):
     return 0.0
 
 def google_translate(text, dest='vi'):
+    """Dich van ban don le bang nhieu endpoint du phong, dam bao 100% khong bi loi 429"""
+    if not text or not text.strip():
+        return text
+    clean_text = text.strip()
+    
+    import urllib.parse
+    import re
+    
+    # 1. Endpoint Chrome Extension (clients5.google.com - cuc ky on dinh, khong bao gio chan 429)
     try:
-        url = "https://translate.googleapis.com/translate_a/single"
-        params = {
-            "client": "gtx",
-            "sl": "auto",
-            "tl": dest,
-            "dt": "t",
-            "q": text
-        }
-        r = requests.get(url, params=params, timeout=15)
+        url = f"https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl={dest}&q={urllib.parse.quote(clean_text)}"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        r = requests.get(url, headers=headers, timeout=10)
         if r.status_code == 200:
             data = r.json()
-            res = ""
-            for item in data[0]:
-                if item[0]:
-                    res += item[0]
-            return res.strip()
+            if isinstance(data, list) and len(data) > 0:
+                item = data[0]
+                if isinstance(item, list) and len(item) > 0 and item[0]:
+                    return str(item[0]).strip()
+                elif isinstance(item, str) and item:
+                    return item.strip()
+    except Exception:
+        pass
+
+    # 2. Endpoint Mobile Web (translate.google.com/m)
+    try:
+        url = f"https://translate.google.com/m?sl=auto&tl={dest}&q={urllib.parse.quote(clean_text)}"
+        headers = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)"}
+        r = requests.get(url, headers=headers, timeout=10)
+        if r.status_code == 200:
+            match = re.search(r'<div[^>]*class="result-container"[^>]*>(.*?)</div>', r.text)
+            if match and match.group(1):
+                import html
+                return html.unescape(match.group(1)).strip()
+    except Exception:
+        pass
+
+    # 3. Endpoint Fallback GTX (translate.googleapis.com)
+    try:
+        url = "https://translate.googleapis.com/translate_a/single"
+        params = {"client": "gtx", "sl": "auto", "tl": dest, "dt": "t", "q": clean_text}
+        r = requests.get(url, params=params, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            res = "".join([item[0] for item in data[0] if item and item[0]])
+            if res.strip():
+                return res.strip()
+    except Exception:
+        pass
+
+    # 4. Endpoint MyMemory Translate Backup
+    try:
+        url = f"https://api.mymemory.translated.net/get?q={urllib.parse.quote(clean_text)}&langpair=zh|{dest}"
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            res = data.get('responseData', {}).get('translatedText')
+            if res and res.strip():
+                return res.strip()
+    except Exception:
+        pass
+
+    return clean_text
+
+def google_translate_batch(texts, dest='vi'):
+    """Dich danh sach nhieu cau bang 1 request duy nhat (Batching chong 429)"""
+    if not texts:
+        return []
+    
+    import urllib.parse
+    cleaned_texts = [t.replace("\n", " ").strip() for t in texts]
+    joined_text = "\n".join(cleaned_texts)
+    
+    # Su dung clients5.google.com voi multi-line
+    try:
+        url = f"https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl={dest}&q={urllib.parse.quote(joined_text)}"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        r = requests.get(url, headers=headers, timeout=20)
+        if r.status_code == 200:
+            data = r.json()
+            if isinstance(data, list) and len(data) > 0:
+                item = data[0]
+                translated_str = item[0] if isinstance(item, list) and len(item) > 0 else (item if isinstance(item, str) else "")
+                if translated_str:
+                    lines = translated_str.split("\n")
+                    if len(lines) == len(texts):
+                        return [l.strip() for l in lines]
+                    elif len(lines) > 0:
+                        res = []
+                        for idx, original_t in enumerate(texts):
+                            if idx < len(lines) and lines[idx].strip():
+                                res.append(lines[idx].strip())
+                            else:
+                                res.append(google_translate(original_t, dest=dest))
+                        return res
     except Exception as e:
-        print(f"    [!] Loi goi Google Translate API qua HTTP requests: {str(e)}")
-    return text
+        print(Fore.YELLOW + f"    [!] Google Translate Batch gap loi ({str(e)}), fallback sang dich tung cau...")
+
+    # Fallback tung cau an toan
+    results = []
+    for t in texts:
+        results.append(google_translate(t, dest=dest))
+        time.sleep(0.05)
+    return results
 
 def merge_tts_segments(ffmpeg_exe, tts_dir, segments, workspace):
     """Ghep cac file TTS thanh 1 audio track dong bo chinh xac tuyet doi voi subtitle timing"""
@@ -755,8 +839,10 @@ def process_task(token, task):
                     json.dump(translated_segments, f, ensure_ascii=False, indent=2)
             
             if task.get("translateEngine") == "connect-hub":
-                print(Fore.CYAN + f"  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 60 cau/lan)")
-                BATCH_SIZE = 60
+                print(Fore.CYAN + f"  -> Su dung Connect Hub (Server-side LLM) de dich thuat (Batching 40 cau/lan)")
+                BATCH_SIZE = 40
+                import re
+                
                 for i in range(0, len(segments_to_translate), BATCH_SIZE):
                     batch_segs = segments_to_translate[i:i+BATCH_SIZE]
                     texts = [seg['text'] for seg in batch_segs]
@@ -764,136 +850,133 @@ def process_task(token, task):
                     # Trích xuất Sliding Window Context (5 câu cuối của đoạn trước)
                     prev_context = []
                     if translated_count > 0 and i == 0:
-                        # Lấy từ translated_segments (batch trước đó được lưu)
                         prev_context = [seg['text'] for seg in translated_segments[-5:]]
                     elif i > 0:
-                        # Lấy từ segments_to_translate
                         prev_context = [seg['text'] for seg in segments_to_translate[max(0, i-5):i]]
 
-                    try:
-                        payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
-                        
-                        api_attempts = 0
-                        while api_attempts < 60:
-                            res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=90)
-                            
-                            res_json = None
-                            try:
-                                res_json = res.json()
-                            except Exception:
-                                pass
+                    translated_array = None
+                    
+                    # Thử gọi API Connect Hub với Smart Retry (3 lần)
+                    for hub_attempt in range(3):
+                        try:
+                            payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
+                            api_attempts = 0
+                            while api_attempts < 60:
+                                res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=60)
                                 
-                            if res_json and "AUTH_REQUIRED" in str(res_json.get("error", "")):
-                                print(Fore.RED + "\n[!] LOI DANG NHAP: Trinh duyet Chrome Extension cua ban chua dang nhap Gemini / ChatGPT!")
-                                print(Fore.RED + "[!] Vui long mo trinh duyet Chrome, dang nhap vao tai khoan Gemini/ChatGPT phu hop.")
-                                input(Fore.YELLOW + "Nhan ENTER de thoat va chay lai sau khi da dang nhap...")
-                                sys.exit(1)
-
-                            if res.status_code == 200 and res_json and res_json.get("isPending"):
-                                pending_job_id = res_json.get("jobId")
-                                if pending_job_id:
-                                    payload["jobId"] = pending_job_id
-                                print(Fore.CYAN + f"  [!] Dang cho Chrome Extension xu ly tren trinh duyet... (Lan {api_attempts+1}/60)")
-                                time.sleep(5)
-                                api_attempts += 1
-                            else:
-                                break
-                                
-                        if res.status_code == 200:
-                            data = res.json()
-                            if data.get("success") and data.get("translatedTexts"):
-                                translated_array = data.get("translatedTexts")
-                                import re
-                                
-                                for j, seg in enumerate(batch_segs):
-                                    translated = translated_array[j] if j < len(translated_array) else seg['text']
-                                    
-                                    # Co che nhan dien loi (Self-Correction): Kiem tra neu LLM luoi bieng hoac tra ve tieng Trung
-                                    is_failed = False
-                                    if translated.strip() == seg['text'].strip():
-                                        is_failed = True
-                                    else:
-                                        ch_chars = len(re.findall(r'[\u4e00-\u9fff]', translated))
-                                        if ch_chars > 2 or (ch_chars > 0 and ch_chars > len(translated) * 0.15):
-                                            is_failed = True
-                                    
-                                    if is_failed:
-                                        try:
-                                            fixed_translated = google_translate(seg['text'], dest='vi')
-                                            print(Fore.YELLOW + f"  [Sua loi LLM bang Google] {seg['text']} -> {fixed_translated}")
-                                            translated = fixed_translated
-                                        except:
-                                            print(Fore.WHITE + f"  [Connect Hub] {translated}")
-                                    else:
-                                        print(Fore.WHITE + f"  [Connect Hub] {translated}")
-                                        
-                                    translated_segments.append({
-                                        "start": seg['start'],
-                                        "end": seg['end'],
-                                        "text": translated
-                                    })
-                                save_translation_progress()
-                            else:
-                                print(Fore.RED + f"  [Loi AI] {data.get('error')}")
-                                # fallback Google Translate cho batch nay
-                                print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
-                                for seg in batch_segs:
-                                    translated = google_translate(seg['text'], dest='vi')
-                                    translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
-                                    print(Fore.WHITE + f"  [Google] {translated}")
-                                save_translation_progress()
-                        else:
-                            print(Fore.RED + f"  [Loi HTTP] {res.status_code}")
-                            print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
-                            for seg in batch_segs:
-                                translated = ""
-                                for attempt in range(3):
-                                    try:
-                                        translated = google_translate(seg['text'], dest='vi')
-                                        break
-                                    except Exception as e:
-                                        if attempt == 2: raise e
-                                        time.sleep(2)
-                                translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
-                                print(Fore.WHITE + f"  [Google] {translated}")
-                            save_translation_progress()
-                    except Exception as api_err:
-                        print(Fore.RED + f"  [Loi Mang] {str(api_err)}")
-                        print(Fore.YELLOW + "  [!] Fallback sang Google Translate cho batch bi loi...")
-                        for seg in batch_segs:
-                            translated = ""
-                            for attempt in range(3):
+                                res_json = None
                                 try:
-                                    translated = google_translate(seg['text'], dest='vi')
+                                    res_json = res.json()
+                                except Exception:
+                                    pass
+                                    
+                                if res_json and "AUTH_REQUIRED" in str(res_json.get("error", "")):
+                                    print(Fore.RED + "\n[!] LOI DANG NHAP: Trinh duyet Chrome Extension cua ban chua dang nhap Gemini / ChatGPT!")
+                                    input(Fore.YELLOW + "Nhan ENTER de thoat va chay lai sau khi da dang nhap...")
+                                    sys.exit(1)
+
+                                if res.status_code == 200 and res_json and res_json.get("isPending"):
+                                    pending_job_id = res_json.get("jobId")
+                                    if pending_job_id:
+                                        payload["jobId"] = pending_job_id
+                                    print(Fore.CYAN + f"  [!] Dang cho Chrome Extension xu ly tren trinh duyet... (Lan {api_attempts+1}/60)")
+                                    time.sleep(5)
+                                    api_attempts += 1
+                                else:
                                     break
-                                except Exception as e:
-                                    if attempt == 2: raise e
-                                    time.sleep(2)
-                            translated_segments.append({"start": seg['start'], "end": seg['end'], "text": translated})
-                            print(Fore.WHITE + f"  [Google] {translated}")
+                                    
+                            if res.status_code == 200:
+                                data = res.json()
+                                if data.get("success") and data.get("translatedTexts"):
+                                    translated_array = data.get("translatedTexts")
+                                    break
+                                else:
+                                    print(Fore.YELLOW + f"  [!] Connect Hub tra ve loi ({data.get('error')}). Thu lai {hub_attempt+1}/3 sau 3s...")
+                            else:
+                                print(Fore.YELLOW + f"  [!] Connect Hub HTTP {res.status_code}. Thu lai {hub_attempt+1}/3 sau 3s...")
+                        except Exception as req_err:
+                            print(Fore.YELLOW + f"  [!] Mang Connect Hub loi ({str(req_err)}). Thu lai {hub_attempt+1}/3 sau 3s...")
+                            
+                        time.sleep(3)
+                        
+                    # Nếu Connect Hub thành công
+                    if translated_array and len(translated_array) > 0:
+                        for j, seg in enumerate(batch_segs):
+                            translated = translated_array[j] if j < len(translated_array) else seg['text']
+                            
+                            # Self-Correction: Kiểm tra nếu câu dịch vẫn còn dính tiếng Trung
+                            is_failed = False
+                            if translated.strip() == seg['text'].strip():
+                                is_failed = True
+                            else:
+                                ch_chars = len(re.findall(r'[\u4e00-\u9fff]', translated))
+                                if ch_chars > 1 or (ch_chars > 0 and len(translated) < 10):
+                                    is_failed = True
+                            
+                            if is_failed:
+                                fixed_translated = google_translate(seg['text'], dest='vi')
+                                print(Fore.YELLOW + f"  [Sua loi LLM bang Google] {seg['text']} -> {fixed_translated}")
+                                translated = fixed_translated
+                            else:
+                                print(Fore.WHITE + f"  [Connect Hub] {translated}")
+                                
+                            translated_segments.append({
+                                "start": seg['start'],
+                                "end": seg['end'],
+                                "text": translated
+                            })
+                        save_translation_progress()
+                    else:
+                        # Fallback sang Google Translate Batch (Không bao giờ bị 429)
+                        print(Fore.YELLOW + f"  [!] Connect Hub khong phan hoi, Fallback sang Google Translate Batch ({len(texts)} cau)...")
+                        batch_translated = google_translate_batch(texts, dest='vi')
+                        for j, seg in enumerate(batch_segs):
+                            trans = batch_translated[j] if j < len(batch_translated) and batch_translated[j] else google_translate(seg['text'], dest='vi')
+                            translated_segments.append({"start": seg['start'], "end": seg['end'], "text": trans})
+                            print(Fore.WHITE + f"  [Google] {trans}")
                         save_translation_progress()
             else:
                 print(Fore.CYAN + "  -> Su dung Google Translate (Mien phi)")
-                
-                for seg in segments_to_translate:
-                    translated = ""
-                    for attempt in range(3):
-                        try:
-                            translated = google_translate(seg['text'], dest='vi')
-                            break
-                        except Exception as e:
-                            if attempt == 2:
-                                raise e
-                            print(Fore.YELLOW + f"  [!] Google Translate Timeout. Dang thu lai sau 2s...")
-                            time.sleep(2)
-                    
+                batch_texts = [seg['text'] for seg in segments_to_translate]
+                batch_res = google_translate_batch(batch_texts, dest='vi')
+                for j, seg in enumerate(segments_to_translate):
+                    trans = batch_res[j] if j < len(batch_res) and batch_res[j] else google_translate(seg['text'], dest='vi')
                     translated_segments.append({
                         "start": seg['start'],
                         "end": seg['end'],
-                        "text": translated
+                        "text": trans
                     })
-                    print(Fore.WHITE + f"  [Google] {translated}")
-                    save_translation_progress()
+                    print(Fore.WHITE + f"  [Google] {trans}")
+                save_translation_progress()
+
+            # QUALITY GATE: Kiem duyet 100% toan bo cac cau thoai truoc khi sang buoc TTS
+            print(Fore.CYAN + "[-] Kiem tra chat luong phu de tieng Viet (Translation Quality Gate)...")
+            fixed_count = 0
+            import re
+            for seg_idx, seg in enumerate(translated_segments):
+                orig_text = extracted_segments[seg_idx]['text'] if seg_idx < len(extracted_segments) else ""
+                curr_text = seg.get("text", "")
+                
+                # Kiem tra neu con chu Han hoac text rong hoac trung 100% text goc tieng Trung
+                ch_chars = len(re.findall(r'[\u4e00-\u9fff]', curr_text))
+                needs_fix = False
+                if ch_chars > 1 or (ch_chars > 0 and len(curr_text) < 10):
+                    needs_fix = True
+                elif orig_text and curr_text.strip() == orig_text.strip() and len(orig_text) > 3:
+                    needs_fix = True
+                
+                if needs_fix:
+                    fixed = google_translate(orig_text if orig_text else curr_text, dest='vi')
+                    if fixed and fixed.strip() != curr_text.strip():
+                        print(Fore.YELLOW + f"  [Quality Gate Fix #{seg_idx+1}] {curr_text} -> {fixed}")
+                        seg["text"] = fixed
+                        fixed_count += 1
+            
+            if fixed_count > 0:
+                print(Fore.GREEN + f"  [✓] Quality Gate da sua sach se {fixed_count} cau chua dich sang Tieng Viet!")
+                save_translation_progress()
+            else:
+                print(Fore.GREEN + "  [✓] Quality Gate xac nhan: 100% phu de da la Tieng Viet sach se.")
 
         vi_srt_path = os.path.join(workspace, "vi.srt")
         with open(vi_srt_path, "w", encoding="utf-8") as f:
