@@ -43,6 +43,7 @@ export async function saveDubScanConfigAction(data: {
   thumbnailAiModel?: string;
   aiAppSlug?: string;
   aiModel?: string;
+  publishingPackEnabled?: boolean;
   isActive?: boolean;
 }) {
   try {
@@ -73,6 +74,7 @@ export async function saveDubScanConfigAction(data: {
           thumbnailAiModel: data.thumbnailAiModel,
           aiAppSlug: data.aiAppSlug,
           aiModel: data.aiModel,
+          publishingPackEnabled: data.publishingPackEnabled ?? true,
           isActive: data.isActive !== undefined ? data.isActive : true,
         })
         .where(eq(dubScanConfigs.id, configId));
@@ -93,6 +95,12 @@ export async function saveDubScanConfigAction(data: {
           videoSlowdown: data.videoSlowdown || '1.0',
           outputFolder: data.outputFolder,
           translateContext: data.translateContext,
+          redesignThumbnailEnabled: data.redesignThumbnailEnabled,
+          thumbnailLogoSource: data.thumbnailLogoSource,
+          customThumbnailLogoUrl: data.customThumbnailLogoUrl,
+          thumbnailAiAppSlug: data.thumbnailAiAppSlug,
+          thumbnailAiModel: data.thumbnailAiModel,
+          publishingPackEnabled: data.publishingPackEnabled ?? true,
         })
         .where(
           and(
@@ -127,6 +135,7 @@ export async function saveDubScanConfigAction(data: {
         thumbnailAiModel: data.thumbnailAiModel,
         aiAppSlug: data.aiAppSlug,
         aiModel: data.aiModel,
+        publishingPackEnabled: data.publishingPackEnabled ?? true,
         isActive: data.isActive !== undefined ? data.isActive : true,
       });
     }

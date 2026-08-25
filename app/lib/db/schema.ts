@@ -2352,6 +2352,7 @@ export const dubScanConfigs = pgTable('dub_scan_configs', {
   aiModel: varchar('ai_model', { length: 100 }),
   thumbnailAiAppSlug: varchar('thumbnail_ai_app_slug', { length: 100 }),
   thumbnailAiModel: varchar('thumbnail_ai_model', { length: 100 }),
+  publishingPackEnabled: boolean('publishing_pack_enabled').notNull().default(true),
   lastScanAt: timestamp('last_scan_at'),
   scannedCount: integer('scanned_count').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
