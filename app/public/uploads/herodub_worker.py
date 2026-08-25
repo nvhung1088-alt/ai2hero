@@ -1188,14 +1188,23 @@ def process_task(token, task):
 
                     translated_array = None
                     
-                    # 1. Chỉ bắn qua Local WebSocket Bridge NẾU người dùng chọn Browser AI Bridge trên giao diện!
-                    is_browser_bridge_requested = "browser-ai-bridge" in str(task.get("llmModel", "")).lower()
+                    # 1. Bắn qua Local WebSocket Bridge nếu chọn Browser AI Bridge hoặc Gemini/ChatGPT trên giao diện
+                    is_browser_bridge_requested = (
+                        "browser-ai-bridge" in str(task.get("aiAppSlug", "")).lower() or
+                        "browser-ai-bridge" in str(task.get("llmModel", "")).lower() or
+                        "browser-ai-bridge" in str(task.get("appSlug", "")).lower() or
+                        task.get("aiAppSlug") == "browser-ai-bridge" or
+                        task.get("translateAiAppSlug") == "browser-ai-bridge" or
+                        str(task.get("llmModel", "")).lower() in ["gemini", "chatgpt"]
+                    )
+                    
+                    target_ai = "chatgpt" if "chatgpt" in str(task.get("aiModel") or task.get("llmModel") or "").lower() else "gemini"
                     
                     if is_browser_bridge_requested and bridge_server.is_connected():
-                        print(Fore.CYAN + f"  [⚡ WebSocket Local] Dang ban truc tiep {len(texts)} cau sang Chrome Extension (Gemini)...")
+                        print(Fore.CYAN + f"  [⚡ WebSocket Local] Dang ban truc tiep {len(texts)} cau sang Chrome Extension ({target_ai.upper()})...")
                         ws_input = {str(k): t for k, t in enumerate(texts)}
                         context_str = f"\nBối cảnh phim: {task.get('translateContext', '')}" if task.get('translateContext') else ""
-                        ws_prompt = f"""Bạn là chuyên gia dịch thuật phụ đề phim chuyên nghiệp. Hãy dịch các câu thoại tiếng Trung sau sang tiếng Việt mượt mà, đúng văn phong phim:{context_str}
+                        ws_prompt = f"""Bạn là chuyên gia dịch thuật phụ đề phim chuyên nghiệp. Hãy dịch các câu thoại sau sang tiếng Việt mượt mà, tự nhiên, đúng văn phong phim:{context_str}
 
 QUY TẮC BẮT BUỘC:
 1. Trả về đúng định dạng JSON gốc (key "0", "1"... giữ nguyên, chỉ thay value bằng chuỗi dịch tiếng Việt).
@@ -1204,7 +1213,7 @@ QUY TẮC BẮT BUỘC:
 Dữ liệu:
 {json.dumps(ws_input, ensure_ascii=False, indent=2)}"""
 
-                        ws_res = bridge_server.execute_job(ws_prompt, target_ai="gemini", timeout=90)
+                        ws_res = bridge_server.execute_job(ws_prompt, target_ai=target_ai, timeout=90)
                         if ws_res and ws_res.get("success") and ws_res.get("result"):
                             raw_out = ws_res.get("result", "").strip()
                             raw_out = re.sub(r"^```(?:json)?\s*", "", raw_out, flags=re.IGNORECASE)
