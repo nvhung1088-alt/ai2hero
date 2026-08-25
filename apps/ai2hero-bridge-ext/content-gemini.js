@@ -71,21 +71,31 @@ if (!window.hasAi2HeroBridgeGemini) {
       inputEl.dispatchEvent(new Event('input', { bubbles: true }));
       inputEl.dispatchEvent(new Event('change', { bubbles: true }));
     } else {
-      // Dành cho Rich Contenteditable DIV
+      // Dành cho Rich Contenteditable DIV (Gemini Quill / Lit component)
+      inputEl.focus();
       try {
-        document.execCommand('selectAll', false, null);
-        document.execCommand('delete', false, null);
-        document.execCommand('insertText', false, promptText);
-      } catch (e) {
-        console.warn('[Ai2Hero Bridge] execCommand fallback:', e);
+        const dt = new DataTransfer();
+        dt.setData('text/plain', promptText);
+        const pasteEv = new ClipboardEvent('paste', {
+          clipboardData: dt,
+          bubbles: true,
+          cancelable: true
+        });
+        inputEl.dispatchEvent(pasteEv);
+      } catch (pasteErr) {
+        console.warn('[Ai2Hero Bridge] Paste event error:', pasteErr);
       }
 
-      // Fallback nếu insertText không sinh nội dung
-      if (!inputEl.innerText || inputEl.innerText.trim().length === 0) {
-        inputEl.innerHTML = `<p>${promptText.replace(/\n/g, '<br>')}</p>`;
+      // Kiểm tra nếu chưa đủ độ dài (ví dụ do execCommand hoặc paste bị chặn), điền trực tiếp qua HTML
+      const currentLen = (inputEl.innerText || '').trim().length;
+      if (currentLen < promptText.trim().length * 0.8) {
+        const lines = promptText.split('\n');
+        const paragraphs = lines.map(line => `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') || '<br>'}</p>`).join('');
+        inputEl.innerHTML = paragraphs;
       }
 
       inputEl.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: promptText }));
+      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
       inputEl.dispatchEvent(new Event('change', { bubbles: true }));
     }
 

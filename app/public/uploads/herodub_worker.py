@@ -199,20 +199,17 @@ API_BASE_URL = "https://www.ai2hero.com/api/hero-dub"
 CONFIG_FILE = "config.json"
 WORKSPACE_DIR = "workspace"
 
-def generate_publishing_suite(task, translated_segments, thumb_src, duration_sec, bridge_server, headers, API_BASE_URL):
+def generate_video_copywriting(task, translated_segments, duration_sec, bridge_server, headers, API_BASE_URL):
     """
-    AI Publishing Suite: Tự động viết lại Tiêu đề Tiếng Việt giật tít, Mô tả nội dung, Bộ Hashtags và Thiết kế lại Thumbnail.
+    LUỒNG 1: Tự động viết lại Tiêu đề Tiếng Việt giật tít, Mô tả nội dung và Bộ Hashtags (TEXT-ONLY, Siêu tốc và Chuẩn xác 100%).
     """
     task_id = task.get("id")
     raw_source_title = task.get("sourceTitle") or task.get("source_title") or f"video_{task_id}"
-    # Làm sạch tên file chỉ giữ lại tên video, loại bỏ đường dẫn thư mục và đuôi mở rộng
     clean_source_title = os.path.basename(raw_source_title)
     for ext in ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.webm']:
         if clean_source_title.lower().endswith(ext):
             clean_source_title = clean_source_title[:-len(ext)]
     clean_source_title = clean_source_title.strip()
-
-    context_str = task.get("translateContext", "")
 
     # 1. Trích xuất 10-15 câu thoại phụ đề tiếng Việt tiêu biểu
     sample_subs = []
@@ -223,18 +220,7 @@ def generate_publishing_suite(task, translated_segments, thumb_src, duration_sec
     
     subs_text = "\n".join([f"- {s}" for s in sample_subs if s]) if sample_subs else "(Không có phụ đề)"
 
-    # 2. Đọc ảnh bìa Thumbnail gốc (nếu có)
-    img_b64 = None
-    if thumb_src and os.path.exists(thumb_src):
-        try:
-            with open(thumb_src, "rb") as img_f:
-                b64_data = base64.b64encode(img_f.read()).decode('utf-8')
-                img_b64 = f"data:image/jpeg;base64,{b64_data}"
-        except Exception as e:
-            print(Fore.YELLOW + f"  [!] Khong the doc anh thumbnail: {e}")
-
-    # 3. Tạo Multi-Modal Prompt với mệnh lệnh JSON nghiêm ngặt
-    prompt = f"""[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH, KHÔNG HỎI LẠI NGƯỜI DÙNG]
+    prompt = f"""[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH, KHÔNG HỎI LẠI]
 
 Hãy đóng vai Giám đốc Sáng tạo Nội dung Phim. Dưới đây là thông tin video:
 - Tiêu đề gốc: {clean_source_title}
@@ -242,7 +228,7 @@ Hãy đóng vai Giám đốc Sáng tạo Nội dung Phim. Dưới đây là thô
 {subs_text}
 
 Nhiệm vụ của bạn:
-1. "new_title": Viết lại Tiêu đề Tiếng Việt cực kỳ giật tít, hấp dẫn, chuẩn SEO YouTube/TikTok (dưới 80 ký tự, khơi gợi tò mò).
+1. "new_title": Đặt lại Tiêu đề Tiếng Việt cực kỳ giật tít, hấp dẫn, chuẩn SEO YouTube/TikTok (dưới 80 ký tự, khơi gợi tò mò).
 2. "description": Viết đoạn mô tả ngắn 3-4 câu tóm tắt tình huống kịch tính nhất của video để khán giả xem hết.
 3. "hashtags": Tạo bộ 6-8 hashtag xu hướng (bắt đầu bằng dấu #).
 
@@ -257,28 +243,18 @@ CHỈ TRẢ VỀ MÃ JSON THEO ĐÚNG CẤU TRÚC SAU (KHÔNG THÊM BẤT KỲ V
         "new_title": clean_source_title,
         "description": f"Video thuyết minh: {clean_source_title}. Theo dõi những tình tiết hấp dẫn và kịch tính nhất trong tập này!",
         "hashtags": "#phimngan #reviewphim #tomtatphim #xuhuong #phimhay",
-        "new_thumbnail_url": None
     }
 
-    # 4. Gửi qua WebSocket Bridge (Gemini) nếu Extension kết nối
     if bridge_server and bridge_server.is_connected():
-        print(Fore.CYAN + f"  [⚡ WebSocket Publishing Suite] Dang gui Tiêu đề + Phụ đề + Ảnh sang Gemini...")
-        attachments = [img_b64] if img_b64 else []
-        ws_res = bridge_server.execute_job(prompt, attachments=attachments, target_ai="gemini", timeout=90)
+        print(Fore.CYAN + f"  [⚡ WebSocket Copywriting] Dang gui yeu cau viet Tieu de + Mo ta sang Gemini (Text-Only)...")
+        ws_res = bridge_server.execute_job(prompt, attachments=[], target_ai="gemini", timeout=60)
         if ws_res and ws_res.get("success") and ws_res.get("result"):
             raw_out = str(ws_res.get("result", "")).strip()
             raw_out = re.sub(r"^```(?:json)?\s*", "", raw_out, flags=re.IGNORECASE)
             raw_out = re.sub(r"\s*```$", "", raw_out, flags=re.IGNORECASE).strip()
             
-            # Trích xuất URL ảnh nếu có markdown ![Image](...)
-            img_match = re.search(r'!\[.*?\]\((https?://[^\s\)]+)\)', raw_out)
-            if img_match:
-                result["new_thumbnail_url"] = img_match.group(1)
-                raw_out = re.sub(r'!\[.*?\]\(https?://[^\s\)]+\)', '', raw_out).strip()
-
             parsed_success = False
             try:
-                # Tìm JSON block trong response
                 json_match = re.search(r'(\{[\s\S]*\})', raw_out)
                 if json_match:
                     parsed = json.loads(json_match.group(1))
@@ -289,31 +265,66 @@ CHỈ TRẢ VỀ MÃ JSON THEO ĐÚNG CẤU TRÚC SAU (KHÔNG THÊM BẤT KỲ V
                             result["description"] = parsed.get("description").strip()
                         if parsed.get("hashtags"):
                             result["hashtags"] = parsed.get("hashtags").strip()
-                        print(Fore.GREEN + f"  [⚡ WebSocket Publishing Suite] Da tao Tieu de moi: {result['new_title']}")
+                        print(Fore.GREEN + f"  [⚡ WebSocket Copywriting] Da tao Tieu de moi: {result['new_title']}")
                         parsed_success = True
             except Exception as parse_e:
-                print(Fore.YELLOW + f"  [!] Parse Publishing Suite JSON error ({parse_e}).")
+                print(Fore.YELLOW + f"  [!] Parse Copywriting JSON error ({parse_e}).")
 
-            # Fallback thông minh nếu Gemini trả về văn bản thường
             if not parsed_success and len(raw_out) > 10:
                 print(Fore.YELLOW + f"  [!] Gemini tra ve text thuong, dang tu dong trich xuat tu lieu...")
                 lines = [line.strip() for line in raw_out.split('\n') if line.strip()]
-                # Tìm dòng tiêu đề
                 for line in lines:
                     if any(kw in line.lower() for kw in ['tiêu đề:', 'title:', '1.']):
                         clean_line = re.sub(r'^(?:tiêu đề|title|1\.)[:\s*-]+', '', line, flags=re.IGNORECASE).strip('"\' ')
                         if len(clean_line) > 5:
                             result["new_title"] = clean_line[:90]
                             break
-                # Tìm hashtags
                 tags = re.findall(r'#\w+', raw_out)
                 if tags:
                     result["hashtags"] = " ".join(tags[:8])
-                # Lấy mô tả
                 if len(lines) > 1:
                     result["description"] = "\n".join(lines[1:5])
 
     return result
+
+def redesign_thumbnail_image(task, thumb_src, new_title, bridge_server):
+    """
+    LUỒNG 2: Thiết kế lại Ảnh bìa (IMAGE-ONLY, Chỉ chạy khi bật cờ redesignThumbnailEnabled).
+    """
+    if not task.get("redesignThumbnailEnabled"):
+        return None
+
+    if not thumb_src or not os.path.exists(thumb_src):
+        return None
+
+    if not bridge_server or not bridge_server.is_connected():
+        return None
+
+    try:
+        with open(thumb_src, "rb") as img_f:
+            b64_data = base64.b64encode(img_f.read()).decode('utf-8')
+            img_b64 = f"data:image/jpeg;base64,{b64_data}"
+    except Exception as e:
+        print(Fore.YELLOW + f"  [!] Khong the doc anh thumbnail: {e}")
+        return None
+
+    print(Fore.CYAN + f"  [⚡ WebSocket Image Redesign] Dang gui anh bia sang Gemini de thiet ke lai theo tieu de moi: '{new_title}'...")
+    image_prompt = f"""Đây là ảnh bìa (thumbnail) của video: "{new_title}".
+Hãy chỉnh sửa và thiết kế lại ảnh bìa này:
+1. Xóa toàn bộ chữ tiếng Trung Quốc có trên ảnh gốc.
+2. Thay thế bằng dòng chữ tiêu đề tiếng Việt nổi bật nghệ thuật: "{new_title}".
+3. Giữ nguyên 100% nhân vật chính, phong cách và bối cảnh của ảnh."""
+
+    ws_res = bridge_server.execute_job(image_prompt, attachments=[img_b64], target_ai="gemini", timeout=90)
+    if ws_res and ws_res.get("success") and ws_res.get("result"):
+        raw_out = str(ws_res.get("result", "")).strip()
+        img_match = re.search(r'!\[.*?\]\((https?://[^\s\)]+)\)', raw_out)
+        if img_match:
+            new_thumb_url = img_match.group(1)
+            print(Fore.GREEN + f"  [⚡ WebSocket Image Redesign] Da nhan duoc anh bia thiet ke moi tu Gemini!")
+            return new_thumb_url
+
+    return None
 
 def get_device_info():
     return {
@@ -1808,8 +1819,18 @@ if __name__ == '__main__':
                     thumb_src = candidate
                     break
 
-    pub_pack = generate_publishing_suite(task, translated_segments, thumb_src, duration_sec, bridge_server, headers, API_BASE_URL)
-    new_title = pub_pack.get("new_title") or task.get("sourceTitle") or f"video_{task_id}"
+    # Luồng 1: Viết Tiêu đề, Mô tả, Hashtags (Text-Only)
+    copy_pack = generate_video_copywriting(task, translated_segments, duration_sec, bridge_server, headers, API_BASE_URL)
+    new_title = copy_pack.get("new_title") or task.get("sourceTitle") or f"video_{task_id}"
+
+    # Luồng 2: Thiết kế lại Thumbnail (Image-Only, nếu được bật)
+    new_thumb_url = redesign_thumbnail_image(task, thumb_src, new_title, bridge_server)
+    pub_pack = {
+        "new_title": new_title,
+        "description": copy_pack.get("description", ""),
+        "hashtags": copy_pack.get("hashtags", ""),
+        "new_thumbnail_url": new_thumb_url
+    }
 
     final_output_path = os.path.abspath(os.path.join(workspace, "output.mp4"))
     vi_srt_abs_path = os.path.abspath(os.path.join(workspace, "vi.srt"))
