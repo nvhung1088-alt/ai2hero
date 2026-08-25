@@ -248,7 +248,9 @@ CHỈ TRẢ VỀ MÃ JSON THEO ĐÚNG CẤU TRÚC SAU (KHÔNG THÊM BẤT KỲ V
     if bridge_server and bridge_server.is_connected():
         print(Fore.CYAN + f"  [⚡ WebSocket Copywriting] Dang gui yeu cau viet Tieu de + Mo ta sang Gemini (Text-Only)...")
         ws_res = bridge_server.execute_job(prompt, attachments=[], target_ai="gemini", timeout=60)
-        if ws_res and ws_res.get("success") and ws_res.get("result"):
+        if not ws_res or not ws_res.get("success"):
+            print(Fore.YELLOW + f"  [!] WebSocket Copywriting chua nhan duoc phan hoi ({ws_res}).")
+        else:
             raw_out = str(ws_res.get("result", "")).strip()
             raw_out = re.sub(r"^```(?:json)?\s*", "", raw_out, flags=re.IGNORECASE)
             raw_out = re.sub(r"\s*```$", "", raw_out, flags=re.IGNORECASE).strip()
@@ -323,6 +325,10 @@ Hãy chỉnh sửa và thiết kế lại ảnh bìa này:
             new_thumb_url = img_match.group(1)
             print(Fore.GREEN + f"  [⚡ WebSocket Image Redesign] Da nhan duoc anh bia thiet ke moi tu Gemini!")
             return new_thumb_url
+        else:
+            print(Fore.YELLOW + f"  [!] Gemini chua tao link anh moi ({raw_out[:100]}...).")
+    else:
+        print(Fore.YELLOW + f"  [!] WebSocket Image Redesign that bai hoac timeout ({ws_res}).")
 
     return None
 

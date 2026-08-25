@@ -63,40 +63,39 @@ if (!window.hasAi2HeroBridgeGemini) {
       throw new Error('Không tìm thấy khung nhập liệu trên giao diện Gemini Web. Vui lòng đảm bảo bạn đang ở trang chat và đã đăng nhập.');
     }
 
-    // 2. Điền Prompt vào khung nhập một cách an toàn và chuẩn xác (kích hoạt Lit/Angular state)
+    // 2. Xóa đính kèm cũ nếu lượt gửi này không yêu cầu đính kèm
+    if (!attachments || !Array.isArray(attachments) || attachments.length === 0) {
+      const removeButtons = document.querySelectorAll('button[aria-label*="Xóa"], button[aria-label*="Remove"], button[aria-label*="Delete"], button[aria-label*="close"], .remove-button, [data-test-id*="remove-attachment"]');
+      removeButtons.forEach((btn) => {
+        try { btn.click(); } catch(e) {}
+      });
+    }
+
+    // 3. Điền Prompt vào khung nhập một cách an toàn và chuẩn xác (kích hoạt Lit/Angular state)
     inputEl.focus();
 
     if (inputEl.tagName === 'TEXTAREA' || inputEl.tagName === 'INPUT') {
       inputEl.value = promptText;
-      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-      inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+      inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+      inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
     } else {
       // Dành cho Rich Contenteditable DIV (Gemini Quill / Lit component)
-      inputEl.focus();
-      try {
-        const dt = new DataTransfer();
-        dt.setData('text/plain', promptText);
-        const pasteEv = new ClipboardEvent('paste', {
-          clipboardData: dt,
-          bubbles: true,
-          cancelable: true
-        });
-        inputEl.dispatchEvent(pasteEv);
-      } catch (pasteErr) {
-        console.warn('[Ai2Hero Bridge] Paste event error:', pasteErr);
+      inputEl.innerHTML = '';
+      const lines = promptText.split('\n');
+      for (const line of lines) {
+        const p = document.createElement('p');
+        if (line && line.trim()) {
+          p.textContent = line;
+        } else {
+          p.appendChild(document.createElement('br'));
+        }
+        inputEl.appendChild(p);
       }
 
-      // Kiểm tra nếu chưa đủ độ dài (ví dụ do execCommand hoặc paste bị chặn), điền trực tiếp qua HTML
-      const currentLen = (inputEl.innerText || '').trim().length;
-      if (currentLen < promptText.trim().length * 0.8) {
-        const lines = promptText.split('\n');
-        const paragraphs = lines.map(line => `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') || '<br>'}</p>`).join('');
-        inputEl.innerHTML = paragraphs;
-      }
-
-      inputEl.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: promptText }));
-      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-      inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+      // Kích hoạt tất cả các event cần thiết cho Lit, Angular và Quill
+      inputEl.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
+      inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+      inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
     }
 
     await new Promise((r) => setTimeout(r, 400));
