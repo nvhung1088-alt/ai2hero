@@ -202,6 +202,20 @@ async function pollCloudJobAndExecute() {
   }
 }
 
+// Chuyển đổi Blob sang Base64 chuẩn MV3 Service Worker (Không dùng FileReader vì Service Worker không có window/FileReader)
+async function blobToBase64(blob) {
+  const arrayBuffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  const len = bytes.byteLength;
+  const chunkSize = 8192;
+  let binary = '';
+  for (let i = 0; i < len; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  const mimeType = blob.type || 'image/jpeg';
+  return `data:${mimeType};base64,${btoa(binary)}`;
+}
+
 // 4. Hàm thực thi Job trên Tab AI (Gemini / ChatGPT)
 async function executeAiJobOnTab(job) {
   const startTime = Date.now();
@@ -236,12 +250,7 @@ async function executeAiJobOnTab(job) {
           try {
             const imgRes = await fetch(attachUrl);
             const blob = await imgRes.blob();
-            const reader = new FileReader();
-            const base64Data = await new Promise((resolve, reject) => {
-              reader.onloadend = () => resolve(reader.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
+            const base64Data = await blobToBase64(blob);
             processedAttachments.push({ type: 'image', base64: base64Data });
           } catch (err) {
             console.warn('[Ai2Hero Bridge] Lỗi tải ảnh đính kèm từ URL:', err);
@@ -294,12 +303,7 @@ async function executeAiJobOnTab(job) {
           if (imgRes.ok) {
             const blob = await imgRes.blob();
             if (blob.size > 2000) {
-              const reader = new FileReader();
-              const base64Data = await new Promise((resolve, reject) => {
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              });
+              const base64Data = await blobToBase64(blob);
               responseFromContent.result = responseFromContent.result.replace(onlineImgUrl, base64Data);
               console.log(`[Ai2Hero Bridge] ✅ Đã chuyển đổi thành công ảnh sang Base64 (${blob.size} bytes) chống 403 Forbidden!`);
             }
