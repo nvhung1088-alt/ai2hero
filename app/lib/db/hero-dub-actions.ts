@@ -1352,7 +1352,11 @@ export async function testImageAiConnectionAction(
     const defaultSampleImage = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80";
     const imageUrlToTest = sampleImageUrl && sampleImageUrl.startsWith('http') ? sampleImageUrl : defaultSampleImage;
 
-    const testPrompt = `Hãy thiết kế lại hình ảnh thumbnail này sang phiên bản Tiếng Việt Nam chuyên nghiệp. Giữ nguyên 100% hình dạng, màu sắc và tỷ lệ logo gốc từ ảnh đính kèm. Đảm bảo giữ nguyên tỷ lệ khung hình gốc, phong cách đẹp mắt và ấn tượng.`;
+    const testPrompt = `Hãy thiết kế lại hình ảnh thumbnail này sang phiên bản Tiếng Việt Nam chuyên nghiệp:
+1. Xóa toàn bộ chữ tiếng nước ngoài trên ảnh.
+2. Thay thế bằng tiêu đề tiếng Việt nghệ thuật nổi bật.
+3. BẮT BUỘC giữ nguyên 100% tỷ lệ khung hình gốc của ảnh (Aspect Ratio), kích thước và bố cục. Tuyệt đối không kéo dãn, không méo hình, không đổi tỷ lệ và không cắt xén viền.
+4. Giữ nguyên 100% nhân vật chính, phong cách và bối cảnh của ảnh.`;
     const testJobId = crypto.randomUUID();
 
     const result = await executeAction(appSlug, credentials, 'generate_image', {

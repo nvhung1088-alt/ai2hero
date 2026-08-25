@@ -344,7 +344,8 @@ def redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, br
 Hãy chỉnh sửa và thiết kế lại ảnh bìa này:
 1. Xóa toàn bộ chữ tiếng Trung Quốc có trên ảnh gốc.
 2. Thay thế bằng dòng chữ tiêu đề tiếng Việt nổi bật nghệ thuật: "{display_title_on_image}".
-3. Giữ nguyên 100% nhân vật chính, phong cách và bối cảnh của ảnh."""
+3. BẮT BUỘC giữ nguyên 100% tỷ lệ khung hình gốc của ảnh (Aspect Ratio), kích thước và bố cục. Tuyệt đối không kéo dãn, không méo hình, không đổi tỷ lệ và không cắt xén viền.
+4. Giữ nguyên 100% nhân vật chính, phong cách và bối cảnh của ảnh."""
 
     ws_res = bridge_server.execute_job(image_prompt, attachments=[img_b64], target_ai="gemini", timeout=90)
     if ws_res and ws_res.get("success") and ws_res.get("result"):
