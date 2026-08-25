@@ -268,37 +268,45 @@ if (!window.hasAi2HeroBridgeGemini) {
         }
       }, MAX_TIMEOUT_MS);
 
-      // Định kỳ kiểm tra trạng thái nút Stop (chu kỳ 500ms)
+      // Định kỳ kiểm tra trạng thái nút Stop và tiến trình sinh text (chu kỳ 350ms)
       const intervalCheck = setInterval(() => {
         const isGenerating = isStopButtonVisible();
+        const currentText = extractCleanResponse();
 
-        if (isGenerating) {
+        if (isGenerating || currentText.length > 10) {
           hasStartedGenerating = true;
-          if (finishDebounceTimer) {
+          if (finishDebounceTimer && isGenerating) {
             clearTimeout(finishDebounceTimer);
             finishDebounceTimer = null;
           }
-        } else if (hasStartedGenerating) {
-          // Nút Stop vừa biến mất -> Đã sinh xong!
+        }
+
+        if (hasStartedGenerating && !isGenerating) {
+          // Nút Stop không còn / hoặc đã dứt câu -> Đợi 800ms debounce để lấy trọn vẹn câu cuối
           if (!finishDebounceTimer) {
             finishDebounceTimer = setTimeout(() => {
-              if (observer) observer.disconnect();
-              clearInterval(intervalCheck);
-              clearTimeout(globalTimeout);
-
               const resultText = extractCleanResponse();
-              console.log('[Ai2Hero Bridge] Gemini đã sinh xong hoàn tất 100%!');
-              resolve(resultText);
-            }, 600); // 600ms debounce an toàn
+              if (resultText && resultText.trim().length > 0) {
+                if (observer) observer.disconnect();
+                clearInterval(intervalCheck);
+                clearTimeout(globalTimeout);
+
+                console.log('[Ai2Hero Bridge] Gemini đã sinh xong hoàn tất 100%!');
+                resolve(resultText);
+              }
+            }, 800);
           }
         }
-      }, 400);
+      }, 350);
 
       // MutationObserver theo dõi thay đổi DOM
       const observer = new MutationObserver(() => {
         const text = extractCleanResponse();
         if (text && text !== lastExtractedText) {
           lastExtractedText = text;
+          if (text.length > 10) {
+            hasStartedGenerating = true;
+          }
         }
       });
 
@@ -320,7 +328,8 @@ if (!window.hasAi2HeroBridgeGemini) {
       'button[aria-label*="New chat"]',
       'a[aria-label*="Cuộc trò chuyện mới"]',
       'a[aria-label*="New chat"]',
-      '.new-chat-button'
+      '.new-chat-button',
+      '[data-test-id="new-chat-button"]'
     ];
 
     for (const sel of newChatSelectors) {
@@ -330,11 +339,6 @@ if (!window.hasAi2HeroBridgeGemini) {
         await new Promise((r) => setTimeout(r, 600));
         return;
       }
-    }
-
-    // Fallback: Chuyển hướng về /app
-    if (window.location.pathname !== '/app') {
-      window.location.href = 'https://gemini.google.com/app';
     }
   }
 

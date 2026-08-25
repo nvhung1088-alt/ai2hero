@@ -1022,8 +1022,10 @@ def process_task(token, task):
 
                     translated_array = None
                     
-                    # 1. Ưu tiên: Bắn trực tiếp qua Local WebSocket Bridge nếu Extension đang kết nối (siêu tốc 2-4s)
-                    if bridge_server.is_connected():
+                    # 1. Chỉ bắn qua Local WebSocket Bridge NẾU người dùng chọn Browser AI Bridge trên giao diện!
+                    is_browser_bridge_requested = "browser-ai-bridge" in str(task.get("llmModel", "")).lower()
+                    
+                    if is_browser_bridge_requested and bridge_server.is_connected():
                         print(Fore.CYAN + f"  [⚡ WebSocket Local] Dang ban truc tiep {len(texts)} cau sang Chrome Extension (Gemini)...")
                         ws_input = {str(k): t for k, t in enumerate(texts)}
                         context_str = f"\nBối cảnh phim: {task.get('translateContext', '')}" if task.get('translateContext') else ""
@@ -1048,8 +1050,13 @@ Dữ liệu:
                                     print(Fore.GREEN + f"  [⚡ WebSocket Local] Nhan ket qua sieu toc thanh cong ({len(translated_array)} cau)!")
                             except Exception as parse_err:
                                 print(Fore.YELLOW + f"  [!] Parse ket qua WebSocket error ({parse_err}). Chuyen sang Cloud API...")
+                    elif is_browser_bridge_requested:
+                        print(Fore.YELLOW + "  [!] Browser AI Bridge duoc chon nhung Extension chua bat. Chuyen sang Cloud API...")
+                    else:
+                        selected_model = task.get("llmModel", "Connect Hub LLM")
+                        print(Fore.CYAN + f"  [☁️ Connect Hub Cloud] Dang goi API {selected_model}...")
 
-                    # 2. Thử gọi API Connect Hub với Smart Retry (3 lần) nếu WebSocket chưa có kết quả
+                    # 2. Thử gọi API Connect Hub với Smart Retry (3 lần) nếu WebSocket chưa có kết quả (hoặc chọn DeepSeek/OpenAI)
                     if not translated_array:
                         for hub_attempt in range(3):
                             try:
