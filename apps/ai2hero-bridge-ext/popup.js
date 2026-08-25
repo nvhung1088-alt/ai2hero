@@ -60,7 +60,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 1500);
   });
 
-  // 3. Nút Test Gửi Prompt sang Gemini
+  const testImageBtn = document.getElementById('testImageBtn');
+
+  // 3. Nút Test Gửi Text sang Gemini
   testBtn.addEventListener('click', async () => {
     testBtn.innerText = '⏳ Đang gửi test...';
     testBtn.disabled = true;
@@ -74,11 +76,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         await new Promise((r) => setTimeout(r, 4500));
       }
 
-      // Gửi prompt test
       const response = await chrome.tabs.sendMessage(tab.id, {
         action: 'PROCESS_AI_JOB',
         job: {
-          id: 'test_' + Date.now(),
+          id: 'test_text_' + Date.now(),
           prompt: 'Hãy chào AI2Hero và xác nhận kết nối Browser Bridge v2.0 thành công trong 1 câu ngắn gọn.',
           targetAi: 'gemini',
           autoNewChat: false
@@ -93,8 +94,62 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       alert('❌ Lỗi kết nối: ' + err.message);
     } finally {
-      testBtn.innerText = '⚡ GỬI TEST PROMPT TỚI GEMINI';
+      testBtn.innerText = '⚡ GỬI TEST TEXT TỚI GEMINI';
       testBtn.disabled = false;
+    }
+  });
+
+  // 4. Nút Test Gửi Ảnh Mẫu sang Gemini
+  testImageBtn.addEventListener('click', async () => {
+    testImageBtn.innerText = '⏳ Đang dán ảnh & gửi...';
+    testImageBtn.disabled = true;
+
+    try {
+      let tabs = await chrome.tabs.query({ url: 'https://gemini.google.com/*' });
+      let tab = tabs.length > 0 ? tabs[0] : null;
+
+      if (!tab) {
+        tab = await chrome.tabs.create({ url: 'https://gemini.google.com/app', active: true });
+        await new Promise((r) => setTimeout(r, 4500));
+      }
+
+      // Tạo 1 sample canvas image (120x80px màu xanh cam gradient có text AI2Hero)
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 250;
+      const ctx = canvas.getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 400, 250);
+      grad.addColorStop(0, '#0284c7');
+      grad.addColorStop(1, '#f59e0b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 400, 250);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('AI2Hero Bridge Test', 200, 130);
+      const sampleBase64 = canvas.toDataURL('image/png');
+
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        action: 'PROCESS_AI_JOB',
+        job: {
+          id: 'test_img_' + Date.now(),
+          prompt: 'Hãy nhìn bức ảnh đính kèm này và cho biết bạn nhìn thấy chữ gì và màu sắc gì trong ảnh?',
+          attachments: [sampleBase64],
+          targetAi: 'gemini',
+          autoNewChat: false
+        }
+      });
+
+      if (response && response.success) {
+        alert('🎉 Gemini đã nhận ảnh và phản hồi:\n\n' + response.result);
+      } else {
+        alert('❌ Lỗi gửi ảnh: ' + (response?.error || 'Không thể dán ảnh hoặc nhận câu trả lời.'));
+      }
+    } catch (err) {
+      alert('❌ Lỗi kết nối: ' + err.message);
+    } finally {
+      testImageBtn.innerText = '🖼️ GỬI TEST ẢNH MẪU TỚI GEMINI';
+      testImageBtn.disabled = false;
     }
   });
 });
