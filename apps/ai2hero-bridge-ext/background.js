@@ -20,6 +20,13 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'GET_WS_STATUS') {
+    sendResponse({ isWsConnected, isHttpPolling, processedJobsCount });
+    return true;
+  }
+});
+
 // 2. Khởi tạo kết nối WebSocket Local (ws://127.0.0.1:8765)
 async function initWebSocketClient() {
   const storage = await chrome.storage.local.get(['wsUrl', 'enableWsBridge']);

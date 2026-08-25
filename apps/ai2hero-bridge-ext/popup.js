@@ -30,22 +30,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     cloudStatusBadge.className = 'badge badge-cloud-off';
   }
 
-  // WS status test
-  try {
-    const testWs = new WebSocket(wsUrlInput.value.trim() || 'ws://127.0.0.1:8765');
-    testWs.onopen = () => {
+  // WS status check qua background worker
+  chrome.runtime.sendMessage({ action: 'GET_WS_STATUS' }, (res) => {
+    if (res && res.isWsConnected) {
       wsStatusBadge.innerText = 'Đang hoạt động (Online)';
       wsStatusBadge.className = 'badge badge-ws-on';
-      testWs.close();
-    };
-    testWs.onerror = () => {
+    } else {
       wsStatusBadge.innerText = 'Chưa bật Worker Local';
       wsStatusBadge.className = 'badge badge-ws-off';
-    };
-  } catch (e) {
-    wsStatusBadge.innerText = 'Offline';
-    wsStatusBadge.className = 'badge badge-ws-off';
-  }
+    }
+  });
 
   // 2. Lưu cấu hình
   saveBtn.addEventListener('click', async () => {

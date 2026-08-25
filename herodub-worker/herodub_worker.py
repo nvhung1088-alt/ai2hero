@@ -73,8 +73,10 @@ class LocalWebSocketBridgeServer:
             sock.sendall(handshake.encode("utf-8"))
 
             with self.lock:
+                first_client = len(self.clients) == 0
                 self.clients.add(sock)
-            print(Fore.GREEN + "[*] Chrome Extension da ket noi truc tiep qua WebSocket Local (Port 8765)!")
+            if first_client:
+                print(Fore.GREEN + "[*] Chrome Extension da ket noi truc tiep qua WebSocket Local (Port 8765)!")
 
             while self.is_running:
                 data = sock.recv(65536)
