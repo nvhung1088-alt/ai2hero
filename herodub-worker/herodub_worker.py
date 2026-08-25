@@ -1926,19 +1926,41 @@ if __name__ == '__main__':
             print(Fore.GREEN + f"[✓] Da xuat file TXT dang bai: {os.path.basename(dest_txt)}")
 
             # Lưu ảnh Thumbnail (đã thiết kế lại hoặc ảnh gốc)
-            if pub_pack.get("new_thumbnail_url") and (pub_pack["new_thumbnail_url"].startswith("http://") or pub_pack["new_thumbnail_url"].startswith("https://")):
-                try:
-                    img_data = requests.get(pub_pack["new_thumbnail_url"], timeout=30).content
-                    with open(dest_thumb, 'wb') as handler:
-                        handler.write(img_data)
-                    print(Fore.GREEN + f"[✓] Da luu anh Thumbnail moi: {os.path.basename(dest_thumb)}")
-                except Exception as dl_err:
-                    print(Fore.YELLOW + f"[!] Khong the tai anh thumbnail moi: {dl_err}")
-                    if thumb_src and os.path.exists(thumb_src):
-                        shutil.copy2(thumb_src, dest_thumb)
-            elif thumb_src and os.path.exists(thumb_src):
+            saved_thumb_success = False
+            if pub_pack.get("new_thumbnail_url"):
+                thumb_url = pub_pack["new_thumbnail_url"]
+                # 1. Nếu là Base64 Data URL (Do Extension trích xuất canvas không bị chặn 403)
+                if thumb_url.startswith("data:image/"):
+                    try:
+                        b64_str = thumb_url.split(",", 1)[1] if "," in thumb_url else thumb_url
+                        img_bytes = base64.b64decode(b64_str)
+                        if len(img_bytes) > 5000:
+                            with open(dest_thumb, 'wb') as handler:
+                                handler.write(img_bytes)
+                            print(Fore.GREEN + f"[✓] Da luu anh Thumbnail moi (Base64 HD {len(img_bytes)//1024} KB): {os.path.basename(dest_thumb)}")
+                            saved_thumb_success = True
+                    except Exception as b64_err:
+                        print(Fore.YELLOW + f"[!] Loi decode Base64 thumbnail: {b64_err}")
+                elif thumb_url.startswith("http://") or thumb_url.startswith("https://"):
+                    try:
+                        headers_img = {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                            "Referer": "https://gemini.google.com/"
+                        }
+                        resp = requests.get(thumb_url, headers=headers_img, timeout=30)
+                        if resp.status_code == 200 and len(resp.content) > 10000 and not resp.content.startswith(b"<!DOCTYPE"):
+                            with open(dest_thumb, 'wb') as handler:
+                                handler.write(resp.content)
+                            print(Fore.GREEN + f"[✓] Da luu anh Thumbnail moi: {os.path.basename(dest_thumb)}")
+                            saved_thumb_success = True
+                        else:
+                            print(Fore.YELLOW + f"[!] Anh online bi chan 403 hoac loi (Size: {len(resp.content)} bytes). Fallback sang anh goc...")
+                    except Exception as dl_err:
+                        print(Fore.YELLOW + f"[!] Khong the tai anh thumbnail moi: {dl_err}")
+
+            if not saved_thumb_success and thumb_src and os.path.exists(thumb_src):
                 shutil.copy2(thumb_src, dest_thumb)
-                print(Fore.CYAN + f"[-] Da copy anh thumbnail: {os.path.basename(dest_thumb)}")
+                print(Fore.CYAN + f"[-] Da copy anh thumbnail goc: {os.path.basename(dest_thumb)}")
             
             final_output_path = dest_video
             vi_srt_abs_path = dest_srt

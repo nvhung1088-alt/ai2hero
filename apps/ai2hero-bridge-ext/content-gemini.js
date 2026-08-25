@@ -263,14 +263,47 @@ if (!window.hasAi2HeroBridgeGemini) {
         }
 
         const cleanText = (clone.innerText || clone.textContent || '').trim();
-        return (cleanText + imgMarkdown).trim();
+        return cleanText;
       };
 
+      async function buildFinalResult() {
+        const text = extractCleanResponse();
+        const elements = document.querySelectorAll(
+          'message-content, .message-content, model-response, [data-test-id="model-response"], .response-container-content, .model-response-text'
+        );
+        let finalImgMarkdown = '';
+        if (elements.length > 0) {
+          const lastEl = elements[elements.length - 1];
+          const imgEls = lastEl.querySelectorAll('img:not([alt*="avatar"]):not([alt*="logo"]):not([src*="googleusercontent.com/a/"])');
+          for (const imgEl of imgEls) {
+            if (imgEl.src && !imgEl.src.startsWith('data:image/svg')) {
+              try {
+                // Trích xuất Base64 trực tiếp từ canvas để chống triệt để lỗi 403 Forbidden
+                const canvas = document.createElement('canvas');
+                canvas.width = imgEl.naturalWidth || imgEl.width || 1024;
+                canvas.height = imgEl.naturalHeight || imgEl.height || 1024;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+                if (dataUrl && dataUrl.length > 1000) {
+                  finalImgMarkdown += `\n![Image](${dataUrl})\n`;
+                  continue;
+                }
+              } catch (e) {
+                console.warn('[Ai2Hero Bridge] Canvas toDataURL failed:', e);
+              }
+              finalImgMarkdown += `\n![Image](${imgEl.src})\n`;
+            }
+          }
+        }
+        return (text + finalImgMarkdown).trim();
+      }
+
       // Timeout bảo vệ
-      const globalTimeout = setTimeout(() => {
+      const globalTimeout = setTimeout(async () => {
         if (observer) observer.disconnect();
         if (intervalCheck) clearInterval(intervalCheck);
-        const finalCheck = extractCleanResponse();
+        const finalCheck = await buildFinalResult();
         if (finalCheck) {
           resolve(finalCheck);
         } else {
@@ -294,8 +327,8 @@ if (!window.hasAi2HeroBridgeGemini) {
         if (hasStartedGenerating && !isGenerating) {
           // Nút Stop không còn / hoặc đã dứt câu -> Đợi 800ms debounce để lấy trọn vẹn câu cuối
           if (!finishDebounceTimer) {
-            finishDebounceTimer = setTimeout(() => {
-              const resultText = extractCleanResponse();
+            finishDebounceTimer = setTimeout(async () => {
+              const resultText = await buildFinalResult();
               if (resultText && resultText.trim().length > 0) {
                 if (observer) observer.disconnect();
                 clearInterval(intervalCheck);
