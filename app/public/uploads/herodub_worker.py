@@ -198,6 +198,97 @@ API_BASE_URL = "https://www.ai2hero.com/api/hero-dub"
 CONFIG_FILE = "config.json"
 WORKSPACE_DIR = "workspace"
 
+def generate_publishing_suite(task, translated_segments, thumb_src, duration_sec, bridge_server, headers, API_BASE_URL):
+    """
+    AI Publishing Suite: Tự động viết lại Tiêu đề Tiếng Việt giật tít, Mô tả nội dung, Bộ Hashtags và Thiết kế lại Thumbnail.
+    """
+    task_id = task.get("id")
+    source_title = task.get("sourceTitle") or task.get("source_title") or f"video_{task_id}"
+    context_str = task.get("translateContext", "")
+
+    # 1. Trích xuất 10-15 câu thoại phụ đề tiếng Việt tiêu biểu
+    sample_subs = []
+    if translated_segments:
+        total = len(translated_segments)
+        step = max(1, total // 12)
+        sample_subs = [seg.get('text', '') for idx, seg in enumerate(translated_segments) if idx % step == 0][:15]
+    
+    subs_text = "\n".join([f"- {s}" for s in sample_subs if s]) if sample_subs else "(Không có phụ đề)"
+
+    # 2. Đọc ảnh bìa Thumbnail gốc (nếu có)
+    img_b64 = None
+    if thumb_src and os.path.exists(thumb_src):
+        try:
+            import base64
+            with open(thumb_src, "rb") as img_f:
+                b64_data = base64.b64encode(img_f.read()).decode('utf-8')
+                img_b64 = f"data:image/jpeg;base64,{b64_data}"
+        except Exception as e:
+            print(Fore.YELLOW + f"  [!] Khong the doc anh thumbnail: {e}")
+
+    # 3. Tạo Multi-Modal Prompt
+    prompt = f"""Bạn là Giám đốc Sáng tạo Nội dung & Biên tập viên Phim chuyên nghiệp.
+Dưới đây là thông tin video:
+- Tiêu đề gốc: "{source_title}"
+- Bối cảnh/Từ điển: {context_str}
+- Các câu thoại tiêu biểu trong video (đã dịch sang tiếng Việt):
+{subs_text}
+
+YÊU CẦU BẮT BUỘC:
+1. VIẾT LẠI TIÊU ĐỀ VIDEO: Dịch và viết lại sang tiếng Việt thật giật tít, hấp dẫn, kịch tính, chuẩn SEO YouTube/TikTok (dưới 85 ký tự, khơi gợi tò mò, không dùng từ sáo rỗng).
+2. MÔ TẢ NỘI DUNG (Description): Đoạn văn ngắn 3-4 câu giới thiệu tình huống kịch tính nhất của video, kích thích khán giả xem hết.
+3. BỘ HASHTAGS: 6-8 hashtag chuẩn xu hướng bắt đầu bằng dấu # (Ví dụ: #phimngan #reviewphim #tomtatphim #xuhuong #phimhay).
+4. THIẾT KẾ LẠI ẢNH BÌA: Nếu có ảnh bìa đính kèm, hãy phân tích ảnh, xóa/dịch chữ tiếng Trung sang tiếng Việt nghệ thuật nổi bật, giữ nguyên 100% nhân vật và bố cục.
+
+ĐỊNH DẠNG TRẢ VỀ: Trả về ĐÚNG MÃ JSON thuần túy (KHÔNG bọc trong markdown code block ```json, KHÔNG thêm lời chào hay giải thích):
+{{
+  "new_title": "Tiêu đề tiếng Việt giật tít",
+  "description": "Đoạn mô tả ngắn 3-4 câu...",
+  "hashtags": "#phimngan #reviewphim #tomtatphim #xuhuong #phimhay",
+  "summary": "Tóm tắt ngắn 1 câu"
+}}"""
+
+    result = {
+        "new_title": source_title,
+        "description": f"Video thuyết minh: {source_title}. Theo dõi những tình tiết hấp dẫn và kịch tính nhất trong tập này!",
+        "hashtags": "#phimngan #reviewphim #tomtatphim #xuhuong #phimhay",
+        "new_thumbnail_url": None
+    }
+
+    # 4. Gửi qua WebSocket Bridge (Gemini) nếu Extension kết nối
+    if bridge_server and bridge_server.is_connected():
+        print(Fore.CYAN + f"  [⚡ WebSocket Publishing Suite] Dang gui Tiêu đề + Phụ đề + Ảnh sang Gemini...")
+        attachments = [img_b64] if img_b64 else []
+        ws_res = bridge_server.execute_job(prompt, attachments=attachments, target_ai="gemini", timeout=90)
+        if ws_res and ws_res.get("success") and ws_res.get("result"):
+            raw_out = ws_res.get("result", "").strip()
+            raw_out = re.sub(r"^```(?:json)?\s*", "", raw_out, flags=re.IGNORECASE)
+            raw_out = re.sub(r"\s*```$", "", raw_out, flags=re.IGNORECASE).strip()
+            
+            # Trích xuất URL ảnh nếu có markdown ![Image](...)
+            img_match = re.search(r'!\[.*?\]\((https?://[^\s\)]+)\)', raw_out)
+            if img_match:
+                result["new_thumbnail_url"] = img_match.group(1)
+                raw_out = re.sub(r'!\[.*?\]\(https?://[^\s\)]+\)', '', raw_out).strip()
+
+            try:
+                # Tìm JSON block trong response
+                json_match = re.search(r'(\{[\s\S]*\})', raw_out)
+                if json_match:
+                    parsed = json.loads(json_match.group(1))
+                    if isinstance(parsed, dict):
+                        if parsed.get("new_title"):
+                            result["new_title"] = parsed.get("new_title").strip()
+                        if parsed.get("description"):
+                            result["description"] = parsed.get("description").strip()
+                        if parsed.get("hashtags"):
+                            result["hashtags"] = parsed.get("hashtags").strip()
+                        print(Fore.GREEN + f"  [⚡ WebSocket Publishing Suite] Da tao Tieu de moi: {result['new_title']}")
+            except Exception as parse_e:
+                print(Fore.YELLOW + f"  [!] Parse Publishing Suite JSON error ({parse_e}).")
+
+    return result
+
 def get_device_info():
     return {
         "deviceName": socket.gethostname(),
@@ -1676,9 +1767,24 @@ if __name__ == '__main__':
          return
 
     # 4. COMPLETED 
-    print(Fore.CYAN + "[-] Dang luu ket qua Local...")
-    requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "uploading", "progress": 100}, headers=headers)
+    # 4. AI PUBLISHING SUITE (Tự động tạo Tiêu đề mới, Mô tả, Hashtags, Thumbnail & File TXT)
+    print(Fore.CYAN + "[-] Dang kich hoat AI Publishing Suite de dong goi tu lieu dang bai...")
     
+    # Tìm ảnh thumbnail gốc trong thư mục video (nếu có)
+    thumb_src = None
+    if source_url and not (source_url.startswith("http://") or source_url.startswith("https://")):
+        source_dir = os.path.dirname(source_url)
+        if os.path.isdir(source_dir):
+            raw_base = os.path.splitext(os.path.basename(source_url))[0]
+            for ext in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
+                candidate = os.path.join(source_dir, f"{raw_base}{ext}")
+                if os.path.exists(candidate):
+                    thumb_src = candidate
+                    break
+
+    pub_pack = generate_publishing_suite(task, translated_segments, thumb_src, duration_sec, bridge_server, headers, API_BASE_URL)
+    new_title = pub_pack.get("new_title") or task.get("sourceTitle") or f"video_{task_id}"
+
     final_output_path = os.path.abspath(os.path.join(workspace, "output.mp4"))
     vi_srt_abs_path = os.path.abspath(os.path.join(workspace, "vi.srt"))
     
@@ -1686,112 +1792,85 @@ if __name__ == '__main__':
     output_folder = task.get("outputFolder")
     if output_folder and os.path.isdir(output_folder):
         try:
-            # Lấy tên gốc của video
-            raw_source = source_url or task.get("sourceTitle") or f"video_{task_id}"
-            if raw_source.startswith("http://") or raw_source.startswith("https://"):
-                base_name = task.get("sourceTitle") or os.path.basename(raw_source)
-            else:
-                base_name = os.path.basename(raw_source)
-                
-            # Xoa duoi file triet de de tranh loi .mp4.mp4
-            base_name = os.path.splitext(base_name)[0]
-            
-            # Làm sạch tên file (xóa ký tự cấm Windows & giới hạn độ dài an toàn < 180 ký tự)
+            # Tên file mới dựa trên Tiêu đề tiếng Việt đã được tối ưu SEO
             import re
-            base_name = re.sub(r'[\\/:*?"<>|]', '_', base_name).strip()
-            if len(base_name) > 180:
-                base_name = base_name[:180]
+            base_name = re.sub(r'[\\/:*?"<>|]', '_', new_title).strip()
+            if len(base_name) > 150:
+                base_name = base_name[:150]
                 
             if not base_name or base_name.strip() == "":
                 base_name = f"video_{task_id}"
 
             dest_video = os.path.join(output_folder, f"{base_name}.mp4")
             dest_srt = os.path.join(output_folder, f"{base_name}.srt")
+            dest_txt = os.path.join(output_folder, f"{base_name}.txt")
+            dest_thumb = os.path.join(output_folder, f"{base_name}.jpg")
             
             shutil.copy2(final_output_path, dest_video)
             shutil.copy2(vi_srt_abs_path, dest_srt)
             
-            # Tự động tìm và copy ảnh thumbnail trùng tên trong thư mục gốc
-            if source_url and not (source_url.startswith("http://") or source_url.startswith("https://")):
-                source_dir = os.path.dirname(source_url)
-                if os.path.isdir(source_dir):
-                    for ext in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
-                        thumb_src = os.path.join(source_dir, f"{base_name}{ext}")
-                        if os.path.exists(thumb_src):
-                            thumb_dest = os.path.join(output_folder, f"{base_name}{ext}")
-                            try:
-                                # Kiểm tra xem Task có yêu cầu Thiết kế lại Thumbnail AI hay không
-                                if task.get("redesignThumbnailEnabled"):
-                                    print(Fore.CYAN + "[-] Phat hien yeu cau Thiet ke lai Thumbnail AI. Dang gui sang Extension...")
-                                    try:
-                                        import base64
-                                        with open(thumb_src, "rb") as img_f:
-                                            b64_data = base64.b64encode(img_f.read()).decode('utf-8')
-                                            img_b64 = f"data:image/jpeg;base64,{b64_data}"
+            # Xuất file .txt tư liệu đăng bài chuẩn chỉnh
+            txt_body = f"""================================================================================
+🎬 TƯ LIỆU ĐĂNG BÀI VIDEO (AI2HERO PUBLISHING SUITE)
+================================================================================
 
-                                        redesign_res = requests.post(f"{API_BASE_URL}/thumbnail-redesign", json={
-                                            "taskId": task_id,
-                                            "imageBase64": img_b64
-                                        }, headers=headers, timeout=30)
+📌 TIÊU ĐỀ VIDEO (TITLE):
+{pub_pack.get('new_title', new_title)}
 
-                                        if redesign_res.status_code not in [200, 202]:
-                                            print(Fore.RED + f"[!] API loi {redesign_res.status_code}: {redesign_res.text[:150]}")
-                                        
-                                        res_json = redesign_res.json() if redesign_res.status_code in [200, 202] else {}
-                                        job_id = res_json.get("jobId")
-                                        new_thumb_url = res_json.get("resultThumbnailUrl")
+📝 MÔ TẢ NỘI DUNG (DESCRIPTION):
+{pub_pack.get('description', '')}
 
-                                        # Nếu server trả về 202 Accepted (Đang xử lý), Polling liên tục tới khi nhận xong
-                                        if redesign_res.status_code == 202 and job_id:
-                                            print(Fore.CYAN + f"[-] Extension dang thiet ke anh bia (Job #{job_id[:8]}). Dang cho ket qua...")
-                                            poll_start = time.time()
-                                            while time.time() - poll_start < 120:
-                                                time.sleep(3)
-                                                try:
-                                                    poll_res = requests.get(f"{API_BASE_URL}/thumbnail-redesign?jobId={job_id}", headers=headers, timeout=15)
-                                                    if poll_res.status_code == 200:
-                                                        p_json = poll_res.json()
-                                                        if p_json.get("success"):
-                                                            new_thumb_url = p_json.get("resultThumbnailUrl")
-                                                            break
-                                                    elif poll_res.status_code != 202:
-                                                        print(Fore.YELLOW + f"[!] Polling báo loi ({poll_res.status_code}): {poll_res.text[:150]}")
-                                                        break
-                                                except Exception as p_err:
-                                                    print(Fore.YELLOW + f"[!] Loi khi poll Thumbnail Job: {p_err}")
+🏷️ HASHTAGS:
+{pub_pack.get('hashtags', '')}
 
-                                        if new_thumb_url and (new_thumb_url.startswith("http://") or new_thumb_url.startswith("https://")):
-                                            img_data = requests.get(new_thumb_url, timeout=30).content
-                                            with open(thumb_dest, 'wb') as handler:
-                                                handler.write(img_data)
-                                            print(Fore.GREEN + f"[✓] Da thiet ke & luu anh Thumbnail AI Tieng Viet moi: {os.path.basename(thumb_dest)}")
-                                        else:
-                                            print(Fore.RED + f"[!] AI Redesign thiet ke thumbnail khong thanh cong (Khong nhan duoc hinh anh). Su dung anh goc nhu phuong an du phong.")
-                                            shutil.copy2(thumb_src, thumb_dest)
-                                    except Exception as r_err:
-                                        print(Fore.RED + f"[!] Loi khi thiet ke AI Thumbnail: {r_err}. Su dung anh goc du phong.")
-                                        shutil.copy2(thumb_src, thumb_dest)
-                                else:
-                                    shutil.copy2(thumb_src, thumb_dest)
-                                    print(Fore.CYAN + f"[-] Da copy anh thumbnail (doi ten trung video): {os.path.basename(thumb_dest)}")
-                            except Exception as thumb_err:
-                                print(Fore.YELLOW + f"[!] Khong the copy thumbnail: {thumb_err}")
-                            break
+⏱️ THÔNG SỐ VIDEO:
+- Thời lượng: {duration_sec}s
+- Số câu thoại phụ đề: {len(translated_segments)} câu
+- Tạo bởi: HeroDub Studio (Ai2Hero Publishing Suite)
+
+📁 TẬP TIN TRONG THƯ MỤC:
+- Video: {base_name}.mp4
+- Phụ đề: {base_name}.srt
+- Ảnh bìa: {base_name}.jpg
+================================================================================
+"""
+            with open(dest_txt, 'w', encoding='utf-8') as f:
+                f.write(txt_body)
+            print(Fore.GREEN + f"[✓] Da xuat file TXT dang bai: {os.path.basename(dest_txt)}")
+
+            # Lưu ảnh Thumbnail (đã thiết kế lại hoặc ảnh gốc)
+            if pub_pack.get("new_thumbnail_url") and (pub_pack["new_thumbnail_url"].startswith("http://") or pub_pack["new_thumbnail_url"].startswith("https://")):
+                try:
+                    img_data = requests.get(pub_pack["new_thumbnail_url"], timeout=30).content
+                    with open(dest_thumb, 'wb') as handler:
+                        handler.write(img_data)
+                    print(Fore.GREEN + f"[✓] Da luu anh Thumbnail moi: {os.path.basename(dest_thumb)}")
+                except Exception as dl_err:
+                    print(Fore.YELLOW + f"[!] Khong the tai anh thumbnail moi: {dl_err}")
+                    if thumb_src and os.path.exists(thumb_src):
+                        shutil.copy2(thumb_src, dest_thumb)
+            elif thumb_src and os.path.exists(thumb_src):
+                shutil.copy2(thumb_src, dest_thumb)
+                print(Fore.CYAN + f"[-] Da copy anh thumbnail: {os.path.basename(dest_thumb)}")
             
             final_output_path = dest_video
             vi_srt_abs_path = dest_srt
-            print(Fore.CYAN + f"[-] Da luu ket qua vao: {output_folder} voi ten: {base_name}")
+            print(Fore.CYAN + f"[-] Da luu toan bo tu lieu vao: {output_folder}")
         except Exception as e:
             print(Fore.YELLOW + f"[!] Khong the luu vao thu muc dich {output_folder}: {e}")
 
-    print(Fore.GREEN + Style.BRIGHT + f"[\u2713] HOAN THANH TASK #{task_id}!")
+    print(Fore.GREEN + Style.BRIGHT + f"[✓] HOAN THANH TASK #{task_id}!")
     
     requests.patch(f"{API_BASE_URL}/tasks", json={
         "action": "complete", 
         "taskId": task_id,
         "status": "completed",
         "resultVideoUrl": final_output_path,
-        "resultSrtUrl": vi_srt_abs_path
+        "resultSrtUrl": vi_srt_abs_path,
+        "translatedTitle": pub_pack.get("new_title"),
+        "videoDescription": pub_pack.get("description"),
+        "videoHashtags": pub_pack.get("hashtags"),
+        "resultThumbnailUrl": pub_pack.get("new_thumbnail_url")
     }, headers=headers)
 
     # 5. AUTO CLEANUP WORKSPACE (Tự động xóa dọn dẹp giải phóng ổ đĩa)

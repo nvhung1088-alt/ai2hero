@@ -256,6 +256,7 @@ export default function DashboardClient({
   const [customThumbnailLogoUrl, setCustomThumbnailLogoUrl] = useState<string>('');
   const [thumbnailAiAppSlug, setThumbnailAiAppSlug] = useState<string>('');
   const [thumbnailAiModel, setThumbnailAiModel] = useState<string>('');
+  const [publishingPackEnabled, setPublishingPackEnabled] = useState<boolean>(true);
 
   const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
 
@@ -296,27 +297,28 @@ export default function DashboardClient({
           if (s.customThumbnailLogoUrl !== undefined) setCustomThumbnailLogoUrl(s.customThumbnailLogoUrl);
           if (s.thumbnailAiAppSlug !== undefined) setThumbnailAiAppSlug(s.thumbnailAiAppSlug);
           if (s.thumbnailAiModel !== undefined) setThumbnailAiModel(s.thumbnailAiModel);
+          if (s.publishingPackEnabled !== undefined) setPublishingPackEnabled(s.publishingPackEnabled);
           setHasLoadedSettings(true);
           return;
         }
-      } catch (e) {}
-    }
-
-    if (!hasLoadedSettings && connectedAiApps && connectedAiApps.length > 0) {
-      const deepseekApp = connectedAiApps.find(app => app.slug === 'deepseek');
-      if (deepseekApp) {
-        setSelectedAiAppSlug(deepseekApp.slug);
-        if (deepseekApp.models && deepseekApp.models.length > 0) {
-          setSelectedAiModel(deepseekApp.models[0].name);
-        }
-      } else {
-        setSelectedAiAppSlug(connectedAiApps[0].slug);
-        if (connectedAiApps[0].models && connectedAiApps[0].models.length > 0) {
-          setSelectedAiModel(connectedAiApps[0].models[0].name);
+      } catch (err) {
+        console.error('Failed to parse heroDubSettings:', err);
+      }
+      
+      if (connectedAiApps && connectedAiApps.length > 0) {
+        const deepseekApp = connectedAiApps.find(app => app.slug === 'deepseek');
+        if (deepseekApp) {
+          setSelectedAiAppSlug(deepseekApp.slug);
+          if (deepseekApp.models && deepseekApp.models.length > 0) {
+            setSelectedAiModel(deepseekApp.models[0].name);
+          }
+        } else {
+          setSelectedAiAppSlug(connectedAiApps[0].slug);
+          if (connectedAiApps[0].models && connectedAiApps[0].models.length > 0) {
+            setSelectedAiModel(connectedAiApps[0].models[0].name);
+          }
         }
       }
-      setHasLoadedSettings(true);
-    } else if (!hasLoadedSettings && connectedAiApps) {
       setHasLoadedSettings(true);
     }
   }, [connectedAiApps, hasLoadedSettings]);
@@ -327,11 +329,12 @@ export default function DashboardClient({
         sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, videoSlowdown, subtitleMode, ttsEnabled, ttsEngine,
         ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder,
         selectedAiAppSlug, selectedAiModel,
-        redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel
+        redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel,
+        publishingPackEnabled
       };
       localStorage.setItem('heroDubSettings', JSON.stringify(settings));
     }
-  }, [sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, videoSlowdown, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel, hasLoadedSettings]);
+  }, [sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, videoSlowdown, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel, publishingPackEnabled, hasLoadedSettings]);
 
   const [creatingTask, setCreatingTask] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -1139,6 +1142,8 @@ export default function DashboardClient({
         setThumbnailAiAppSlug={setThumbnailAiAppSlug}
         thumbnailAiModel={thumbnailAiModel}
         setThumbnailAiModel={setThumbnailAiModel}
+        publishingPackEnabled={publishingPackEnabled}
+        setPublishingPackEnabled={setPublishingPackEnabled}
         scanProjects={scanProjects}
         scanFolderPath={scanFolderPath}
         setScanFolderPath={setScanFolderPath}

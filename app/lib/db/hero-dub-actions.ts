@@ -78,6 +78,7 @@ export async function createDubTaskAction(data: {
   customThumbnailLogoUrl?: string;
   thumbnailAiAppSlug?: string;
   thumbnailAiModel?: string;
+  publishingPackEnabled?: boolean;
   projectId?: number;
   scanConfigId?: number;
   brandingEnabled?: boolean;
@@ -129,6 +130,9 @@ export async function createDubTaskAction(data: {
       if (data.videoSlowdown && existing.videoSlowdown !== data.videoSlowdown) {
         updatePayload.videoSlowdown = data.videoSlowdown;
       }
+      if (data.publishingPackEnabled !== undefined && existing.publishingPackEnabled !== data.publishingPackEnabled) {
+        updatePayload.publishingPackEnabled = data.publishingPackEnabled;
+      }
       if (Object.keys(updatePayload).length > 0) {
         await db
           .update(dubTasks)
@@ -170,6 +174,7 @@ export async function createDubTaskAction(data: {
         customThumbnailLogoUrl: data.customThumbnailLogoUrl || null,
         thumbnailAiAppSlug: data.thumbnailAiAppSlug || null,
         thumbnailAiModel: data.thumbnailAiModel || null,
+        publishingPackEnabled: data.publishingPackEnabled ?? true,
         status: 'pending',
         progress: '0',
         dedupeKey,
@@ -994,6 +999,10 @@ export async function completeTaskAction(
   data: {
     resultVideoUrl: string;
     resultSrtUrl: string;
+    resultThumbnailUrl?: string;
+    translatedTitle?: string;
+    videoDescription?: string;
+    videoHashtags?: string;
     preview?: any;
     actualCost?: number;
   }
@@ -1006,6 +1015,10 @@ export async function completeTaskAction(
         progress: '100',
         resultVideoUrl: data.resultVideoUrl,
         resultSrtUrl: data.resultSrtUrl,
+        resultThumbnailUrl: data.resultThumbnailUrl || undefined,
+        translatedTitle: data.translatedTitle || undefined,
+        videoDescription: data.videoDescription || undefined,
+        videoHashtags: data.videoHashtags || undefined,
         resultPreview: data.preview || null,
         actualCost: data.actualCost || 0,
         completedAt: new Date(),

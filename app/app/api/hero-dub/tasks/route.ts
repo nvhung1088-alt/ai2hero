@@ -73,6 +73,10 @@ export async function PATCH(request: Request) {
       progress,
       error,
       sourceTitle,
+      translatedTitle,
+      videoDescription,
+      videoHashtags,
+      resultThumbnailUrl,
       resultVideoUrl,
       resultSrtUrl,
       preview,
@@ -91,6 +95,10 @@ export async function PATCH(request: Request) {
       const result = await completeTaskAction(taskId, auth.workerId, {
         resultVideoUrl,
         resultSrtUrl,
+        resultThumbnailUrl,
+        translatedTitle,
+        videoDescription,
+        videoHashtags,
         preview,
         actualCost,
       });

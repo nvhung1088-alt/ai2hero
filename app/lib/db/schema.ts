@@ -2395,12 +2395,13 @@ export const dubTasks = pgTable('dub_tasks', {
   videoSlowdown: varchar('video_slowdown', { length: 10 }).notNull().default('1.0'),
   translateContext: text('translate_context'),
   
-  // === Thumbnail ===
+  // === Thumbnail & Publishing Suite ===
   redesignThumbnailEnabled: boolean('redesign_thumbnail_enabled').notNull().default(false),
   thumbnailLogoSource: varchar('thumbnail_logo_source', { length: 20 }).notNull().default('project'),
   customThumbnailLogoUrl: text('custom_thumbnail_logo_url'),
   thumbnailAiAppSlug: varchar('thumbnail_ai_app_slug', { length: 100 }),
   thumbnailAiModel: varchar('thumbnail_ai_model', { length: 100 }),
+  publishingPackEnabled: boolean('publishing_pack_enabled').notNull().default(true),
   
   // === Branding ===
   projectId: integer('project_id').references(() => dubProjects.id, { onDelete: 'set null' }),
@@ -2420,6 +2421,9 @@ export const dubTasks = pgTable('dub_tasks', {
   workerId: integer('worker_id').references(() => dubWorkers.id, { onDelete: 'set null' }),
 
   // === Output ===
+  translatedTitle: varchar('translated_title', { length: 500 }),
+  videoDescription: text('video_description'),
+  videoHashtags: text('video_hashtags'),
   resultVideoUrl: text('result_video_url'),
   resultSrtUrl: text('result_srt_url'),
   resultThumbnailUrl: text('result_thumbnail_url'),

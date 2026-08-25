@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Filter,
-  Laptop
+  Laptop,
+  Copy
 } from 'lucide-react';
 import { showToast } from '@/app/(dashboard)/sim/sim-ui-helpers';
 import { getStatusBadge, getPlatformLabel } from '../_shared/dub-ui-helpers';
@@ -306,13 +307,58 @@ export default function DubTaskTable({
                         {(() => {
                           const rawTitle = task.sourceTitle || task.taskTitle || task.sourceUrl || '';
                           const cleanTitle = rawTitle ? rawTitle.split(/[/\\]/).pop() || rawTitle : 'Chưa đặt tên tác vụ';
+                          const hasTranslatedTitle = Boolean(task.translatedTitle && task.translatedTitle.trim().length > 0);
+                          
                           return (
-                            <span className="font-extrabold text-white truncate group-hover:text-amber-400 transition-colors" title={cleanTitle}>
-                              {cleanTitle}
-                            </span>
+                            <div className="flex flex-col gap-0.5">
+                              {hasTranslatedTitle ? (
+                                <>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-extrabold text-amber-300 truncate group-hover:text-amber-200 transition-colors text-xs" title={task.translatedTitle}>
+                                      ✨ {task.translatedTitle}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault(); e.stopPropagation();
+                                        navigator.clipboard.writeText(task.translatedTitle!);
+                                        showToast('Đã sao chép Tiêu đề Tiếng Việt!', 'success');
+                                      }}
+                                      className="text-gray-400 hover:text-amber-300 p-0.5 rounded transition-colors shrink-0"
+                                      title="Sao chép Tiêu đề Tiếng Việt"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                  <span className="text-[10px] text-gray-500 truncate" title={`Tiêu đề gốc: ${cleanTitle}`}>
+                                    Gốc: {cleanTitle}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="font-extrabold text-white truncate group-hover:text-amber-400 transition-colors" title={cleanTitle}>
+                                  {cleanTitle}
+                                </span>
+                              )}
+                            </div>
                           );
                         })()}
                         <div className="flex items-center gap-1.5 flex-wrap">
+                          {task.videoDescription ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault(); e.stopPropagation();
+                                const packText = `📌 TIÊU ĐỀ:\n${task.translatedTitle || task.sourceTitle || ''}\n\n📝 MÔ TẢ:\n${task.videoDescription || ''}\n\n🏷️ HASHTAGS:\n${task.videoHashtags || ''}`;
+                                navigator.clipboard.writeText(packText);
+                                showToast('Đã sao chép Trọn bộ Tư liệu Đăng bài (Tiêu đề + Mô tả + Tags)!', 'success');
+                              }}
+                              className="text-[9px] bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-1 cursor-pointer transition-colors border border-amber-500/30"
+                              title="Sao chép Trọn bộ Tư liệu Đăng bài (Tiêu đề, Mô tả, Hashtags)"
+                            >
+                              <Copy className="h-2.5 w-2.5" />
+                              <span>Copy Bài Đăng</span>
+                            </button>
+                          ) : null}
                           <button 
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigator.clipboard.writeText(String(task.id)); showToast('Đã copy ID tác vụ', 'success'); }}
                             className="text-[9px] bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 px-1.5 py-0.5 rounded font-mono cursor-pointer transition-colors"

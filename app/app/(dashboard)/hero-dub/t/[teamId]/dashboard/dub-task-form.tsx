@@ -123,6 +123,8 @@ interface DubTaskFormProps {
   setThumbnailProjectId?: (_id: number | '') => void;
   thumbnailLogoPosition?: string;
   setThumbnailLogoPosition?: (_pos: string) => void;
+  publishingPackEnabled?: boolean;
+  setPublishingPackEnabled?: (_val: boolean) => void;
 }
 
 export default function DubTaskForm({
@@ -210,8 +212,11 @@ export default function DubTaskForm({
   setThumbnailProjectId: externalSetThumbnailProjectId,
   thumbnailLogoPosition: externalThumbnailLogoPosition,
   setThumbnailLogoPosition: externalSetThumbnailLogoPosition,
+  publishingPackEnabled: externalPublishingPackEnabled,
+  setPublishingPackEnabled: externalSetPublishingPackEnabled,
 }: DubTaskFormProps) {
   // Local fallback states if not passed as props
+  const [internalPublishingPackEnabled, setInternalPublishingPackEnabled] = React.useState(true);
   const [internalRedesignEnabled, setInternalRedesignEnabled] = React.useState(false);
   const [internalLogoSource, setInternalLogoSource] = React.useState('project');
   const [internalCustomLogoUrl, setInternalCustomLogoUrl] = React.useState('');
@@ -220,6 +225,8 @@ export default function DubTaskForm({
   const [internalThumbnailProjectId, setInternalThumbnailProjectId] = React.useState<number | ''>('');
   const [internalThumbnailLogoPosition, setInternalThumbnailLogoPosition] = React.useState('top-left');
 
+  const publishingPackEnabled = externalPublishingPackEnabled !== undefined ? externalPublishingPackEnabled : internalPublishingPackEnabled;
+  const setPublishingPackEnabled = externalSetPublishingPackEnabled || setInternalPublishingPackEnabled;
   const redesignThumbnailEnabled = externalRedesignEnabled !== undefined ? externalRedesignEnabled : internalRedesignEnabled;
   const setRedesignThumbnailEnabled = externalSetRedesignEnabled || setInternalRedesignEnabled;
   const thumbnailLogoSource = externalLogoSource !== undefined ? externalLogoSource : internalLogoSource;
@@ -994,6 +1001,30 @@ export default function DubTaskForm({
                   <option value="2.5">Rất lớn (2.5)</option>
                 </select>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* AI Publishing Suite (Tự động viết lại Tiêu đề, Mô tả, Hashtags & File TXT) */}
+        <div className="space-y-3 pt-2 border-t border-white/5">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+              <span>✨ Tư Liệu Đăng Bài AI (Tiêu đề + Mô tả + Hashtags + TXT)</span>
+            </label>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={publishingPackEnabled}
+                onChange={(e) => setPublishingPackEnabled(e.target.checked)}
+                disabled={creatingTask}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
+          {publishingPackEnabled && (
+            <div className="text-[10px] text-gray-400 bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
+              💡 Sau khi dịch & lồng tiếng, AI sẽ tự động giật tít lại Tiêu đề tiếng Việt chuẩn SEO, viết bài Mô tả tóm tắt nội dung kịch tính, tạo bộ 6-8 Hashtags xu hướng và xuất sẵn file <code className="text-amber-300 font-mono">.txt</code> để bạn chỉ cần copy đăng bài lên YouTube, TikTok, Facebook!
             </div>
           )}
         </div>
