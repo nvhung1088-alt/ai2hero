@@ -72,38 +72,9 @@ if (!window.hasAi2HeroBridgeGemini) {
     });
     await new Promise((r) => setTimeout(r, 200));
 
-    // 3. Điền Prompt vào khung nhập một cách an toàn và chuẩn xác (kích hoạt Lit/Angular state)
-    inputEl.focus();
-
-    if (inputEl.tagName === 'TEXTAREA' || inputEl.tagName === 'INPUT') {
-      inputEl.value = promptText;
-      inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-      inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-    } else {
-      // Dành cho Rich Contenteditable DIV (Gemini Quill / Lit component)
-      inputEl.innerHTML = '';
-      const lines = promptText.split('\n');
-      for (const line of lines) {
-        const p = document.createElement('p');
-        if (line && line.trim()) {
-          p.textContent = line;
-        } else {
-          p.appendChild(document.createElement('br'));
-        }
-        inputEl.appendChild(p);
-      }
-
-      // Kích hoạt tất cả các event cần thiết cho Lit, Angular và Quill
-      inputEl.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
-      inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-      inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-    }
-
-    await new Promise((r) => setTimeout(r, 300));
-
-    // 4. Xử lý đính kèm nếu có (Chỉ đính kèm duy nhất ảnh của job hiện tại)
+    // 3. Nếu có file đính kèm (Ảnh): DÁN ẢNH TRƯỚC
     if (attachments && Array.isArray(attachments) && attachments.length > 0) {
-      console.log(`[Ai2Hero Bridge] Đang dán ${attachments.length} file đính kèm...`);
+      console.log(`[Ai2Hero Bridge] Đang dán ${attachments.length} file đính kèm trước...`);
 
       for (const attachItem of attachments) {
         let base64Data = null;
@@ -130,14 +101,43 @@ if (!window.hasAi2HeroBridgeGemini) {
             });
             inputEl.dispatchEvent(pasteEvent);
 
-            // Chờ 1.5s để Gemini tải xong chip preview ảnh trước khi bấm gửi
-            await new Promise((r) => setTimeout(r, 1500));
+            // Chờ 2 giây để Gemini upload và gắn chip preview ảnh xong xuôi
+            await new Promise((r) => setTimeout(r, 2000));
           } catch (e) {
             console.warn('[Ai2Hero Bridge] Lỗi dán file đính kèm:', e);
           }
         }
       }
     }
+
+    // 4. SAU ĐÓ MỚI ĐIỀN TEXT PROMPT VÀO KHUNG NHẬP (Để không bị mất text khi dán ảnh)
+    inputEl.focus();
+
+    if (inputEl.tagName === 'TEXTAREA' || inputEl.tagName === 'INPUT') {
+      inputEl.value = promptText;
+      inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+      inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    } else {
+      // Dành cho Rich Contenteditable DIV (Gemini Quill / Lit component)
+      inputEl.innerHTML = '';
+      const lines = promptText.split('\n');
+      for (const line of lines) {
+        const p = document.createElement('p');
+        if (line && line.trim()) {
+          p.textContent = line;
+        } else {
+          p.appendChild(document.createElement('br'));
+        }
+        inputEl.appendChild(p);
+      }
+
+      // Kích hoạt tất cả các event cần thiết cho Lit, Angular và Quill
+      inputEl.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
+      inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+      inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    }
+
+    await new Promise((r) => setTimeout(r, 600));
 
     // 4. Dò tìm nút Gửi (Send Button)
     const sendSelectors = [

@@ -1858,6 +1858,10 @@ if __name__ == '__main__':
     copy_pack = generate_video_copywriting(task, translated_segments, duration_sec, bridge_server, headers, API_BASE_URL)
     new_title = copy_pack.get("new_title") or task.get("sourceTitle") or f"video_{task_id}"
 
+    # Độ trễ nghỉ 2s để Gemini hoàn tất phiên chat trước khi sang Luồng 2
+    if task.get("redesignThumbnailEnabled"):
+        time.sleep(2.0)
+
     # Luồng 2: Thiết kế lại Thumbnail (Image-Only, nếu được bật)
     new_thumb_url = redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, bridge_server)
     pub_pack = {
