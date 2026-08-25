@@ -347,16 +347,16 @@ Hãy chỉnh sửa và thiết kế lại ảnh bìa này:
 3. BẮT BUỘC giữ nguyên 100% tỷ lệ khung hình gốc của ảnh (Aspect Ratio), kích thước và bố cục. Tuyệt đối không kéo dãn, không méo hình, không đổi tỷ lệ và không cắt xén viền.
 4. Giữ nguyên 100% nhân vật chính, phong cách và bối cảnh của ảnh."""
 
-    ws_res = bridge_server.execute_job(image_prompt, attachments=[img_b64], target_ai="gemini", timeout=90)
+    ws_res = bridge_server.execute_job(image_prompt, attachments=[img_b64], target_ai="gemini", timeout=120)
     if ws_res and ws_res.get("success") and ws_res.get("result"):
         raw_out = str(ws_res.get("result", "")).strip()
-        img_match = re.search(r'!\[.*?\]\((https?://[^\s\)]+)\)', raw_out)
+        img_match = re.search(r'!\[.*?\]\((data:image/[^)]+|https?://[^\s\)]+)\)', raw_out)
         if img_match:
             new_thumb_url = img_match.group(1)
             print(Fore.GREEN + f"  [⚡ WebSocket Image Redesign] Da nhan duoc anh bia thiet ke moi tu Gemini!")
             return new_thumb_url
         else:
-            print(Fore.YELLOW + f"  [!] Gemini chua tao link anh moi ({raw_out[:100]}...).")
+            print(Fore.YELLOW + f"  [!] Gemini chua tao link anh moi ({raw_out[:120]}...).")
     else:
         print(Fore.YELLOW + f"  [!] WebSocket Image Redesign that bai hoac timeout ({ws_res}).")
 

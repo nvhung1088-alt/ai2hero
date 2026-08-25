@@ -170,10 +170,10 @@ if (!window.hasAi2HeroBridgeGemini) {
       sendBtn.click();
     }
 
-    console.log('[Ai2Hero Bridge] Đã gửi lệnh. Bắt đầu lắng nghe phản hồi Gemini theo Stop-Button Lifecycle...');
-
-    // 5. Lắng nghe phản hồi từ Gemini
-    const result = await waitForGeminiResponseLifecycle();
+    // 5. Lắng nghe phản hồi từ Gemini (Phân biệt rõ Image Job và Text Job)
+    const isImageJob = (attachments && Array.isArray(attachments) && attachments.length > 0) || promptText.includes('ảnh bìa') || promptText.includes('thumbnail');
+    console.log(`[Ai2Hero Bridge] Bắt đầu lắng nghe phản hồi Gemini (Tác vụ: ${isImageJob ? 'TẠO ẢNH / IMAGE JOB' : 'TEXT ONLY'})...`);
+    const result = await waitForGeminiResponseLifecycle(isImageJob);
 
     // 6. Dọn dẹp RAM / Phiên chat mới nếu được yêu cầu
     if (autoNewChat) {
@@ -186,11 +186,11 @@ if (!window.hasAi2HeroBridgeGemini) {
   }
 
   /**
-   * Theo dõi vòng đời sinh nội dung của Gemini dựa trên Nút Stop & MutationObserver
+   * Theo dõi vòng đời sinh nội dung của Gemini dựa trên Nút Stop, Loading Spinner & MutationObserver
    */
-  function waitForGeminiResponseLifecycle() {
+  function waitForGeminiResponseLifecycle(isImageJob = false) {
     return new Promise((resolve, reject) => {
-      const MAX_TIMEOUT_MS = 180000; // 3 phút timeout
+      const MAX_TIMEOUT_MS = isImageJob ? 180000 : 120000; // 3 phút cho ảnh, 2 phút cho text
       let hasStartedGenerating = false;
       let lastExtractedText = '';
       let finishDebounceTimer = null;
@@ -216,7 +216,41 @@ if (!window.hasAi2HeroBridgeGemini) {
         return false;
       };
 
-      // Hàm trích xuất text sạch (LOẠI BỎ HOÀN TOÀN THẺ SUY NGHĨ / MODEL THOUGHT)
+      // Selectors nhận diện Spinner / Loading khi đang sinh ảnh Imagen 3
+      const isGeneratingImage = () => {
+        const loadingEls = document.querySelectorAll(
+          'mat-progress-spinner, .image-placeholder, .sparkle-container, [aria-busy="true"], .loading-spinner, .generating-image, image-loading-indicator, [data-test-id*="loading"]'
+        );
+        for (const el of loadingEls) {
+          if (el.offsetParent !== null) return true;
+        }
+        return false;
+      };
+
+      // Tìm kiếm phần tử ảnh đã render hoàn tất trong câu trả lời cuối cùng
+      const findCompletedGeneratedImage = () => {
+        const elements = document.querySelectorAll(
+          'message-content, .message-content, model-response, [data-test-id="model-response"], .response-container-content, .model-response-text'
+        );
+        if (elements.length === 0) return null;
+        const lastEl = elements[elements.length - 1];
+        const imgEls = lastEl.querySelectorAll('img');
+        for (const img of imgEls) {
+          const src = img.src || '';
+          if (
+            src &&
+            !src.startsWith('data:image/svg') &&
+            !src.includes('/avatar') &&
+            !src.includes('googleusercontent.com/a/') &&
+            (img.naturalWidth >= 150 || img.width >= 150 || src.startsWith('data:image') || src.includes('googleusercontent.com'))
+          ) {
+            return img;
+          }
+        }
+        return null;
+      };
+
+      // Hàm trích xuất text sạch
       const extractCleanResponse = () => {
         const responseContainers = [
           'message-content',
@@ -241,30 +275,56 @@ if (!window.hasAi2HeroBridgeGemini) {
 
         if (elements.length === 0) return '';
 
-        // Lấy lượt phản hồi cuối cùng của mô hình
         const lastEl = elements[elements.length - 1];
-
-        // Clone node để lọc sạch các thẻ rác mà không làm ảnh hưởng DOM trang web
         const clone = lastEl.cloneNode(true);
 
-        // LOẠI BỎ TRIỆT ĐỂ: Thẻ suy nghĩ (model-thought, thought-container)
+        // Loại bỏ thẻ suy nghĩ
         const thoughts = clone.querySelectorAll('model-thought, .thought-container, .thinking-content, [data-test-id="model-thought"], .model-thought-container');
         thoughts.forEach((t) => t.remove());
 
-        // Bóc tách ảnh sinh ra (nếu có)
-        const images = clone.querySelectorAll('img:not([alt*="avatar"]):not([alt*="logo"]):not([src*="googleusercontent.com/a/"])');
-        let imgMarkdown = '';
-        if (images.length > 0) {
-          images.forEach((img) => {
-            if (img.src && !img.src.startsWith('data:image/svg')) {
-              imgMarkdown += `\n![Image](${img.src})\n`;
+        return (clone.innerText || clone.textContent || '').trim();
+      };
+
+      // Chuyển đổi ảnh sang Base64 an toàn không bị chặn 403
+      async function convertImgToBase64Safe(imgEl) {
+        if (!imgEl || !imgEl.src) return '';
+        if (imgEl.src.startsWith('data:image/')) return imgEl.src;
+
+        // Cách 1: Fetch blob từ ngữ cảnh tab Gemini
+        try {
+          const res = await fetch(imgEl.src, { credentials: 'include' });
+          if (res.ok) {
+            const blob = await res.blob();
+            if (blob.size > 2000) {
+              return await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = () => resolve(imgEl.src);
+                reader.readAsDataURL(blob);
+              });
             }
-          });
+          }
+        } catch (e) {
+          console.warn('[Ai2Hero Bridge] Fetch blob failed, fallback canvas:', e);
         }
 
-        const cleanText = (clone.innerText || clone.textContent || '').trim();
-        return cleanText;
-      };
+        // Cách 2: Vẽ lên canvas
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = imgEl.naturalWidth || 1024;
+          canvas.height = imgEl.naturalHeight || 1024;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+          if (dataUrl && dataUrl.length > 2000) {
+            return dataUrl;
+          }
+        } catch (e) {
+          console.warn('[Ai2Hero Bridge] Canvas conversion failed:', e);
+        }
+
+        return imgEl.src;
+      }
 
       async function buildFinalResult() {
         const text = extractCleanResponse();
@@ -277,22 +337,10 @@ if (!window.hasAi2HeroBridgeGemini) {
           const imgEls = lastEl.querySelectorAll('img:not([alt*="avatar"]):not([alt*="logo"]):not([src*="googleusercontent.com/a/"])');
           for (const imgEl of imgEls) {
             if (imgEl.src && !imgEl.src.startsWith('data:image/svg')) {
-              try {
-                // Trích xuất Base64 trực tiếp từ canvas để chống triệt để lỗi 403 Forbidden
-                const canvas = document.createElement('canvas');
-                canvas.width = imgEl.naturalWidth || imgEl.width || 1024;
-                canvas.height = imgEl.naturalHeight || imgEl.height || 1024;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-                if (dataUrl && dataUrl.length > 1000) {
-                  finalImgMarkdown += `\n![Image](${dataUrl})\n`;
-                  continue;
-                }
-              } catch (e) {
-                console.warn('[Ai2Hero Bridge] Canvas toDataURL failed:', e);
+              const b64Url = await convertImgToBase64Safe(imgEl);
+              if (b64Url) {
+                finalImgMarkdown += `\n![Image](${b64Url})\n`;
               }
-              finalImgMarkdown += `\n![Image](${imgEl.src})\n`;
             }
           }
         }
@@ -307,37 +355,67 @@ if (!window.hasAi2HeroBridgeGemini) {
         if (finalCheck) {
           resolve(finalCheck);
         } else {
-          reject(new Error('Timeout 3 phút: Không nhận được câu trả lời từ Gemini Web.'));
+          reject(new Error('Timeout: Không nhận được câu trả lời từ Gemini Web.'));
         }
       }, MAX_TIMEOUT_MS);
 
-      // Định kỳ kiểm tra trạng thái nút Stop và tiến trình sinh text (chu kỳ 350ms)
+      // Chu kỳ kiểm tra định kỳ (350ms)
       const intervalCheck = setInterval(() => {
-        const isGenerating = isStopButtonVisible();
+        const isGenerating = isStopButtonVisible() || (isImageJob && isGeneratingImage());
         const currentText = extractCleanResponse();
+        const foundImage = findCompletedGeneratedImage();
 
-        if (isGenerating || currentText.length > 10) {
-          hasStartedGenerating = true;
-          if (finishDebounceTimer && isGenerating) {
-            clearTimeout(finishDebounceTimer);
-            finishDebounceTimer = null;
-          }
-        }
+        if (isImageJob) {
+          // ĐỐI VỚI TÁC VỤ ẢNH: BẮT BUỘC ĐỢI ẢNH XUẤT HIỆN
+          if (foundImage) {
+            hasStartedGenerating = true;
+            if (!finishDebounceTimer) {
+              finishDebounceTimer = setTimeout(async () => {
+                const resultText = await buildFinalResult();
+                if (resultText && resultText.trim().length > 0) {
+                  if (observer) observer.disconnect();
+                  clearInterval(intervalCheck);
+                  clearTimeout(globalTimeout);
 
-        if (hasStartedGenerating && !isGenerating) {
-          // Nút Stop không còn / hoặc đã dứt câu -> Đợi 800ms debounce để lấy trọn vẹn câu cuối
-          if (!finishDebounceTimer) {
-            finishDebounceTimer = setTimeout(async () => {
-              const resultText = await buildFinalResult();
-              if (resultText && resultText.trim().length > 0) {
-                if (observer) observer.disconnect();
-                clearInterval(intervalCheck);
-                clearTimeout(globalTimeout);
-
-                console.log('[Ai2Hero Bridge] Gemini đã sinh xong hoàn tất 100%!');
-                resolve(resultText);
+                  console.log('[Ai2Hero Bridge] Gemini đã sinh ảnh xong hoàn tất 100%!');
+                  resolve(resultText);
+                }
+              }, 1200);
+            }
+          } else {
+            // Nếu chưa thấy ảnh mà đang sinh hoặc mới bắt đầu -> tiếp tục đợi
+            if (isGenerating) {
+              hasStartedGenerating = true;
+              if (finishDebounceTimer) {
+                clearTimeout(finishDebounceTimer);
+                finishDebounceTimer = null;
               }
-            }, 800);
+            }
+          }
+        } else {
+          // ĐỐI VỚI TÁC VỤ TEXT
+          if (isGenerating || currentText.length > 10) {
+            hasStartedGenerating = true;
+            if (finishDebounceTimer && isGenerating) {
+              clearTimeout(finishDebounceTimer);
+              finishDebounceTimer = null;
+            }
+          }
+
+          if (hasStartedGenerating && !isGenerating) {
+            if (!finishDebounceTimer) {
+              finishDebounceTimer = setTimeout(async () => {
+                const resultText = await buildFinalResult();
+                if (resultText && resultText.trim().length > 0) {
+                  if (observer) observer.disconnect();
+                  clearInterval(intervalCheck);
+                  clearTimeout(globalTimeout);
+
+                  console.log('[Ai2Hero Bridge] Gemini đã sinh text xong hoàn tất 100%!');
+                  resolve(resultText);
+                }
+              }, 800);
+            }
           }
         }
       }, 350);
