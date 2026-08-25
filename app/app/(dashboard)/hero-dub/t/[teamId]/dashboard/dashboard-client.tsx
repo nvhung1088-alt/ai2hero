@@ -816,6 +816,7 @@ export default function DashboardClient({
         translateContext: translateContext.trim() || undefined,
         aiAppSlug: selectedAiAppSlug || undefined,
         aiModel: selectedAiModel || undefined,
+        publishingPackEnabled,
         redesignThumbnailEnabled,
         thumbnailLogoSource,
         customThumbnailLogoUrl,
