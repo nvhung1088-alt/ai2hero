@@ -227,13 +227,22 @@ if (!window.hasAi2HeroBridgeGemini) {
         return false;
       };
 
+      // Lấy phần tử model-response cuối cùng (chỉ câu trả lời của AI, không lấy user query)
+      const getLatestModelResponseElement = () => {
+        const modelResponses = document.querySelectorAll(
+          'model-response, [data-test-id="model-response"], .model-response'
+        );
+        if (modelResponses.length > 0) {
+          return modelResponses[modelResponses.length - 1];
+        }
+        return null;
+      };
+
       // Tìm kiếm phần tử ảnh đã render hoàn tất trong câu trả lời cuối cùng
       const findCompletedGeneratedImage = () => {
-        const elements = document.querySelectorAll(
-          'message-content, .message-content, model-response, [data-test-id="model-response"], .response-container-content, .model-response-text'
-        );
-        if (elements.length === 0) return null;
-        const lastEl = elements[elements.length - 1];
+        const lastEl = getLatestModelResponseElement();
+        if (!lastEl) return null;
+
         const imgEls = lastEl.querySelectorAll('img');
         for (const img of imgEls) {
           const src = img.src || '';
@@ -242,6 +251,8 @@ if (!window.hasAi2HeroBridgeGemini) {
             !src.startsWith('data:image/svg') &&
             !src.includes('/avatar') &&
             !src.includes('googleusercontent.com/a/') &&
+            !img.closest('user-query') &&
+            !img.closest('.attachment-preview') &&
             (img.naturalWidth >= 150 || img.width >= 150 || src.startsWith('data:image') || src.includes('googleusercontent.com'))
           ) {
             return img;
@@ -252,30 +263,9 @@ if (!window.hasAi2HeroBridgeGemini) {
 
       // Hàm trích xuất text sạch
       const extractCleanResponse = () => {
-        const responseContainers = [
-          'message-content',
-          '.model-response-text',
-          '.response-container-content',
-          '[data-test-id="model-response"]',
-          '.markdown-main-panel'
-        ];
+        const lastEl = getLatestModelResponseElement();
+        if (!lastEl) return '';
 
-        let elements = [];
-        for (const sel of responseContainers) {
-          const els = document.querySelectorAll(sel);
-          if (els.length > 0) {
-            elements = Array.from(els);
-            break;
-          }
-        }
-
-        if (elements.length === 0) {
-          elements = Array.from(document.querySelectorAll('p, li, code')).filter((el) => el.innerText.length > 10);
-        }
-
-        if (elements.length === 0) return '';
-
-        const lastEl = elements[elements.length - 1];
         const clone = lastEl.cloneNode(true);
 
         // Loại bỏ thẻ suy nghĩ
@@ -328,15 +318,12 @@ if (!window.hasAi2HeroBridgeGemini) {
 
       async function buildFinalResult() {
         const text = extractCleanResponse();
-        const elements = document.querySelectorAll(
-          'message-content, .message-content, model-response, [data-test-id="model-response"], .response-container-content, .model-response-text'
-        );
+        const lastEl = getLatestModelResponseElement();
         let finalImgMarkdown = '';
-        if (elements.length > 0) {
-          const lastEl = elements[elements.length - 1];
+        if (lastEl) {
           const imgEls = lastEl.querySelectorAll('img:not([alt*="avatar"]):not([alt*="logo"]):not([src*="googleusercontent.com/a/"])');
           for (const imgEl of imgEls) {
-            if (imgEl.src && !imgEl.src.startsWith('data:image/svg')) {
+            if (imgEl.src && !imgEl.src.startsWith('data:image/svg') && !imgEl.closest('user-query') && !imgEl.closest('.attachment-preview')) {
               const b64Url = await convertImgToBase64Safe(imgEl);
               if (b64Url) {
                 finalImgMarkdown += `\n![Image](${b64Url})\n`;

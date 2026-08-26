@@ -362,13 +362,13 @@ def redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, br
     # Lọc bỏ tiền tố mã số ví dụ 1276_ để chữ trên ảnh bìa ngắn gọn, nghệ thuật
     display_title_on_image = re.sub(r'^\d+_', '', clean_viet_title).strip()
 
-    print(Fore.CYAN + f"  [⚡ WebSocket Image Redesign] Dang gui anh bia sang Gemini de thiet ke lai theo tieu de moi: '{display_title_on_image}'...")
-    image_prompt = f"""Đây là ảnh bìa (thumbnail) của video: "{display_title_on_image}".
-Hãy chỉnh sửa và thiết kế lại ảnh bìa này:
-1. Xóa toàn bộ chữ tiếng Trung Quốc có trên ảnh gốc.
-2. Thay thế bằng dòng chữ tiêu đề tiếng Việt nổi bật nghệ thuật: "{display_title_on_image}".
-3. BẮT BUỘC giữ nguyên 100% tỷ lệ khung hình gốc của ảnh (Aspect Ratio), kích thước và bố cục. Tuyệt đối không kéo dãn, không méo hình, không đổi tỷ lệ và không cắt xén viền.
-4. Giữ nguyên 100% nhân vật chính, phong cách và bối cảnh của ảnh."""
+    print(Fore.CYAN + f"  [⚡ WebSocket Image Redesign] Dang gui anh bia sang Gemini de ve lai theo tieu de moi: '{display_title_on_image}'...")
+    image_prompt = f"""Tạo hình ảnh (Generate image): Hãy vẽ và tạo lại một bức ảnh thumbnail hoàn chỉnh dựa trên bức ảnh này.
+Yêu cầu bắt buộc:
+1. Xóa sạch toàn bộ chữ tiếng Trung Quốc có trên ảnh gốc.
+2. Vẽ và thay thế bằng dòng chữ tiêu đề tiếng Việt nổi bật nghệ thuật: "{display_title_on_image}".
+3. BẮT BUỘC giữ nguyên 100% tỷ lệ khung hình gốc (Aspect Ratio), kích thước, bố cục, nhân vật và phong cách của ảnh gốc.
+4. BẮT BUỘC xuất ra hình ảnh mới (Generate the new image), không trả lời bằng văn bản giải thích."""
 
     ws_res = bridge_server.execute_job(image_prompt, attachments=[img_b64], target_ai="gemini", timeout=120)
     if ws_res and ws_res.get("success") and ws_res.get("result"):
