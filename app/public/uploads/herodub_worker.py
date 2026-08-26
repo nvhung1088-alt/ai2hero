@@ -208,9 +208,10 @@ bridge_server = LocalWebSocketBridgeServer()
 try:
     import faster_whisper
     import edge_tts
+    import PIL
 except ImportError:
-    print(Fore.YELLOW + "[-] Dang cai dat cac thu vien con thieu (Whisper, Edge-TTS)...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "legacy-cgi", "faster-whisper", "edge-tts"], check=True)
+    print(Fore.YELLOW + "[-] Dang cai dat cac thu vien con thieu (Whisper, Edge-TTS, Pillow)...")
+    subprocess.run([sys.executable, "-m", "pip", "install", "legacy-cgi", "faster-whisper", "edge-tts", "Pillow"], check=True)
     print(Fore.GREEN + "[-] Cai dat thanh cong. Vui long chay lai lenh khoi dong Worker!")
     sys.exit(0)
 
@@ -383,6 +384,71 @@ Hãy chỉnh sửa và thiết kế lại ảnh bìa này:
         print(Fore.YELLOW + f"  [!] WebSocket Image Redesign that bai hoac timeout ({ws_res}).")
 
     return None
+
+def optimize_and_save_thumbnail(img_data, dest_thumb_path, target_res=720, quality=85):
+    """
+    Tối ưu hóa ảnh bìa Thumbnail:
+    - Resize về chuẩn 720p (1280x720 cho ngang, 720x1280 cho dọc/Shorts) giữ nguyên 100% tỷ lệ khung hình.
+    - Nén JPEG cao cấp (quality=85, optimize=True) giảm dung lượng từ vài MB xuống ~150-250 KB siêu nhẹ.
+    """
+    try:
+        from PIL import Image
+        import io
+
+        if isinstance(img_data, (bytes, bytearray)):
+            img = Image.open(io.BytesIO(img_data))
+        elif isinstance(img_data, str) and os.path.exists(img_data):
+            img = Image.open(img_data)
+        else:
+            return False
+
+        # Chuyển đổi RGBA / P sang RGB (tránh lỗi khi lưu file JPEG)
+        if img.mode in ("RGBA", "P"):
+            rgb_img = Image.new("RGB", img.size, (255, 255, 255))
+            if img.mode == "RGBA":
+                rgb_img.paste(img, mask=img.split()[3])
+            else:
+                rgb_img.paste(img)
+            img = rgb_img
+        elif img.mode != "RGB":
+            img = img.convert("RGB")
+
+        orig_w, orig_h = img.size
+        
+        # Resize về chuẩn 720p giữ nguyên Aspect Ratio
+        if orig_w >= orig_h:
+            # Ảnh ngang: Chiều cao = 720
+            if orig_h > target_res:
+                new_h = target_res
+                new_w = int(orig_w * (target_res / orig_h))
+                if new_w > 1280:
+                    new_w = 1280
+                img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        else:
+            # Ảnh dọc: Chiều rộng = 720
+            if orig_w > target_res:
+                new_w = target_res
+                new_h = int(orig_h * (target_res / orig_w))
+                if new_h > 1280:
+                    new_h = 1280
+                img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+        # Lưu file JPEG tối ưu
+        img.save(dest_thumb_path, "JPEG", quality=quality, optimize=True, progressive=True)
+        final_size = os.path.getsize(dest_thumb_path)
+        print(Fore.GREEN + f"[✓] Da toi uu anh Thumbnail 720p ({img.size[0]}x{img.size[1]}, {final_size//1024} KB): {os.path.basename(dest_thumb_path)}")
+        return True
+    except Exception as err:
+        print(Fore.YELLOW + f"[!] Loi toi uu anh Pillow ({err}). Luu truc tiep...")
+        try:
+            if isinstance(img_data, (bytes, bytearray)):
+                with open(dest_thumb_path, "wb") as f:
+                    f.write(img_data)
+            elif isinstance(img_data, str) and os.path.exists(img_data):
+                shutil.copy2(img_data, dest_thumb_path)
+            return True
+        except Exception:
+            return False
 
 def get_device_info():
     return {
@@ -1968,7 +2034,7 @@ if __name__ == '__main__':
                 f.write(txt_body)
             print(Fore.GREEN + f"[✓] Da xuat file TXT dang bai: {os.path.basename(dest_txt)}")
 
-            # Lưu ảnh Thumbnail (đã thiết kế lại hoặc ảnh gốc)
+            # Lưu ảnh Thumbnail (đã thiết kế lại hoặc ảnh gốc) - Tự động tối ưu về chuẩn 720p dung lượng siêu nhẹ
             saved_thumb_success = False
             if pub_pack.get("new_thumbnail_url"):
                 thumb_url = pub_pack["new_thumbnail_url"]
@@ -1978,10 +2044,7 @@ if __name__ == '__main__':
                         b64_str = thumb_url.split(",", 1)[1] if "," in thumb_url else thumb_url
                         img_bytes = base64.b64decode(b64_str)
                         if len(img_bytes) > 5000:
-                            with open(dest_thumb, 'wb') as handler:
-                                handler.write(img_bytes)
-                            print(Fore.GREEN + f"[✓] Da luu anh Thumbnail moi (Base64 HD {len(img_bytes)//1024} KB): {os.path.basename(dest_thumb)}")
-                            saved_thumb_success = True
+                            saved_thumb_success = optimize_and_save_thumbnail(img_bytes, dest_thumb, target_res=720, quality=85)
                     except Exception as b64_err:
                         print(Fore.YELLOW + f"[!] Loi decode Base64 thumbnail: {b64_err}")
                 elif thumb_url.startswith("http://") or thumb_url.startswith("https://"):
@@ -1992,18 +2055,15 @@ if __name__ == '__main__':
                         }
                         resp = requests.get(thumb_url, headers=headers_img, timeout=30)
                         if resp.status_code == 200 and len(resp.content) > 10000 and not resp.content.startswith(b"<!DOCTYPE"):
-                            with open(dest_thumb, 'wb') as handler:
-                                handler.write(resp.content)
-                            print(Fore.GREEN + f"[✓] Da luu anh Thumbnail moi: {os.path.basename(dest_thumb)}")
-                            saved_thumb_success = True
+                            saved_thumb_success = optimize_and_save_thumbnail(resp.content, dest_thumb, target_res=720, quality=85)
                         else:
                             print(Fore.YELLOW + f"[!] Anh online bi chan 403 hoac loi (Size: {len(resp.content)} bytes). Fallback sang anh goc...")
                     except Exception as dl_err:
                         print(Fore.YELLOW + f"[!] Khong the tai anh thumbnail moi: {dl_err}")
 
             if not saved_thumb_success and thumb_src and os.path.exists(thumb_src):
-                shutil.copy2(thumb_src, dest_thumb)
-                print(Fore.CYAN + f"[-] Da copy anh thumbnail goc: {os.path.basename(dest_thumb)}")
+                optimize_and_save_thumbnail(thumb_src, dest_thumb, target_res=720, quality=85)
+                print(Fore.CYAN + f"[-] Da copy va toi uu anh thumbnail goc: {os.path.basename(dest_thumb)}")
             
             final_output_path = dest_video
             vi_srt_abs_path = dest_srt
