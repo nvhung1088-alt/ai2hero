@@ -176,6 +176,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
     - **Web UI Dashboard (`downloader-video-table.tsx`)**: Xây dựng `VideoThumbnailCell` kèm sự kiện `onError`: Tự động chuyển đổi sang Fallback Card Obsidian sang trọng có icon và badge nền tảng khi CDN Douyin/Bilibili bị chặn 403 hoặc hết hạn token HMAC. Chuẩn hóa `object-cover` hiển thị vừa vặn cả poster dọc và ngang.
     - **Modal Phóng to (`downloader-thumbnail-modal.tsx`)**: Gỡ bỏ ràng buộc cứng `aspect-video` (16:9), co giãn linh hoạt theo tỷ lệ khung hình thật của ảnh (`max-h-[60vh] max-w-full object-contain`), bổ sung toggle xem Ảnh gốc / Ảnh đã dịch AI và nút mở ảnh trong tab mới.
     - **Server Actions (`hero-downloader-actions.ts`)**: Bổ sung `translatedThumbnailUrl` trong câu query SELECT fallback của `getDownloaderVideosAction`.
+    - **Khôi phục 100% Thumbnail dự án `dong-vat-khung-long` (Project ID 11)**: Toàn bộ 17 video hoàn thành trên máy đã được tối ưu nén chuẩn 720p (~80-160 KB) và đồng bộ Base64 Data URI trực tiếp vào database Supabase, giải quyết triệt để lỗi 403 Forbidden do CDN Douyin bucket `tos-cn-i-dy`. Reset video lỗi 2481 về trạng thái `force_pending` sẵn sàng tải lại.
 
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
