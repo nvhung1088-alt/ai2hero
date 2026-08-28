@@ -175,8 +175,12 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
     - **Local Python Worker (`downloader.py`)**: Tích hợp `optimize_and_save_thumbnail` nén ảnh JPEG chất lượng cao 85 và resize 720p thông minh (giữ nguyên tỷ lệ ảnh dọc 720x1280 và ảnh ngang 1280x720), giảm dung lượng file xuống ~100-200 KB và cam kết 100% video hoàn thành đều encode Base64 Data URI gửi lên CSDL Supabase. Bổ sung `Pillow>=10.0.0` vào `requirements.txt`.
     - **Web UI Dashboard (`downloader-video-table.tsx`)**: Xây dựng `VideoThumbnailCell` kèm sự kiện `onError`: Tự động chuyển đổi sang Fallback Card Obsidian sang trọng có icon và badge nền tảng khi CDN Douyin/Bilibili bị chặn 403 hoặc hết hạn token HMAC. Chuẩn hóa `object-cover` hiển thị vừa vặn cả poster dọc và ngang.
     - **Modal Phóng to (`downloader-thumbnail-modal.tsx`)**: Gỡ bỏ ràng buộc cứng `aspect-video` (16:9), co giãn linh hoạt theo tỷ lệ khung hình thật của ảnh (`max-h-[60vh] max-w-full object-contain`), bổ sung toggle xem Ảnh gốc / Ảnh đã dịch AI và nút mở ảnh trong tab mới.
-    - **Server Actions (`hero-downloader-actions.ts`)**: Bổ sung `translatedThumbnailUrl` trong câu query SELECT fallback của `getDownloaderVideosAction`.
     - **Khôi phục 100% Thumbnail dự án `dong-vat-khung-long` (Project ID 11)**: Toàn bộ 17 video hoàn thành trên máy đã được tối ưu nén chuẩn 720p (~80-160 KB) và đồng bộ Base64 Data URI trực tiếp vào database Supabase, giải quyết triệt để lỗi 403 Forbidden do CDN Douyin bucket `tos-cn-i-dy`. Reset video lỗi 2481 về trạng thái `force_pending` sẵn sàng tải lại.
+  - `[x]` 🎯 **Trích xuất 100% Poster Bìa Gốc Tác Giả (In-Tab Base64 Extraction - Chống Chụp Frame Video)**:
+    - **Chrome Extension (`content-script.js`)**: Tích hợp `fetchCoverAsBase64` thực thi trực tiếp trong ngữ cảnh Tab Douyin (bỏ qua 100% rào chắn CDN/Referer vì đang ở phiên hợp lệ của tác giả), tự động tải ảnh bìa Poster Dọc (`video.cover`) chuyển thành chuỗi Base64 Data URI trước khi bắn lên Server API.
+    - **Server API (`extension/route.ts`)**: Tiếp nhận và lưu trực tiếp Base64 Poster Gốc, tự động cập nhật ngay cho các video đã tồn tại khi quét lại.
+    - **Python Worker (`downloader.py`)**: Khóa cơ chế chụp frame video khi đã có Poster Gốc, ưu tiên giải mã Base64 lưu thành file `.jpg` gốc của tác giả.
+
 
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)

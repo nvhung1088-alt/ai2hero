@@ -217,7 +217,7 @@ def _extract_frame_from_video(video_filepath: str, output_thumb_path: str) -> bo
         return False
 
 def _ensure_hd_thumbnail(video_filepath: str, thumbnail_url: str = None) -> str | None:
-    """Đảm bảo file ảnh thumbnail đạt chuẩn (ưu tiên ảnh Poster gốc của tác giả, fallback trích xuất video nếu không có ảnh). Trả về Data URI Base64 để đồng bộ lên Server."""
+    """Đảm bảo file ảnh thumbnail đạt chuẩn (ưu tiên ảnh Poster gốc của tác giả, tuyệt đối không ghi đè frame video). Trả về Data URI Base64 để đồng bộ lên Server."""
     if not video_filepath or not os.path.exists(video_filepath):
         return None
 
@@ -227,12 +227,12 @@ def _ensure_hd_thumbnail(video_filepath: str, thumbnail_url: str = None) -> str 
     default_thumb_path = os.path.splitext(video_filepath)[0] + ".jpg"
     thumb_file = None
 
-    # 1. Tải ảnh Poster từ URL nếu có
+    # 1. Tải và lưu ảnh Poster gốc từ URL hoặc Base64 nếu có
     if thumbnail_url and not _has_existing_thumbnail(dir_name, video_id):
         thumb_file = _download_thumbnail(thumbnail_url, video_filepath)
 
-    # 2. Fallback: Nếu không có ảnh bìa hoặc tải ảnh thất bại, mới trích xuất 1 frame từ video
-    if not _has_existing_thumbnail(dir_name, video_id):
+    # 2. Fallback: CHỈ trích xuất 1 frame từ video khi hoàn toàn KHÔNG CÓ bất kỳ nguồn ảnh nào từ tác giả
+    if not thumbnail_url and not _has_existing_thumbnail(dir_name, video_id):
         ok = _extract_frame_from_video(video_filepath, default_thumb_path)
         if ok:
             print(Fore.GREEN + f"[*] Da trich xuat anh thumbnail tu video cho ID {video_id}")
@@ -256,6 +256,9 @@ def _ensure_hd_thumbnail(video_filepath: str, thumbnail_url: str = None) -> str 
                 return f"data:image/jpeg;base64,{b64_data}"
         except Exception as e:
             print(Fore.YELLOW + f"[!] Khong the encode Base64 thumbnail: {e}")
+
+    if thumbnail_url and thumbnail_url.startswith("data:image/"):
+        return thumbnail_url
 
     return None
 

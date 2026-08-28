@@ -19,6 +19,9 @@ function extractBearerToken(request: NextRequest): string | null {
 function getHighResThumbnailUrl(rawUrl?: string | null): string | null {
   if (!rawUrl) return null;
   let url = rawUrl.trim();
+  if (url.startsWith('data:image/')) {
+    return url;
+  }
   if (url.startsWith('//')) {
     url = 'https:' + url;
   }

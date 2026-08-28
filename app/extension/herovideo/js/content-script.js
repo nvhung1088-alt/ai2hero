@@ -821,6 +821,25 @@
         }
     }
 
+    async function fetchCoverAsBase64(imgUrl) {
+        if (!imgUrl || typeof imgUrl !== 'string') return "";
+        if (imgUrl.startsWith("data:image/")) return imgUrl;
+        try {
+            const res = await fetch(imgUrl);
+            if (!res.ok) return imgUrl;
+            const blob = await res.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = () => resolve(imgUrl);
+                reader.readAsDataURL(blob);
+            });
+        } catch (e) {
+            console.warn("[AI2Hero] Khong the fetch Poster sang Base64 trong tab:", e);
+            return imgUrl;
+        }
+    }
+
     let isBatchUploading = false;
     async function uploadCrawlBatch(isFinal = false) {
         if (isBatchUploading || !_douyinVideos.length) return;
@@ -830,9 +849,16 @@
         const countToUpload = _douyinVideos.length;
         const videosToUpload = _douyinVideos.splice(0, countToUpload);
 
-        console.log(`[AI2Hero Crawler] Đang gửi đồng bộ ${countToUpload} video lên Server...`);
+        console.log(`[AI2Hero Crawler] Đang xử lý và gửi đồng bộ ${countToUpload} video lên Server...`);
 
         try {
+            // Tự động chuyển đổi Poster bìa gốc của tác giả sang Base64 trực tiếp trong tab Douyin
+            await Promise.all(videosToUpload.map(async (v) => {
+                if (v.cover_url && !v.cover_url.startsWith('data:image/')) {
+                    v.cover_url = await fetchCoverAsBase64(v.cover_url);
+                }
+            }));
+
             const bodyData = {
                 teamId: crawlTeamId,
                 videos: videosToUpload
