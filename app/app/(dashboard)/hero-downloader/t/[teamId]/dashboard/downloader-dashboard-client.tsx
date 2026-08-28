@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSmartPolling } from '@/hooks/use-smart-polling';
-import { Plus, Play, Pause, FolderOpen, Settings, LayoutDashboard, Square, Trash2, RefreshCw, RotateCcw, Languages, Sparkles, X, Clock, CheckCircle2, AlertCircle, Filter } from 'lucide-react';
+import { Plus, Play, Pause, FolderOpen, Settings, LayoutDashboard, Square, Trash2, RefreshCw, RotateCcw, Languages, Sparkles, X, Clock, CheckCircle2, AlertCircle, Filter, ImageDown } from 'lucide-react';
 import { CreateProjectModal } from './create-project-modal';
 import { EditProjectModal } from './edit-project-modal';
 import { PollingBanner } from '@/components/polling-banner';
@@ -55,6 +55,7 @@ export default function DownloaderDashboardClient({
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   const [previewVideo, setPreviewVideo] = useState<any>(null);
+  const [isSyncingThumbs, setIsSyncingThumbs] = useState(false);
 
   const [videoFilter, setVideoFilter] = useState<string>('all'); // 'all' | 'downloading' | 'pending' | 'completed' | 'failed'
 
@@ -274,6 +275,39 @@ export default function DownloaderDashboardClient({
     }
   };
 
+  const handleSyncThumbnailsToLocal = async () => {
+    if (!activeProject || videos.length === 0) return;
+    const itemsToSync = videos
+      .filter(v => v.localPath && (v.translatedThumbnailUrl || v.thumbnailUrl))
+      .map(v => ({
+        localPath: v.localPath,
+        thumbnailData: v.translatedThumbnailUrl || v.thumbnailUrl
+      }));
+    if (itemsToSync.length === 0) {
+      showToast('Không có video nào có đường dẫn máy và ảnh thumbnail để đồng bộ', 'error');
+      return;
+    }
+    setIsSyncingThumbs(true);
+    showToast(`Đang đồng bộ ${itemsToSync.length} ảnh thumbnail mới nhất vào máy tính...`, 'success');
+    try {
+      const res = await fetch('http://127.0.0.1:19998/batch_update_thumbnails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: itemsToSync })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Đã ghi đè thành công ${data.count}/${itemsToSync.length} ảnh thumbnail mới nhất vào máy tính!`, 'success');
+      } else {
+        showToast('Lỗi từ Worker: ' + (data.error || 'Thất bại'), 'error');
+      }
+    } catch (e) {
+      showToast('Không thể kết nối tới Local Worker. Vui lòng đảm bảo Worker đang chạy trên máy tính!', 'error');
+    } finally {
+      setIsSyncingThumbs(false);
+    }
+  };
+
   const handleClearVideos = () => {
     if (!activeProject) return;
     setConfirmModal({
@@ -349,6 +383,15 @@ export default function DownloaderDashboardClient({
                   <button onClick={() => handleOpenLocal('downloads')} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-gray-300 transition-colors">
                     <FolderOpen className="w-4 h-4" />
                     <span className="text-xs font-medium">Mở thư mục</span>
+                  </button>
+                  <button 
+                    onClick={handleSyncThumbnailsToLocal}
+                    disabled={isSyncingThumbs}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-purple-300 transition-colors font-medium disabled:opacity-40"
+                    title="Ghi đè toàn bộ ảnh thumbnail mới nhất vào thư mục máy tính"
+                  >
+                    <ImageDown className={`w-4 h-4 ${isSyncingThumbs ? 'animate-bounce' : ''}`} />
+                    <span className="text-xs">{isSyncingThumbs ? 'Đang đồng bộ...' : 'Đồng bộ Thumbnail'}</span>
                   </button>
                   <button onClick={handleRetryAllFailed} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-400 transition-colors font-medium" title="Thử lại tất cả video bị lỗi">
                     <RotateCcw className="w-4 h-4" />

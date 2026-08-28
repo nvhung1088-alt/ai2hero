@@ -177,9 +177,11 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
     - **Modal Phóng to (`downloader-thumbnail-modal.tsx`)**: Gỡ bỏ ràng buộc cứng `aspect-video` (16:9), co giãn linh hoạt theo tỷ lệ khung hình thật của ảnh (`max-h-[60vh] max-w-full object-contain`), bổ sung toggle xem Ảnh gốc / Ảnh đã dịch AI và nút mở ảnh trong tab mới.
     - **Khôi phục 100% Thumbnail dự án `dong-vat-khung-long` (Project ID 11)**: Toàn bộ 17 video hoàn thành trên máy đã được tối ưu nén chuẩn 720p (~80-160 KB) và đồng bộ Base64 Data URI trực tiếp vào database Supabase, giải quyết triệt để lỗi 403 Forbidden do CDN Douyin bucket `tos-cn-i-dy`. Reset video lỗi 2481 về trạng thái `force_pending` sẵn sàng tải lại.
   - `[x]` 🎯 **Trích xuất 100% Poster Bìa Gốc Tác Giả (In-Tab Base64 Extraction - Chống Chụp Frame Video)**:
-    - **Chrome Extension (`content-script.js`)**: Tích hợp `fetchCoverAsBase64` thực thi trực tiếp trong ngữ cảnh Tab Douyin (bỏ qua 100% rào chắn CDN/Referer vì đang ở phiên hợp lệ của tác giả), tự động tải ảnh bìa Poster Dọc (`video.cover`) chuyển thành chuỗi Base64 Data URI trước khi bắn lên Server API.
-    - **Server API (`extension/route.ts`)**: Tiếp nhận và lưu trực tiếp Base64 Poster Gốc, tự động cập nhật ngay cho các video đã tồn tại khi quét lại.
-    - **Python Worker (`downloader.py`)**: Khóa cơ chế chụp frame video khi đã có Poster Gốc, ưu tiên giải mã Base64 lưu thành file `.jpg` gốc của tác giả.
+  - `[x]` ⚡ **Tính năng "Đồng bộ Thumbnail" (1-Click Overwrite Toàn Bộ Ảnh Local vào Máy Tính)**:
+    - **Local Python Worker (`local_api.py` & `downloader.py`)**: Mở 2 API endpoints `POST /update_thumbnail` (từng video lẻ) và `POST /batch_update_thumbnails` (hàng loạt toàn bộ dự án). Tự động nhận Base64 Data URI, decode, nén 720p JPEG 85 và ghi đè trực tiếp lên file `.jpg` trong thư mục máy tính, xóa bỏ hoàn toàn ảnh chụp frame cũ. Cho phép `downloader.py` tự động ghi đè khi có Base64 Poster từ server.
+    - **Web UI Dashboard (`downloader-dashboard-client.tsx`)**: Bổ sung nút **"Đồng bộ Thumbnail"** (Icon `ImageDown`) màu tím neon trên thanh công cụ dự án (kế bên "Mở thư mục"). Tự động lọc toàn bộ video có `localPath` và `thumbnailUrl` để bắn request sang Local Worker chỉ trong 1-click.
+    - **Modal Xem Thumbnail (`downloader-thumbnail-modal.tsx`)**: Bổ sung nút **"Lưu đè vào máy tính"** khi xem phóng to ảnh, hiển thị trạng thái phản hồi trực quan (Đã lưu / Worker offline / Lỗi).
+
 
 
 

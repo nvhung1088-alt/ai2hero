@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Eye, ExternalLink, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { Eye, ExternalLink, Image as ImageIcon, Sparkles, Download, Check, AlertCircle } from 'lucide-react';
 
 interface ThumbnailModalProps {
   video: any | null;
@@ -14,12 +14,41 @@ export function DownloaderThumbnailModal({
 }: ThumbnailModalProps) {
   const [hasError, setHasError] = useState(false);
   const [showTranslated, setShowTranslated] = useState(Boolean(video?.translatedThumbnailUrl));
+  const [isSavingLocal, setIsSavingLocal] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'success' | 'error' | 'offline' | null>(null);
 
   if (!video) return null;
 
   const currentThumb = showTranslated && video.translatedThumbnailUrl 
     ? video.translatedThumbnailUrl 
     : video.thumbnailUrl;
+
+  const handleSaveToLocal = async () => {
+    if (!video.localPath || !currentThumb) return;
+    setIsSavingLocal(true);
+    setSaveStatus(null);
+    try {
+      const res = await fetch('http://127.0.0.1:19998/update_thumbnail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          localPath: video.localPath,
+          thumbnailData: currentThumb
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus(null), 3000);
+      } else {
+        setSaveStatus('error');
+      }
+    } catch (e) {
+      setSaveStatus('offline');
+    } finally {
+      setIsSavingLocal(false);
+    }
+  };
 
   return (
     <div 
@@ -89,7 +118,46 @@ export function DownloaderThumbnailModal({
 
         {/* Modal Actions */}
         <div className="flex items-center justify-between pt-3 border-t border-white/10 shrink-0">
-          <div>
+          <div className="flex items-center gap-2">
+            {video.localPath && currentThumb && !hasError && (
+              <button
+                onClick={handleSaveToLocal}
+                disabled={isSavingLocal}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border font-medium transition-all ${
+                  saveStatus === 'success'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : saveStatus === 'error'
+                    ? 'bg-red-500/20 text-red-300 border-red-500/30'
+                    : saveStatus === 'offline'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    : 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border-purple-500/30'
+                }`}
+                title="Ghi đè file ảnh này vào thư mục máy tính"
+              >
+                {saveStatus === 'success' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Đã lưu vào máy!</span>
+                  </>
+                ) : saveStatus === 'error' ? (
+                  <>
+                    <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                    <span>Lỗi ghi đè file</span>
+                  </>
+                ) : saveStatus === 'offline' ? (
+                  <>
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Worker chưa chạy</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className={`w-3.5 h-3.5 ${isSavingLocal ? 'animate-bounce' : ''}`} />
+                    <span>{isSavingLocal ? 'Đang lưu...' : 'Lưu đè vào máy tính'}</span>
+                  </>
+                )}
+              </button>
+            )}
+
             {currentThumb && !hasError && !currentThumb.startsWith('data:') && (
               <a
                 href={currentThumb}

@@ -132,23 +132,24 @@ def _download_thumbnail(thumbnail_url: str, base_filepath: str):
         dir_name = os.path.dirname(base_filepath)
         file_name = os.path.basename(base_filepath)
         video_id = file_name.split('_')[0] if '_' in file_name else ''
-        if video_id and _has_existing_thumbnail(dir_name, video_id):
-            return None
-
         thumb_path = os.path.splitext(base_filepath)[0] + ".jpg"
 
-        # 1. Hỗ trợ Base64 Data URL (data:image/...)
+        # 1. Hỗ trợ Base64 Data URL (data:image/...) - Luôn luôn ghi đè file cũ bằng Poster gốc mới nhất
         if thumbnail_url.startswith("data:image/"):
             b64_str = thumbnail_url.split(",", 1)[1] if "," in thumbnail_url else thumbnail_url
             img_bytes = base64.b64decode(b64_str)
             if len(img_bytes) > 500:
                 if optimize_and_save_thumbnail(img_bytes, thumb_path):
-                    print(Fore.CYAN + f"[*] Da luu thumbnail Base64: {os.path.basename(thumb_path)}")
+                    print(Fore.CYAN + f"[*] Da luu & ghi de thumbnail Base64: {os.path.basename(thumb_path)}")
                     return thumb_path
                 else:
                     with open(thumb_path, 'wb') as f:
                         f.write(img_bytes)
                     return thumb_path
+
+        # Nếu đã có thumbnail từ trước và không phải Base64 thì bỏ qua
+        if video_id and _has_existing_thumbnail(dir_name, video_id):
+            return None
 
         if thumbnail_url.startswith("//"):
             thumbnail_url = "https:" + thumbnail_url
