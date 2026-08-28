@@ -510,7 +510,8 @@
                         function findBestDouyinCover(vObj) {
                             if (!vObj) return "";
                             const allUrls = [];
-                            const candidates = [vObj.cover, vObj.raw_cover, vObj.origin_cover, vObj.dynamic_cover];
+                            // Ưu tiên vObj.cover (Poster thiết kế riêng trên Kênh/Feed có chữ thư pháp & số tập), sau đó đến origin_cover và raw_cover
+                            const candidates = [vObj.cover, vObj.origin_cover, vObj.raw_cover, vObj.dynamic_cover];
                             for (const c of candidates) {
                                 if (c && Array.isArray(c.url_list)) {
                                     for (const u of c.url_list) {
@@ -519,17 +520,25 @@
                                 }
                             }
                             if (allUrls.length === 0) return "";
-                            let raw = allUrls[0];
-                            if (raw.startsWith("//")) raw = "https:" + raw;
-                            // Chuẩn hóa sang link Full HD 1080p trên CDN public không bị bóp 360p
-                            let hd = raw.replace(/https?:\/\/[^/]+douyinpic\.com/i, 'https://p3.douyinpic.com');
-                            hd = hd.split('?')[0];
-                            if (hd.includes('~tplv-')) {
-                                hd = hd.replace(/~tplv-[^.]+(?:\.jpeg|\.webp|\.jpg)?/i, '~tplv-dy-1080p.jpeg');
-                            } else {
-                                hd = hd + '~tplv-dy-1080p.jpeg';
+                            
+                            // Chọn URL hợp lệ đầu tiên
+                            let best = allUrls[0];
+                            if (best.startsWith("//")) best = "https:" + best;
+                            
+                            // Nếu là URL public tos-cn-p-0015 thì có thể nâng cấp HD 1080p an toàn
+                            if (best.includes('tos-cn-p-0015')) {
+                                let hd = best.replace(/https?:\/\/[^/]+douyinpic\.com/i, 'https://p3.douyinpic.com');
+                                hd = hd.split('?')[0];
+                                if (hd.includes('~tplv-')) {
+                                    hd = hd.replace(/~tplv-[^.]+(?:\.jpeg|\.webp|\.jpg)?/i, '~tplv-dy-1080p.jpeg');
+                                } else {
+                                    hd = hd + '~tplv-dy-1080p.jpeg';
+                                }
+                                return hd;
                             }
-                            return hd;
+                            
+                            // Đối với các bucket bảo mật (tos-cn-i-dy, ...): GIỮ NGUYÊN Signed URL đầy đủ có token HMAC
+                            return best;
                         }
 
                         const rawCover = findBestDouyinCover(videoObj);

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Loader2, Download, Eye, Image, CheckCircle2, Pause, AlertCircle, Play, FolderOpen } from 'lucide-react';
 import { parseDownloaderError } from '../_shared/downloader-ui-helpers';
 
@@ -11,6 +12,50 @@ interface VideoTableProps {
   onUpdateStatus: (videoId: number, status: string) => void;
   onOpenLocal: (path: string) => void;
   onPreviewThumbnail: (video: any) => void;
+}
+
+function VideoThumbnailCell({ video, onPreviewThumbnail }: { video: any; onPreviewThumbnail: (video: any) => void }) {
+  const [hasError, setHasError] = useState(false);
+  const rawThumb = video.translatedThumbnailUrl || video.thumbnailUrl;
+
+  if (!rawThumb || hasError) {
+    return (
+      <div 
+        className="w-14 h-16 sm:w-16 sm:h-20 bg-white/[0.03] border border-white/10 rounded-lg flex flex-col items-center justify-center text-gray-500 gap-1 select-none"
+        title={hasError ? "Ảnh bìa bị chặn hoặc hết hạn tải từ CDN" : "Chưa có ảnh bìa"}
+      >
+        <Image className="w-4 h-4 text-gray-500" />
+        <span className="text-[9px] font-mono text-gray-500 uppercase">
+          {video.videoUrl?.includes('douyin') ? 'Douyin' : video.videoUrl?.includes('bilibili') ? 'Bilibili' : video.videoUrl?.includes('youtu') ? 'YouTube' : 'Video'}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="relative cursor-pointer group/thumb w-14 h-16 sm:w-16 sm:h-20 rounded-lg overflow-hidden border border-white/10 bg-black/60 hover:border-teal-500/50 transition-all flex items-center justify-center shadow-sm"
+      onClick={() => onPreviewThumbnail(video)}
+      title="Click để xem phóng to ảnh bìa"
+    >
+      <img 
+        src={rawThumb} 
+        alt="" 
+        className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform duration-200" 
+        loading="lazy" 
+        referrerPolicy="no-referrer"
+        onError={() => setHasError(true)}
+      />
+      {video.translatedThumbnailUrl && (
+        <span className="absolute top-1 left-1 bg-teal-500 text-[8px] text-white px-1 py-0.5 rounded font-bold shadow">
+          AI
+        </span>
+      )}
+      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-opacity backdrop-blur-[1px]">
+        <Eye className="w-4 h-4 text-white" />
+      </div>
+    </div>
+  );
 }
 
 export function DownloaderVideoTable({
@@ -56,28 +101,7 @@ export function DownloaderVideoTable({
               <tr key={video.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
                 <td className="py-3 px-4 text-gray-500">{video.id}</td>
                 <td className="py-2 px-4">
-                  {video.thumbnailUrl ? (
-                    <div 
-                      className="relative cursor-pointer group/thumb w-20 h-[45px] rounded-md overflow-hidden border border-white/10 bg-black/40 hover:border-purple-500/50 transition-colors"
-                      onClick={() => onPreviewThumbnail(video)}
-                      title="Click để xem phóng to ảnh bìa"
-                    >
-                      <img 
-                        src={video.thumbnailUrl} 
-                        alt="" 
-                        className="w-full h-full object-cover" 
-                        loading="lazy" 
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-opacity">
-                        <Eye className="w-4 h-4 text-white" />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-20 h-[45px] bg-white/5 rounded-md flex items-center justify-center">
-                      <Image className="w-4 h-4 text-gray-600" />
-                    </div>
-                  )}
+                  <VideoThumbnailCell video={video} onPreviewThumbnail={onPreviewThumbnail} />
                 </td>
                 <td className="py-3 px-4">
                   <p className="text-gray-200 font-medium truncate max-w-[200px] lg:max-w-md" title={video.title}>{video.title}</p>

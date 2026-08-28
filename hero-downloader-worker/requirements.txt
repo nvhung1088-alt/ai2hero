@@ -3,3 +3,4 @@ yt-dlp>=2025.01.01
 colorama==0.4.6
 flask==3.0.0
 flask-cors==4.0.0
+Pillow>=10.0.0

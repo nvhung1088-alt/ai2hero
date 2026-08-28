@@ -84,7 +84,7 @@ def api_patch_update(token, action, payload):
     except:
         pass
 
-def update_video_callback(token, video_id, status=None, progress=None, local_path=None, error=None, speed=None, size_bytes=None, actual_size_bytes=None):
+def update_video_callback(token, video_id, status=None, progress=None, local_path=None, error=None, speed=None, size_bytes=None, actual_size_bytes=None, thumbnail_url=None):
     payload = {"videoId": video_id}
     if status is not None: payload["status"] = status
     if progress is not None: payload["progress"] = progress
@@ -93,6 +93,7 @@ def update_video_callback(token, video_id, status=None, progress=None, local_pat
     if actual_size_bytes is not None: payload["actualSizeBytes"] = actual_size_bytes
     if error is not None: payload["error"] = error
     if speed is not None: payload["speed"] = speed
+    if thumbnail_url is not None: payload["thumbnailUrl"] = thumbnail_url
     api_patch_update(token, "update_video", payload)
 
 def run_worker_loop(token):
@@ -200,7 +201,7 @@ def run_worker_loop(token):
                                 
                                 # Khởi chạy luồng tải
                                 def thread_target(v=video, cd=cookie_data):
-                                    download_video(v, lambda v_id, status=None, progress=None, local_path=None, error=None, speed=None, size_bytes=None, actual_size_bytes=None: update_video_callback(token, v_id, status, progress, local_path, error, speed, size_bytes, actual_size_bytes), cookie_data=cd)
+                                    download_video(v, lambda v_id, status=None, progress=None, local_path=None, error=None, speed=None, size_bytes=None, actual_size_bytes=None, thumbnail_url=None: update_video_callback(token, v_id, status, progress, local_path, error, speed, size_bytes, actual_size_bytes, thumbnail_url), cookie_data=cd)
                                     
                                 t = threading.Thread(target=thread_target)
                                 t.daemon = True

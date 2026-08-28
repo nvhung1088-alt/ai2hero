@@ -1,6 +1,7 @@
 'use client';
 
-import { Eye } from 'lucide-react';
+import { useState } from 'react';
+import { Eye, ExternalLink, Image as ImageIcon, Sparkles } from 'lucide-react';
 
 interface ThumbnailModalProps {
   video: any | null;
@@ -11,7 +12,14 @@ export function DownloaderThumbnailModal({
   video,
   onClose,
 }: ThumbnailModalProps) {
+  const [hasError, setHasError] = useState(false);
+  const [showTranslated, setShowTranslated] = useState(Boolean(video?.translatedThumbnailUrl));
+
   if (!video) return null;
+
+  const currentThumb = showTranslated && video.translatedThumbnailUrl 
+    ? video.translatedThumbnailUrl 
+    : video.thumbnailUrl;
 
   return (
     <div 
@@ -19,12 +27,13 @@ export function DownloaderThumbnailModal({
       onClick={onClose}
     >
       <div 
-        className="bg-gray-900/95 border border-white/10 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-4"
+        className="bg-gray-900/95 border border-white/10 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
           <div className="flex items-center gap-2 text-gray-100 font-bold text-base">
-            <Eye className="w-5 h-5 text-purple-400" />
+            <Eye className="w-5 h-5 text-teal-400" />
             <span>Xem Ảnh bìa Thumbnail</span>
           </div>
           <button 
@@ -35,32 +44,67 @@ export function DownloaderThumbnailModal({
           </button>
         </div>
 
-        <p className="text-xs text-gray-400 truncate" title={video.title}>
-          {video.title}
-        </p>
-
-        <div className="pt-2">
-          {video.thumbnailUrl ? (
-            <div className="rounded-xl overflow-hidden border border-white/10 bg-black/50 aspect-video flex items-center justify-center">
-              <img 
-                src={video.thumbnailUrl} 
-                alt="Thumbnail Gốc" 
-                className="w-full h-full object-contain" 
-                referrerPolicy="no-referrer"
-              />
+        {/* Video Title & Platform info */}
+        <div className="shrink-0 flex items-center justify-between gap-2">
+          <p className="text-xs text-gray-300 truncate font-medium" title={video.title}>
+            {video.title}
+          </p>
+          {video.translatedThumbnailUrl && (
+            <div className="flex items-center gap-1 shrink-0 bg-white/5 p-0.5 rounded-lg border border-white/10 text-xs">
+              <button
+                onClick={() => { setShowTranslated(false); setHasError(false); }}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${!showTranslated ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+              >
+                Gốc
+              </button>
+              <button
+                onClick={() => { setShowTranslated(true); setHasError(false); }}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium flex items-center gap-1 transition-colors ${showTranslated ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30' : 'text-gray-400 hover:text-gray-200'}`}
+              >
+                <Sparkles className="w-3 h-3 text-teal-400" /> Đã dịch AI
+              </button>
             </div>
+          )}
+        </div>
+
+        {/* Thumbnail Preview Area (Responsive Aspect Ratio) */}
+        <div className="flex-1 min-h-0 flex items-center justify-center bg-black/60 rounded-xl border border-white/10 overflow-hidden p-2">
+          {currentThumb && !hasError ? (
+            <img 
+              src={currentThumb} 
+              alt="Thumbnail Preview" 
+              className="max-h-[60vh] max-w-full rounded-lg object-contain shadow-md transition-all duration-200" 
+              referrerPolicy="no-referrer"
+              onError={() => setHasError(true)}
+            />
           ) : (
-            <div className="aspect-video bg-white/5 rounded-xl flex items-center justify-center text-gray-600 text-xs">
-              Không có ảnh bìa
+            <div className="py-12 flex flex-col items-center justify-center text-gray-500 gap-2">
+              <ImageIcon className="w-10 h-10 text-gray-600 opacity-40" />
+              <p className="text-xs text-gray-400">
+                {hasError ? 'Không thể tải ảnh bìa (Ảnh đã hết hạn hoặc bị chặn bởi CDN)' : 'Chưa có ảnh bìa'}
+              </p>
             </div>
           )}
         </div>
 
         {/* Modal Actions */}
-        <div className="flex items-center justify-end pt-4 border-t border-white/10">
+        <div className="flex items-center justify-between pt-3 border-t border-white/10 shrink-0">
+          <div>
+            {currentThumb && !hasError && !currentThumb.startsWith('data:') && (
+              <a
+                href={currentThumb}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs border border-white/10 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Mở ảnh gốc</span>
+              </a>
+            )}
+          </div>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs border border-white/10 transition-colors"
+            className="px-5 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs border border-white/10 transition-colors font-medium"
           >
             Đóng
           </button>

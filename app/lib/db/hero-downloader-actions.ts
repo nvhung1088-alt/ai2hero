@@ -200,6 +200,7 @@ export async function getDownloaderVideosAction(teamId: number, projectId?: numb
           title: downloaderVideos.title,
           author: downloaderVideos.author,
           thumbnailUrl: downloaderVideos.thumbnailUrl,
+          translatedThumbnailUrl: downloaderVideos.translatedThumbnailUrl,
           duration: downloaderVideos.duration,
           status: downloaderVideos.status,
           progress: downloaderVideos.progress,

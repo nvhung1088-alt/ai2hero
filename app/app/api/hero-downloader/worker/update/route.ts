@@ -67,7 +67,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: true });
 
     } else if (action === 'update_video') {
-      const { videoId, status, progress, localPath, error, speed, sizeBytes, actualSizeBytes } = body;
+      const { videoId, status, progress, localPath, error, speed, sizeBytes, actualSizeBytes, thumbnailUrl } = body;
 
       // Ensure video belongs to this team
       const [video] = await db.select({ id: downloaderVideos.id, projectId: downloaderVideos.projectId })
@@ -88,6 +88,7 @@ export async function PATCH(request: Request) {
       if (speed !== undefined) updateData.downloadSpeed = speed; // Lưu tốc độ download
       if (sizeBytes !== undefined) updateData.sizeBytes = sizeBytes;
       if (actualSizeBytes !== undefined) updateData.actualSizeBytes = actualSizeBytes;
+      if (thumbnailUrl) updateData.thumbnailUrl = thumbnailUrl;
       updateData.updatedAt = new Date();
 
       await db.update(downloaderVideos)

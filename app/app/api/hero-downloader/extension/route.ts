@@ -22,8 +22,8 @@ function getHighResThumbnailUrl(rawUrl?: string | null): string | null {
   if (url.startsWith('//')) {
     url = 'https:' + url;
   }
-  // Douyin CDN: Chuyển sang CDN public p3.douyinpic.com, bỏ chữ ký URL và ép template ~tplv-dy-1080p.jpeg để luôn nhận ảnh 1080p Full HD
-  if (url.includes('douyinpic.com') || url.includes('byteimg.com')) {
+  // Douyin CDN: Chỉ nâng cấp khi là bucket public tos-cn-p-0015, còn lại giữ nguyên Signed URL đầy đủ có token HMAC
+  if (url.includes('tos-cn-p-0015')) {
     url = url.replace(/https?:\/\/[^/]+douyinpic\.com/i, 'https://p3.douyinpic.com');
     url = url.split('?')[0];
     if (url.includes('~tplv-')) {
@@ -150,8 +150,8 @@ export async function POST(req: NextRequest) {
       const vidIsBilibili = vid.platform === 'bilibili' || (id && String(id).startsWith('BV'));
       
       if (id && existingIds.has(id)) {
-        // Tự động nâng cấp thumbnail HD cho video cũ nếu link mới sắc nét hơn
-        if (newThumbUrl && !newThumbUrl.includes('360p') && !newThumbUrl.includes('323:430')) {
+        // Tự động cập nhật thumbnail mới và direct_mp4_url cho video cũ
+        if (newThumbUrl) {
           try {
             await db.update(downloaderVideos)
               .set({ thumbnailUrl: newThumbUrl, ...(vidIsBilibili ? {} : { directMp4Url: vid.direct_mp4_url || undefined }) })

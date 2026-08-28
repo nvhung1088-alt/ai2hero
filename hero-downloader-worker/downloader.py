@@ -2,6 +2,7 @@ import os
 import re
 import tempfile
 import threading
+import base64
 import requests
 import yt_dlp
 from colorama import Fore
@@ -57,16 +58,97 @@ def _has_existing_thumbnail(downloads_dir, video_id):
         pass
     return False
 
+def optimize_and_save_thumbnail(img_data, dest_thumb_path: str, target_res: int = 720, quality: int = 85) -> bool:
+    """
+    Tối ưu hóa ảnh bìa Thumbnail:
+    - Resize về chuẩn 720p (1280x720 cho ngang, 720x1280 cho dọc/Shorts) giữ nguyên 100% tỷ lệ khung hình.
+    - Nén JPEG cao cấp (quality=85, optimize=True, progressive=True) giảm dung lượng xuống ~100-200 KB siêu nhẹ.
+    """
+    try:
+        from PIL import Image
+        import io
+
+        if isinstance(img_data, (bytes, bytearray)):
+            img = Image.open(io.BytesIO(img_data))
+        elif isinstance(img_data, str) and os.path.exists(img_data):
+            img = Image.open(img_data)
+        else:
+            return False
+
+        # Chuyển đổi RGBA / Palette sang RGB chuẩn
+        if img.mode in ("RGBA", "P"):
+            rgb_img = Image.new("RGB", img.size, (255, 255, 255))
+            if img.mode == "RGBA":
+                rgb_img.paste(img, mask=img.split()[3])
+            else:
+                rgb_img.paste(img)
+            img = rgb_img
+        elif img.mode != "RGB":
+            img = img.convert("RGB")
+
+        orig_w, orig_h = img.size
+        
+        # Resize về chuẩn 720p giữ nguyên Aspect Ratio
+        if orig_w >= orig_h:
+            # Ảnh ngang: Chiều cao = 720 (chiều rộng tối đa 1280)
+            if orig_h > target_res:
+                new_h = target_res
+                new_w = int(orig_w * (target_res / orig_h))
+                if new_w > 1280:
+                    new_w = 1280
+                img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        else:
+            # Ảnh dọc: Chiều rộng = 720 (chiều cao tối đa 1280)
+            if orig_w > target_res:
+                new_w = target_res
+                new_h = int(orig_h * (target_res / orig_w))
+                if new_h > 1280:
+                    new_h = 1280
+                img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+        # Lưu file JPEG tối ưu
+        os.makedirs(os.path.dirname(dest_thumb_path), exist_ok=True)
+        img.save(dest_thumb_path, "JPEG", quality=quality, optimize=True, progressive=True)
+        final_size = os.path.getsize(dest_thumb_path)
+        print(Fore.GREEN + f"[✓] Da toi uu anh Thumbnail 720p ({img.size[0]}x{img.size[1]}, {final_size//1024} KB): {os.path.basename(dest_thumb_path)}")
+        return True
+    except Exception as e:
+        print(Fore.YELLOW + f"[!] Khong the toi uu anh thumbnail: {e}")
+        # Fallback lưu dữ liệu gốc nếu có dạng bytes
+        try:
+            if isinstance(img_data, (bytes, bytearray)):
+                with open(dest_thumb_path, 'wb') as f:
+                    f.write(img_data)
+                return True
+        except Exception:
+            pass
+        return False
+
 def _download_thumbnail(thumbnail_url: str, base_filepath: str):
     """Tải ảnh thumbnail chất lượng cao nhất về cùng thư mục với video (chỉ tải khi chưa có)."""
     if not thumbnail_url:
-        return
+        return None
     try:
         dir_name = os.path.dirname(base_filepath)
         file_name = os.path.basename(base_filepath)
         video_id = file_name.split('_')[0] if '_' in file_name else ''
         if video_id and _has_existing_thumbnail(dir_name, video_id):
-            return
+            return None
+
+        thumb_path = os.path.splitext(base_filepath)[0] + ".jpg"
+
+        # 1. Hỗ trợ Base64 Data URL (data:image/...)
+        if thumbnail_url.startswith("data:image/"):
+            b64_str = thumbnail_url.split(",", 1)[1] if "," in thumbnail_url else thumbnail_url
+            img_bytes = base64.b64decode(b64_str)
+            if len(img_bytes) > 500:
+                if optimize_and_save_thumbnail(img_bytes, thumb_path):
+                    print(Fore.CYAN + f"[*] Da luu thumbnail Base64: {os.path.basename(thumb_path)}")
+                    return thumb_path
+                else:
+                    with open(thumb_path, 'wb') as f:
+                        f.write(img_bytes)
+                    return thumb_path
 
         if thumbnail_url.startswith("//"):
             thumbnail_url = "https:" + thumbnail_url
@@ -79,8 +161,8 @@ def _download_thumbnail(thumbnail_url: str, base_filepath: str):
         if "i.ytimg.com" in thumbnail_url or "youtube.com" in thumbnail_url:
             thumbnail_url = re.sub(r'/(hqdefault|mqdefault|sddefault)\.jpg', '/maxresdefault.jpg', thumbnail_url)
 
-        # Douyin: Chuẩn hóa sang CDN public p3.douyinpic.com với template 1080p Full HD
-        if "douyinpic.com" in thumbnail_url or "byteimg.com" in thumbnail_url:
+        # Douyin: Chỉ nâng cấp khi là public bucket tos-cn-p-0015, còn lại GIỮ NGUYÊN signed URL có chữ ký
+        if "tos-cn-p-0015" in thumbnail_url:
             thumbnail_url = re.sub(r'https?://[^/]+douyinpic\.com', 'https://p3.douyinpic.com', thumbnail_url)
             thumbnail_url = thumbnail_url.split('?')[0]
             if '~tplv-' in thumbnail_url:
@@ -88,14 +170,9 @@ def _download_thumbnail(thumbnail_url: str, base_filepath: str):
             else:
                 thumbnail_url = thumbnail_url + '~tplv-dy-1080p.jpeg'
 
-        ext = thumbnail_url.split('?')[0].split('.')[-1]
-        if ext.lower() not in ['jpg', 'jpeg', 'png', 'webp']:
-            ext = 'jpg'
-        thumb_path = os.path.splitext(base_filepath)[0] + f".{ext}"
-        
         # Nếu file đã tồn tại thì bỏ qua
         if os.path.exists(thumb_path):
-            return
+            return thumb_path
             
         # Chọn Referer động theo nền tảng tránh bị CDN chặn 403
         referer = 'https://www.bilibili.com/'
@@ -110,46 +187,77 @@ def _download_thumbnail(thumbnail_url: str, base_filepath: str):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Referer': referer
         }
-        res = requests.get(thumbnail_url, headers=headers, stream=True, timeout=15)
+        res = requests.get(thumbnail_url, headers=headers, timeout=15)
         res.raise_for_status()
-        with open(thumb_path, 'wb') as f:
-            for chunk in res.iter_content(chunk_size=8192):
-                f.write(chunk)
-        print(Fore.CYAN + f"[*] Da tai xong thumbnail HD: {os.path.basename(thumb_path)}")
+
+        if optimize_and_save_thumbnail(res.content, thumb_path):
+            print(Fore.CYAN + f"[*] Da tai & toi uu xong thumbnail HD: {os.path.basename(thumb_path)}")
+            return thumb_path
+        else:
+            with open(thumb_path, 'wb') as f:
+                f.write(res.content)
+            return thumb_path
     except Exception as e:
         print(Fore.YELLOW + f"[!] Khong the tai thumbnail: {e}")
+        return None
 
 def _extract_frame_from_video(video_filepath: str, output_thumb_path: str) -> bool:
-    """Trích xuất 1 khung hình Master HD 1080p từ video bằng ffmpeg."""
+    """Trích xuất 1 khung hình Master HD 1080p từ video bằng ffmpeg và tối ưu về 720p."""
     try:
         import shutil, subprocess
         if not shutil.which('ffmpeg') or not os.path.exists(video_filepath):
             return False
-        cmd = ['ffmpeg', '-y', '-ss', '00:00:01', '-i', video_filepath, '-frames:v', '1', '-q:v', '2', output_thumb_path]
+        cmd = ['ffmpeg', '-y', '-ss', '00:00:01', '-i', video_filepath, '-vframes', '1', '-update', '1', '-q:v', '2', output_thumb_path]
         res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return res.returncode == 0 and os.path.exists(output_thumb_path) and os.path.getsize(output_thumb_path) > 1000
+        if res.returncode == 0 and os.path.exists(output_thumb_path) and os.path.getsize(output_thumb_path) > 1000:
+            optimize_and_save_thumbnail(output_thumb_path, output_thumb_path)
+            return True
+        return False
     except Exception:
         return False
 
-def _ensure_hd_thumbnail(video_filepath: str, thumbnail_url: str = None):
-    """Đảm bảo file ảnh thumbnail đạt chuẩn (ưu tiên ảnh Poster gốc của tác giả, fallback trích xuất video nếu không có ảnh)."""
+def _ensure_hd_thumbnail(video_filepath: str, thumbnail_url: str = None) -> str | None:
+    """Đảm bảo file ảnh thumbnail đạt chuẩn (ưu tiên ảnh Poster gốc của tác giả, fallback trích xuất video nếu không có ảnh). Trả về Data URI Base64 để đồng bộ lên Server."""
     if not video_filepath or not os.path.exists(video_filepath):
-        return
+        return None
 
     dir_name = os.path.dirname(video_filepath)
     file_name = os.path.basename(video_filepath)
     video_id = file_name.split('_')[0] if '_' in file_name else ''
     default_thumb_path = os.path.splitext(video_filepath)[0] + ".jpg"
+    thumb_file = None
 
     # 1. Tải ảnh Poster từ URL nếu có
     if thumbnail_url and not _has_existing_thumbnail(dir_name, video_id):
-        _download_thumbnail(thumbnail_url, video_filepath)
+        thumb_file = _download_thumbnail(thumbnail_url, video_filepath)
 
     # 2. Fallback: Nếu không có ảnh bìa hoặc tải ảnh thất bại, mới trích xuất 1 frame từ video
     if not _has_existing_thumbnail(dir_name, video_id):
         ok = _extract_frame_from_video(video_filepath, default_thumb_path)
         if ok:
             print(Fore.GREEN + f"[*] Da trich xuat anh thumbnail tu video cho ID {video_id}")
+            thumb_file = default_thumb_path
+
+    # Tìm file thumbnail đã lưu để sinh Base64 Data URI gửi lên Web UI
+    prefix = f"{video_id}_"
+    if not thumb_file and os.path.exists(dir_name):
+        for fname in os.listdir(dir_name):
+            if fname.startswith(prefix) and fname.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+                thumb_file = os.path.join(dir_name, fname)
+                break
+
+    if thumb_file and os.path.exists(thumb_file):
+        try:
+            # Đảm bảo nén 720p trước khi sinh Base64
+            optimize_and_save_thumbnail(thumb_file, thumb_file, target_res=720, quality=85)
+            if os.path.getsize(thumb_file) < 1500000:
+                with open(thumb_file, 'rb') as f:
+                    b64_data = base64.b64encode(f.read()).decode('utf-8')
+                return f"data:image/jpeg;base64,{b64_data}"
+        except Exception as e:
+            print(Fore.YELLOW + f"[!] Khong the encode Base64 thumbnail: {e}")
+
+    return None
 
 def download_direct_mp4(video, url, update_callback):
     """Tải trực tiếp file MP4 từ CDN link bằng requests (không cần yt-dlp)."""
@@ -207,10 +315,11 @@ def download_direct_mp4(video, url, update_callback):
         sys.stdout.write("\n")
 
         # Đảm bảo có Thumbnail HD 1080p (tự trích xuất từ video nếu ảnh từ URL < 720p hoặc thiếu)
+        synced_b64_thumb = None
         if video.get('downloadThumbnail', True):
-            _ensure_hd_thumbnail(filepath, video.get('thumbnailUrl'))
+            synced_b64_thumb = _ensure_hd_thumbnail(filepath, video.get('thumbnailUrl'))
 
-        update_callback(video_id, status='completed', progress=100, local_path=filepath, speed='', actual_size_bytes=downloaded)
+        update_callback(video_id, status='completed', progress=100, local_path=filepath, speed='', actual_size_bytes=downloaded, thumbnail_url=synced_b64_thumb)
         print(Fore.GREEN + f"[OK] Tai xong video ID {video_id} (Direct)")
         return True
     except Exception as e:
@@ -367,12 +476,13 @@ def download_video(video, update_callback, cookie_data: str = None):
                 break
 
         # Đảm bảo có Thumbnail HD 1080p (tự trích xuất từ video nếu ảnh từ URL < 720p hoặc thiếu)
+        synced_b64_thumb = None
         if local_path and video.get('downloadThumbnail', True):
-            _ensure_hd_thumbnail(local_path, video.get('thumbnailUrl'))
+            synced_b64_thumb = _ensure_hd_thumbnail(local_path, video.get('thumbnailUrl'))
 
         if local_path:
             actual_size = os.path.getsize(local_path) if os.path.exists(local_path) else None
-            update_callback(video_id, status='completed', progress=100, local_path=local_path, speed='', actual_size_bytes=actual_size)
+            update_callback(video_id, status='completed', progress=100, local_path=local_path, speed='', actual_size_bytes=actual_size, thumbnail_url=synced_b64_thumb)
             print(Fore.GREEN + f"[OK] Tai xong video ID {video_id}")
         else:
             update_callback(video_id, status='failed', error='File not found after download')

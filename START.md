@@ -164,6 +164,19 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Khắc phục triệt để lỗi quét trùng lặp video Douyin (Duplicate Batch Uploads):
     - **Nguyên nhân**: Hàm `uploadCrawlBatch` trong Extension thiếu Mutex Lock và không xóa buffer trước `await fetch()`, dẫn tới mỗi lượt cuộn trang bắn cùng một lô video lên Server 5 lần đồng thời gây trùng lặp 233 video trong Database.
     - **Giải pháp**: Bổ sung cờ khóa `isBatchUploading` và cơ chế `splice` trích xuất buffer tức thì trước khi gửi request. Chạy SQL dọn dẹp sạch toàn bộ 233 bản ghi trùng lặp trong Database, khôi phục số lượng video của dự án về đúng **200 video gốc duy nhất**.
+  - `[x]` Khắc phục triệt để lỗi quét & hiển thị ảnh Thumbnail Douyin trên toàn hệ thống (403 Domain Forbidden):
+    - **Nguyên nhân**: Thao tác cắt chữ ký HMAC (`.split('?')[0]`) và cưỡng chế đổi domain về `p3.douyinpic.com` khiến ByteDance CDN chặn 100% các bucket bảo mật cao như `tos-cn-i-dy`.
+    - **Giải pháp 3 lớp**:
+      1. *Extension*: Giữ nguyên Signed URL hợp lệ có chữ ký HMAC cho các bucket bảo mật, chỉ nâng cấp 1080p cho bucket public `tos-cn-p-0015`.
+      2. *Server API*: Cập nhật `getHighResThumbnailUrl` không bóc tách chữ ký, bổ sung tiếp nhận `thumbnailUrl` (Base64) từ Worker và tự động cập nhật thumbnail mới cho video đã tồn tại.
+      3. *Python Worker*: Hỗ trợ giải mã Base64 thumbnail, tải signed URL kèm `Referer` Douyin và tự động trích xuất frame FFmpeg rồi gửi Base64 Data URI đồng bộ ngược lên Server DB.
+    - **Kết quả khôi phục dự án `hoat-hinh-tay-du`**: Phân biệt chuẩn xác giữa `/aweme/detail` (chỉ có frame player) và `/aweme/post` (chứa toàn bộ **Poster Dọc Thiết Kế Riêng** của tác giả với chữ thư pháp vàng "菩提现" và số tập). Đã cào và nhập trọn vẹn **188 / 188 video (100%)** của toàn bộ kênh tác giả vào CSDL Supabase với 100% Poster Dọc Base64 sắc nét, đồng bộ lưu toàn bộ 188 file `.jpg` vào thư mục máy tính `C:\Users\ADMIN\OneDrive\Desktop\DOWNLOAD1\hoat-hinh-tay-du\`, và nâng cấp Extension ưu tiên trường `video.cover` chuẩn poster cho mọi lần cào tiếp theo.
+  - `[x]` 🖼️ **Tối ưu hóa & Khắc phục triệt để lỗi Thumbnail (720p Pillow Lanczos + UI Fallback chống 403 + Responsive Aspect Ratio)**:
+    - **Local Python Worker (`downloader.py`)**: Tích hợp `optimize_and_save_thumbnail` nén ảnh JPEG chất lượng cao 85 và resize 720p thông minh (giữ nguyên tỷ lệ ảnh dọc 720x1280 và ảnh ngang 1280x720), giảm dung lượng file xuống ~100-200 KB và cam kết 100% video hoàn thành đều encode Base64 Data URI gửi lên CSDL Supabase. Bổ sung `Pillow>=10.0.0` vào `requirements.txt`.
+    - **Web UI Dashboard (`downloader-video-table.tsx`)**: Xây dựng `VideoThumbnailCell` kèm sự kiện `onError`: Tự động chuyển đổi sang Fallback Card Obsidian sang trọng có icon và badge nền tảng khi CDN Douyin/Bilibili bị chặn 403 hoặc hết hạn token HMAC. Chuẩn hóa `object-cover` hiển thị vừa vặn cả poster dọc và ngang.
+    - **Modal Phóng to (`downloader-thumbnail-modal.tsx`)**: Gỡ bỏ ràng buộc cứng `aspect-video` (16:9), co giãn linh hoạt theo tỷ lệ khung hình thật của ảnh (`max-h-[60vh] max-w-full object-contain`), bổ sung toggle xem Ảnh gốc / Ảnh đã dịch AI và nút mở ảnh trong tab mới.
+    - **Server Actions (`hero-downloader-actions.ts`)**: Bổ sung `translatedThumbnailUrl` trong câu query SELECT fallback của `getDownloaderVideosAction`.
+
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
 - **2026-08-25 (hero-dub / connect-hub - AI Publishing Suite: 2-Stage Split Flow & Multiline Paste Fix)**:
