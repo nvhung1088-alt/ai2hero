@@ -2354,6 +2354,7 @@ export const dubScanConfigs = pgTable('dub_scan_configs', {
   thumbnailAiModel: varchar('thumbnail_ai_model', { length: 100 }),
   thumbnailFontStyle: varchar('thumbnail_font_style', { length: 50 }).default('auto'),
   publishingPackEnabled: boolean('publishing_pack_enabled').notNull().default(true),
+  publishingAiEngine: varchar('publishing_ai_engine', { length: 50 }).default('deepseek'),
   lastScanAt: timestamp('last_scan_at'),
   scannedCount: integer('scanned_count').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
@@ -2405,6 +2406,7 @@ export const dubTasks = pgTable('dub_tasks', {
   thumbnailAiModel: varchar('thumbnail_ai_model', { length: 100 }),
   thumbnailFontStyle: varchar('thumbnail_font_style', { length: 50 }).default('auto'),
   publishingPackEnabled: boolean('publishing_pack_enabled').notNull().default(true),
+  publishingAiEngine: varchar('publishing_ai_engine', { length: 50 }).default('deepseek'),
   
   // === Branding ===
   projectId: integer('project_id').references(() => dubProjects.id, { onDelete: 'set null' }),

@@ -378,8 +378,43 @@ CẤU TRÚC JSON MẪU:
         "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao",
     }
 
-    if bridge_server and bridge_server.is_connected():
-        print(Fore.CYAN + f"  [⚡ WebSocket Copywriting] Dang gui yeu cau viet Tieu de + Mo ta sang Gemini...")
+    publishing_engine = (task.get("publishingAiEngine") or "deepseek").lower()
+    copywriting_success = False
+
+    # LUỒNG A: GỌI DEEPSEEK OFFICIAL AI QUA SERVER (Khuyến nghị - 1-2s, Ổn định ngầm 100%)
+    if publishing_engine == "deepseek" or not (bridge_server and bridge_server.is_connected()):
+        try:
+            print(Fore.CYAN + Style.BRIGHT + f"  [⚡ DeepSeek Copywriting] Dang gui yeu cau viet Tieu de + Mo ta sang DeepSeek AI...")
+            copywriting_api_url = f"{API_BASE_URL}/copywriting"
+            api_payload = {
+                "taskId": task_id,
+                "sourceTitle": clean_source_title,
+                "sampleSubs": sample_subs,
+                "engine": "deepseek"
+            }
+            resp = requests.post(copywriting_api_url, json=api_payload, headers=headers, timeout=45)
+            if resp.status_code == 200:
+                resp_data = resp.json()
+                if resp_data.get("success"):
+                    t_val = str(resp_data.get("new_title", "")).strip()
+                    if t_val:
+                        result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
+                    if resp_data.get("description"):
+                        result["description"] = str(resp_data.get("description")).strip()
+                    if resp_data.get("hashtags"):
+                        result["hashtags"] = str(resp_data.get("hashtags")).strip()
+                    copywriting_success = True
+                    print(Fore.GREEN + Style.BRIGHT + f"  [✓ DeepSeek Ready] Da tao Tieu de chuan SEO: {result['new_title']}")
+                else:
+                    print(Fore.YELLOW + f"  [!] DeepSeek tra ve loi: {resp_data.get('error')}")
+            else:
+                print(Fore.YELLOW + f"  [!] Server tra ve HTTP {resp.status_code} cho DeepSeek Copywriting: {resp.text[:120]}")
+        except Exception as ds_err:
+            print(Fore.YELLOW + f"  [!] Loi khi goi DeepSeek Copywriting qua Server: {str(ds_err)}")
+
+    # LUỒNG B: GỌI BROWSER AI BRIDGE (Chrome Extension điều khiển Web Chat miễn phí)
+    if not copywriting_success and bridge_server and bridge_server.is_connected():
+        print(Fore.CYAN + f"  [🌐 WebSocket Copywriting] Dang gui yeu cau viet Tieu de + Mo ta sang Gemini qua Extension...")
         ws_res = bridge_server.execute_job(prompt, attachments=[], target_ai="gemini", timeout=120, allow_failover=False)
         if ws_res and ws_res.get("success") and ws_res.get("result"):
             raw_out = str(ws_res.get("result", "")).strip()
@@ -401,19 +436,20 @@ CẤU TRÚC JSON MẪU:
                             result["description"] = str(parsed.get("description")).strip()
                         if parsed.get("hashtags"):
                             result["hashtags"] = str(parsed.get("hashtags")).strip()
-                        print(Fore.GREEN + Style.BRIGHT + f"  [⚡ WebSocket Copywriting] Da tao Tieu de moi chuan xac: {result['new_title']}")
+                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ WebSocket Copywriting] Da tao Tieu de moi chuan xac: {result['new_title']}")
                         parsed_success = True
+                        copywriting_success = True
             except Exception:
                 pass
 
             if not parsed_success:
-                # Trích xuất thủ công theo từng trường
                 title_m = re.search(r'"new_title"\s*:\s*"([^"]+)"', raw_out)
                 if title_m:
                     t_val = title_m.group(1).strip()
                     result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
                     parsed_success = True
-                    print(Fore.GREEN + Style.BRIGHT + f"  [⚡ WebSocket Copywriting] Da trich xuat Tieu de moi: {result['new_title']}")
+                    copywriting_success = True
+                    print(Fore.GREEN + Style.BRIGHT + f"  [✓ WebSocket Copywriting] Da trich xuat Tieu de moi: {result['new_title']}")
 
     # Rào chắn an toàn: Nếu vẫn còn chữ tiếng Trung, tự động dịch trực tiếp tiêu đề gốc hoặc lấy câu phụ đề đầu tiên
     if re.search(r'[\u4e00-\u9fff]', result["new_title"]):

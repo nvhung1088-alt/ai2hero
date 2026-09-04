@@ -191,6 +191,14 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- **2026-09-04 (hero-dub - Publishing Suite AI Engine Selection: DeepSeek Official API vs Browser AI Bridge)**:
+  - ⚡ **Tùy Chọn Đa Phương Án AI Viết Tư Liệu**: Bổ sung lựa chọn DeepSeek Official AI (`deepseek`) song song cùng Browser AI Bridge (`browser-ai-bridge`), giúp người dùng chủ động chọn giữa tốc độ tức thì 1-2s (DeepSeek) hoặc miễn phí qua Web Chat (Chrome Extension).
+  - 🗄️ **Đồng Bộ Cơ Sở Dữ Liệu Neon Postgres**: Thêm cột `publishingAiEngine: varchar(50).default('deepseek')` vào 2 bảng `dub_scan_configs` và `dub_tasks`. Đã push migration thành công lên Neon Postgres.
+  - 🛡️ **Bảo Mật API Route `/api/hero-dub/copywriting`**: Tạo endpoint xác thực worker bằng Bearer Token, gọi DeepSeek thông qua Connect Hub Engine phía server với `response_format: { type: 'json_object' }`, tuyệt đối không lộ API key ra Worker hay máy Client.
+  - 🖥️ **Giao Diện Trực Quan & Nút Thử Nghiệm**: Dropdown chọn engine mượt mà trên Form Cài Đặt Quét (`dub-task-form.tsx`) và Dashboard (`dashboard-client.tsx`), kèm nút Test mẫu gọi trực tiếp engine đã chọn để kiểm tra chất lượng tiêu đề / mô tả / hashtags.
+  - 🐍 **Worker Phân Nhánh & Fallback Thông Minh**: Cập nhật hàm `generate_video_copywriting` trong `herodub_worker.py` (và bản copy public) gọi HTTP API khi chọn DeepSeek, gọi WebSocket Bridge khi chọn Extension, và tự động fallback nếu engine chính gặp sự cố.
+  - 🟢 **Verification**: `npx tsc --noEmit` đạt 0 lỗi, `python -m py_compile` đạt 0 lỗi.
+
 - **2026-09-04 (hero-dub - FFMPEG Render WinError 32 Elimination & Direct Output)**:
   - 🛑 **Triệt Tiêu 100% Lỗi Khóa File `temp_output.mp4` (`[WinError 32]`)**: Thay vì xuất ra file trung gian `temp_output.mp4` rồi dùng `shutil.move` dễ bị xung đột file handle trên Windows, hệ thống chuyển sang **render TRỰC TIẾP vào `output.mp4`** cho các video thông thường (không gộp Intro/Outro).
   - 🔄 **Cơ Chế Safe File Movement Dự Phòng**: Nếu có gộp Intro/Outro, cơ chế `safe_move_file` với vòng lặp retry 5 lần (độ trễ 0.6s) và fallback tự động sang `shutil.copy2` đảm bảo quy trình render không bao giờ bị dừng đột ngột do tranh chấp tiến trình.

@@ -258,6 +258,7 @@ export default function DashboardClient({
   const [thumbnailAiModel, setThumbnailAiModel] = useState<string>('gemini-2.5-flash-image');
   const [thumbnailFontStyle, setThumbnailFontStyle] = useState<string>('auto');
   const [publishingPackEnabled, setPublishingPackEnabled] = useState<boolean>(true);
+  const [publishingAiEngine, setPublishingAiEngine] = useState<string>('deepseek');
 
   const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
 
@@ -300,6 +301,7 @@ export default function DashboardClient({
           if (s.thumbnailAiModel !== undefined) setThumbnailAiModel(s.thumbnailAiModel);
           if (s.thumbnailFontStyle !== undefined) setThumbnailFontStyle(s.thumbnailFontStyle);
           if (s.publishingPackEnabled !== undefined) setPublishingPackEnabled(s.publishingPackEnabled);
+          if (s.publishingAiEngine !== undefined) setPublishingAiEngine(s.publishingAiEngine);
           setHasLoadedSettings(true);
           return;
         }
@@ -333,11 +335,12 @@ export default function DashboardClient({
         selectedAiAppSlug, selectedAiModel,
         redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel,
         thumbnailFontStyle,
-        publishingPackEnabled
+        publishingPackEnabled,
+        publishingAiEngine
       };
       localStorage.setItem('heroDubSettings', JSON.stringify(settings));
     }
-  }, [sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, videoSlowdown, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel, thumbnailFontStyle, publishingPackEnabled, hasLoadedSettings]);
+  }, [sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, videoSlowdown, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel, thumbnailFontStyle, publishingPackEnabled, publishingAiEngine, hasLoadedSettings]);
 
   const [creatingTask, setCreatingTask] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -675,6 +678,8 @@ export default function DashboardClient({
           thumbnailAiAppSlug,
           thumbnailAiModel,
           thumbnailFontStyle,
+          publishingPackEnabled,
+          publishingAiEngine,
         });
 
         if (res.error) {
@@ -719,6 +724,8 @@ export default function DashboardClient({
             thumbnailAiAppSlug,
             thumbnailAiModel,
             thumbnailFontStyle,
+            publishingPackEnabled,
+            publishingAiEngine,
             ...taskBranding,
           });
 
@@ -822,6 +829,7 @@ export default function DashboardClient({
         aiAppSlug: selectedAiAppSlug || undefined,
         aiModel: selectedAiModel || undefined,
         publishingPackEnabled,
+        publishingAiEngine,
         redesignThumbnailEnabled,
         thumbnailLogoSource,
         customThumbnailLogoUrl,
@@ -1153,6 +1161,8 @@ export default function DashboardClient({
         setThumbnailFontStyle={setThumbnailFontStyle}
         publishingPackEnabled={publishingPackEnabled}
         setPublishingPackEnabled={setPublishingPackEnabled}
+        publishingAiEngine={publishingAiEngine}
+        setPublishingAiEngine={setPublishingAiEngine}
         scanProjects={scanProjects}
         scanFolderPath={scanFolderPath}
         setScanFolderPath={setScanFolderPath}

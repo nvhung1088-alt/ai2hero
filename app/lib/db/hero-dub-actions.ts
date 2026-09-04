@@ -80,6 +80,7 @@ export async function createDubTaskAction(data: {
   thumbnailAiModel?: string;
   thumbnailFontStyle?: string;
   publishingPackEnabled?: boolean;
+  publishingAiEngine?: string;
   projectId?: number;
   scanConfigId?: number;
   brandingEnabled?: boolean;
@@ -134,6 +135,9 @@ export async function createDubTaskAction(data: {
       if (data.publishingPackEnabled !== undefined && existing.publishingPackEnabled !== data.publishingPackEnabled) {
         updatePayload.publishingPackEnabled = data.publishingPackEnabled;
       }
+      if (data.publishingAiEngine !== undefined && existing.publishingAiEngine !== data.publishingAiEngine) {
+        updatePayload.publishingAiEngine = data.publishingAiEngine;
+      }
       if (Object.keys(updatePayload).length > 0) {
         await db
           .update(dubTasks)
@@ -177,6 +181,7 @@ export async function createDubTaskAction(data: {
         thumbnailAiModel: data.thumbnailAiModel || null,
         thumbnailFontStyle: data.thumbnailFontStyle || 'auto',
         publishingPackEnabled: data.publishingPackEnabled ?? true,
+        publishingAiEngine: data.publishingAiEngine || 'deepseek',
         status: 'pending',
         progress: '0',
         dedupeKey,
@@ -1409,8 +1414,8 @@ export async function testPublishingSuiteAction(
   modelName?: string
 ) {
   try {
-    const effectiveAppSlug = appSlug || 'browser-ai-bridge';
-    const effectiveModel = modelName || 'gemini';
+    const effectiveAppSlug = appSlug || 'deepseek';
+    const effectiveModel = modelName || (effectiveAppSlug === 'deepseek' ? 'deepseek-chat' : 'gemini');
 
     const [connection] = await db
       .select()
@@ -1425,9 +1430,9 @@ export async function testPublishingSuiteAction(
     const decryptedJson = decryptField(connection.encryptedCredentials) || '{}';
     const credentials = JSON.parse(decryptedJson);
 
-    const testPrompt = `[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH, KHÔNG HỎI LẠI]
+    const testPrompt = `[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON THUẦN TÚY. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH, KHÔNG HỎI LẠI]
 
-Hãy đóng vai Giám đốc Sáng tạo Nội dung Phim. Dưới đây là thông tin video mẫu:
+Hãy đóng vai Giám đốc Sáng tạo Nội dung Phim & Video Ngắn. Dưới đây là thông tin video mẫu:
 - Tiêu đề gốc: 1270_ai_co_the_tu_choi_xem_xay_nha_trong_mua_bao
 - Các câu thoại tiêu biểu:
 - Ai có thể từ chối việc trước khi đi ngủ lướt qua một video xây dựng giữa rừng mưa
@@ -1455,7 +1460,8 @@ CHỈ TRẢ VỀ MÃ JSON THEO ĐÚNG CẤU TRÚC SAU (KHÔNG THÊM BẤT KỲ V
       connectionId: connection.id,
       prompt: testPrompt,
       attachments: [],
-      messages: [{ role: 'user', content: testPrompt }]
+      messages: [{ role: 'user', content: testPrompt }],
+      response_format: { type: 'json_object' }
     });
 
     if (!result.success || !result.data) {

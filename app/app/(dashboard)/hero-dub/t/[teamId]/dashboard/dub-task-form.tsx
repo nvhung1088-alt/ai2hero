@@ -129,6 +129,8 @@ interface DubTaskFormProps {
   setThumbnailLogoPosition?: (_pos: string) => void;
   publishingPackEnabled?: boolean;
   setPublishingPackEnabled?: (_val: boolean) => void;
+  publishingAiEngine?: string;
+  setPublishingAiEngine?: (_engine: string) => void;
 }
 
 export default function DubTaskForm({
@@ -220,9 +222,12 @@ export default function DubTaskForm({
   setThumbnailLogoPosition: externalSetThumbnailLogoPosition,
   publishingPackEnabled: externalPublishingPackEnabled,
   setPublishingPackEnabled: externalSetPublishingPackEnabled,
+  publishingAiEngine: externalPublishingAiEngine,
+  setPublishingAiEngine: externalSetPublishingAiEngine,
 }: DubTaskFormProps) {
   // Local fallback states if not passed as props
   const [internalPublishingPackEnabled, setInternalPublishingPackEnabled] = React.useState(true);
+  const [internalPublishingAiEngine, setInternalPublishingAiEngine] = React.useState('deepseek');
   const [internalRedesignEnabled, setInternalRedesignEnabled] = React.useState(false);
   const [internalLogoSource, setInternalLogoSource] = React.useState('project');
   const [internalCustomLogoUrl, setInternalCustomLogoUrl] = React.useState('');
@@ -234,6 +239,8 @@ export default function DubTaskForm({
 
   const publishingPackEnabled = externalPublishingPackEnabled !== undefined ? externalPublishingPackEnabled : internalPublishingPackEnabled;
   const setPublishingPackEnabled = externalSetPublishingPackEnabled || setInternalPublishingPackEnabled;
+  const publishingAiEngine = externalPublishingAiEngine !== undefined ? externalPublishingAiEngine : internalPublishingAiEngine;
+  const setPublishingAiEngine = externalSetPublishingAiEngine || setInternalPublishingAiEngine;
   const redesignThumbnailEnabled = externalRedesignEnabled !== undefined ? externalRedesignEnabled : internalRedesignEnabled;
   const setRedesignThumbnailEnabled = externalSetRedesignEnabled || setInternalRedesignEnabled;
   const thumbnailLogoSource = externalLogoSource !== undefined ? externalLogoSource : internalLogoSource;
@@ -268,7 +275,9 @@ export default function DubTaskForm({
     setIsTestingPublishingSuite(true);
     setTestPublishingResult(null);
     try {
-      const res = await testPublishingSuiteAction(teamId, selectedAiAppSlug || 'browser-ai-bridge', selectedAiModel || 'gemini');
+      const targetApp = publishingAiEngine === 'deepseek' ? 'deepseek' : 'browser-ai-bridge';
+      const targetModel = targetApp === 'deepseek' ? 'deepseek-chat' : 'gemini';
+      const res = await testPublishingSuiteAction(teamId, targetApp, targetModel);
       if (res.success && res.result) {
         let raw: any = res.result;
         let parsedTitle = '';
@@ -1121,10 +1130,30 @@ export default function DubTaskForm({
             </label>
           </div>
           {publishingPackEnabled && (
-            <div className="space-y-2.5">
-              <div className="text-[10px] text-gray-400 bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
-                💡 Sau khi dịch & lồng tiếng, AI sẽ tự động giật tít lại Tiêu đề tiếng Việt chuẩn SEO, viết bài Mô tả tóm tắt nội dung kịch tính, tạo bộ 6-8 Hashtags xu hướng và xuất sẵn file <code className="text-amber-300 font-mono">.txt</code> để bạn chỉ cần copy đăng bài lên YouTube, TikTok, Facebook!
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200 bg-amber-500/5 p-3 rounded-xl border border-amber-500/20">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-extrabold text-amber-300 uppercase">Phương Án AI Viết Tư Liệu</label>
+                <select
+                  value={publishingAiEngine || 'deepseek'}
+                  onChange={(e) => setPublishingAiEngine(e.target.value)}
+                  disabled={creatingTask}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer font-medium"
+                >
+                  <option value="deepseek">⚡ DeepSeek Official AI (Khuyến nghị - Siêu tốc 1-2s, Văn phong SEO đỉnh cao)</option>
+                  <option value="browser-ai-bridge">🌐 Browser AI Bridge (Dùng Chrome Extension mở Web Chat miễn phí)</option>
+                </select>
               </div>
+
+              {publishingAiEngine === 'deepseek' ? (
+                <div className="text-[9.5px] text-gray-300 bg-black/40 p-2.5 rounded-xl border border-white/5 leading-relaxed">
+                  💡 <b className="text-amber-300">DeepSeek AI:</b> Tự động phân tích video ngầm qua Server, giật tít lại Tiêu đề chuẩn SEO, viết bài Mô tả tóm tắt kịch tính, tạo 6-8 Hashtags xu hướng và xuất sẵn file <code className="text-amber-300 font-mono">.txt</code> siêu nhanh (1-2s).
+                </div>
+              ) : (
+                <div className="text-[9.5px] text-blue-300 bg-blue-500/10 p-2.5 rounded-xl border border-blue-500/20 leading-relaxed">
+                  🌐 <b className="text-blue-200">Browser AI Bridge:</b> Worker sẽ phát tín hiệu WebSocket sang Chrome Extension để điều khiển web chat Gemini / ChatGPT viết bài hoàn toàn miễn phí. Yêu cầu bật sẵn tab chat trên trình duyệt.
+                </div>
+              )}
+
               <div className="text-right">
                 <button
                   type="button"
@@ -1133,7 +1162,7 @@ export default function DubTaskForm({
                   className="text-[10px] bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1 border border-amber-500/20 cursor-pointer"
                 >
                   {isTestingPublishingSuite ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
-                  {isTestingPublishingSuite ? 'Đang gửi yêu cầu sang AI...' : '⚡ Test Thử Nghiệm Tạo Tư Liệu Mẫu'}
+                  {isTestingPublishingSuite ? 'Đang gửi yêu cầu sang AI...' : `⚡ Test Thử Nghiệm Tạo Mẫu (${publishingAiEngine === 'deepseek' ? 'DeepSeek' : 'Browser AI'})`}
                 </button>
                 {testPublishingResult && (
                   <div className={`mt-2 p-3 rounded-xl text-[11px] text-left border space-y-2 animate-in fade-in slide-in-from-top-1 ${testPublishingResult.success ? 'bg-green-500/10 border-green-500/20 text-green-300' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
