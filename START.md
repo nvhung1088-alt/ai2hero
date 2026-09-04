@@ -2154,5 +2154,12 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
     - Tạo Khung biển hiệu Charcoal bo góc viền vàng kim kép ở nửa dưới che phủ hoàn toàn 100% chữ tiếng Trung gốc.
     - Typography 3D Vàng kim (Extrusion shadow đen sâu + Stroke viền đen đậm + Gold sheen lấp lánh), tự động ngắt dòng và co giãn kích thước font theo chiều dài tiêu đề chuẩn xác 100% tiếng Việt.
     - Tự động chạy khi Gemini offline / timeout, bảo đảm 100% video xuất bản đều có ảnh bìa tiếng Việt 3D sắc nét.
+  - Tích hợp **Gemini Flash Inpainting + Adaptive Vietnamese Typography** toàn diện:
+    - `gemini.ts`: Đăng ký capability `'image'`, model `gemini-2.5-flash-image` và `gemini-3.1-flash-image`, runner thực thi REST API Google AI Studio với ảnh base64/URL.
+    - `herodub_worker.py`: Thêm `clean_image_with_gemini_flash` (xóa chữ Hán sạch sẽ chỉ trong 3s bằng Gemini Flash) và `render_adaptive_vietnamese_thumbnail` (tự động nhận diện tỷ lệ 16:9 / 9:16 để bố cục typography tiếng Việt chuẩn điện ảnh với các font thư pháp / 3D).
+    - `schema.ts`: Bổ sung cột `thumbnail_font_style` vào `dubScanConfigs` và `dubTasks`, đồng bộ Postgres qua `pnpm db:push`.
+    - Dashboard Web: Thêm trường chọn "Phong cách chữ Tiếng Việt (Typography)" trên form tạo task lồng tiếng và tự động ghi nhớ tùy chọn vào `localStorage`.
+    - Đã test `tsc --noEmit`, `pnpm build`, push lên GitHub `origin main` kích hoạt Vercel Production deployment tự động tại `https://ai2hero-flax.vercel.app/hero-dub/t/3/dashboard`.
+
 
 
