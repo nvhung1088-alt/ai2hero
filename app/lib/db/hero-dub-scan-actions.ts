@@ -41,6 +41,7 @@ export async function saveDubScanConfigAction(data: {
   customThumbnailLogoUrl?: string;
   thumbnailAiAppSlug?: string;
   thumbnailAiModel?: string;
+  thumbnailFontStyle?: string;
   aiAppSlug?: string;
   aiModel?: string;
   publishingPackEnabled?: boolean;
@@ -72,6 +73,7 @@ export async function saveDubScanConfigAction(data: {
           customThumbnailLogoUrl: data.customThumbnailLogoUrl,
           thumbnailAiAppSlug: data.thumbnailAiAppSlug,
           thumbnailAiModel: data.thumbnailAiModel,
+          thumbnailFontStyle: data.thumbnailFontStyle || 'auto',
           aiAppSlug: data.aiAppSlug,
           aiModel: data.aiModel,
           publishingPackEnabled: data.publishingPackEnabled ?? true,
@@ -101,6 +103,7 @@ export async function saveDubScanConfigAction(data: {
           customThumbnailLogoUrl: data.customThumbnailLogoUrl,
           thumbnailAiAppSlug: data.thumbnailAiAppSlug,
           thumbnailAiModel: data.thumbnailAiModel,
+          thumbnailFontStyle: data.thumbnailFontStyle || 'auto',
           publishingPackEnabled: data.publishingPackEnabled ?? true,
         })
         .where(
@@ -134,6 +137,7 @@ export async function saveDubScanConfigAction(data: {
         customThumbnailLogoUrl: data.customThumbnailLogoUrl || null,
         thumbnailAiAppSlug: data.thumbnailAiAppSlug,
         thumbnailAiModel: data.thumbnailAiModel,
+        thumbnailFontStyle: data.thumbnailFontStyle || 'auto',
         aiAppSlug: data.aiAppSlug,
         aiModel: data.aiModel,
         publishingPackEnabled: data.publishingPackEnabled ?? true,

@@ -254,8 +254,8 @@ export default function DashboardClient({
   const [redesignThumbnailEnabled, setRedesignThumbnailEnabled] = useState<boolean>(false);
   const [thumbnailLogoSource, setThumbnailLogoSource] = useState<string>('project');
   const [customThumbnailLogoUrl, setCustomThumbnailLogoUrl] = useState<string>('');
-  const [thumbnailAiAppSlug, setThumbnailAiAppSlug] = useState<string>('');
-  const [thumbnailAiModel, setThumbnailAiModel] = useState<string>('');
+  const [thumbnailAiAppSlug, setThumbnailAiAppSlug] = useState<string>('gemini');
+  const [thumbnailAiModel, setThumbnailAiModel] = useState<string>('gemini-2.5-flash-image');
   const [thumbnailFontStyle, setThumbnailFontStyle] = useState<string>('auto');
   const [publishingPackEnabled, setPublishingPackEnabled] = useState<boolean>(true);
 
@@ -827,6 +827,7 @@ export default function DashboardClient({
         customThumbnailLogoUrl,
         thumbnailAiAppSlug,
         thumbnailAiModel,
+        thumbnailFontStyle,
       });
 
       if (res.success) {

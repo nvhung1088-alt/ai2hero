@@ -819,11 +819,37 @@ def redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, br
     clean_title = re.sub(r'[\\/:*?"<>|]', ' ', clean_title).strip()
     clean_title = smart_truncate(clean_title, max_len=45)
 
+    thumbnail_app = (task.get("thumbnailAiAppSlug") or "gemini").lower()
     font_style = task.get("thumbnailFontStyle", "auto")
     dest_dir = os.path.dirname(thumb_src)
     clean_bg = os.path.join(dest_dir, f"_clean_bg_{os.path.basename(thumb_src)}")
     final_thumb = os.path.join(dest_dir, f"_final_thumb_{os.path.basename(thumb_src)}")
 
+    # PHƯƠNG ÁN 1: LOCAL WORKER 3D GOLD (Offline 100% - Không cần API)
+    if thumbnail_app == "local-engine":
+        print(Fore.CYAN + Style.BRIGHT + f"  [🏆 Local Engine] Dang ve anh bia 3D Vang Kim tieng Viet offline...")
+        res = create_local_3d_gold_thumbnail(thumb_src, clean_title, final_thumb, tag_text="THUYẾT MINH")
+        if res and os.path.exists(res):
+            print(Fore.GREEN + Style.BRIGHT + f"  [✓ Thumbnail Ready] Hoan tat anh bia Local 3D: {os.path.basename(res)}!")
+            return res
+
+    # PHƯƠNG ÁN 2: BROWSER AI BRIDGE (Chrome Extension điều khiển Web Chat vẽ lại ảnh)
+    if thumbnail_app == "browser-ai-bridge":
+        print(Fore.CYAN + Style.BRIGHT + f"  [🌐 Browser AI Bridge] Dang gui anh goc sang Web Chat qua Extension de ve lai toan dien...")
+        if bridge_server and bridge_server.is_connected():
+            try:
+                with open(thumb_src, "rb") as f:
+                    b64_img = base64.b64encode(f.read()).decode("utf-8")
+                bridge_payload = [{"type": "image", "base64": f"data:image/jpeg;base64,{b64_img}"}]
+                bridge_prompt = f"Hãy tạo lại một ảnh bìa thumbnail điện ảnh đẹp mắt dựa trên bức ảnh này. Tiêu đề tiếng Việt là '{clean_title}'. Phong cách sắc nét, ấn tượng, phù hợp YouTube."
+                target_ai = task.get("thumbnailAiModel") or "gemini"
+                ws_res = bridge_server.execute_job(bridge_prompt, attachments=bridge_payload, target_ai=target_ai, timeout=60)
+                if ws_res and ws_res.get("image_url"):
+                    return ws_res["image_url"]
+            except Exception as b_err:
+                print(Fore.YELLOW + f"  [!] Browser Bridge loi: {b_err}. Fallback sang Gemini Flash...")
+
+    # PHƯƠNG ÁN 3: GEMINI FLASH API + WORKER TYPOGRAPHY (Mặc định & Khuyến nghị - 3s)
     # BƯỚC 1: Xóa chữ TQ bằng Gemini Flash (3s)
     clean_path = clean_image_with_gemini_flash(thumb_src, clean_bg, bridge_server=bridge_server)
     effective_bg = clean_path if (clean_path and os.path.exists(clean_path)) else thumb_src

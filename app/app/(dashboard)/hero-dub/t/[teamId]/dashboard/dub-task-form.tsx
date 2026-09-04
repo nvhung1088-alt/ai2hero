@@ -1186,29 +1186,31 @@ export default function DubTaskForm({
             <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200 bg-amber-500/5 p-3 rounded-xl border border-amber-500/20">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[9px] font-extrabold text-amber-300 uppercase">Ứng dụng AI Chỉnh Ảnh (Connect Hub)</label>
-                  {(!connectedAiImageApps || connectedAiImageApps.length === 0) && (
-                    <Link href={`/t/${teamId}/connect-hub`} className="text-[9px] text-amber-500 hover:text-amber-400 flex items-center gap-1">
-                      Kết nối ngay <ExternalLink className="h-2.5 w-2.5" />
-                    </Link>
-                  )}
+                  <label className="text-[9px] font-extrabold text-amber-300 uppercase">Phương Án Thiết Kế Ảnh Bìa (Thumbnail Method)</label>
+                  <Link href={`/t/${teamId}/connect-hub`} className="text-[9px] text-amber-500 hover:text-amber-400 flex items-center gap-1">
+                    Cổng Connect Hub <ExternalLink className="h-2.5 w-2.5" />
+                  </Link>
                 </div>
                 <select
-                  value={thumbnailAiAppSlug}
+                  value={thumbnailAiAppSlug || 'gemini'}
                   onChange={(e) => {
-                    setThumbnailAiAppSlug(e.target.value);
-                    const app = connectedAiImageApps?.find(a => a.slug === e.target.value);
-                    if (app && app.models && app.models.length > 0) {
-                      setThumbnailAiModel(app.models[0].id || app.models[0].name);
+                    const val = e.target.value;
+                    setThumbnailAiAppSlug(val);
+                    if (val === 'gemini') {
+                      setThumbnailAiModel('gemini-2.5-flash-image');
+                    } else if (val === 'browser-ai-bridge') {
+                      setThumbnailAiModel('gemini');
                     } else {
                       setThumbnailAiModel('');
                     }
                   }}
                   disabled={creatingTask}
-                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer font-medium"
                 >
-                  <option value="">-- Chọn Ứng dụng Image AI --</option>
-                  {connectedAiImageApps?.map(app => (
+                  <option value="gemini">⚡ Gemini Flash AI + Worker Typography (Khuyến nghị - Nhanh 3s, Miễn phí)</option>
+                  <option value="browser-ai-bridge">🌐 Browser AI Bridge (Dùng Chrome Extension vẽ lại ảnh trên Web)</option>
+                  <option value="local-engine">🏆 Local Worker 3D Gold (Offline 100% - Không cần API, 0.05s)</option>
+                  {connectedAiImageApps?.filter(app => app.slug !== 'gemini' && app.slug !== 'browser-ai-bridge').map(app => (
                     <option key={app.slug} value={app.slug}>
                       {app.name}
                     </option>
@@ -1216,27 +1218,24 @@ export default function DubTaskForm({
                 </select>
               </div>
 
-              {thumbnailAiAppSlug && (
+              {/* Chi tiết cho phương án Gemini Flash API */}
+              {(thumbnailAiAppSlug === 'gemini' || !thumbnailAiAppSlug) && (
                 <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <label className="text-[9px] font-extrabold text-amber-300 uppercase">AI Model (Mô hình)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[9px] font-extrabold text-amber-300 uppercase">Mô hình AI Xóa Chữ TQ (Inpainting)</label>
+                    <span className="text-[8px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-semibold">
+                      1.500 ảnh/ngày Free
+                    </span>
+                  </div>
                   <select
-                    value={thumbnailAiModel}
+                    value={thumbnailAiModel || 'gemini-2.5-flash-image'}
                     onChange={(e) => setThumbnailAiModel(e.target.value)}
-                    disabled={creatingTask || !thumbnailAiAppSlug}
+                    disabled={creatingTask}
                     className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
                   >
-                    {!thumbnailAiAppSlug ? (
-                      <option value="">Vui lòng chọn Ứng dụng AI trước</option>
-                    ) : (
-                      <>
-                        <option value="">-- Chọn Mô hình AI --</option>
-                        {connectedAiImageApps?.find(a => a.slug === thumbnailAiAppSlug)?.models?.map(m => (
-                          <option key={m.id || m.name} value={m.id || m.name}>
-                            {m.name || m.id}
-                          </option>
-                        ))}
-                      </>
-                    )}
+                    <option value="gemini-2.5-flash-image">Gemini 2.5 Flash Image (Khuyến nghị - Siêu nét & xóa sạch)</option>
+                    <option value="gemini-2.0-flash">Gemini 2.0 Flash (Tốc độ phản hồi cực nhanh)</option>
+                    <option value="gemini-3.1-flash-image">Gemini 3.1 Flash Image (Bản nâng cao)</option>
                   </select>
 
                   <div className="mt-2 text-right">
@@ -1268,30 +1267,59 @@ export default function DubTaskForm({
                 </div>
               )}
 
-              <div className="space-y-1.5 border-t border-amber-500/20 pt-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                <div className="flex items-center justify-between">
-                  <label className="text-[9px] font-extrabold text-amber-300 uppercase">
-                    Phong Cách Chữ Tiếng Việt (Typography)
-                  </label>
-                  <span className="text-[8px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                    Gemini Flash Erase + Thay thế chuẩn vị trí
-                  </span>
+              {/* Chi tiết cho phương án Browser AI Bridge */}
+              {thumbnailAiAppSlug === 'browser-ai-bridge' && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <label className="text-[9px] font-extrabold text-amber-300 uppercase">Nền tảng AI mục tiêu trên Trình duyệt</label>
+                  <select
+                    value={thumbnailAiModel || 'gemini'}
+                    onChange={(e) => setThumbnailAiModel(e.target.value)}
+                    disabled={creatingTask}
+                    className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                  >
+                    <option value="gemini">Google Gemini Web (Chat.google.com)</option>
+                    <option value="chatgpt">ChatGPT Web (Chatgpt.com)</option>
+                  </select>
+                  <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[10px] text-blue-300 leading-relaxed">
+                    🌐 <b>Chế độ Browser AI Bridge:</b> Chrome Extension sẽ tự động gửi ảnh sang web chat Gemini / ChatGPT để AI tự vẽ lại toàn bộ ảnh mới. Vì AI trên web tự sinh ảnh nên <b>không cần dùng font chữ của Worker</b>.
+                  </div>
                 </div>
-                <select
-                  value={thumbnailFontStyle}
-                  onChange={(e) => setThumbnailFontStyle(e.target.value)}
-                  disabled={creatingTask}
-                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
-                >
-                  <option value="auto">⚡ Tự Động Thích Ứng (Thư pháp Anime / 3D Vàng Sinh Tồn)</option>
-                  <option value="calligraphy">🖋️ Thư Pháp Việt Nghệ Thuật (Charm Bold - Phim / Anime / Cổ Trang)</option>
-                  <option value="gold_3d">🏆 Chữ 3D Vàng Kim Đa Tầng (Arial Bold - Sang trọng / Vlog / Sinh Tồn)</option>
-                  <option value="neon_glow">✨ Hào Quang Cyan Điện Ảnh (Electric Glow - Huyền bí / Mạt Thế)</option>
-                </select>
-                <p className="text-[9px] text-gray-400 font-medium leading-relaxed">
-                  ✨ Quy trình 3s: <span className="text-amber-300 font-bold">Gemini Flash</span> tự động xóa sạch chữ Trung Quốc & watermark ➔ <span className="text-white font-bold">Worker</span> chèn chữ tiếng Việt vào đúng vị trí chữ gốc.
-                </p>
-              </div>
+              )}
+
+              {/* Chi tiết cho phương án Local 3D Gold */}
+              {thumbnailAiAppSlug === 'local-engine' && (
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-300 leading-relaxed animate-in fade-in slide-in-from-top-1 duration-200">
+                  🏆 <b>Chế độ Offline 100%:</b> Worker tự động che sạch chữ Trung Quốc và vẽ biển hiệu 3D Vàng Kim tiếng Việt trực tiếp trên máy tính. Cực nhanh (0.05 giây), không tốn quota API và không phụ thuộc mạng.
+                </div>
+              )}
+
+              {/* Chỉ hiển thị chọn Typography khi KHÔNG PHẢI Browser AI Bridge */}
+              {thumbnailAiAppSlug !== 'browser-ai-bridge' && (
+                <div className="space-y-1.5 border-t border-amber-500/20 pt-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[9px] font-extrabold text-amber-300 uppercase">
+                      Phong Cách Chữ Tiếng Việt (Typography)
+                    </label>
+                    <span className="text-[8px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                      Worker chèn font Việt hóa thích ứng
+                    </span>
+                  </div>
+                  <select
+                    value={thumbnailFontStyle}
+                    onChange={(e) => setThumbnailFontStyle(e.target.value)}
+                    disabled={creatingTask}
+                    className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                  >
+                    <option value="auto">⚡ Tự Động Thích Ứng (Thư pháp Anime / 3D Vàng Sinh Tồn)</option>
+                    <option value="calligraphy">🖋️ Thư Pháp Việt Nghệ Thuật (Charm Bold - Phim / Anime / Cổ Trang)</option>
+                    <option value="gold_3d">🏆 Chữ 3D Vàng Kim Đa Tầng (Arial Bold - Sang trọng / Vlog / Sinh Tồn)</option>
+                    <option value="neon_glow">✨ Hào Quang Cyan Điện Ảnh (Electric Glow - Huyền bí / Mạt Thế)</option>
+                  </select>
+                  <p className="text-[9px] text-gray-400 font-medium leading-relaxed">
+                    ✨ {thumbnailAiAppSlug === 'local-engine' ? 'Local Worker' : 'Gemini Flash'} xóa sạch chữ Trung Quốc & watermark ➔ <span className="text-white font-bold">Worker</span> chèn chữ tiếng Việt đúng vị trí và tỷ lệ ảnh gốc.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-1.5 border-t border-amber-500/20 pt-3">
                 <label className="text-[9px] font-extrabold text-amber-300 uppercase">Nguồn Logo Mẫu Chèn Vào Ảnh</label>
