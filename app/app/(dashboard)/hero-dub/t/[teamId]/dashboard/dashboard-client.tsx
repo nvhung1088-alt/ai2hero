@@ -256,6 +256,7 @@ export default function DashboardClient({
   const [customThumbnailLogoUrl, setCustomThumbnailLogoUrl] = useState<string>('');
   const [thumbnailAiAppSlug, setThumbnailAiAppSlug] = useState<string>('');
   const [thumbnailAiModel, setThumbnailAiModel] = useState<string>('');
+  const [thumbnailFontStyle, setThumbnailFontStyle] = useState<string>('auto');
   const [publishingPackEnabled, setPublishingPackEnabled] = useState<boolean>(true);
 
   const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
@@ -297,6 +298,7 @@ export default function DashboardClient({
           if (s.customThumbnailLogoUrl !== undefined) setCustomThumbnailLogoUrl(s.customThumbnailLogoUrl);
           if (s.thumbnailAiAppSlug !== undefined) setThumbnailAiAppSlug(s.thumbnailAiAppSlug);
           if (s.thumbnailAiModel !== undefined) setThumbnailAiModel(s.thumbnailAiModel);
+          if (s.thumbnailFontStyle !== undefined) setThumbnailFontStyle(s.thumbnailFontStyle);
           if (s.publishingPackEnabled !== undefined) setPublishingPackEnabled(s.publishingPackEnabled);
           setHasLoadedSettings(true);
           return;
@@ -330,11 +332,12 @@ export default function DashboardClient({
         ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder,
         selectedAiAppSlug, selectedAiModel,
         redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel,
+        thumbnailFontStyle,
         publishingPackEnabled
       };
       localStorage.setItem('heroDubSettings', JSON.stringify(settings));
     }
-  }, [sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, videoSlowdown, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel, publishingPackEnabled, hasLoadedSettings]);
+  }, [sourceLang, targetLang, asrEngine, sttPreset, noiseLevel, videoSlowdown, subtitleMode, ttsEnabled, ttsEngine, ttsVoice, ttsSpeed, bgVolume, ttsVolume, outputFolder, selectedAiAppSlug, selectedAiModel, redesignThumbnailEnabled, thumbnailLogoSource, customThumbnailLogoUrl, thumbnailAiAppSlug, thumbnailAiModel, thumbnailFontStyle, publishingPackEnabled, hasLoadedSettings]);
 
   const [creatingTask, setCreatingTask] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -408,7 +411,7 @@ export default function DashboardClient({
   };
   const [guideOs, setGuideOs] = useState<'windows' | 'macos'>('windows');
 
-  const winCmd = 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=23 & herodub-setup.bat --server https://ai2hero-flax.vercel.app';
+  const winCmd = 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=24 & herodub-setup.bat --server https://ai2hero-flax.vercel.app';
   const macCmd = 'curl -o herodub-setup.sh https://www.ai2hero.com/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh';
 
   const handleCopyGuideCommand = () => {
@@ -671,6 +674,7 @@ export default function DashboardClient({
           customThumbnailLogoUrl,
           thumbnailAiAppSlug,
           thumbnailAiModel,
+          thumbnailFontStyle,
         });
 
         if (res.error) {
@@ -714,6 +718,7 @@ export default function DashboardClient({
             customThumbnailLogoUrl,
             thumbnailAiAppSlug,
             thumbnailAiModel,
+            thumbnailFontStyle,
             ...taskBranding,
           });
 
@@ -1143,6 +1148,8 @@ export default function DashboardClient({
         setThumbnailAiAppSlug={setThumbnailAiAppSlug}
         thumbnailAiModel={thumbnailAiModel}
         setThumbnailAiModel={setThumbnailAiModel}
+        thumbnailFontStyle={thumbnailFontStyle}
+        setThumbnailFontStyle={setThumbnailFontStyle}
         publishingPackEnabled={publishingPackEnabled}
         setPublishingPackEnabled={setPublishingPackEnabled}
         scanProjects={scanProjects}

@@ -13,7 +13,7 @@ export default function HeroDubGuidePage() {
   const [selectedOs, setSelectedOs] = useState<'windows' | 'macos'>('windows');
   const [copiedText, setCopiedText] = useState(false);
 
-  const winCommand = `curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=23 & herodub-setup.bat --server https://ai2hero-flax.vercel.app`;
+  const winCommand = `curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=24 & herodub-setup.bat --server https://ai2hero-flax.vercel.app`;
   const macCommand = `curl -o herodub-setup.sh https://www.ai2hero.com/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh`;
 
   const handleCopy = (text: string) => {

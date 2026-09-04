@@ -163,6 +163,92 @@ def batch_update_thumbnails():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+# ============================================================
+# COOKIE MANAGEMENT & AUTO SYNC ENDPOINTS
+# ============================================================
+latest_cookies = {}  # {domain: cookieData}
+pending_cookie_requests = set()  # Các domain đang cần Extension cấp cứu cookie
+
+@app.route('/cookies/request_refresh', methods=['POST', 'GET'])
+def request_cookie_refresh():
+    domain = request.args.get('domain') or (request.json or {}).get('domain', 'douyin.com')
+    clean_domain = domain.lower().replace('https://', '').replace('http://', '').split('/')[0]
+    if 'douyin' in clean_domain: clean_domain = 'douyin.com'
+    elif 'bilibili' in clean_domain: clean_domain = 'bilibili.com'
+    elif 'tiktok' in clean_domain: clean_domain = 'tiktok.com'
+    elif 'youtube' in clean_domain: clean_domain = 'youtube.com'
+    
+    pending_cookie_requests.add(clean_domain)
+    print(f"\n[🔄 Dispatcher] Worker yeu cau cap cuu Cookie moi cho domain: {clean_domain}")
+    return jsonify({"success": True, "domain": clean_domain, "pending": list(pending_cookie_requests)})
+
+@app.route('/cookies/poll_requests', methods=['GET', 'OPTIONS'])
+def poll_cookie_requests():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    return jsonify({
+        "success": True,
+        "requests": list(pending_cookie_requests),
+        "hasRequests": len(pending_cookie_requests) > 0
+    })
+
+@app.route('/cookies/submit', methods=['POST', 'OPTIONS'])
+def submit_cookies():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    try:
+        data = request.json or {}
+        domain = data.get('domain', 'global').lower()
+        cookie_data = data.get('cookieData', '')
+        count = data.get('count', 0)
+
+        if not cookie_data:
+            return jsonify({"success": False, "error": "cookieData is empty"}), 400
+
+        latest_cookies[domain] = cookie_data
+        pending_cookie_requests.discard(domain)
+        
+        # Ghi đè vào file cookies.txt trong thư mục worker để yt-dlp dùng ngay
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        cookie_file_path = os.path.join(base_dir, "cookies.txt")
+        
+        # Hợp nhất tất cả cookie đang có
+        combined_cookies = "\n\n".join(latest_cookies.values())
+        with open(cookie_file_path, "w", encoding="utf-8") as f:
+            if not combined_cookies.strip().startswith("# Netscape"):
+                f.write("# Netscape HTTP Cookie File\n")
+            f.write(combined_cookies)
+
+        print(f"\n[🔄 Auto Cookie Sync] Đã nhận và nạp {count} cookies cho domain '{domain}' thành công!")
+        return jsonify({"success": True, "domain": domain, "count": count, "savedPath": cookie_file_path})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/cookies/get', methods=['GET'])
+def get_cookies():
+    domain = request.args.get('domain', '').lower()
+    if domain and domain in latest_cookies:
+        return jsonify({"success": True, "cookieData": latest_cookies[domain]})
+    
+    # Trả về tất cả hợp nhất
+    if latest_cookies:
+        combined = "\n\n".join(latest_cookies.values())
+        return jsonify({"success": True, "cookieData": combined})
+        
+    # Thử đọc từ file cookies.txt nếu có
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    cookie_file_path = os.path.join(base_dir, "cookies.txt")
+    if os.path.exists(cookie_file_path):
+        try:
+            with open(cookie_file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            return jsonify({"success": True, "cookieData": content})
+        except:
+            pass
+            
+    return jsonify({"success": False, "cookieData": None})
+
 def start_server():
     # Run quietly
     import logging

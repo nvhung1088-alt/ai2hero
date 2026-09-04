@@ -69,5 +69,102 @@ export async function runGemini(
     }
   }
 
+  if (action === 'generate_image') {
+    const model = input.model || 'gemini-2.5-flash-image';
+    const prompt = input.prompt || 'Please edit and clean this image without text.';
+    
+    const parts: any[] = [{ text: prompt }];
+
+    // Xử lý attachments (base64 hoặc URL)
+    if (input.attachments && Array.isArray(input.attachments)) {
+      for (const att of input.attachments) {
+        if (typeof att === 'string') {
+          if (att.startsWith('data:image/')) {
+            const matches = att.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+            if (matches) {
+              parts.push({
+                inline_data: { mime_type: matches[1], data: matches[2] }
+              });
+            }
+          } else if (att.startsWith('http://') || att.startsWith('https://')) {
+            // Tải ảnh từ URL sang base64
+            try {
+              const imgRes = await fetch(att);
+              if (imgRes.ok) {
+                const mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
+                const arrayBuffer = await imgRes.arrayBuffer();
+                const b64 = Buffer.from(arrayBuffer).toString('base64');
+                parts.push({
+                  inline_data: { mime_type: mimeType, data: b64 }
+                });
+              }
+            } catch (e) {
+              console.warn('[Gemini Runner] Không thể tải ảnh từ URL:', att, e);
+            }
+          }
+        } else if (att && typeof att === 'object') {
+          const rawData = att.data || att.base64 || '';
+          const mimeType = att.mimeType || att.type || 'image/jpeg';
+          const cleanB64 = rawData.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+          if (cleanB64) {
+            parts.push({
+              inline_data: { mime_type: mimeType, data: cleanB64 }
+            });
+          }
+        }
+      }
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60_000); // 60s timeout cho sinh ảnh
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts }] }),
+          signal: controller.signal,
+        }
+      );
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => res.statusText);
+        throw new Error(`Gemini Image API Error ${res.status}: ${errText}`);
+      }
+
+      const resJson = await res.json();
+      const firstCandidate = resJson.candidates?.[0];
+      const resParts = firstCandidate?.content?.parts || [];
+
+      let imageUrl = '';
+      for (const p of resParts) {
+        const inline = p.inlineData || p.inline_data;
+        if (inline && inline.data) {
+          const mime = inline.mimeType || inline.mime_type || 'image/jpeg';
+          imageUrl = `data:${mime};base64,${inline.data}`;
+          break;
+        }
+        if (p.text && !imageUrl) {
+          // Kiểm tra nếu có link ảnh trong text
+          const m = p.text.match(/!\[.*?\]\((https?:\/\/[^\s\)]+)\)/);
+          if (m) imageUrl = m[1];
+        }
+      }
+
+      return {
+        success: true,
+        image_url: imageUrl,
+        url: imageUrl,
+        data: [{ url: imageUrl }],
+        raw: resJson
+      };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   throw new Error(`Action "${action}" chưa được hỗ trợ trên Gemini runner.`);
 }
+

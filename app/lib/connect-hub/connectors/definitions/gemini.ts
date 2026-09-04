@@ -58,12 +58,49 @@ export const geminiConnector: ConnectorDefinition = {
       status: 'ready',
       testStrategy: 'direct',
       inputSchema: []
+    },
+    {
+      slug: 'generate_image',
+      name: 'Sinh ảnh & Chỉnh sửa ảnh (Gemini Flash Image)',
+      description: 'Chỉnh sửa, xóa chữ/vật thể hoặc tạo hình ảnh mới bằng Gemini Flash Image API.',
+      group: 'Trí Tuệ Nhân Tạo',
+      httpMethod: 'POST',
+      endpoint: '/v1beta/models/{model}:generateContent',
+      status: 'ready',
+      outputFields: ['image_url', 'url'],
+      aiInstruction: 'Gọi action generate_image với prompt và ảnh đính kèm để Gemini xóa chữ hoặc chỉnh sửa ảnh.',
+      testStrategy: 'direct',
+      inputSchema: [
+        {
+          name: 'model',
+          label: 'Mô hình Image AI',
+          type: 'select',
+          required: true,
+          options: ['gemini-2.5-flash-image', 'gemini-3.1-flash-image', 'gemini-3-pro-image']
+        },
+        {
+          name: 'prompt',
+          label: 'Yêu cầu chỉnh sửa / Tạo ảnh',
+          type: 'textarea',
+          required: true,
+          placeholder: 'VD: Please remove all Chinese text and watermarks from this image completely...'
+        },
+        {
+          name: 'attachments',
+          label: 'Ảnh đính kèm (URL / Base64)',
+          type: 'textarea',
+          required: false,
+          placeholder: '["https://domain.com/photo.jpg"] hoặc data:image/jpeg;base64,...'
+        }
+      ]
     }
   ],
   popular: true,
   setupGuide: '<p><b>1.</b> Mở <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">Google AI Studio</a>.</p><p><b>2.</b> Nhấn <b>Create API Key</b>, chọn Google Cloud Project của bạn và copy key.</p>',
-  aiCapability: ['text', 'code'],
+  aiCapability: ['text', 'code', 'image'],
   aiModels: [
+    { name: 'gemini-2.5-flash-image', type: 'image' },
+    { name: 'gemini-3.1-flash-image', type: 'image' },
     { name: 'gemini-flash-lite-latest', type: 'text' },
     { name: 'gemini-2.5-pro', type: 'text' },
     { name: 'gemini-2.0-flash', type: 'text' },
@@ -71,3 +108,4 @@ export const geminiConnector: ConnectorDefinition = {
     { name: 'gemini-1.5-flash-latest', type: 'text' }
   ]
 };
+

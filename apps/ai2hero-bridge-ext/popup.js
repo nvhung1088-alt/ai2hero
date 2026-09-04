@@ -60,7 +60,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 1500);
   });
 
-  const testImageBtn = document.getElementById('testImageBtn');
+  // Helper gửi message có tự động tiêm Script nếu tab chưa nạp
+  async function sendJobWithAutoInject(tab, job, scriptFile = 'content-gemini.js') {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await chrome.tabs.sendMessage(tab.id, {
+          action: 'PROCESS_AI_JOB',
+          job
+        });
+        return res;
+      } catch (err) {
+        console.warn(`[Popup] sendMessage attempt ${attempt + 1} failed: ${err.message}. Đang tiêm script...`);
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: [scriptFile]
+          });
+          await new Promise((r) => setTimeout(r, 800));
+        } catch (injectErr) {
+          console.warn('[Popup] Injection error:', injectErr);
+        }
+      }
+    }
+    throw new Error('Không thể kết nối tới tab Gemini. Vui lòng bấm F5 (Reload) lại tab gemini.google.com rồi thử lại!');
+  }
 
   // 3. Nút Test Gửi Text sang Gemini
   testBtn.addEventListener('click', async () => {
@@ -76,14 +99,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         await new Promise((r) => setTimeout(r, 4500));
       }
 
-      const response = await chrome.tabs.sendMessage(tab.id, {
-        action: 'PROCESS_AI_JOB',
-        job: {
-          id: 'test_text_' + Date.now(),
-          prompt: 'Hãy chào AI2Hero và xác nhận kết nối Browser Bridge v2.0 thành công trong 1 câu ngắn gọn.',
-          targetAi: 'gemini',
-          autoNewChat: false
-        }
+      const response = await sendJobWithAutoInject(tab, {
+        id: 'test_text_' + Date.now(),
+        prompt: 'Hãy chào AI2Hero và xác nhận kết nối Browser Bridge v2.0 thành công trong 1 câu ngắn gọn.',
+        targetAi: 'gemini',
+        autoNewChat: false
       });
 
       if (response && response.success) {
@@ -129,15 +149,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       ctx.fillText('AI2Hero Bridge Test', 200, 130);
       const sampleBase64 = canvas.toDataURL('image/png');
 
-      const response = await chrome.tabs.sendMessage(tab.id, {
-        action: 'PROCESS_AI_JOB',
-        job: {
-          id: 'test_img_' + Date.now(),
-          prompt: 'Hãy nhìn bức ảnh đính kèm này và cho biết bạn nhìn thấy chữ gì và màu sắc gì trong ảnh?',
-          attachments: [sampleBase64],
-          targetAi: 'gemini',
-          autoNewChat: false
-        }
+      const response = await sendJobWithAutoInject(tab, {
+        id: 'test_img_' + Date.now(),
+        prompt: 'Hãy nhìn bức ảnh đính kèm này và cho biết bạn nhìn thấy chữ gì và màu sắc gì trong ảnh?',
+        attachments: [sampleBase64],
+        targetAi: 'gemini',
+        autoNewChat: false
       });
 
       if (response && response.success) {
@@ -152,4 +169,41 @@ document.addEventListener('DOMContentLoaded', async () => {
       testImageBtn.disabled = false;
     }
   });
+
+  // 5. Nút Đồng Bộ Cookie Tự Động
+  const syncCookiesBtn = document.getElementById('syncCookiesBtn');
+  const cookieStatus = document.getElementById('cookieStatus');
+
+  if (syncCookiesBtn) {
+    syncCookiesBtn.addEventListener('click', async () => {
+      syncCookiesBtn.innerText = '⏳ Đang đồng bộ Cookie...';
+      syncCookiesBtn.disabled = true;
+      if (cookieStatus) cookieStatus.style.display = 'none';
+
+      try {
+        chrome.runtime.sendMessage({ action: 'SYNC_ALL_COOKIES' }, (response) => {
+          if (response && response.success && response.results) {
+            const list = response.results.map((r) => `${r.domain}: ${r.count} cookies`).join(', ');
+            if (response.results.length > 0) {
+              if (cookieStatus) {
+                cookieStatus.innerText = `✅ Đã đồng bộ ${list}`;
+                cookieStatus.style.display = 'block';
+              }
+              alert(`🎉 ĐỒNG BỘ COOKIE THÀNH CÔNG!\n\nĐã nạp tự động sang Local Worker & Server:\n- ${response.results.map((r) => `${r.domain.toUpperCase()}: ${r.count} cookies`).join('\n- ')}`);
+            } else {
+              alert('ℹ️ Không tìm thấy cookie nào của Douyin/Bilibili/TikTok trên trình duyệt.\n\nVui lòng mở sẵn 1 tab Douyin hoặc Bilibili rồi bấm lại nút này nhé!');
+            }
+          } else {
+            alert('❌ Lỗi đồng bộ cookie: ' + (response?.error || 'Không thể kết nối background worker.'));
+          }
+          syncCookiesBtn.innerText = '🔄 ĐỒNG BỘ COOKIE (DOUYIN / BILI / TIKTOK)';
+          syncCookiesBtn.disabled = false;
+        });
+      } catch (err) {
+        alert('❌ Lỗi kết nối: ' + err.message);
+        syncCookiesBtn.innerText = '🔄 ĐỒNG BỘ COOKIE (DOUYIN / BILI / TIKTOK)';
+        syncCookiesBtn.disabled = false;
+      }
+    });
+  }
 });

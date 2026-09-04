@@ -19,18 +19,37 @@ active_downloads = {}  # videoId -> {"cancel": threading.Event}
 class CancelledError(Exception):
     pass
 
+def get_effective_cookie_data(passed_cookie_data: str = None) -> str | None:
+    """Hợp nhất Cookie truyền từ Server và Cookie do Extension vừa nạp vào Worker qua cookies.txt."""
+    combined = []
+    if passed_cookie_data and passed_cookie_data.strip():
+        combined.append(passed_cookie_data.strip())
+
+    # Đọc thêm từ file cookies.txt trong thư mục worker do Extension vừa gửi sang
+    local_cookie_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
+    if os.path.exists(local_cookie_path):
+        try:
+            with open(local_cookie_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if content and content not in combined:
+                    combined.append(content)
+        except Exception:
+            pass
+
+    return "\n\n".join(combined) if combined else None
+
 def _write_cookie_file(cookie_data: str) -> str | None:
     """Ghi cookie_data (Netscape format) ra file tạm, trả về đường dẫn file."""
-    if not cookie_data or not cookie_data.strip():
+    effective_data = get_effective_cookie_data(cookie_data)
+    if not effective_data or not effective_data.strip():
         return None
     try:
         tmp = tempfile.NamedTemporaryFile(
             mode='w', suffix='.txt', delete=False, encoding='utf-8'
         )
-        # Đảm bảo header Netscape đúng format
-        if not cookie_data.strip().startswith('# Netscape'):
+        if not effective_data.strip().startswith('# Netscape'):
             tmp.write('# Netscape HTTP Cookie File\n')
-        tmp.write(cookie_data)
+        tmp.write(effective_data)
         tmp.close()
         return tmp.name
     except Exception as e:
@@ -497,20 +516,43 @@ def download_video(video, update_callback, cookie_data: str = None):
     except Exception as e:
         clean_err = _strip_ansi(str(e))
         error_msg = clean_err.lower()
+
+        # 1. Nhận diện lỗi Cookie Douyin / Bilibili / YouTube
+        is_cookie_error = any(k in error_msg for k in ["fresh cookies", "cookie", "login", "sign in to confirm"])
+        if is_cookie_error:
+            domain_key = "douyin.com" if "douyin" in url else ("bilibili.com" if "bilibili" in url else ("tiktok.com" if "tiktok" in url else "youtube.com"))
+            print(Fore.YELLOW + f"[!] Phat hien loi Cookie tren Video ID {video_id}. Dang tu dong yeu cau Extension cap Cookie...")
+            
+            # Bắn yêu cầu tự động sang local_api để Extension nhận
+            try:
+                requests.post("http://127.0.0.1:19998/cookies/request_refresh", json={"domain": domain_key}, timeout=2)
+            except Exception:
+                pass
+
+            # Đợi 3.5 giây để Extension âm thầm lấy cookie tươi và nạp vào cookies.txt
+            import time as _t
+            _t.sleep(3.5)
+
+            effective_now = get_effective_cookie_data()
+            if effective_now and effective_now != cookie_data:
+                print(Fore.GREEN + Style.BRIGHT + f"[🔄 Auto Cookie Refresh] Da nhan Cookie tu Chrome Extension! Tu dong tai lai ngay...")
+                update_callback(video_id, status='pending', error="Dang tai lai voi Cookie moi...")
+                return download_video(video, update_callback, cookie_data=effective_now)
+
         # WinError 32 = file bị khóa bởi OneDrive / Antivirus. Coi như lỗi mềm, retry
         is_file_locked = "winerror 32" in error_msg or "unable to rename" in error_msg or "being used by another process" in error_msg
-        # Lỗi mạng / 403 Forbidden / 503 / Bilibili CDN drop: retry tự động 3 lần.
+        # Lỗi mạng / 403 Forbidden / 503 / Bilibili CDN drop / Cookie hết hạn: retry tự động 3 lần.
         soft_keywords = [
             "timed out", "handshake", "connection", "reset", "500", "502", "503", "504",
             "403", "forbidden", "unable to download", "416", "range", "giving up",
             "remote end closed", "socket", "eof", "network", "service unavailable",
-            "did not get any data blocks", "data blocks"
+            "did not get any data blocks", "data blocks", "fresh cookies", "cookie"
         ]
-        is_soft_error = is_file_locked or any(err in error_msg for err in soft_keywords)
+        is_soft_error = is_file_locked or is_cookie_error or any(err in error_msg for err in soft_keywords)
         
         if is_soft_error:
-            # Xóa các file .part/.ytdl nếu gặp lỗi 403/416/forbidden/data blocks để tải lại sạch từ đầu
-            if any(err in error_msg for err in ["403", "416", "forbidden", "range", "data blocks"]):
+            # Xóa các file .part/.ytdl nếu gặp lỗi 403/416/forbidden/data blocks/cookie để tải lại sạch từ đầu
+            if any(err in error_msg for err in ["403", "416", "forbidden", "range", "data blocks", "cookie", "fresh cookies"]):
                 for f in os.listdir(downloads_dir):
                     if f.startswith(f"{video_id}_") and (f.endswith('.part') or f.endswith('.ytdl')):
                         try: os.remove(os.path.join(downloads_dir, f))
@@ -522,7 +564,7 @@ def download_video(video, update_callback, cookie_data: str = None):
             
             if current_retries <= 3:
                 update_callback(video_id, status='pending', error=clean_err, progress=last_progress[0], speed='')
-                reason = "File bi khoa (OneDrive/AV)" if is_file_locked else "Loi mang/CDN Bilibili"
+                reason = "File bi khoa (OneDrive/AV)" if is_file_locked else ("Loi Cookie" if is_cookie_error else "Loi mang/CDN Bilibili")
                 print(Fore.YELLOW + f"[!] {reason} video ID {video_id}. Tu dong thu lai {current_retries}/3...")
             else:
                 update_callback(video_id, status='failed', error=f"Da thu lai 3 lan khong thanh cong: {clean_err}", progress=last_progress[0], speed='')

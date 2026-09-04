@@ -37,8 +37,8 @@ if errorlevel 1 (
 for /f "tokens=*" %%v in ('python --version 2^>^&1') do echo [OK] Phat hien: %%v
 
 :: Tai Worker Script moi nhat
-echo [INFO] Dang tai herodub_worker.py tu ai2hero.com (v23 - 720p Lightweight Thumbnail Optimization)...
-curl -s -L -o herodub_worker.py "https://ai2hero-flax.vercel.app/uploads/herodub_worker.py?v=23"
+echo [INFO] Dang tai herodub_worker.py tu ai2hero.com (v24 - Smart Adaptive Multi-Genre Translation ^& 3D Gold Thumbnail)...
+curl -s -L -o herodub_worker.py "https://ai2hero-flax.vercel.app/uploads/herodub_worker.py?v=24"
 
 if not exist herodub_worker.py (
     echo [ERROR] Khong the tai script. Kiem tra ket noi Internet.

@@ -1,14 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Ai2Hero Browser AI Bridge",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Cổng kết nối AI trên trình duyệt tự động cho hệ sinh thái Ai2Hero Connect Hub.",
   "permissions": [
     "storage",
     "activeTab",
     "scripting",
     "tabs",
-    "alarms"
+    "alarms",
+    "cookies",
+    "downloads"
   ],
   "host_permissions": [
     "https://*/*",

@@ -28,7 +28,7 @@ export default function DubGuidePanel({
 }: DubGuidePanelProps) {
   if (!showGuide) return null;
 
-  const winCmd = 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=23 & herodub-setup.bat --server https://ai2hero-flax.vercel.app';
+  const winCmd = 'curl -o herodub-setup.bat https://ai2hero-flax.vercel.app/uploads/herodub-setup.bat?v=24 & herodub-setup.bat --server https://ai2hero-flax.vercel.app';
   const macCmd = 'curl -o herodub-setup.sh https://www.ai2hero.com/uploads/herodub-setup.sh && chmod +x herodub-setup.sh && ./herodub-setup.sh';
 
   return (

@@ -121,6 +121,8 @@ interface DubTaskFormProps {
   setThumbnailAiAppSlug?: (_slug: string) => void;
   thumbnailAiModel?: string;
   setThumbnailAiModel?: (_model: string) => void;
+  thumbnailFontStyle?: string;
+  setThumbnailFontStyle?: (_style: string) => void;
   thumbnailProjectId?: number | '';
   setThumbnailProjectId?: (_id: number | '') => void;
   thumbnailLogoPosition?: string;
@@ -210,6 +212,8 @@ export default function DubTaskForm({
   setThumbnailAiAppSlug: externalSetThumbnailAiAppSlug,
   thumbnailAiModel: externalThumbnailAiModel,
   setThumbnailAiModel: externalSetThumbnailAiModel,
+  thumbnailFontStyle: externalThumbnailFontStyle,
+  setThumbnailFontStyle: externalSetThumbnailFontStyle,
   thumbnailProjectId: externalThumbnailProjectId,
   setThumbnailProjectId: externalSetThumbnailProjectId,
   thumbnailLogoPosition: externalThumbnailLogoPosition,
@@ -224,6 +228,7 @@ export default function DubTaskForm({
   const [internalCustomLogoUrl, setInternalCustomLogoUrl] = React.useState('');
   const [internalThumbnailAiAppSlug, setInternalThumbnailAiAppSlug] = React.useState('');
   const [internalThumbnailAiModel, setInternalThumbnailAiModel] = React.useState('');
+  const [internalThumbnailFontStyle, setInternalThumbnailFontStyle] = React.useState('auto');
   const [internalThumbnailProjectId, setInternalThumbnailProjectId] = React.useState<number | ''>('');
   const [internalThumbnailLogoPosition, setInternalThumbnailLogoPosition] = React.useState('top-left');
 
@@ -239,6 +244,8 @@ export default function DubTaskForm({
   const setThumbnailAiAppSlug = externalSetThumbnailAiAppSlug || setInternalThumbnailAiAppSlug;
   const thumbnailAiModel = externalThumbnailAiModel !== undefined ? externalThumbnailAiModel : internalThumbnailAiModel;
   const setThumbnailAiModel = externalSetThumbnailAiModel || setInternalThumbnailAiModel;
+  const thumbnailFontStyle = externalThumbnailFontStyle !== undefined ? externalThumbnailFontStyle : internalThumbnailFontStyle;
+  const setThumbnailFontStyle = externalSetThumbnailFontStyle || setInternalThumbnailFontStyle;
   const thumbnailProjectId = externalThumbnailProjectId !== undefined ? externalThumbnailProjectId : internalThumbnailProjectId;
   const setThumbnailProjectId = externalSetThumbnailProjectId || setInternalThumbnailProjectId;
   const thumbnailLogoPosition = externalThumbnailLogoPosition !== undefined ? externalThumbnailLogoPosition : internalThumbnailLogoPosition;
@@ -1260,6 +1267,31 @@ export default function DubTaskForm({
                   </div>
                 </div>
               )}
+
+              <div className="space-y-1.5 border-t border-amber-500/20 pt-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="flex items-center justify-between">
+                  <label className="text-[9px] font-extrabold text-amber-300 uppercase">
+                    Phong Cách Chữ Tiếng Việt (Typography)
+                  </label>
+                  <span className="text-[8px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                    Gemini Flash Erase + Thay thế chuẩn vị trí
+                  </span>
+                </div>
+                <select
+                  value={thumbnailFontStyle}
+                  onChange={(e) => setThumbnailFontStyle(e.target.value)}
+                  disabled={creatingTask}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500/55 cursor-pointer"
+                >
+                  <option value="auto">⚡ Tự Động Thích Ứng (Thư pháp Anime / 3D Vàng Sinh Tồn)</option>
+                  <option value="calligraphy">🖋️ Thư Pháp Việt Nghệ Thuật (Charm Bold - Phim / Anime / Cổ Trang)</option>
+                  <option value="gold_3d">🏆 Chữ 3D Vàng Kim Đa Tầng (Arial Bold - Sang trọng / Vlog / Sinh Tồn)</option>
+                  <option value="neon_glow">✨ Hào Quang Cyan Điện Ảnh (Electric Glow - Huyền bí / Mạt Thế)</option>
+                </select>
+                <p className="text-[9px] text-gray-400 font-medium leading-relaxed">
+                  ✨ Quy trình 3s: <span className="text-amber-300 font-bold">Gemini Flash</span> tự động xóa sạch chữ Trung Quốc & watermark ➔ <span className="text-white font-bold">Worker</span> chèn chữ tiếng Việt vào đúng vị trí chữ gốc.
+                </p>
+              </div>
 
               <div className="space-y-1.5 border-t border-amber-500/20 pt-3">
                 <label className="text-[9px] font-extrabold text-amber-300 uppercase">Nguồn Logo Mẫu Chèn Vào Ảnh</label>

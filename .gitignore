@@ -55,3 +55,16 @@ test_rate.mp3
 
 .vercel
 !app/public/uploads/herodub_worker.py
+!app/public/uploads/herodub-setup.bat
+*.txt
+*.json
+!package.json
+!tsconfig.json
+!manifest.json
+!apps/**/manifest.json
+!app/**/package.json
+!app/**/tsconfig.json
+!app/**/components.json
+hero-downloader-worker/cookies.txt
+herodub-worker/config.json
+herodub-worker/scan_cache.json

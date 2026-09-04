@@ -513,8 +513,76 @@ Whisper AI dễ nghe nhầm các thuật ngữ thương mại và hành động 
 - 学霸 (Xuébà) → hay nhầm thành 学爸 → Học bá / Học thần
 - 开黑 (Kāihēi) → hay nhầm thành 开回 → Bắt cặp leo rank / Chơi game chung (KHÔNG dịch là "mở màu đen")
 - 高考 (Gāokǎo) → KHÔNG dịch là "thi cao đẳng" → Kỳ thi Đại học
-- 团战 (Tuánzhàn) → hay nhầm thành 团队 → Combat / Giao tranh tổng
 - 带飞 (Dàifēi) → hay nhầm thành 带非 → Gánh team / Cân team (KHÔNG dịch là "dẫn đi bay")`,
+    isAutoUpdate: false,
+  },
+  {
+    teamId: null,
+    isGlobal: true,
+    genreKey: 'sinhTonHoangDa',
+    name: '🌿 Sinh Tồn Hoang Dã / Chế Tác / Bushcraft',
+    keywords: 'sinh tồn, hoang dã, rìu nhỏ, lạc khắc lý, hốc cây, bão tuyết, bão cát, đốn gỗ, bẫy đá, làm nhà, nhà đá, lò sưởi, lều bạt, bushcraft, asmr, rừng rậm, hang đá, chặt cây, nướng thịt, chống rét',
+    promptContent: `# THỂ LOẠI & VĂN PHONG
+- Thể loại: Video Sinh Tồn Hoang Dã / Chế Tác Thủ Công / Xây Dựng Tự Nhiên / Bushcraft / ASMR (như Rìu Nhỏ, Lạc Khắc Lý, Sinh tồn rừng tuyết).
+- Văn phong: Mộc mạc, gần gũi, cuốn hút, truyền cảm hứng, chuẩn phong cách thuyết minh / vlog sinh tồn chân thật. TUYỆT ĐỐI KHÔNG dùng từ ngữ kiếm hiệp, tiên hiệp hoặc xưng hô cổ trang.
+
+---
+
+## 1. QUY TẮC XƯNG HÔ
+- Người dẫn chuyện / Thợ sinh tồn: Xưng "tôi / mình", gọi khán giả là "các bạn / anh em".
+- Động vật / Thú cưng đi cùng: "chú cún / chú chó / bạn đồng hành".
+- Tránh đại từ cổ trang như "tại hạ, huynh đệ, bổn tọa".
+
+---
+
+## 2. TỪ ĐIỂN THUẬT NGỮ SINH TỒN & CHẾ TÁC
+- 庇护所 = Nơi trú ẩn / Căn cứ trú ẩn
+- 树洞 = Hốc cây / Hốc cây cổ thụ
+- 暴风雪 / 暴风雨 = Bão tuyết / Bão táp / Cơn giông bão
+- 腐殖土 = Đất mùn / Đất mục
+- 松针 = Lá thông khô
+- 柴火 / 炉火 = Củi khô / Lửa lò sưởi
+- 烤肉 = Thịt nướng / Nướng thịt
+- 陷阱 = Bẫy săn / Bẫy thú
+- 庇护所建造 = Xây dựng nơi trú ẩn
+- 治愈 / 解压 = Thư thái / Giải tỏa căng thẳng / Chữa lành
+
+---
+
+## 3. SỬA LỖI ĐỒNG ÂM ASR SINH TỒN
+- 避难所 / 庇护所 → Nơi trú ẩn (KHÔNG dịch là "trại tị nạn")
+- 腐直土 → 腐殖土 (Đất mùn)
+- 辟火 → 避火 / 生火 (Nhóm lửa / Giữ lửa)`,
+    isAutoUpdate: false,
+  },
+  {
+    teamId: null,
+    isGlobal: true,
+    genreKey: 'khoaHocTaiLieu',
+    name: '🔬 Khoa Học / Khám Phá / Phim Tài Liệu',
+    keywords: 'khoa học, vũ trụ, thiên văn, vật lý, sinh học, tế bào, hố đen, lỗ đen, james webb, công nghệ, ai, robot, tài liệu, khám phá, đại dương, tiến hóa, lượng tử, quang phổ',
+    promptContent: `# THỂ LOẠI & VĂN PHONG
+- Thể loại: Phim Khoa Học / Khám Phá Vũ Trụ / Phim Tài Liệu / Công Nghệ / Thế Giới Tự Nhiên.
+- Văn phong: Chuẩn xác, khách quan, hiện đại, logic, học thuật, dễ hiểu cho đại chúng.
+
+---
+
+## 1. QUY TẮC XƯNG HÔ & DẪN CHUYỆN
+- Lời bình / Thuyết minh: Ngôi thứ ba khách quan ("Các nhà khoa học", "Chúng ta", "Nhân loại", "Họ").
+- Giọng điệu truyền cảm, uyên bác và giàu tính khám phá.
+
+---
+
+## 2. TỪ ĐIỂN THUẬT NGỮ KHOA HỌC & THIÊN VĂN
+- 韦伯太空望远镜 = Kính viễn vọng không gian James Webb
+- 宇宙大爆炸 = Vụ Nổ Lớn (Big Bang)
+- 恒星演化 = Sự tiến hóa của các ngôi sao
+- 光谱数据 = Dữ liệu quang phổ
+- 量子纠缠 = Vướng víu lượng tử / Rối lượng tử
+- 黑洞信息悖论 = Nghịch lý thông tin lỗ đen
+- 事件视界 = Chân trời sự kiện
+- 重元素 = Nguyên tố nặng
+- 计算机模拟 = Mô phỏng máy tính`,
     isAutoUpdate: false,
   }
 ];

@@ -78,6 +78,7 @@ export async function createDubTaskAction(data: {
   customThumbnailLogoUrl?: string;
   thumbnailAiAppSlug?: string;
   thumbnailAiModel?: string;
+  thumbnailFontStyle?: string;
   publishingPackEnabled?: boolean;
   projectId?: number;
   scanConfigId?: number;
@@ -174,6 +175,7 @@ export async function createDubTaskAction(data: {
         customThumbnailLogoUrl: data.customThumbnailLogoUrl || null,
         thumbnailAiAppSlug: data.thumbnailAiAppSlug || null,
         thumbnailAiModel: data.thumbnailAiModel || null,
+        thumbnailFontStyle: data.thumbnailFontStyle || 'auto',
         publishingPackEnabled: data.publishingPackEnabled ?? true,
         status: 'pending',
         progress: '0',

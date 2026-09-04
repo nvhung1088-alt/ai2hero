@@ -25,6 +25,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ isWsConnected, isHttpPolling, processedJobsCount });
     return true;
   }
+  if (request.action === 'CONVERT_IMAGE_BASE64') {
+    fetchImageAsBase64WithCookies(request.url)
+      .then((base64) => sendResponse({ success: !!base64, base64 }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
 });
 
 // 2. Khởi tạo kết nối WebSocket Local (ws://127.0.0.1:8765)
@@ -216,6 +222,45 @@ async function blobToBase64(blob) {
   return `data:${mimeType};base64,${btoa(binary)}`;
 }
 
+// Tải ảnh trực tuyến và chuyển thành Base64 kèm Header Cookie Google (Bypass 403 Forbidden 100%)
+async function fetchImageAsBase64WithCookies(url) {
+  if (!url || !url.startsWith('http')) return null;
+  try {
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Referer': 'https://gemini.google.com/'
+    };
+
+    // Nếu là ảnh CDN của Google, lấy toàn bộ Cookie Google để đảm bảo không bao giờ bị 403
+    if (url.includes('googleusercontent.com') || url.includes('google.com')) {
+      try {
+        const [googleCookies, geminiCookies] = await Promise.all([
+          chrome.cookies.getAll({ domain: 'google.com' }).catch(() => []),
+          chrome.cookies.getAll({ domain: 'googleusercontent.com' }).catch(() => [])
+        ]);
+        const allCookies = [...googleCookies, ...geminiCookies];
+        if (allCookies.length > 0) {
+          const cookieHeader = allCookies.map((c) => `${c.name}=${c.value}`).join('; ');
+          headers['Cookie'] = cookieHeader;
+        }
+      } catch (cookieErr) {
+        console.warn('[Ai2Hero Bridge] Không thể đọc cookies:', cookieErr);
+      }
+    }
+
+    const imgRes = await fetch(url, { headers });
+    if (imgRes.ok) {
+      const blob = await imgRes.blob();
+      if (blob.size > 2000) {
+        return await blobToBase64(blob);
+      }
+    }
+  } catch (err) {
+    console.warn('[Ai2Hero Bridge] fetchImageAsBase64WithCookies error:', err);
+  }
+  return null;
+}
+
 // 4. Hàm thực thi Job trên Tab AI (Gemini / ChatGPT)
 async function executeAiJobOnTab(job) {
   const startTime = Date.now();
@@ -248,10 +293,10 @@ async function executeAiJobOnTab(job) {
 
         if (attachUrl) {
           try {
-            const imgRes = await fetch(attachUrl);
-            const blob = await imgRes.blob();
-            const base64Data = await blobToBase64(blob);
-            processedAttachments.push({ type: 'image', base64: base64Data });
+            const base64Data = await fetchImageAsBase64WithCookies(attachUrl);
+            if (base64Data) {
+              processedAttachments.push({ type: 'image', base64: base64Data });
+            }
           } catch (err) {
             console.warn('[Ai2Hero Bridge] Lỗi tải ảnh đính kèm từ URL:', err);
           }
@@ -292,21 +337,17 @@ async function executeAiJobOnTab(job) {
       throw new Error(`Content Script trên tab ${targetAi} không phản hồi.`);
     }
 
-    // 4. Nếu kết quả trả về có ảnh trực tuyến (https://...), background service worker tải ngay sang Base64 để chống 403 Forbidden
+    // 4. Nếu kết quả trả về có ảnh trực tuyến (https://...), background service worker tải ngay sang Base64 với full Cookie Google
     if (responseFromContent && responseFromContent.result && typeof responseFromContent.result === 'string') {
       const imgMatch = responseFromContent.result.match(/!\[.*?\]\((https?:\/\/[^\s\)]+)\)/);
       if (imgMatch && imgMatch[1]) {
         const onlineImgUrl = imgMatch[1];
         console.log(`[Ai2Hero Bridge] Đang chuyển đổi ảnh online sang Base64 trong background: ${onlineImgUrl.slice(0, 60)}...`);
         try {
-          const imgRes = await fetch(onlineImgUrl);
-          if (imgRes.ok) {
-            const blob = await imgRes.blob();
-            if (blob.size > 2000) {
-              const base64Data = await blobToBase64(blob);
-              responseFromContent.result = responseFromContent.result.replace(onlineImgUrl, base64Data);
-              console.log(`[Ai2Hero Bridge] ✅ Đã chuyển đổi thành công ảnh sang Base64 (${blob.size} bytes) chống 403 Forbidden!`);
-            }
+          const base64Data = await fetchImageAsBase64WithCookies(onlineImgUrl);
+          if (base64Data) {
+            responseFromContent.result = responseFromContent.result.replace(onlineImgUrl, base64Data);
+            console.log(`[Ai2Hero Bridge] ✅ Đã chuyển đổi thành công ảnh sang Base64 chống 403 Forbidden!`);
           }
         } catch (fetchErr) {
           console.warn('[Ai2Hero Bridge] Không thể fetch ảnh trong background:', fetchErr);
@@ -351,3 +392,209 @@ function updateBadgeStatus(forceStatus) {
     chrome.action.setBadgeBackgroundColor({ color: '#3b82f6' }); // Blue
   }
 }
+
+// 6. Lắng nghe yêu cầu từ Content Scripts
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'CONVERT_IMAGE_BASE64') {
+    fetchImageAsBase64WithCookies(message.url)
+      .then((b64) => {
+        if (b64) {
+          sendResponse({ success: true, base64: b64 });
+        } else {
+          sendResponse({ success: false, error: 'Không thể fetch Base64' });
+        }
+      })
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true; // async response
+  }
+
+  if (message.action === 'DOWNLOAD_IMAGE_FILE') {
+    const targetUrl = message.url;
+    const filename = message.filename || `Ai2Hero_Thumbnail_${Date.now()}.jpg`;
+    chrome.downloads.download(
+      {
+        url: targetUrl,
+        filename: filename,
+        saveAs: false,
+        conflictAction: 'overwrite'
+      },
+      (downloadId) => {
+        if (chrome.runtime.lastError) {
+          console.warn('[Ai2Hero Bridge] chrome.downloads error:', chrome.runtime.lastError);
+          sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        } else {
+          console.log(`[Ai2Hero Bridge] ✅ Chrome Downloads đã kích hoạt tải file #${downloadId}: ${filename}`);
+          sendResponse({ success: true, downloadId });
+        }
+      }
+    );
+    return true; // async response
+  }
+
+  if (message.action === 'SYNC_ALL_COOKIES') {
+    syncPlatformCookies(message.domain || null)
+      .then((results) => sendResponse({ success: true, results }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true; // async response
+  }
+});
+
+// ============================================================
+// 7. AUTO COOKIE SYNC ENGINE (Douyin, Bilibili, TikTok, YouTube)
+// ============================================================
+
+function formatNetscapeCookies(cookies) {
+  if (!cookies || cookies.length === 0) return '';
+  let output = '# Netscape HTTP Cookie File\n# http://curl.haxx.se/rfc/cookie_spec.html\n# This file was generated by Ai2Hero Auto Cookie Sync\n\n';
+  for (const c of cookies) {
+    const domain = c.domain;
+    const flag = domain.startsWith('.') ? 'TRUE' : 'FALSE';
+    const path = c.path || '/';
+    const secure = c.secure ? 'TRUE' : 'FALSE';
+    const expiration = c.expirationDate ? Math.floor(c.expirationDate) : (Math.floor(Date.now() / 1000) + 86400 * 365);
+    const name = c.name;
+    const value = c.value;
+    output += `${domain}\t${flag}\t${path}\t${secure}\t${expiration}\t${name}\t${value}\n`;
+  }
+  return output;
+}
+
+async function extractCookiesForDomain(targetDomain) {
+  try {
+    const cleanDomain = targetDomain.replace(/^\./, '');
+    const [dotDomainCookies, exactDomainCookies] = await Promise.all([
+      chrome.cookies.getAll({ domain: '.' + cleanDomain }).catch(() => []),
+      chrome.cookies.getAll({ domain: cleanDomain }).catch(() => [])
+    ]);
+
+    const cookieMap = new Map();
+    [...dotDomainCookies, ...exactDomainCookies].forEach((c) => {
+      cookieMap.set(`${c.domain}:${c.name}`, c);
+    });
+
+    const uniqueCookies = Array.from(cookieMap.values());
+    const netscapeStr = formatNetscapeCookies(uniqueCookies);
+    return {
+      domain: cleanDomain,
+      count: uniqueCookies.length,
+      netscape: netscapeStr
+    };
+  } catch (err) {
+    console.warn(`[Ai2Hero Bridge] Lỗi trích xuất cookie domain ${targetDomain}:`, err);
+    return { domain: targetDomain, count: 0, netscape: '' };
+  }
+}
+
+async function syncPlatformCookies(specificDomain = null) {
+  const targetDomains = specificDomain ? [specificDomain] : ['douyin.com', 'bilibili.com', 'tiktok.com', 'youtube.com'];
+  const results = [];
+
+  for (const domain of targetDomains) {
+    const extracted = await extractCookiesForDomain(domain);
+    if (extracted.count > 0 && extracted.netscape) {
+      results.push(extracted);
+
+      // 1. Đồng bộ tức thì sang Local Worker API (Port 19998)
+      try {
+        await fetch('http://127.0.0.1:19998/cookies/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            domain: extracted.domain,
+            count: extracted.count,
+            cookieData: extracted.netscape
+          })
+        }).catch(() => {});
+      } catch (e) {}
+
+      // 2. Đồng bộ sang Server Cloud API
+      try {
+        const storage = await chrome.storage.local.get(['serverUrl', 'bridgeToken']);
+        const serverUrl = (storage.serverUrl || 'https://ai2hero-flax.vercel.app').replace(/\/$/, '');
+        const bridgeToken = storage.bridgeToken;
+
+        if (serverUrl) {
+          await fetch(`${serverUrl}/api/hero-downloader/extension/sync-cookies`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(bridgeToken ? { 'Authorization': `Bearer ${bridgeToken}` } : {})
+            },
+            body: JSON.stringify({
+              domain: extracted.domain,
+              name: `${extracted.domain.toUpperCase()} Cookie (Auto Sync)`,
+              cookieData: extracted.netscape
+            })
+          }).catch(() => {});
+        }
+      } catch (e) {}
+    }
+  }
+
+  console.log(`[Ai2Hero Bridge] ✅ Đã hoàn tất đồng bộ ${results.length} bộ Cookie nền tảng.`);
+  return results;
+}
+
+async function forceFetchAndSyncCookies(targetDomain) {
+  const cleanDomain = targetDomain.replace(/^\./, '');
+  const extracted = await extractCookiesForDomain(cleanDomain);
+
+  if (extracted.count > 0) {
+    console.log(`[Ai2Hero Bridge] ⚡ Đã có sẵn ${extracted.count} cookies cho ${cleanDomain}. Đang nạp sang Worker...`);
+    await syncPlatformCookies(cleanDomain);
+  } else {
+    // Nếu Chrome chưa từng mở domain này -> tự động mở tab ngầm 2.5s để Chrome nhận cookie rồi đóng lại
+    console.log(`[Ai2Hero Bridge] 🌐 Chưa có Cookie ${cleanDomain} trên Chrome. Đang tự động mở tab ngầm lấy Cookie...`);
+    try {
+      chrome.tabs.create({ url: `https://www.${cleanDomain}/`, active: false }, (tab) => {
+        setTimeout(async () => {
+          await syncPlatformCookies(cleanDomain);
+          if (tab && tab.id) {
+            try {
+              chrome.tabs.remove(tab.id);
+            } catch (e) {}
+          }
+        }, 2500);
+      });
+    } catch (err) {
+      console.warn(`[Ai2Hero Bridge] Không thể tạo tab ngầm: ${err.message}`);
+    }
+  }
+}
+
+// 8. VÒNG LẶP AUTO-POLLING LẮNG NGHE YÊU CẦU TỪ LOCAL WORKER (Mỗi 3s)
+async function pollWorkerCookieRequests() {
+  try {
+    const res = await fetch('http://127.0.0.1:19998/cookies/poll_requests', { method: 'GET' }).catch(() => null);
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data && data.hasRequests && Array.isArray(data.requests)) {
+        for (const reqDomain of data.requests) {
+          console.log(`[Ai2Hero Bridge] 🚨 Nhận tín hiệu cấp cứu Cookie từ Worker cho: ${reqDomain}`);
+          await forceFetchAndSyncCookies(reqDomain);
+        }
+      }
+    }
+  } catch (e) {}
+
+  setTimeout(pollWorkerCookieRequests, 3000);
+}
+
+// Khởi chạy vòng lặp Auto-Polling ngay khi Service Worker khởi động
+pollWorkerCookieRequests();
+
+// Tự động đồng bộ Cookie lần đầu tiên khi Extension chạy
+setTimeout(() => {
+  syncPlatformCookies();
+}, 2000);
+
+// Tự động đồng bộ cookie ngầm khi người dùng duyệt web Douyin/Bilibili/Tiktok
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url) {
+    if (tab.url.includes('douyin.com')) syncPlatformCookies('douyin.com');
+    else if (tab.url.includes('bilibili.com')) syncPlatformCookies('bilibili.com');
+    else if (tab.url.includes('tiktok.com')) syncPlatformCookies('tiktok.com');
+    else if (tab.url.includes('youtube.com')) syncPlatformCookies('youtube.com');
+  }
+});
+

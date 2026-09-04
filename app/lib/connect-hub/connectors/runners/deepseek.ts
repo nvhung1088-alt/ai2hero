@@ -34,16 +34,27 @@ export async function runDeepSeek(
         throw new Error('Cần cung cấp "prompt" hoặc "messages".');
       }
 
+      const requestPayload: any = {
+        model,
+        messages,
+      };
+      if (input.response_format) {
+        requestPayload.response_format = input.response_format;
+      }
+      if (input.temperature !== undefined) {
+        requestPayload.temperature = input.temperature;
+      }
+      if (input.max_tokens) {
+        requestPayload.max_tokens = input.max_tokens;
+      }
+
       const response = await fetch(`${DEEPSEEK_API_BASE}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`
         },
-        body: JSON.stringify({
-          model,
-          messages,
-        }),
+        body: JSON.stringify(requestPayload),
         signal: controller.signal
       });
 

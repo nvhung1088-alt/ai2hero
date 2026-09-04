@@ -2352,6 +2352,7 @@ export const dubScanConfigs = pgTable('dub_scan_configs', {
   aiModel: varchar('ai_model', { length: 100 }),
   thumbnailAiAppSlug: varchar('thumbnail_ai_app_slug', { length: 100 }),
   thumbnailAiModel: varchar('thumbnail_ai_model', { length: 100 }),
+  thumbnailFontStyle: varchar('thumbnail_font_style', { length: 50 }).default('auto'),
   publishingPackEnabled: boolean('publishing_pack_enabled').notNull().default(true),
   lastScanAt: timestamp('last_scan_at'),
   scannedCount: integer('scanned_count').notNull().default(0),
@@ -2402,6 +2403,7 @@ export const dubTasks = pgTable('dub_tasks', {
   customThumbnailLogoUrl: text('custom_thumbnail_logo_url'),
   thumbnailAiAppSlug: varchar('thumbnail_ai_app_slug', { length: 100 }),
   thumbnailAiModel: varchar('thumbnail_ai_model', { length: 100 }),
+  thumbnailFontStyle: varchar('thumbnail_font_style', { length: 50 }).default('auto'),
   publishingPackEnabled: boolean('publishing_pack_enabled').notNull().default(true),
   
   // === Branding ===

@@ -1,14 +1,25 @@
 import os
 import sys
+import io
 import time
 import json
 import re
+import glob
 import platform
 import socket
 import requests
 import subprocess
+from pathlib import Path
 from datetime import datetime
 from colorama import init, Fore, Style
+
+# Đảm bảo in UTF-8 không bị lỗi charmap trên Windows Console
+if sys.platform == "win32":
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 init(autoreset=True)
 
@@ -23,15 +34,20 @@ import threading
 class LocalWebSocketBridgeServer:
     """
     Lightweight zero-dependency WebSocket Server for Chrome Extension Local Bridge (Port 8765)
+    Supports Multi-Account Pool, 30-Job Auto-Rotation & Auto-Failover.
     """
+    ROTATION_LIMIT = 10  # Ngưỡng xoay vòng 10 thao tác / tài khoản
+
     def __init__(self, host="127.0.0.1", port=8765):
         self.host = host
         self.port = port
-        self.clients = set()
+        self.clients = []  # Danh sách client socket có thứ tự
         self.lock = threading.Lock()
         self.pending_jobs = {}
         self.server_socket = None
         self.is_running = False
+        self.active_account_index = 0
+        self.account_job_counter = 0
 
     def start(self):
         if self.is_running:
@@ -83,10 +99,15 @@ class LocalWebSocketBridgeServer:
             sock.sendall(handshake.encode("utf-8"))
 
             with self.lock:
-                first_client = len(self.clients) == 0
-                self.clients.add(sock)
-            if first_client:
-                print(Fore.GREEN + "[*] Chrome Extension da ket noi truc tiep qua WebSocket Local (Port 8765)!")
+                if sock not in self.clients:
+                    self.clients.append(sock)
+                total_clients = len(self.clients)
+                curr_idx = self.clients.index(sock) + 1
+
+            if total_clients == 1:
+                print(Fore.GREEN + Style.BRIGHT + f"[*] Chrome Extension ket noi thanh cong (Tai khoan #{curr_idx})!")
+            else:
+                print(Fore.GREEN + Style.BRIGHT + f"[*] 🎯 Phat hien them Chrome Profile moi ket noi! Pool hien tai: {total_clients} Tai khoan (Tai khoan #{curr_idx}).")
 
             while self.is_running:
                 head = self._recv_exact(sock, 2)
@@ -144,6 +165,11 @@ class LocalWebSocketBridgeServer:
             with self.lock:
                 if sock in self.clients:
                     self.clients.remove(sock)
+                if self.clients:
+                    self.active_account_index = self.active_account_index % len(self.clients)
+                else:
+                    self.active_account_index = 0
+                    self.account_job_counter = 0
             try:
                 sock.close()
             except Exception:
@@ -167,12 +193,11 @@ class LocalWebSocketBridgeServer:
         with self.lock:
             return len(self.clients) > 0
 
-    def execute_job(self, prompt, target_ai="gemini", attachments=None, timeout=90):
+    def get_connected_count(self):
         with self.lock:
-            if not self.clients:
-                return None
-            client_sock = next(iter(self.clients))
+            return len(self.clients)
 
+    def _execute_job_on_socket(self, client_sock, prompt, target_ai="gemini", attachments=None, timeout=90, cancel_event=None):
         job_id = "ws_" + str(int(time.time() * 1000))
         event = threading.Event()
         self.pending_jobs[job_id] = {"event": event, "result": None}
@@ -190,14 +215,80 @@ class LocalWebSocketBridgeServer:
 
         try:
             self.send_frame(client_sock, json.dumps(msg, ensure_ascii=False))
-            if event.wait(timeout=timeout):
-                res = self.pending_jobs[job_id].get("result", {})
-                return res
+            start_wait = time.time()
+            while time.time() - start_wait < timeout:
+                if cancel_event and cancel_event.is_set():
+                    return {"cancelled": True}
+                if event.wait(timeout=0.5):
+                    res = self.pending_jobs[job_id].get("result", {})
+                    return res
         except Exception as e:
-            print(Fore.YELLOW + f"[!] WebSocket Bridge send error: {e}")
+            if not (cancel_event and cancel_event.is_set()):
+                print(Fore.YELLOW + f"  [!] WebSocket send error: {e}")
         finally:
-            self.pending_jobs.pop(job_id, None)
+            if job_id in self.pending_jobs:
+                del self.pending_jobs[job_id]
+        return None
 
+    def execute_job(self, prompt, target_ai="gemini", attachments=None, timeout=90, cancel_event=None, allow_failover=True):
+        with self.lock:
+            available_clients = list(self.clients)
+            if not available_clients:
+                return None
+            start_index = self.active_account_index % len(available_clients)
+
+        total_accounts = len(available_clients) if allow_failover else 1
+        
+        # Thử lần lượt các tài khoản trong pool bắt đầu từ tài khoản đang kích hoạt
+        for attempt_offset in range(total_accounts):
+            if cancel_event and cancel_event.is_set():
+                return None
+
+            candidate_index = (start_index + attempt_offset) % total_accounts
+            client_sock = available_clients[candidate_index]
+            account_num = candidate_index + 1
+
+            if attempt_offset == 0:
+                current_job_num = self.account_job_counter + 1
+                if total_accounts > 1:
+                    print(Fore.CYAN + f"  [⚡ WebSocket Local] Dang xu ly tren Tai khoan #{account_num}/{total_accounts} (Luot {current_job_num}/{self.ROTATION_LIMIT})...")
+                else:
+                    print(Fore.CYAN + f"  [⚡ WebSocket Local] Dang xu ly tren Tai khoan #{account_num} (Luot {current_job_num}/{self.ROTATION_LIMIT})...")
+            else:
+                print(Fore.MAGENTA + Style.BRIGHT + f"  [🔄 Auto-Failover] Chuyen sang Tai khoan #{account_num}/{total_accounts} de thuc hien lai...")
+
+            res = self._execute_job_on_socket(client_sock, prompt, target_ai=target_ai, attachments=attachments, timeout=timeout, cancel_event=cancel_event)
+            
+            if res and res.get("cancelled"):
+                return None
+
+            if res and res.get("success") and res.get("result"):
+                with self.lock:
+                    # Cập nhật số lượt và kiểm tra xoay vòng sau 30 lượt
+                    if candidate_index == self.active_account_index:
+                        self.account_job_counter += 1
+                        if self.account_job_counter >= self.ROTATION_LIMIT and len(self.clients) > 1:
+                            next_index = (self.active_account_index + 1) % len(self.clients)
+                            self.active_account_index = next_index
+                            self.account_job_counter = 0
+                            print(Fore.CYAN + Style.BRIGHT + f"  [🔄 Xoay Vong {self.ROTATION_LIMIT} Luot] Da hoan tat {self.ROTATION_LIMIT} luot tren Tai khoan #{account_num}! Chuyen sang Tai khoan #{next_index + 1} de nghi ngoi...")
+                    else:
+                        # Nếu hoàn thành bằng tài khoản cứu hộ -> chuyển con trỏ sang tài khoản cứu hộ
+                        self.active_account_index = candidate_index
+                        self.account_job_counter = 1
+                return res
+            else:
+                if cancel_event and cancel_event.is_set():
+                    return None
+                err_msg = res.get("error", "Timeout / Khong co phan hoi") if isinstance(res, dict) else "Timeout / Khong co phan hoi"
+                if "1095" in err_msg or "Stream Aborted" in err_msg or "Mất kết nối" in err_msg:
+                    print(Fore.RED + Style.BRIGHT + f"  [⚡ Gemini Pro Alert] Tai khoan #{account_num} bi ngat Stream (1095). Extension da tu dong F5 tab.")
+                else:
+                    print(Fore.YELLOW + f"  [⚠️ Su co Tai khoan #{account_num}] {err_msg}.")
+
+        if cancel_event and cancel_event.is_set():
+            return None
+        print(Fore.RED + "  [!] Tat ca cac tai khoan trong Pool WebSocket deu that bai!")
         return None
 
 bridge_server = LocalWebSocketBridgeServer()
@@ -222,17 +313,35 @@ API_BASE_URL = "https://www.ai2hero.com/api/hero-dub"
 CONFIG_FILE = "config.json"
 WORKSPACE_DIR = "workspace"
 
+def smart_truncate(text, max_len=45):
+    """Cắt ngắn chuỗi văn bản theo ranh giới từ (Word Boundary) để không bao giờ bị cụt từ."""
+    text = str(text).strip()
+    if len(text) <= max_len:
+        return text
+    cut = text[:max_len]
+    last_space = cut.rfind(' ')
+    if last_space > int(max_len * 0.5):
+        return cut[:last_space].strip()
+    return cut.strip()
+
 def generate_video_copywriting(task, translated_segments, duration_sec, bridge_server, headers, API_BASE_URL):
     """
-    LUỒNG 1: Tự động viết lại Tiêu đề Tiếng Việt giật tít, Mô tả nội dung và Bộ Hashtags (TEXT-ONLY, Siêu tốc và Chuẩn xác 100%).
+    LUỒNG 1: Tạo Tiêu đề, Mô tả và Hashtags (TEXT-ONLY) chuẩn xác 100% theo nội dung video.
     """
     task_id = task.get("id")
-    raw_source_title = task.get("sourceTitle") or task.get("source_title") or f"video_{task_id}"
-    clean_source_title = os.path.basename(raw_source_title)
-    for ext in ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.webm']:
+    raw_source = task.get("sourceTitle") or task.get("sourceUrl") or f"video_{task_id}"
+    # Đảm bảo chỉ lấy tên file gốc, loại bỏ hoàn toàn đường dẫn thư mục (cả / và \)
+    clean_source_title = os.path.basename(str(raw_source).replace('\\', '/'))
+    for ext in ['.mp4', '.mkv', '.mov', '.avi', '.flv', '.wmv']:
         if clean_source_title.lower().endswith(ext):
             clean_source_title = clean_source_title[:-len(ext)]
     clean_source_title = clean_source_title.strip()
+
+    # Trích xuất mã số tập nếu có (ví dụ 1815_)
+    prefix_num = ""
+    num_match = re.match(r'^(\d+)_', clean_source_title)
+    if num_match:
+        prefix_num = num_match.group(1) + "_"
 
     # 1. Trích xuất 10-15 câu thoại phụ đề tiếng Việt tiêu biểu
     sample_subs = []
@@ -243,92 +352,450 @@ def generate_video_copywriting(task, translated_segments, duration_sec, bridge_s
     
     subs_text = "\n".join([f"- {s}" for s in sample_subs if s]) if sample_subs else "(Không có phụ đề)"
 
-    prompt = f"""[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH, KHÔNG HỎI LẠI]
+    prompt = f"""[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON THUẦN TÚY. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH]
 
-Hãy đóng vai Giám đốc Sáng tạo Nội dung Phim. Dưới đây là thông tin video:
-- Tiêu đề gốc: {clean_source_title}
-- Các câu thoại tiêu biểu đã dịch sang tiếng Việt:
+Hãy đóng vai Chuyên viên Biên tập Nội dung Video Sinh Tồn / Chế Tác. Dưới đây là thông tin video:
+- Tiêu đề gốc video: {clean_source_title}
+- Các câu thoại phụ đề thực tế trong video:
 {subs_text}
 
-Nhiệm vụ của bạn:
-1. "new_title": Đặt lại Tiêu đề Tiếng Việt cực kỳ giật tít, hấp dẫn, chuẩn SEO YouTube/TikTok (dưới 80 ký tự, khơi gợi tò mò).
-2. "description": Viết đoạn mô tả ngắn 3-4 câu tóm tắt tình huống kịch tính nhất của video để khán giả xem hết.
-3. "hashtags": Tạo bộ 6-8 hashtag xu hướng (bắt đầu bằng dấu #).
+QUY TẮC BẮT BUỘC:
+1. "new_title": Đặt Tiêu đề Tiếng Việt chuẩn xác 100% với nội dung và bối cảnh video (dưới 65 ký tự, trọn vẹn câu, hấp dẫn):
+   - ĐẶC BIỆT LƯU Ý: Phải đúng chất liệu nơi trú ẩn (Nếu gốc là Hốc cây/Cây rỗng 树洞 -> ghi Hốc Cây/Cây Rỗng; Nếu là Nhà đá/Hang đá 石屋/岩洞 -> ghi Nhà Đá/Hang Đá; Nếu là Nhà gỗ 木屋 -> ghi Nhà Gỗ). TUYỆT ĐỐI KHÔNG tự bịa sai chất liệu.
+2. "description": Viết đoạn mô tả ngắn 3-4 câu tóm tắt chính xác diễn biến của video.
+3. "hashtags": Tạo bộ 6-8 hashtag chuẩn theo chủ đề video.
 
-CHỈ TRẢ VỀ MÃ JSON THEO ĐÚNG CẤU TRÚC SAU (KHÔNG THÊM BẤT KỲ VĂN BẢN NÀO KHÁC):
+CẤU TRÚC JSON MẪU:
 {{
-  "new_title": "Tiêu đề tiếng Việt giật tít tại đây",
+  "new_title": "Tiêu đề tiếng Việt chuẩn nội dung tại đây",
   "description": "Đoạn mô tả ngắn 3-4 câu tại đây...",
-  "hashtags": "#phimngan #reviewphim #tomtatphim #xuhuong #phimhay"
+  "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao"
 }}"""
 
     result = {
         "new_title": clean_source_title,
-        "description": f"Video thuyết minh: {clean_source_title}. Theo dõi những tình tiết hấp dẫn và kịch tính nhất trong tập này!",
-        "hashtags": "#phimngan #reviewphim #tomtatphim #xuhuong #phimhay",
+        "description": f"Video thuyết minh: {clean_source_title}. Theo dõi hành trình sinh tồn và chế tác tự nhiên hấp dẫn!",
+        "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao",
     }
 
     if bridge_server and bridge_server.is_connected():
-        print(Fore.CYAN + f"  [⚡ WebSocket Copywriting] Dang gui yeu cau viet Tieu de + Mo ta sang Gemini (Text-Only)...")
-        ws_res = bridge_server.execute_job(prompt, attachments=[], target_ai="gemini", timeout=60)
-        if not ws_res or not ws_res.get("success"):
-            print(Fore.YELLOW + f"  [!] WebSocket Copywriting chua nhan duoc phan hoi ({ws_res}).")
-        else:
+        print(Fore.CYAN + f"  [⚡ WebSocket Copywriting] Dang gui yeu cau viet Tieu de + Mo ta sang Gemini...")
+        ws_res = bridge_server.execute_job(prompt, attachments=[], target_ai="gemini", timeout=120, allow_failover=False)
+        if ws_res and ws_res.get("success") and ws_res.get("result"):
             raw_out = str(ws_res.get("result", "")).strip()
             raw_out = re.sub(r"^```(?:json)?\s*", "", raw_out, flags=re.IGNORECASE)
             raw_out = re.sub(r"\s*```$", "", raw_out, flags=re.IGNORECASE).strip()
             
             parsed_success = False
+            # Dùng regex bóc tách JSON siêu bền
             try:
                 json_match = re.search(r'(\{[\s\S]*\})', raw_out)
                 if json_match:
-                    parsed = json.loads(json_match.group(1))
+                    clean_j = re.sub(r',\s*([\}\]])', r'\1', json_match.group(1))
+                    parsed = json.loads(clean_j)
                     if isinstance(parsed, dict):
                         if parsed.get("new_title"):
-                            result["new_title"] = parsed.get("new_title").strip()
+                            t_val = str(parsed.get("new_title")).strip()
+                            result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
                         if parsed.get("description"):
-                            result["description"] = parsed.get("description").strip()
+                            result["description"] = str(parsed.get("description")).strip()
                         if parsed.get("hashtags"):
-                            result["hashtags"] = parsed.get("hashtags").strip()
-                        print(Fore.GREEN + f"  [⚡ WebSocket Copywriting] Da tao Tieu de moi: {result['new_title']}")
+                            result["hashtags"] = str(parsed.get("hashtags")).strip()
+                        print(Fore.GREEN + Style.BRIGHT + f"  [⚡ WebSocket Copywriting] Da tao Tieu de moi chuan xac: {result['new_title']}")
                         parsed_success = True
-            except Exception as parse_e:
-                print(Fore.YELLOW + f"  [!] Parse Copywriting JSON error ({parse_e}).")
+            except Exception:
+                pass
 
-            if not parsed_success and len(raw_out) > 10:
-                print(Fore.YELLOW + f"  [!] Gemini tra ve text thuong, dang tu dong trich xuat tu lieu...")
-                lines = [line.strip() for line in raw_out.split('\n') if line.strip()]
-                for line in lines:
-                    if any(kw in line.lower() for kw in ['tiêu đề:', 'title:', '1.']):
-                        clean_line = re.sub(r'^(?:tiêu đề|title|1\.)[:\s*-]+', '', line, flags=re.IGNORECASE).strip('"\' ')
-                        if len(clean_line) > 5:
-                            result["new_title"] = clean_line[:90]
-                            break
-                tags = re.findall(r'#\w+', raw_out)
-                if tags:
-                    result["hashtags"] = " ".join(tags[:8])
-                if len(lines) > 1:
-                    result["description"] = "\n".join(lines[1:5])
+            if not parsed_success:
+                # Trích xuất thủ công theo từng trường
+                title_m = re.search(r'"new_title"\s*:\s*"([^"]+)"', raw_out)
+                if title_m:
+                    t_val = title_m.group(1).strip()
+                    result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
+                    parsed_success = True
+                    print(Fore.GREEN + Style.BRIGHT + f"  [⚡ WebSocket Copywriting] Da trich xuat Tieu de moi: {result['new_title']}")
 
-    # Rào chắn an toàn: Nếu vẫn còn chữ tiếng Trung, tự động lấy câu phụ đề tiếng Việt đầu tiên
+    # Rào chắn an toàn: Nếu vẫn còn chữ tiếng Trung, tự động dịch trực tiếp tiêu đề gốc hoặc lấy câu phụ đề đầu tiên
     if re.search(r'[\u4e00-\u9fff]', result["new_title"]):
-        if translated_segments and len(translated_segments) > 0:
-            for seg in translated_segments[:5]:
+        pure_ch_title = re.sub(r'^\d+_', '', clean_source_title).strip()
+        trans_title = google_translate(pure_ch_title, dest='vi')
+        if trans_title and not re.search(r'[\u4e00-\u9fff]', trans_title):
+            clean_t = re.sub(r'[\\/:*?"<>|]', ' ', trans_title).strip()
+            result["new_title"] = f"{prefix_num}{clean_t}"
+            print(Fore.CYAN + f"  [-] Da tu dong dich Tieu de goc chuan xac: {result['new_title']}")
+        elif translated_segments and len(translated_segments) > 0:
+            for seg in translated_segments[:3]:
                 t = seg.get('text', '').strip()
                 if t and not re.search(r'[\u4e00-\u9fff]', t) and len(t) > 8:
-                    prefix = f"video_{task_id}"
-                    num_match = re.match(r'^(\d+)_', clean_source_title)
-                    if num_match:
-                        prefix = num_match.group(1)
-                    result["new_title"] = f"{prefix}_{t[:70]}"
-                    result["description"] = f"Video thuyết minh: {t}. Theo dõi hành trình kịch tính và thư giãn giải tỏa căng thẳng!"
+                    result["new_title"] = f"{prefix_num}{t[:65]}"
                     break
 
     return result
 
+def create_local_3d_gold_thumbnail(src_path, title_text, out_path, tag_text="THUYẾT MINH"):
+    """
+    LOCAL 3D GOLD THUMBNAIL ENGINE (0đ, KHÔNG CẦN API):
+    - Tự động resize ảnh gốc về chuẩn 720p sắc nét.
+    - Phủ Badge đỏ ruby góc trên trái che sạch logo/badge Trung Quốc cũ.
+    - Tạo Khung biển hiệu Charcoal viền Vàng Kim bo góc che 100% chữ tiếng Trung ở nửa dưới.
+    - Vẽ tiêu đề Tiếng Việt Typography 3D Vàng Kim (Extrusion Shadow + Black Stroke + Gold Sheen).
+    - Tự động căn chỉnh font size và ngắt dòng nghệ thuật.
+    """
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        if not src_path or not os.path.exists(src_path):
+            return None
+
+        im = Image.open(src_path).convert('RGBA')
+        w, h = im.size
+        
+        target_w = 720
+        target_h = int(h * (target_w / w))
+        im = im.resize((target_w, target_h), Image.Resampling.LANCZOS)
+        
+        font_path = 'C:/Windows/Fonts/arialbd.ttf'
+        if not os.path.exists(font_path):
+            font_path = 'C:/Windows/Fonts/tahomabd.ttf'
+        if not os.path.exists(font_path):
+            font_path = 'C:/Windows/Fonts/arial.ttf'
+            
+        title = title_text.upper().strip()
+        import re
+        title = re.sub(r'^\d+_', '', title).strip()
+        title = re.sub(r'[\\/:*?"<>|]', ' ', title).strip()
+        
+        words = title.split()
+        lines = []
+        if len(title) > 16 and len(words) >= 3:
+            mid = len(words) // 2
+            lines.append(' '.join(words[:mid]))
+            lines.append(' '.join(words[mid:]))
+        else:
+            lines.append(title)
+            
+        font_size = 50 if len(lines) == 1 else 44
+        font = ImageFont.truetype(font_path, font_size)
+        
+        max_text_w = max(font.getbbox(l)[2] - font.getbbox(l)[0] for l in lines)
+        while max_text_w > (target_w * 0.84) and font_size > 22:
+            font_size -= 2
+            font = ImageFont.truetype(font_path, font_size)
+            max_text_w = max(font.getbbox(l)[2] - font.getbbox(l)[0] for l in lines)
+            
+        line_h = int(font_size * 1.32)
+        total_text_h = len(lines) * line_h
+        
+        # 1. TOP-LEFT BADGE (Che logo / watermark tiếng Trung góc trên trái)
+        if tag_text:
+            badge_layer = Image.new('RGBA', (target_w, target_h), (0, 0, 0, 0))
+            d_badge = ImageDraw.Draw(badge_layer)
+            tag_font = ImageFont.truetype(font_path, 26)
+            tb_box = tag_font.getbbox(tag_text)
+            tw = tb_box[2] - tb_box[0]
+            th = tb_box[3] - tb_box[1]
+            
+            bx, by = 16, 16
+            bw = max(tw + 40, 205)
+            bh = max(th + 24, 125)
+            
+            d_badge.rounded_rectangle([bx + 4, by + 4, bx + bw + 4, by + bh + 4], radius=14, fill=(0, 0, 0, 200))
+            d_badge.rounded_rectangle([bx, by, bx + bw, by + bh], radius=14, fill=(210, 25, 35, 255), outline=(255, 220, 100, 240), width=2)
+            tx = bx + (bw - tw) // 2
+            ty = by + (bh - th) // 2 - 2
+            d_badge.text((tx + 1, ty + 1), tag_text, font=tag_font, fill=(0, 0, 0, 180))
+            d_badge.text((tx, ty), tag_text, font=tag_font, fill=(255, 255, 255))
+            im = Image.alpha_composite(im, badge_layer)
+            
+        # 2. BOTTOM PLATE (Khung biển hiệu sang trọng che 100% chữ Trung Quốc gốc)
+        plate_w = target_w - 36
+        plate_h = max(int(target_h * 0.32), total_text_h + 50)
+        plate_x = 18
+        plate_y = int(target_h * 0.63)
+        
+        plate_layer = Image.new('RGBA', (target_w, target_h), (0, 0, 0, 0))
+        d_plate = ImageDraw.Draw(plate_layer)
+        
+        d_plate.rounded_rectangle([plate_x + 8, plate_y + 10, plate_x + plate_w + 8, plate_y + plate_h + 10], radius=22, fill=(0, 0, 0, 230))
+        d_plate.rounded_rectangle([plate_x, plate_y, plate_x + plate_w, plate_y + plate_h], radius=22, fill=(12, 15, 22, 255), outline=(255, 215, 0, 255), width=4)
+        d_plate.rounded_rectangle([plate_x + 7, plate_y + 7, plate_x + plate_w - 7, plate_y + plate_h - 7], radius=17, outline=(210, 165, 30, 150), width=1)
+        im = Image.alpha_composite(im, plate_layer)
+        
+        # 3. TYPOGRAPHY 3D VÀNG KIM
+        text_start_y = plate_y + (plate_h - total_text_h) // 2 - 2
+        text_layer = Image.new('RGBA', (target_w, target_h), (0, 0, 0, 0))
+        d_text = ImageDraw.Draw(text_layer)
+        
+        for idx, line in enumerate(lines):
+            bbox = font.getbbox(line)
+            lw = bbox[2] - bbox[0]
+            lx = (target_w - lw) // 2
+            ly = text_start_y + idx * line_h
+            
+            # Shadow 3D sâu
+            for offset in range(7, 0, -1):
+                d_text.text((lx + offset, ly + offset), line, font=font, fill=(0, 0, 0, 240))
+            # Viền đen dày
+            stroke_w = max(4, font_size // 9)
+            d_text.text((lx, ly), line, font=font, fill=(255, 205, 0), stroke_width=stroke_w, stroke_fill=(0, 0, 0, 255))
+            # Ánh kim phản chiếu
+            d_text.text((lx, ly), line, font=font, fill=(255, 245, 140), stroke_width=1, stroke_fill=(210, 150, 0, 180))
+            
+        final_img = Image.alpha_composite(im, text_layer).convert('RGB')
+        dest_dir = os.path.dirname(out_path)
+        if dest_dir and not os.path.exists(dest_dir):
+            os.makedirs(dest_dir, exist_ok=True)
+        final_img.save(out_path, quality=92, optimize=True)
+        return out_path
+    except Exception as e:
+        print(Fore.YELLOW + f"  [!] Loi render 3D Gold Thumbnail: {e}")
+        return None
+
+def get_gemini_api_key():
+    """Lấy Gemini API Key từ biến môi trường hoặc file .env của app."""
+    key = os.environ.get("GEMINI_API_KEY")
+    if key:
+        return key.strip()
+    env_paths = [
+        os.path.join(os.path.dirname(__file__), "..", "app", ".env"),
+        os.path.join(os.path.dirname(__file__), ".env"),
+        r"c:\Users\ADMIN\OneDrive\Desktop\Ai2Hero\app\.env"
+    ]
+    for ep in env_paths:
+        if os.path.exists(ep):
+            try:
+                with open(ep, "r", encoding="utf-8", errors="ignore") as f:
+                    for line in f:
+                        if line.startswith("GEMINI_API_KEY="):
+                            k = line.split("=", 1)[1].replace("'", "").replace('"', '').strip()
+                            if k:
+                                return k
+            except Exception:
+                pass
+    return None
+
+def clean_image_with_gemini_flash(thumb_src, out_clean_path, api_key=None, bridge_server=None):
+    """
+    BƯỚC 1: Xóa sạch toàn bộ chữ tiếng Trung Quốc và Watermark trên ảnh bằng Gemini Flash Image (3 giây).
+    Giữ nguyên 100% nhân vật, bối cảnh, tỷ lệ khung hình và hiệu ứng hình ảnh.
+    """
+    if not thumb_src or not os.path.exists(thumb_src):
+        return None
+
+    key = api_key or get_gemini_api_key()
+    if key:
+        try:
+            print(Fore.CYAN + f"  [⚡ Gemini Flash Image] Dang gui anh sang Gemini Flash de xoa sach chu tieng Trung (3s)...")
+            with open(thumb_src, "rb") as f:
+                b64_img = base64.b64encode(f.read()).decode("utf-8")
+
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key={key}"
+            prompt = "Edit this image: restore and clean the background scene and road without any text, subtitles or typography overlays. Keep the characters, lighting and ruined city completely intact. Output only the clean edited image."
+
+            payload = {
+                "contents": [{
+                    "parts": [
+                        {"text": prompt},
+                        {"inline_data": {"mime_type": "image/jpeg", "data": b64_img}}
+                    ]
+                }]
+            }
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=45) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                candidates = res_data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    for p in parts:
+                        inline = p.get("inlineData") or p.get("inline_data")
+                        if inline and inline.get("data"):
+                            img_bytes = base64.b64decode(inline["data"])
+                            os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
+                            with open(out_clean_path, "wb") as out_f:
+                                out_f.write(img_bytes)
+
+                            # Tẩy sạch nốt tem logo ở góc dưới phải bằng PIL patch nếu còn
+                            try:
+                                from PIL import Image, ImageFilter
+                                c_im = Image.open(out_clean_path).convert("RGBA")
+                                cw, ch = c_im.size
+                                wm_w = int(cw * 0.12)
+                                wm_h = int(ch * 0.08)
+                                wm_patch = c_im.crop((cw - wm_w, ch - wm_h * 2, cw, ch - wm_h)).filter(ImageFilter.GaussianBlur(2))
+                                c_im.paste(wm_patch, (cw - wm_w, ch - wm_h))
+                                c_im.convert("RGB").save(out_clean_path, quality=95)
+                            except Exception:
+                                pass
+
+                            print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Flash Image] Da xoa sach chu TQ thanh cong (3s, {len(img_bytes)//1024} KB)!")
+                            return out_clean_path
+        except Exception as e:
+            print(Fore.YELLOW + f"  [!] Gemini Flash API: {e}, thu qua Extension Bridge...")
+
+    # Fallback qua Browser Bridge nếu có
+    if bridge_server and bridge_server.is_connected():
+        try:
+            with open(thumb_src, "rb") as img_f:
+                b64_data = base64.b64encode(img_f.read()).decode('utf-8')
+                img_b64 = f"data:image/jpeg;base64,{b64_data}"
+            prompt = "Hãy chỉnh sửa bức ảnh này: XÓA SẠCH toàn bộ chữ tiếng Trung Quốc và watermark trên ảnh, giữ nguyên 100% nhân vật, hiệu ứng và bối cảnh. BẮT BUỘC xuất ra ảnh sạch KHÔNG CÓ BẤT KỲ CHỮ NÀO (clean background image)."
+            payload = [{"name": os.path.basename(thumb_src), "type": "image/jpeg", "data": img_b64}]
+            res = bridge_server.execute_job(prompt, attachments=payload, target_ai="gemini", timeout=60)
+            if res and res.get("success") and res.get("result"):
+                m = re.search(r'!\[.*?\]\((data:image/[^)]+|https?://[^\s\)]+)\)', str(res.get("result")))
+                if m:
+                    u = m.group(1)
+                    if u.startswith("data:image/"):
+                        raw_b64 = u.split(",", 1)[1]
+                        os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
+                        with open(out_clean_path, "wb") as out_f:
+                            out_f.write(base64.b64decode(raw_b64))
+                        return out_clean_path
+        except Exception as bridge_err:
+            print(Fore.YELLOW + f"  [!] Bridge Error: {bridge_err}")
+
+    # Fallback cục bộ: Xóa watermark góc phải
+    try:
+        from PIL import Image, ImageFilter
+        im = Image.open(thumb_src).convert("RGBA")
+        w, h = im.size
+        wm_w = int(w * 0.12)
+        wm_h = int(h * 0.08)
+        wm_patch = im.crop((w - wm_w, h - wm_h * 2, w, h - wm_h)).filter(ImageFilter.GaussianBlur(2))
+        im.paste(wm_patch, (w - wm_w, h - wm_h))
+        os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
+        im.convert("RGB").save(out_clean_path, quality=92)
+        return out_clean_path
+    except Exception:
+        return thumb_src
+
+def render_adaptive_vietnamese_thumbnail(bg_image_path, title_text, out_path, style="auto", tag_text="THUYẾT MINH"):
+    """
+    BƯỚC 2: Ghép tiêu đề tiếng Việt chuẩn Typography vào ĐÚNG VỊ TRÍ CHỮ CŨ:
+    - Nhận diện Aspect Ratio (Ngang 16:9 vs Dọc 9:16).
+    - Hỗ trợ Font Thư pháp Việt (Charm-Bold.ttf) + 3D Vàng kim (Arial Bold).
+    - Tự động căn chỉnh hào quang, bóng đổ 3D và tối ưu 720p.
+    """
+    try:
+        from PIL import Image, ImageDraw, ImageFont, ImageFilter
+        if not bg_image_path or not os.path.exists(bg_image_path):
+            return None
+
+        im = Image.open(bg_image_path).convert("RGBA")
+        orig_w, orig_h = im.size
+        ratio = orig_w / float(orig_h)
+
+        if ratio >= 1.15:
+            target_w = 1280
+            target_h = int(target_w / ratio)
+        else:
+            target_w = 720
+            target_h = int(target_w / ratio)
+        im = im.resize((target_w, target_h), Image.Resampling.LANCZOS)
+        w, h = target_w, target_h
+
+        # Lọc sạch tiêu đề
+        clean_title = re.sub(r'^\d+_', '', title_text).strip()
+        clean_title = re.sub(r'[\\/:*?"<>|]', ' ', clean_title).strip()
+
+        # Font path
+        font_dir = os.path.join(os.path.dirname(__file__), "fonts")
+        charm_path = os.path.join(font_dir, "Charm-Bold.ttf")
+        arial_path = "C:/Windows/Fonts/arialbd.ttf"
+        if not os.path.exists(arial_path):
+            arial_path = "C:/Windows/Fonts/tahomabd.ttf"
+
+        is_landscape = ratio >= 1.15
+
+        chosen_style = style
+        if chosen_style == "auto":
+            chosen_style = "calligraphy" if (is_landscape and os.path.exists(charm_path)) else "gold_3d"
+
+        # ----------------------------------------------------
+        # TRƯỜNG HỢP 1: ẢNH NGANG 16:9 (ANIME / PHIM / TRUYỆN TRANH)
+        # ----------------------------------------------------
+        if is_landscape:
+            font_file = charm_path if (chosen_style in ["calligraphy", "neon_glow"] and os.path.exists(charm_path)) else arial_path
+            
+            words = clean_title.split()
+            lines = []
+            if len(words) >= 6:
+                mid = len(words) // 2
+                lines.append(' '.join(words[:mid]))
+                lines.append(' '.join(words[mid:]))
+            else:
+                lines.append(clean_title)
+
+            scale = w / 1024.0
+            base_size = int((56 if len(lines) == 1 else 46) * scale)
+            font = ImageFont.truetype(font_file, base_size)
+
+            while max(font.getbbox(l)[2] - font.getbbox(l)[0] for l in lines) > (w * 0.82) and base_size > 22:
+                base_size -= 2
+                font = ImageFont.truetype(font_file, base_size)
+
+            line_h = int(base_size * 1.28)
+            total_text_h = len(lines) * line_h
+            start_y = int(h * 0.68) if total_text_h < int(h * 0.22) else int(h * 0.63)
+
+            # Hào quang phát sáng (Glow)
+            glow_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+            d_glow = ImageDraw.Draw(glow_layer)
+            glow_color = (0, 210, 255, 120) if chosen_style in ["calligraphy", "neon_glow"] else (255, 200, 30, 110)
+            glow_r = int(6 * scale)
+
+            for idx, line in enumerate(lines):
+                bbox = font.getbbox(line)
+                lw = bbox[2] - bbox[0]
+                lx = (w - lw) // 2
+                ly = start_y + idx * line_h
+                for dx in range(-glow_r*2, glow_r*2 + 1, 3):
+                    for dy in range(-glow_r*2, glow_r*2 + 1, 3):
+                        if dx*dx + dy*dy <= (glow_r*2)**2:
+                            d_glow.text((lx + dx, ly + dy), line, font=font, fill=glow_color)
+            glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(int(7 * scale)))
+            im = Image.alpha_composite(im, glow_layer)
+
+            # Lớp chữ chính
+            text_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+            d_text = ImageDraw.Draw(text_layer)
+            for idx, line in enumerate(lines):
+                bbox = font.getbbox(line)
+                lw = bbox[2] - bbox[0]
+                lx = (w - lw) // 2
+                ly = start_y + idx * line_h
+
+                for s_off in range(int(5 * scale), 0, -1):
+                    d_text.text((lx + s_off, ly + s_off), line, font=font, fill=(0, 0, 0, 230))
+                stroke_w = max(4, int(4 * scale))
+                d_text.text((lx, ly), line, font=font, fill=(255, 255, 255), stroke_width=stroke_w, stroke_fill=(5, 12, 20, 255))
+                text_fill = (245, 252, 255) if chosen_style in ["calligraphy", "neon_glow"] else (255, 245, 140)
+                d_text.text((lx, ly), line, font=font, fill=text_fill)
+
+            final_img = Image.alpha_composite(im, text_layer).convert("RGB")
+
+        # ----------------------------------------------------
+        # TRƯỜNG HỢP 2: ẢNH DỌC 9:16 (VLOG / SINH TỒN / SHORTS / TIKTOK)
+        # ----------------------------------------------------
+        else:
+            final_path = create_local_3d_gold_thumbnail(bg_image_path, clean_title, out_path, tag_text=tag_text)
+            return final_path
+
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        final_img.save(out_path, quality=92, optimize=True)
+        return out_path
+    except Exception as e:
+        print(Fore.YELLOW + f"  [!] Loi render Adaptive Thumbnail: {e}")
+        return None
+
 def redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, bridge_server):
     """
-    LUỒNG 2: Thiết kế lại Ảnh bìa (IMAGE-ONLY, Chỉ chạy khi bật cờ redesignThumbnailEnabled).
+    QUY TRÌNH 2 BƯỚC THIẾT KẾ THUMBNAIL (Gemini Flash + Worker Typography):
+    - Bước 1: Gọi Gemini Flash xóa sạch 100% chữ tiếng Trung & watermark (3 giây).
+    - Bước 2: Worker chèn tiêu đề tiếng Việt chuẩn Typography vào đúng vị trí chữ gốc.
     """
     if not task.get("redesignThumbnailEnabled"):
         return None
@@ -336,60 +803,73 @@ def redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, br
     if not thumb_src or not os.path.exists(thumb_src):
         return None
 
-    if not bridge_server or not bridge_server.is_connected():
-        return None
-
-    try:
-        with open(thumb_src, "rb") as img_f:
-            b64_data = base64.b64encode(img_f.read()).decode('utf-8')
-            img_b64 = f"data:image/jpeg;base64,{b64_data}"
-    except Exception as e:
-        print(Fore.YELLOW + f"  [!] Khong the doc anh thumbnail: {e}")
-        return None
-
-    # Đảm bảo tiêu đề thay vào ảnh 100% là tiếng Việt sạch (loại bỏ chữ tiếng Trung nếu có)
+    # Lọc tiêu đề tiếng Việt sạch
     clean_viet_title = new_title
     if re.search(r'[\u4e00-\u9fff]', clean_viet_title) or clean_viet_title.startswith("video_"):
         if translated_segments and len(translated_segments) > 0:
-            for seg in translated_segments[:5]:
+            for seg in translated_segments[:3]:
                 t = seg.get('text', '').strip()
                 if t and not re.search(r'[\u4e00-\u9fff]', t) and len(t) > 8:
-                    clean_viet_title = t[:50]
+                    clean_viet_title = t
                     break
         if re.search(r'[\u4e00-\u9fff]', clean_viet_title):
             clean_viet_title = "Sinh Tồn Nơi Hoang Dã"
 
-    # Lọc bỏ tiền tố mã số ví dụ 1276_ để chữ trên ảnh bìa ngắn gọn, nghệ thuật
-    display_title_on_image = re.sub(r'^\d+_', '', clean_viet_title).strip()
+    clean_title = re.sub(r'^\d+_', '', clean_viet_title).strip()
+    clean_title = re.sub(r'[\\/:*?"<>|]', ' ', clean_title).strip()
+    clean_title = smart_truncate(clean_title, max_len=45)
 
-    print(Fore.CYAN + f"  [⚡ WebSocket Image Redesign] Dang gui anh bia sang Gemini de ve lai theo tieu de moi: '{display_title_on_image}'...")
-    image_prompt = f"""Tạo hình ảnh (Generate image): Hãy vẽ và tạo lại một bức ảnh thumbnail hoàn chỉnh dựa trên bức ảnh này.
-Yêu cầu bắt buộc:
-1. Xóa sạch toàn bộ chữ tiếng Trung Quốc có trên ảnh gốc.
-2. Vẽ và thay thế bằng dòng chữ tiêu đề tiếng Việt nổi bật nghệ thuật: "{display_title_on_image}".
-3. BẮT BUỘC giữ nguyên 100% tỷ lệ khung hình gốc (Aspect Ratio), kích thước, bố cục, nhân vật và phong cách của ảnh gốc.
-4. BẮT BUỘC xuất ra hình ảnh mới (Generate the new image), không trả lời bằng văn bản giải thích."""
+    font_style = task.get("thumbnailFontStyle", "auto")
+    dest_dir = os.path.dirname(thumb_src)
+    clean_bg = os.path.join(dest_dir, f"_clean_bg_{os.path.basename(thumb_src)}")
+    final_thumb = os.path.join(dest_dir, f"_final_thumb_{os.path.basename(thumb_src)}")
 
-    ws_res = bridge_server.execute_job(image_prompt, attachments=[img_b64], target_ai="gemini", timeout=120)
-    if ws_res and ws_res.get("success") and ws_res.get("result"):
-        raw_out = str(ws_res.get("result", "")).strip()
-        img_match = re.search(r'!\[.*?\]\((data:image/[^)]+|https?://[^\s\)]+)\)', raw_out)
-        if img_match:
-            new_thumb_url = img_match.group(1)
-            print(Fore.GREEN + f"  [⚡ WebSocket Image Redesign] Da nhan duoc anh bia thiet ke moi tu Gemini!")
-            return new_thumb_url
-        else:
-            print(Fore.YELLOW + f"  [!] Gemini chua tao link anh moi ({raw_out[:120]}...).")
-    else:
-        print(Fore.YELLOW + f"  [!] WebSocket Image Redesign that bai hoac timeout ({ws_res}).")
+    # BƯỚC 1: Xóa chữ TQ bằng Gemini Flash (3s)
+    clean_path = clean_image_with_gemini_flash(thumb_src, clean_bg, bridge_server=bridge_server)
+    effective_bg = clean_path if (clean_path and os.path.exists(clean_path)) else thumb_src
 
+    # BƯỚC 2: Ghép chữ tiếng Việt vào đúng vị trí cũ
+    print(Fore.CYAN + Style.BRIGHT + f"  [⚡ Adaptive Typography] Dang ghep chu tieng Viet '{clean_title}' (Style: {font_style}) vao vi tri goc...")
+    res = render_adaptive_vietnamese_thumbnail(effective_bg, clean_title, final_thumb, style=font_style, tag_text="THUYẾT MINH")
+    if res and os.path.exists(res):
+        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Thumbnail Ready] Hoan tat anh bia moi: {os.path.basename(res)}!")
+        return res
+
+    # Fallback cuối cùng
+    local_thumb = os.path.join(dest_dir, f"_local_3d_{os.path.basename(thumb_src)}")
+    return create_local_3d_gold_thumbnail(thumb_src, clean_title, local_thumb, tag_text="THUYẾT MINH")
+
+
+def get_latest_download_image(start_time, timeout=5):
+    """Quét thư mục Downloads của máy tính tìm file ảnh mới tải về trong khoảng thời gian vừa qua."""
+    downloads_path = os.path.join(os.path.expanduser("~"), "Downloads")
+    if not os.path.exists(downloads_path):
+        return None
+    patterns = ["*.jpg", "*.jpeg", "*.png", "*.webp"]
+    end_time = time.time() + max(0, timeout)
+    while True:
+        all_imgs = []
+        for pat in patterns:
+            all_imgs.extend(glob.glob(os.path.join(downloads_path, pat)))
+        for img_p in all_imgs:
+            try:
+                mtime = os.path.getmtime(img_p)
+                if mtime >= start_time:
+                    size = os.path.getsize(img_p)
+                    if size > 15000:
+                        return img_p
+            except Exception:
+                pass
+        if time.time() >= end_time:
+            break
+        time.sleep(1)
     return None
 
 def optimize_and_save_thumbnail(img_data, dest_thumb_path, target_res=720, quality=85):
     """
     Tối ưu hóa ảnh bìa Thumbnail:
     - Resize về chuẩn 720p (1280x720 cho ngang, 720x1280 cho dọc/Shorts) giữ nguyên 100% tỷ lệ khung hình.
-    - Nén JPEG cao cấp (quality=85, optimize=True) giảm dung lượng từ vài MB xuống ~150-250 KB siêu nhẹ.
+    - Nén JPEG cao cấp (quality=85, optimize=True, progressive=True) giảm dung lượng siêu nhẹ.
     """
     try:
         from PIL import Image
@@ -402,18 +882,15 @@ def optimize_and_save_thumbnail(img_data, dest_thumb_path, target_res=720, quali
         else:
             return False
 
-        # Chuyển đổi RGBA / P sang RGB (tránh lỗi khi lưu file JPEG)
         if img.mode in ("RGBA", "P"):
-            rgb_img = Image.new("RGB", img.size, (255, 255, 255))
-            if img.mode == "RGBA":
-                rgb_img.paste(img, mask=img.split()[3])
-            else:
-                rgb_img.paste(img)
-            img = rgb_img
-        elif img.mode != "RGB":
             img = img.convert("RGB")
 
         orig_w, orig_h = img.size
+
+        # Nếu là ảnh thumbnail User Query preview nhỏ (323x430), từ chối để tránh lưu nhầm ảnh preview
+        if (orig_w == 323 and orig_h == 430) or orig_w < 200 or orig_h < 200:
+            print(Fore.YELLOW + f"  [!] Anh nhan ve co kich thuoc khong hop le ({orig_w}x{orig_h}). Tu choi luu.")
+            return False
         
         # Resize về chuẩn 720p giữ nguyên Aspect Ratio
         if orig_w >= orig_h:
@@ -434,6 +911,7 @@ def optimize_and_save_thumbnail(img_data, dest_thumb_path, target_res=720, quali
                 img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
         # Lưu file JPEG tối ưu
+        os.makedirs(os.path.dirname(os.path.abspath(dest_thumb_path)), exist_ok=True)
         img.save(dest_thumb_path, "JPEG", quality=quality, optimize=True, progressive=True)
         final_size = os.path.getsize(dest_thumb_path)
         print(Fore.GREEN + f"[✓] Da toi uu anh Thumbnail 720p ({img.size[0]}x{img.size[1]}, {final_size//1024} KB): {os.path.basename(dest_thumb_path)}")
@@ -1272,11 +1750,11 @@ def process_task(token, task):
                 )
 
                 # Quy tắc Batch Size động:
-                # - Browser AI Bridge (Gemini/ChatGPT Web): Gom nhóm 200 câu/lần siêu tốc
+                # - Browser AI Bridge (Gemini Pro/ChatGPT Web): Gom nhóm BATCH VÀNG 80 câu/lần siêu tốc chống lỗi 1095
                 # - DeepSeek / OpenAI API: Gom nhóm 40 câu/lần + 5 câu Sliding Window Context
                 if is_browser_bridge:
-                    BATCH_SIZE = 200
-                    print(Fore.CYAN + f"  -> Chế độ: Browser AI Bridge (Gemini Web) - Gom nhóm siêu tốc BATCH {BATCH_SIZE} câu/lần")
+                    BATCH_SIZE = 80
+                    print(Fore.CYAN + f"  -> Chế độ: Browser AI Bridge (Gemini Pro Web) - Gom nhóm BATCH VÀNG {BATCH_SIZE} câu/lần (Tốc độ 6-10s)")
                 else:
                     BATCH_SIZE = 40
                     selected_model = task.get("aiModel") or task.get("llmModel") or "DeepSeek / Cloud LLM"
@@ -1297,104 +1775,232 @@ def process_task(token, task):
 
                     translated_array = None
                     
-                    # NHÁNH 1: Bắn qua Local WebSocket Bridge nếu chọn Browser AI Bridge (200 câu/lần)
+                    # NHÁNH 1: Bắn qua Local WebSocket Bridge nếu chọn Browser AI Bridge (80 câu/lần)
                     if is_browser_bridge and bridge_server.is_connected():
                         print(Fore.CYAN + f"  [⚡ WebSocket Local] Dang ban truc tiep {len(texts)} cau sang Chrome Extension ({target_ai.upper()})...")
                         ws_input = {str(k): t for k, t in enumerate(texts)}
                         context_str = f"\nBối cảnh phim: {task.get('translateContext', '')}" if task.get('translateContext') else ""
-                        ws_prompt = f"""Bạn là chuyên gia dịch thuật phụ đề phim chuyên nghiệp. Hãy dịch toàn bộ các câu thoại sau sang tiếng Việt mượt mà, tự nhiên, đúng văn phong phim:{context_str}
+                        ws_prompt = f"""Bạn là một biên dịch viên phụ đề phim và video chuyên nghiệp (Senior Subtitle Translator). Hãy dịch toàn bộ các câu thoại tiếng Trung sau sang tiếng Việt tự nhiên, thoát ý, cô đọng:{context_str}
 
 QUY TẮC BẮT BUỘC:
-1. Trả về đúng định dạng JSON gốc (key "0", "1"... giữ nguyên, chỉ thay value bằng chuỗi dịch tiếng Việt).
-2. KHÔNG giải thích, KHÔNG thêm lời chào, KHÔNG bọc trong markdown code block (```json). Chỉ trả về mã JSON thuần túy để máy đọc.
+1. TỰ ĐỘNG PHÁT HIỆN THỂ LOẠI & ÁP DỤNG VĂN PHONG PHÙ HỢP:
+   - 🌿 Sinh tồn hoang dã / Chế tác / Thiên nhiên: Văn phong mộc mạc, gần gũi, cuốn hút chuẩn vlog sinh tồn ("tôi/mình", nơi trú ẩn, bão tuyết, bẫy đá...).
+   - 🔬 Khoa học / Khám phá / Tài liệu: Văn phong chuẩn xác, hiện đại, logic, dễ hiểu.
+   - 🏢 Đô thị / Hiện đại / Drama: Văn phong tự nhiên, đời thường, bắt trend ("tôi - bạn / anh - em").
+   - ⚔️ Cổ trang / Tiên hiệp: Văn phong Hán Việt cổ phong ("Trẫm, Bệ hạ, Thần, Huynh, Đệ...").
+2. Tuyệt đối KHÔNG dịch thô word-by-word. Tự động sửa lỗi nghe nhầm đồng âm ASR tiếng Trung.
+3. Trả về đúng định dạng JSON gốc (key "0", "1"... giữ nguyên 100%, chỉ thay value bằng chuỗi dịch tiếng Việt).
+4. KHÔNG giải thích, KHÔNG thêm lời chào, KHÔNG bọc trong markdown code block (```json). Chỉ trả về mã JSON thuần túy để máy đọc.
 
 Dữ liệu:
 {json.dumps(ws_input, ensure_ascii=False, indent=2)}"""
 
-                        # Tăng timeout 120s thích ứng cho batch lớn 200 câu
-                        ws_timeout = 120 if len(texts) > 50 else 90
+                        # Timeout 60s cho batch 80 câu
+                        ws_timeout = 60
                         ws_res = bridge_server.execute_job(ws_prompt, target_ai=target_ai, timeout=ws_timeout)
                         if ws_res and ws_res.get("success") and ws_res.get("result"):
-                            raw_out = ws_res.get("result", "").strip()
-                            raw_out = re.sub(r"^```(?:json)?\s*", "", raw_out, flags=re.IGNORECASE)
-                            raw_out = re.sub(r"\s*```$", "", raw_out, flags=re.IGNORECASE).strip()
-                            try:
-                                json_match = re.search(r'(\{[\s\S]*\})', raw_out)
-                                if json_match:
-                                    parsed = json.loads(json_match.group(1))
-                                    if isinstance(parsed, dict):
-                                        translated_array = [str(parsed.get(str(k), texts[k])) for k in range(len(texts))]
-                                        print(Fore.GREEN + f"  [⚡ WebSocket Local] Nhan ket qua sieu toc thanh cong ({len(translated_array)} cau)!")
-                            except Exception as parse_err:
-                                print(Fore.YELLOW + f"  [!] Parse ket qua WebSocket error ({parse_err}). Chuyen sang Cloud Fallback...")
-                    elif is_browser_bridge:
-                        print(Fore.YELLOW + "  [!] Browser AI Bridge duoc chon nhung Extension chua bat. Chuyen sang Cloud API...")
+                            res_val = ws_res.get("result")
+                            
+                            def parse_translation_json(val, total_count, orig_texts=None):
+                                if not val:
+                                    return None
+                                if isinstance(val, list):
+                                    return {str(i): str(x).strip() for i, x in enumerate(val) if str(x).strip()}
+                                if isinstance(val, dict):
+                                    if '0' not in val and 0 not in val and ('1' in val or 1 in val):
+                                        return {str(int(k) - 1 if str(k).isdigit() else k): v for k, v in val.items()}
+                                    if any(str(k) in val for k in range(min(total_count, 5))):
+                                        return val
+                                    if "result" in val:
+                                        return parse_translation_json(val["result"], total_count, orig_texts)
+                                    vals = [str(v).strip() for v in val.values() if str(v).strip()]
+                                    if len(vals) >= min(total_count // 2, 5):
+                                        return {str(i): vals[i] for i in range(len(vals))}
+                                if not isinstance(val, str):
+                                    val = str(val)
 
-                    # NHÁNH 2: Gọi Connect Hub Cloud API (DeepSeek / OpenAI API)
-                    if not translated_array:
-                        for hub_attempt in range(3):
-                            try:
-                                payload = {"taskId": task_id, "texts": texts, "previousContext": prev_context}
-                                api_attempts = 0
-                                while api_attempts < 60:
-                                    res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=60)
-                                    
-                                    res_json = None
+                                clean_str = re.sub(r"^```(?:json)?\s*", "", val.strip(), flags=re.IGNORECASE)
+                                clean_str = re.sub(r"\s*```$", "", clean_str, flags=re.IGNORECASE).strip()
+                                clean_str = re.sub(r"^json\s*\n\s*copy\s*\n", "", clean_str, flags=re.IGNORECASE).strip()
+
+                                # Chiến lược 1A: Thử parse JSON Array trực tiếp [...]
+                                arr_m = re.search(r'(\[[\s\S]*\])', clean_str)
+                                if arr_m:
                                     try:
-                                        res_json = res.json()
+                                        arr = json.loads(arr_m.group(1))
+                                        if isinstance(arr, list) and len(arr) > 0:
+                                            return {str(i): str(x).strip() for i, x in enumerate(arr) if str(x).strip()}
                                     except Exception:
                                         pass
-                                        
-                                    if res_json and "AUTH_REQUIRED" in str(res_json.get("error", "")):
-                                        print(Fore.RED + "\n[!] LOI DANG NHAP: Trinh duyet Chrome Extension cua ban chua dang nhap Gemini / ChatGPT!")
-                                        input(Fore.YELLOW + "Nhan ENTER de thoat va chay lai sau khi da dang nhap...")
-                                        sys.exit(1)
 
-                                    if res.status_code == 200 and res_json and res_json.get("isPending"):
-                                        pending_job_id = res_json.get("jobId")
-                                        if pending_job_id:
-                                            payload["jobId"] = pending_job_id
-                                        print(Fore.CYAN + f"  [!] Dang cho Chrome Extension xu ly tren trinh duyet... (Lan {api_attempts+1}/60)")
-                                        time.sleep(5)
-                                        api_attempts += 1
+                                # Chiến lược 1B: Thử parse JSON Object chuẩn và sửa trailing comma
+                                json_m = re.search(r'(\{[\s\S]*\})', clean_str)
+                                if json_m:
+                                    raw_json = json_m.group(1)
+                                    try:
+                                        p = json.loads(raw_json)
+                                        if isinstance(p, dict):
+                                            if '0' not in p and 0 not in p and ('1' in p or 1 in p):
+                                                return {str(int(k) - 1 if str(k).isdigit() else k): v for k, v in p.items()}
+                                            if any(str(k) in p for k in range(min(total_count, 5))):
+                                                return p
+                                    except Exception:
+                                        try:
+                                            fixed_j = re.sub(r',\s*([\}\]])', r'\1', raw_json)
+                                            p = json.loads(fixed_j)
+                                            if isinstance(p, dict):
+                                                if '0' not in p and 0 not in p and ('1' in p or 1 in p):
+                                                    return {str(int(k) - 1 if str(k).isdigit() else k): v for k, v in p.items()}
+                                                if any(str(k) in p for k in range(min(total_count, 5))):
+                                                    return p
+                                        except Exception:
+                                            pass
+
+                                # Chiến lược 2: Regex từng dòng key-value chịu lỗi siêu cao (chống unescaped quotes)
+                                res_map = {}
+                                lines = clean_str.split('\n')
+                                for line in lines:
+                                    line_clean = line.strip().rstrip(',').strip()
+                                    m = re.match(r'^["\']?(\d+)["\']?\s*:\s*["\']?(.*?)["\']?$', line_clean)
+                                    if m:
+                                        k_str, v_str = m.group(1), m.group(2).strip()
+                                        if v_str.startswith('"') and v_str.endswith('"') and len(v_str) > 1:
+                                            v_str = v_str[1:-1]
+                                        elif v_str.startswith("'") and v_str.endswith("'") and len(v_str) > 1:
+                                            v_str = v_str[1:-1]
+                                        if v_str:
+                                            res_map[k_str] = v_str
+
+                                if len(res_map) >= min(total_count // 2, 5):
+                                    if '0' not in res_map and '1' in res_map:
+                                        res_map = {str(int(k) - 1 if str(k).isdigit() else k): v for k, v in res_map.items()}
+                                    return res_map
+
+                                # Chiến lược 3: Regex multi-line bóc tách key-value
+                                pattern = r'["\']?(\d+)["\']?\s*:\s*["\']([\s\S]*?)(?=["\']\s*,\s*["\']?\d+["\']?\s*:|["\']?\s*\}|$)'
+                                matches = re.findall(pattern, clean_str)
+                                if matches:
+                                    for k_str, v_str in matches:
+                                        clean_v = v_str.strip().rstrip('",\'').strip()
+                                        if clean_v and k_str not in res_map:
+                                            res_map[k_str] = clean_v
+                                    if len(res_map) >= min(total_count // 2, 5):
+                                        if '0' not in res_map and '1' in res_map:
+                                            res_map = {str(int(k) - 1 if str(k).isdigit() else k): v for k, v in res_map.items()}
+                                        return res_map
+
+                                # Chiến lược 4: Danh sách đánh số 1. Text hoặc [0] Text
+                                num_matches = re.findall(r'(?:^|\n)\s*(?:\[?(\d+)\]?[\.\:\-\s]+)(.+)', clean_str)
+                                if num_matches and len(num_matches) >= min(total_count // 2, 5):
+                                    num_map = {}
+                                    for num_s, text_s in num_matches:
+                                        num_map[str(int(num_s))] = text_s.strip().strip('"\'')
+                                    if "0" not in num_map and "1" in num_map:
+                                        return {str(int(k) - 1): v for k, v in num_map.items()}
+                                    return num_map
+
+                                # Chiến lược 5: Từng dòng text thuần túy
+                                if orig_texts:
+                                    clean_lines = [l.strip() for l in clean_str.split('\n') if l.strip() and not l.strip().startswith('{') and not l.strip().startswith('}') and not l.strip().startswith('```') and not any(kw in l.lower() for kw in ['dưới đây', 'bản dịch', 'tiếng việt', 'here is'])]
+                                    if len(clean_lines) >= len(orig_texts) * 0.7:
+                                        return {str(idx): clean_lines[idx] for idx in range(min(len(clean_lines), len(orig_texts)))}
+
+                                return None
+
+                            trans_map = parse_translation_json(res_val, len(texts), texts)
+                            if trans_map:
+                                # Chống nuốt câu & Tự động map chuẩn mảng
+                                if '0' not in trans_map and '1' in trans_map:
+                                    trans_map = {str(int(k) - 1 if str(k).isdigit() else k): v for k, v in trans_map.items()}
+
+                                # Lấy danh sách values theo thứ tự để bọc lót nếu bị lệch key
+                                ordered_vals = [str(v).strip() for k, v in sorted(trans_map.items(), key=lambda x: int(x[0]) if x[0].isdigit() else 9999) if str(v).strip()]
+
+                                translated_array = []
+                                for k in range(len(texts)):
+                                    t_val = trans_map.get(str(k)) or trans_map.get(k)
+                                    if t_val and str(t_val).strip():
+                                        translated_array.append(str(t_val).strip())
+                                    elif k < len(ordered_vals):
+                                        translated_array.append(ordered_vals[k])
                                     else:
-                                        break
-                                        
-                                if res.status_code == 200:
-                                    data = res.json()
-                                    if data.get("success") and data.get("translatedTexts"):
-                                        translated_array = data.get("translatedTexts")
-                                        print(Fore.GREEN + f"  [☁️ Connect Hub Cloud] Nhan ket qua API thanh cong ({len(translated_array)} cau)!")
-                                        break
-                                    else:
-                                        print(Fore.YELLOW + f"  [!] Connect Hub tra ve loi ({data.get('error')}). Thu lai {hub_attempt+1}/3 sau 3s...")
-                                else:
-                                    print(Fore.YELLOW + f"  [!] Connect Hub HTTP {res.status_code}. Thu lai {hub_attempt+1}/3 sau 3s...")
-                            except Exception as req_err:
-                                print(Fore.YELLOW + f"  [!] Mang Connect Hub loi ({str(req_err)}). Thu lai {hub_attempt+1}/3 sau 3s...")
-                                
-                            time.sleep(3)
+                                        fallback_val = translated_array[-1] if translated_array else ""
+                                        translated_array.append(fallback_val if fallback_val else texts[k])
+                                print(Fore.GREEN + Style.BRIGHT + f"  [⚡ WebSocket Local] Da trich xuat thanh cong {len(translated_array)} cau dich muot ma tu {target_ai.upper()}!")
+                            else:
+                                preview = str(res_val)[:100].replace('\n', ' ')
+                                print(Fore.YELLOW + f"  [!] Khong the parse JSON tu {target_ai.upper()} (Output: '{preview}...'). Kich hoat Cuu ho...")
+                    elif is_browser_bridge:
+                        print(Fore.YELLOW + "  [!] Browser AI Bridge duoc chon nhung Extension chua bat. Chuyen sang Cuu ho...")
+
+                    # NHÁNH 2: TẦNG 2 - Cứu hộ bằng DeepSeek Cloud API qua Connect Hub
+                    if not translated_array:
+                        print(Fore.MAGENTA + f"  [🔄 Cứu hộ Tầng 2: DeepSeek Cloud API] Dang chuyen {len(texts)} cau sang Cloud API...")
                         
-                    # NHÁNH 3: Nếu Connect Hub thành công hoặc chuyển Fallback sang Google
+                        sub_batch_size = 30
+                        cloud_success = True
+                        cloud_translated_all = []
+                        
+                        for sub_idx in range(0, len(texts), sub_batch_size):
+                            sub_texts = texts[sub_idx:sub_idx + sub_batch_size]
+                            sub_prev = prev_context if sub_idx == 0 else texts[max(0, sub_idx - 5):sub_idx]
+                            
+                            sub_translated = None
+                            for hub_attempt in range(2):
+                                try:
+                                    payload = {
+                                        "taskId": task_id, 
+                                        "texts": sub_texts, 
+                                        "previousContext": sub_prev,
+                                        "fallbackModel": "deepseek|deepseek-chat"
+                                    }
+                                    res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=45)
+                                    
+                                    if res.status_code == 200:
+                                        data = res.json()
+                                        if data.get("success") and data.get("translatedTexts"):
+                                            sub_translated = data.get("translatedTexts")
+                                            break
+                                        else:
+                                            err_msg = str(data.get('error', ''))
+                                            if "NO_CLOUD_LLM" in err_msg or "not found" in err_msg.lower():
+                                                break
+                                    elif res.status_code in [400, 404]:
+                                        break
+                                except Exception:
+                                    pass
+                                time.sleep(1.5)
+                            
+                            if sub_translated and len(sub_translated) == len(sub_texts):
+                                cloud_translated_all.extend(sub_translated)
+                            else:
+                                cloud_success = False
+                                break
+                        
+                        if cloud_success and len(cloud_translated_all) == len(texts):
+                            translated_array = cloud_translated_all
+                            print(Fore.GREEN + Style.BRIGHT + f"  [☁️ Connect Hub DeepSeek] Nhan ket qua cuu ho DeepSeek thanh cong ({len(translated_array)} cau)!")
+                        else:
+                            print(Fore.YELLOW + "  [!] DeepSeek Cloud API khong kha dung (chua co Key hoac loi mang).")
+                        
+                    # NHÁNH 3: TẦNG 3 - Áp dụng kết quả hoặc Cứu hộ khẩn cấp bằng Google Translate Direct
                     if translated_array and len(translated_array) > 0:
                         for j, seg in enumerate(batch_segs):
                             translated = translated_array[j] if j < len(translated_array) else seg['text']
+                            translated = str(translated).strip()
                             
-                            # Self-Correction: Kiểm tra nếu câu dịch vẫn còn dính tiếng Trung
-                            is_failed = False
-                            if translated.strip() == seg['text'].strip():
-                                is_failed = True
-                            else:
-                                ch_chars = len(re.findall(r'[\u4e00-\u9fff]', translated))
-                                if ch_chars > 1 or (ch_chars > 0 and len(translated) < 10):
-                                    is_failed = True
+                            # CẤM GOOGLE NHẢY VÀO: Bảo toàn 100% văn phong tiếng Việt của AI (DeepSeek / Gemini Web)
+                            # Nếu câu có dính kèm chữ Hán thừa trong ngoặc, làm sạch chữ Hán nhưng GIỮ NGUYÊN câu dịch AI
+                            ch_chars = len(re.findall(r'[\u4e00-\u9fff]', translated))
+                            vn_chars = len(re.findall(r'[a-zA-ZÀ-ỹ]', translated))
+                            if ch_chars > 0 and vn_chars > 0:
+                                cleaned = re.sub(r'[\u4e00-\u9fff]', '', translated).strip()
+                                cleaned = re.sub(r'\s*[\(\（]\s*[\)\）]', '', cleaned).strip() # Xóa ngoặc rỗng
+                                cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+                                if len(cleaned) > 1:
+                                    translated = cleaned
                             
-                            if is_failed:
-                                fixed_translated = google_translate(seg['text'], dest='vi')
-                                print(Fore.YELLOW + f"  [Sua loi LLM bang Google] {seg['text']} -> {fixed_translated}")
-                                translated = fixed_translated
-                            else:
-                                print(Fore.WHITE + f"  [Connect Hub] {translated}")
+                            print(Fore.WHITE + f"  [Dịch] {translated}")
                                 
                             translated_segments.append({
                                 "start": seg['start'],
@@ -1403,8 +2009,8 @@ Dữ liệu:
                             })
                         save_translation_progress()
                     else:
-                        # Fallback khẩn cấp sang Google Translate Batch (Không bao giờ bị 429)
-                        print(Fore.YELLOW + f"  [!] Connect Hub khong phan hoi, Fallback sang Google Translate Batch ({len(texts)} cau)...")
+                        # Fallback Tầng 3: Google Translate Batch Direct Rescue (Siêu tốc 3s, chống 429)
+                        print(Fore.YELLOW + Style.BRIGHT + f"  [⚡ Cứu hộ Tầng 3: Google Translate Direct] Dịch siêu tốc batch ({len(texts)} câu)...")
                         batch_translated = google_translate_batch(texts, dest='vi')
                         for j, seg in enumerate(batch_segs):
                             trans = batch_translated[j] if j < len(batch_translated) and batch_translated[j] else google_translate(seg['text'], dest='vi')
@@ -1425,7 +2031,7 @@ Dữ liệu:
                     print(Fore.WHITE + f"  [Google] {trans}")
                 save_translation_progress()
 
-            # QUALITY GATE: Kiem duyet 100% toan bo cac cau thoai truoc khi sang buoc TTS
+            # QUALITY GATE: Kiem duyet chat luong phu de tieng Viet
             print(Fore.CYAN + "[-] Kiem tra chat luong phu de tieng Viet (Translation Quality Gate)...")
             fixed_count = 0
             import re
@@ -1433,23 +2039,29 @@ Dữ liệu:
                 orig_text = extracted_segments[seg_idx]['text'] if seg_idx < len(extracted_segments) else ""
                 curr_text = seg.get("text", "")
                 
-                # Kiem tra neu con chu Han hoac text rong hoac trung 100% text goc tieng Trung
                 ch_chars = len(re.findall(r'[\u4e00-\u9fff]', curr_text))
-                needs_fix = False
-                if ch_chars > 1 or (ch_chars > 0 and len(curr_text) < 10):
-                    needs_fix = True
-                elif orig_text and curr_text.strip() == orig_text.strip() and len(orig_text) > 3:
-                    needs_fix = True
+                vn_chars = len(re.findall(r'[a-zA-ZÀ-ỹ]', curr_text))
                 
-                if needs_fix:
-                    fixed = google_translate(orig_text if orig_text else curr_text, dest='vi')
-                    if fixed and fixed.strip() != curr_text.strip():
-                        print(Fore.YELLOW + f"  [Quality Gate Fix #{seg_idx+1}] {curr_text} -> {fixed}")
-                        seg["text"] = fixed
+                # Lam sach chu Han sot lai ma KHONG goi Google de len DeepSeek
+                if ch_chars > 0 and vn_chars > 0:
+                    cleaned = re.sub(r'[\u4e00-\u9fff]', '', curr_text).strip()
+                    cleaned = re.sub(r'\s*[\(\（]\s*[\)\）]', '', cleaned).strip()
+                    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+                    if len(cleaned) > 1:
+                        seg["text"] = cleaned
                         fixed_count += 1
+                elif (ch_chars > 1 and vn_chars == 0) or (orig_text and curr_text.strip() == orig_text.strip() and len(orig_text) > 3):
+                    # Truong hop cuc hiem: cau hoan toan la tieng Trung 100% khong co chu cai nao
+                    # CHỈ sua bang Google khi che do dich ban dau KHONG phai la AI hoac AI that bai hoan toan
+                    if not is_browser_bridge and not cloud_success:
+                        fixed = google_translate(orig_text if orig_text else curr_text, dest='vi')
+                        if fixed and fixed.strip() != curr_text.strip():
+                            print(Fore.YELLOW + f"  [Quality Gate Fix #{seg_idx+1}] {curr_text} -> {fixed}")
+                            seg["text"] = fixed
+                            fixed_count += 1
             
             if fixed_count > 0:
-                print(Fore.GREEN + f"  [✓] Quality Gate da sua sach se {fixed_count} cau chua dich sang Tieng Viet!")
+                print(Fore.GREEN + f"  [✓] Quality Gate da tinh chinh lam sach {fixed_count} cau phu de!")
                 save_translation_progress()
             else:
                 print(Fore.GREEN + "  [✓] Quality Gate xac nhan: 100% phu de da la Tieng Viet sach se.")
@@ -1839,6 +2451,24 @@ if __name__ == '__main__':
 
         vcodec_val, encoder_extra = detect_best_encoder(target_kbps)
 
+        # Kiểm tra trước xem có thực sự cần gộp Intro / Outro không
+        has_intro_outro = branding_enabled and (
+            (bool(intro_url) and os.path.exists(str(intro_url))) or 
+            (bool(outro_url) and os.path.exists(str(outro_url)))
+        )
+
+        # Dọn dẹp sạch sẽ các file video cũ nếu còn sót lại trong workspace để tránh xung đột file handle
+        for old_f in ["temp_output.mp4", "output.mp4"]:
+            if os.path.exists(old_f):
+                try:
+                    os.remove(old_f)
+                except Exception:
+                    pass
+
+        # Nếu có Intro/Outro: Render vào temp_output.mp4 để nối tiếp
+        # Nếu KHÔNG có Intro/Outro (99% trường hợp): Render TRỰC TIẾP vào output.mp4 để triệt tiêu 100% WinError 32!
+        render_target_file = "temp_output.mp4" if has_intro_outro else "output.mp4"
+
         def build_and_run_render(vc, extra_args):
             if has_dubbed:
                 bg_audio_file = "audio.wav"
@@ -1851,12 +2481,12 @@ if __name__ == '__main__':
                     a_bg = ffmpeg.input(bg_audio_file).audio.filter('volume', bg_volume)
                     a_fg = ffmpeg.input("dubbed_audio.wav").audio.filter('volume', db_tts_volume)
                     mixed_audio = ffmpeg.filter([a_bg, a_fg], 'amix', inputs=2, duration='first').filter('volume', 2.0)
-                    st = ffmpeg.output(video_sub, mixed_audio, "temp_output.mp4", vcodec=vc, acodec="aac", audio_bitrate="128k", **extra_args)
+                    st = ffmpeg.output(video_sub, mixed_audio, render_target_file, vcodec=vc, acodec="aac", audio_bitrate="128k", **extra_args)
                 else:
                     audio_dub = ffmpeg.input("dubbed_audio.wav").audio
-                    st = ffmpeg.output(video_sub, audio_dub, "temp_output.mp4", vcodec=vc, acodec="aac", audio_bitrate="128k", **extra_args)
+                    st = ffmpeg.output(video_sub, audio_dub, render_target_file, vcodec=vc, acodec="aac", audio_bitrate="128k", **extra_args)
             else:
-                st = ffmpeg.output(video_sub, video.audio, "temp_output.mp4", vcodec=vc, acodec="aac", audio_bitrate="128k", **extra_args)
+                st = ffmpeg.output(video_sub, video.audio, render_target_file, vcodec=vc, acodec="aac", audio_bitrate="128k", **extra_args)
             ffmpeg.run(st, overwrite_output=True, quiet=True)
 
         if has_dubbed:
@@ -1882,9 +2512,9 @@ if __name__ == '__main__':
             else:
                 raise render_err
         
-        # --- KET NOI INTRO / OUTRO ---
-        final_output = "temp_output.mp4"
-        if branding_enabled and ((intro_url and os.path.exists(intro_url)) or (outro_url and os.path.exists(outro_url))):
+        # --- KET NOI INTRO / OUTRO (NEU CO) ---
+        final_output = render_target_file
+        if has_intro_outro:
             print(Fore.CYAN + "  -> Dang gop Video Intro/Outro...")
             try:
                 tw, th, tfps, _ = get_video_props("temp_output.mp4")
@@ -1927,13 +2557,45 @@ if __name__ == '__main__':
                     else:
                         raise
                 final_output = "output.mp4"
+                
+                # Xoa file temp an toan
+                if os.path.exists("temp_output.mp4"):
+                    for _ in range(5):
+                        try:
+                            os.remove("temp_output.mp4")
+                            break
+                        except Exception:
+                            time.sleep(0.5)
             except Exception as concat_err:
                 print(Fore.RED + f"  [!] Loi khi gop Intro/Outro (bo qua): {str(concat_err)}")
                 final_output = "temp_output.mp4"
         
+        # Helper di chuyen file an toan tren Windows (co retry va fallback copy)
         if final_output == "temp_output.mp4" and os.path.exists("temp_output.mp4"):
             import shutil
-            shutil.move("temp_output.mp4", "output.mp4")
+            move_ok = False
+            for attempt in range(5):
+                try:
+                    if os.path.exists("output.mp4"):
+                        try:
+                            os.remove("output.mp4")
+                        except Exception:
+                            pass
+                    shutil.move("temp_output.mp4", "output.mp4")
+                    move_ok = True
+                    break
+                except OSError:
+                    time.sleep(0.6)
+            
+            if not move_ok and os.path.exists("temp_output.mp4"):
+                try:
+                    shutil.copy2("temp_output.mp4", "output.mp4")
+                    try:
+                        os.remove("temp_output.mp4")
+                    except Exception:
+                        pass
+                except Exception as copy_err:
+                    raise OSError(f"Khong the di chuyen hoac sao chep temp_output.mp4 sang output.mp4: {copy_err}")
 
         
         burn_duration = time.time() - burn_start_time
@@ -1966,7 +2628,13 @@ if __name__ == '__main__':
 
     # Luồng 1: Viết Tiêu đề, Mô tả, Hashtags (Text-Only)
     copy_pack = generate_video_copywriting(task, translated_segments, duration_sec, bridge_server, headers, API_BASE_URL)
-    new_title = copy_pack.get("new_title") or task.get("sourceTitle") or f"video_{task_id}"
+    raw_source = task.get("sourceTitle") or task.get("sourceUrl") or f"video_{task_id}"
+    clean_fallback_title = os.path.basename(str(raw_source).replace('\\', '/'))
+    for ext in ['.mp4', '.mkv', '.mov', '.avi', '.flv', '.wmv']:
+        if clean_fallback_title.lower().endswith(ext):
+            clean_fallback_title = clean_fallback_title[:-len(ext)]
+    new_title = copy_pack.get("new_title") or clean_fallback_title or f"video_{task_id}"
+    new_title = os.path.basename(str(new_title).replace('\\', '/')).strip()
 
     # Độ trễ nghỉ 2s để Gemini hoàn tất phiên chat trước khi sang Luồng 2
     if task.get("redesignThumbnailEnabled"):
@@ -1990,7 +2658,8 @@ if __name__ == '__main__':
         try:
             # Tên file mới dựa trên Tiêu đề tiếng Việt đã được tối ưu SEO
             import re
-            base_name = re.sub(r'[\\/:*?"<>|]', '_', new_title).strip()
+            base_name = os.path.basename(str(new_title).replace('\\', '/')).strip()
+            base_name = re.sub(r'[\\/:*?"<>|]', '_', base_name).strip()
             if len(base_name) > 150:
                 base_name = base_name[:150]
                 
@@ -2038,13 +2707,20 @@ if __name__ == '__main__':
             saved_thumb_success = False
             if pub_pack.get("new_thumbnail_url"):
                 thumb_url = pub_pack["new_thumbnail_url"]
+                # 0. Nếu là đường dẫn file ảnh cục bộ (do Local 3D Gold Engine tạo ra)
+                if isinstance(thumb_url, str) and os.path.exists(thumb_url):
+                    saved_thumb_success = optimize_and_save_thumbnail(thumb_url, dest_thumb, target_res=720, quality=85)
+                    if saved_thumb_success:
+                        print(Fore.GREEN + Style.BRIGHT + f"[✓] Da luu thanh cong anh bia 3D Vang Kim tieng Viet: {os.path.basename(dest_thumb)}")
                 # 1. Nếu là Base64 Data URL (Do Extension trích xuất canvas không bị chặn 403)
-                if thumb_url.startswith("data:image/"):
+                elif thumb_url.startswith("data:image/"):
                     try:
                         b64_str = thumb_url.split(",", 1)[1] if "," in thumb_url else thumb_url
                         img_bytes = base64.b64decode(b64_str)
                         if len(img_bytes) > 5000:
                             saved_thumb_success = optimize_and_save_thumbnail(img_bytes, dest_thumb, target_res=720, quality=85)
+                            if saved_thumb_success:
+                                print(Fore.GREEN + Style.BRIGHT + f"[✓] Da luu thanh cong anh bia tieng Viet thiet ke moi tu Gemini (Base64): {os.path.basename(dest_thumb)}")
                     except Exception as b64_err:
                         print(Fore.YELLOW + f"[!] Loi decode Base64 thumbnail: {b64_err}")
                 elif thumb_url.startswith("http://") or thumb_url.startswith("https://"):
@@ -2057,10 +2733,27 @@ if __name__ == '__main__':
                         if resp.status_code == 200 and len(resp.content) > 10000 and not resp.content.startswith(b"<!DOCTYPE"):
                             saved_thumb_success = optimize_and_save_thumbnail(resp.content, dest_thumb, target_res=720, quality=85)
                         else:
-                            print(Fore.YELLOW + f"[!] Anh online bi chan 403 hoac loi (Size: {len(resp.content)} bytes). Fallback sang anh goc...")
+                            print(Fore.YELLOW + f"[!] Anh online bi chan 403 hoac loi (Size: {len(resp.content)} bytes). Dang quet thu muc Downloads...")
                     except Exception as dl_err:
                         print(Fore.YELLOW + f"[!] Khong the tai anh thumbnail moi: {dl_err}")
 
+            # Fallback 2: Quét thư mục Downloads của máy tính (do Extension Chrome Downloads API tải về)
+            if not saved_thumb_success and task.get("redesignThumbnailEnabled"):
+                dl_img = get_latest_download_image(time.time() - 120, timeout=5)
+                if dl_img:
+                    saved_thumb_success = optimize_and_save_thumbnail(dl_img, dest_thumb, target_res=720, quality=85)
+                    if saved_thumb_success:
+                        print(Fore.GREEN + Style.BRIGHT + f"[✓] Da nhat thanh cong anh bia tieng Viet tu thu muc Downloads: {os.path.basename(dest_thumb)}")
+
+            # Fallback 3: TỰ ĐỘNG VẼ ẢNH BÌA 3D VÀNG KIM TIẾNG VIỆT (Local 0đ) NẾU CHƯA CÓ ẢNH BÌA MỚI
+            if not saved_thumb_success and task.get("redesignThumbnailEnabled") and thumb_src and os.path.exists(thumb_src):
+                print(Fore.CYAN + Style.BRIGHT + f"  [⚡ Local 3D Gold Engine] Dang tu dong ghep chu 3D Vang Kim tieng Viet len anh goc...")
+                local_thumb_res = create_local_3d_gold_thumbnail(thumb_src, new_title, dest_thumb, tag_text="THUYẾT MINH")
+                if local_thumb_res and os.path.exists(dest_thumb):
+                    saved_thumb_success = True
+                    print(Fore.GREEN + Style.BRIGHT + f"[✓] Da tao anh bia 3D Vang Kim tieng Viet cuc bo thanh cong: {os.path.basename(dest_thumb)}")
+
+            # Fallback 4: Copy ảnh gốc chỉ khi không bật redesignThumbnailEnabled
             if not saved_thumb_success and thumb_src and os.path.exists(thumb_src):
                 optimize_and_save_thumbnail(thumb_src, dest_thumb, target_res=720, quality=85)
                 print(Fore.CYAN + f"[-] Da copy va toi uu anh thumbnail goc: {os.path.basename(dest_thumb)}")
@@ -2427,7 +3120,7 @@ class LocalWorkerHandler(BaseHTTPRequestHandler):
 def start_local_server(port=3001):
     try:
         server = HTTPServer(('127.0.0.1', port), LocalWorkerHandler)
-        print(Fore.GREEN + f"[\u2713] Local Server dang chay tai http://127.0.0.1:{port}")
+        print(Fore.GREEN + f"[v] Local Server dang chay tai http://127.0.0.1:{port}")
         server.serve_forever()
     except Exception as e:
         print(Fore.RED + f"Khong the khoi dong Local Server tren port {port}: {str(e)}")
