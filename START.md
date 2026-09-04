@@ -2159,6 +2159,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
     - `herodub_worker.py`: Thêm `clean_image_with_gemini_flash` (xóa chữ Hán sạch sẽ chỉ trong 3s bằng Gemini Flash) và `render_adaptive_vietnamese_thumbnail` (tự động nhận diện tỷ lệ 16:9 / 9:16 để bố cục typography tiếng Việt chuẩn điện ảnh với các font thư pháp / 3D).
     - `schema.ts`: Bổ sung cột `thumbnail_font_style` vào `dubScanConfigs` và `dubTasks`, đồng bộ Postgres qua `pnpm db:push`.
     - Dashboard Web: Thêm trường chọn "Phong cách chữ Tiếng Việt (Typography)" trên form tạo task lồng tiếng và tự động ghi nhớ tùy chọn vào `localStorage`.
+    - Tối ưu UX Thumbnail: Phân tách rõ ràng 3 Phương án thiết kế ảnh bìa (`Gemini Flash API + Worker`, `Browser AI Bridge`, `Local Worker 3D Gold`), điều kiện hóa hiển thị chọn Phong cách chữ Typography chỉ khi dùng Worker engines, ẩn khi dùng Browser AI Bridge.
     - Đã test `tsc --noEmit`, `pnpm build`, push lên GitHub `origin main` kích hoạt Vercel Production deployment tự động tại `https://ai2hero-flax.vercel.app/hero-dub/t/3/dashboard`.
 
 
