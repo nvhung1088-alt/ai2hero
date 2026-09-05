@@ -2113,14 +2113,13 @@ Dữ liệu:
                         seg["text"] = cleaned
                         fixed_count += 1
                 elif (ch_chars > 1 and vn_chars == 0) or (orig_text and curr_text.strip() == orig_text.strip() and len(orig_text) > 3):
-                    # Truong hop cuc hiem: cau hoan toan la tieng Trung 100% khong co chu cai nao
-                    # CHỈ sua bang Google khi che do dich ban dau KHONG phai la AI hoac AI that bai hoan toan
-                    if not is_browser_bridge and not cloud_success:
-                        fixed = google_translate(orig_text if orig_text else curr_text, dest='vi')
-                        if fixed and fixed.strip() != curr_text.strip():
-                            print(Fore.YELLOW + f"  [Quality Gate Fix #{seg_idx+1}] {curr_text} -> {fixed}")
-                            seg["text"] = fixed
-                            fixed_count += 1
+                    # BẢO VỆ TUYỆT ĐỐI: Câu hoàn toàn là 100% tiếng Trung chưa được dịch
+                    # BẮT BUỘC sửa ngay bằng Google Translate để cam kết 100% phụ đề sạch sẽ trước khi sang TTS!
+                    fixed = google_translate(orig_text if orig_text else curr_text, dest='vi')
+                    if fixed and fixed.strip() != curr_text.strip():
+                        print(Fore.YELLOW + f"  [Quality Gate Fix #{seg_idx+1}] Phát hiện câu chữ Hán sót lại: {curr_text} -> {fixed}")
+                        seg["text"] = fixed
+                        fixed_count += 1
             
             if fixed_count > 0:
                 print(Fore.GREEN + f"  [✓] Quality Gate da tinh chinh lam sach {fixed_count} cau phu de!")
@@ -2194,13 +2193,22 @@ Dữ liệu:
                 for attempt_run in range(3): # Cho phep chay lai batch download toi da 3 lan neu con sot segment
                     batch_items = []
                     for i, seg in enumerate(translated_segments):
-                        if not seg['text'].strip():
+                        seg_text = seg['text'].strip()
+                        if not seg_text:
                             continue
                         output_file = os.path.join(tts_dir, f"seg_{i:04d}.mp3")
                         if not os.path.exists(output_file) or os.path.getsize(output_file) < 100:
+                            # Lớp phòng thủ dự phòng: Nếu phát hiện câu còn chữ Hán sót lại, dịch khẩn cấp sang tiếng Việt
+                            ch_chars = len(re.findall(r'[\u4e00-\u9fff]', seg_text))
+                            vn_chars = len(re.findall(r'[a-zA-ZÀ-ỹ]', seg_text))
+                            if ch_chars > 1 and vn_chars == 0:
+                                fallback_vi = google_translate(seg_text, dest='vi')
+                                if fallback_vi:
+                                    seg_text = fallback_vi
+                                    seg['text'] = fallback_vi
                             batch_items.append({
                                 "index": i,
-                                "text": seg['text'],
+                                "text": seg_text,
                                 "output_file": output_file
                             })
                     

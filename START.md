@@ -191,6 +191,14 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- **2026-09-05 (hero-dub - Translation Chinese Rejection Filter & Quality Gate Unblock)**:
+  - 🛡️ **Tối Ưu Ràng Buộc Ngôn Ngữ Server API (`/api/hero-dub/translate`)**: Tái cấu trúc `systemMessage` và `userMessage`, loại bỏ các chỉ dẫn dễ gây hiểu lầm cho LLM tiếng Trung ("sửa lỗi đồng âm ASR tiếng Trung") và thay bằng quy tắc cứng rắn song ngữ (Target: Vietnamese Only, Absolutely No Chinese Characters).
+  - 🛑 **Bộ Lọc Phản Kháng Chữ Hán (Chinese Rejection Filter)**: Server tự động quét `candidateTexts`, hễ phát hiện câu nào có chữ Hán (`chCount >= 2`) mà không có chữ cái Latinh/Việt nào ➔ Lập tức từ chối nhận và kích hoạt cứu hộ mini-rescue hoặc attempt retry. Tuyệt đối không trả về 200 với các câu chữ Hán.
+  - 🔓 **Mở Khóa Translation Quality Gate Trong Worker (`herodub_worker.py`)**: Gỡ bỏ hoàn toàn điều kiện `if not is_browser_bridge and not cloud_success:`. Bất kể kết quả trả về từ engine nào, hễ phát hiện câu 100% tiếng Trung (`ch_chars > 1 and vn_chars == 0`) ➔ Quality Gate BẮT BUỘC dịch ngay lập tức bằng Google Translate để cam kết 100% phụ đề tiếng Việt sạch sẽ.
+  - 🎙️ **Lớp Phòng Thủ Dự Phòng Edge-TTS**: Thêm kiểm tra phòng thủ trước khi nạp câu vào `batch_items` của Edge-TTS, đảm bảo giọng đọc `vi-VN-HoaiMyNeural` không bao giờ bị nghẽn hoặc sập do nạp chữ Hán.
+  - 🧹 **Dọn Dẹp & Hủy Task 1258**: Đã gửi yêu cầu hủy task 1258 trên server và xóa sạch thư mục cache `workspace/task_1258` để sẵn sàng cho các lượt chạy mới tinh.
+  - 🟢 **Verification**: `python -m py_compile` đạt 0 lỗi, `npx tsc --noEmit` đạt 0 lỗi.
+
 - **2026-09-04 (hero-dub - Publishing Suite AI Engine Selection: DeepSeek Official API vs Browser AI Bridge)**:
   - ⚡ **Tùy Chọn Đa Phương Án AI Viết Tư Liệu**: Bổ sung lựa chọn DeepSeek Official AI (`deepseek`) song song cùng Browser AI Bridge (`browser-ai-bridge`), giúp người dùng chủ động chọn giữa tốc độ tức thì 1-2s (DeepSeek) hoặc miễn phí qua Web Chat (Chrome Extension).
   - 🗄️ **Đồng Bộ Cơ Sở Dữ Liệu Neon Postgres**: Thêm cột `publishingAiEngine: varchar(50).default('deepseek')` vào 2 bảng `dub_scan_configs` và `dub_tasks`. Đã push migration thành công lên Neon Postgres.

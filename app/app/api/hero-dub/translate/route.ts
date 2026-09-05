@@ -181,46 +181,28 @@ export async function POST(request: Request) {
     texts.forEach((t: string, i: number) => { inputObj[i.toString()] = t; });
     const jsonInput = JSON.stringify(inputObj, null, 2);
 
-    let systemMessage = `Bạn là một biên dịch viên phụ đề phim và video đa phương tiện chuyên nghiệp (Senior Film & Video Subtitle Translator). 
-Nhiệm vụ của bạn là dịch toàn bộ các câu thoại từ tiếng Trung Quốc sang tiếng Việt tự nhiên, thoát ý, cô đọng và chuẩn xác 100% theo đúng bối cảnh video.
+    let systemMessage = `Bạn là một chuyên gia biên dịch phụ đề phim và video chuyên nghiệp (Senior Subtitle Translator).
+Nhiệm vụ TỐI THƯỢNG: Dịch TOÀN BỘ các câu thoại từ tiếng Trung Quốc sang TIẾNG VIỆT tự nhiên, thoát ý, cô đọng, chuẩn lồng tiếng phim.
 
-QUY TẮC 1: TỰ ĐỘNG PHÁT HIỆN THỂ LOẠI & ÁP DỤNG VĂN PHONG TƯƠNG ỨNG
-Hãy phân tích ngữ cảnh, từ vựng và chủ đề của các câu thoại để tự động nhận diện thể loại video và chọn văn phong phù hợp nhất:
-1. 🌿 Sinh Tồn Hoang Dã / Chế Tác Thủ Công / Xây Dựng / Thiên Nhiên (Wilderness Survival / Bushcraft / DIY):
-   - Văn phong: Mộc mạc, gần gũi, cuốn hút, truyền cảm hứng, chuẩn phong cách thuyết minh / vlog sinh tồn đời thực.
-   - Xưng hô: "tôi / mình / anh em / các bạn / chú cún / chú chó...".
-   - Thuật ngữ: Nơi trú ẩn, hốc cây, bão tuyết, bão cát, đốn gỗ, bẫy đá, tạo lửa, lò sưởi, săn bắt, chống rét...
-
-2. 🔬 Khoa Học / Khám Phá / Phim Tài Liệu / Công Nghệ (Science / Documentary / Tech):
-   - Văn phong: Khách quan, chuẩn xác, hiện đại, logic, nghiêm túc và dễ hiểu.
-   - Thuật ngữ: Dịch chuẩn xác các danh từ khoa học, vật lý, sinh học, thiên văn, vũ trụ, kỹ thuật theo từ điển tiếng Việt hiện đại.
-
-3. 🏢 Hiện Đại / Đô Thị / Hài Hước / Đời Sống / Tình Cảm / Drama (Modern / Comedy / Romance):
-   - Văn phong: Tự nhiên, đời thường, sinh động, bắt trend, chân thật như ngôn ngữ giao tiếp hàng ngày.
-   - Xưng hô: "tôi - bạn / anh - em / sếp - em / mày - tao..." tùy thuộc vào mối quan hệ và hoàn cảnh của nhân vật.
-
-4. ⚔️ Cổ Trang / Tiên Hiệp / Kiếm Hiệp / Triều Đình / Xuyên Không (Historical / Xianxia / Wuxia):
-   - Văn phong: Hán Việt cổ phong tao nhã, khí phái, đúng chuẩn phim truyền hình cổ trang.
-   - Xưng hô: "Trẫm, Bệ hạ, Thần, Khanh, Huynh, Đệ, Tại hạ, Đạo hữu, Tiên sinh...".
-
-5. 💥 Hành Động / Quân Sự / Trinh Thám / Tội Phạm (Action / Military / Crime):
-   - Văn phong: Gãy gọn, dứt khoát, kịch tính, dồn dập, sắc bén.
-
-QUY TẮC 2: TRAU CHUỐT & SỬA LỖI ĐỒNG ÂM ASR
-- Dịch theo văn phong nói tự nhiên, cô đọng, mượt mà chuẩn lồng tiếng phim. Tuyệt đối KHÔNG dịch thô word-by-word.
-- Tự động phát hiện và khôi phục các lỗi nghe nhầm đồng âm ASR (Homophone Errors) của tiếng Trung trước khi dịch.
-
-QUY TẮC 3: ĐỊNH DẠNG ĐẦU RA JSON BẮT BUỘC
-- BẮT BUỘC trả về duy nhất đối tượng JSON thuần túy (không markdown, không giải thích) dạng key-value.
-- Cấu trúc JSON bắt buộc phải có đầy đủ đúng ${texts.length} keys từ "0" đến "${texts.length - 1}":
+QUY TẮC BẮT BUỘC TUYỆT ĐỐI (CRITICAL RULES - STRICT TARGET: VIETNAMESE):
+1. NGÔN NGỮ ĐẦU RA LÀ 100% TIẾNG VIỆT (TARGET LANGUAGE: VIETNAMESE ONLY):
+   - Tuyệt đối KHÔNG giữ lại chữ Hán / tiếng Trung trong các câu dịch (ABSOLUTELY NO CHINESE CHARACTERS IN TRANSLATION VALUES).
+   - 100% giá trị value trong đối tượng JSON phải là chuỗi TIẾNG VIỆT hoàn chỉnh.
+2. TỰ ĐỘNG PHÁT HIỆN THỂ LOẠI & ÁP DỤNG VĂN PHONG TIẾNG VIỆT PHÙ HỢP:
+   - 🌿 Sinh Tồn Hoang Dã / Chế Tác / Thiên Nhiên: Mộc mạc, gần gũi, cuốn hút chuẩn vlog sinh tồn ("tôi / mình / anh em", nơi trú ẩn, bão tuyết, lò sưởi...).
+   - 🔬 Khoa Học / Khám Phá / Phim Tài Liệu: Khách quan, chuẩn xác, hiện đại, logic.
+   - 🏢 Hiện Đại / Đô Thị / Đời Sống: Tự nhiên, đời thường, bắt trend ("tôi - bạn / anh - em").
+   - ⚔️ Cổ Trang / Tiên Hiệp: Văn phong tao nhã, khí phái ("Huynh, Đệ, Tại hạ, Đạo hữu...").
+   - 💥 Hành Động / Quân Sự: Gãy gọn, dứt khoát, kịch tính.
+3. BẮT BUỘC TRẢ VỀ ĐỐI TƯỢNG JSON THUẦN TÚY (JSON OBJECT ONLY):
+   - Đầy đủ đúng ${texts.length} keys từ "0" đến "${texts.length - 1}".
+   - Định dạng:
 {
   "0": "câu dịch tiếng Việt của câu 0",
   "1": "câu dịch tiếng Việt của câu 1",
   ...
   "${texts.length - 1}": "câu dịch tiếng Việt của câu cuối cùng"
-}
-- BẮT BUỘC: Tuyệt đối KHÔNG gộp câu, KHÔNG bỏ sót câu, KHÔNG đánh số lệch thứ tự.
-- BẮT BUỘC: 100% giá trị value là chuỗi tiếng Việt dịch thoát ý, tự nhiên, chuẩn lồng tiếng, KHÔNG giữ lại chữ Hán.`;
+}`;
 
     if (task.translateContext && task.translateContext.trim()) {
       systemMessage += `\n\nBỐI CẢNH & TỪ ĐIỂN PHIM DO NGƯỜI DÙNG CUNG CẤP (BẮT BUỘC TUÂN THỦ 100%):\n${task.translateContext.trim()}`;
@@ -230,7 +212,7 @@ QUY TẮC 3: ĐỊNH DẠNG ĐẦU RA JSON BẮT BUỘC
       systemMessage += `\n\n[READ_ONLY_CONTEXT] Dưới đây là 3 câu hội thoại cuối cùng của đoạn trước đó để bạn nắm mạch truyện (TUYỆT ĐỐI KHÔNG DỊCH CHÚNG, CHỈ ĐỌC ĐỂ HIỂU NGỮ CẢNH CHUYỂN TIẾP):\n${previousContext.join('\n')}`;
     }
 
-    const userMessage = `Dịch trọn vẹn đối tượng JSON phụ đề sau sang tiếng Việt (giữ nguyên đầy đủ tất cả ${texts.length} keys từ "0" đến "${texts.length - 1}"):\n${jsonInput}`;
+    const userMessage = `Dịch toàn bộ đối tượng JSON phụ đề sau sang TIẾNG VIỆT (BẮT BUỘC 100% TIẾNG VIỆT, TUYỆT ĐỐI KHÔNG ĐỂ LẠI CHỮ HÁN, giữ nguyên các key từ "0" đến "${texts.length - 1}"):\n${jsonInput}`;
 
     let translatedTexts: string[] = [];
     let attempts = 0;
@@ -437,6 +419,20 @@ QUY TẮC 3: ĐỊNH DẠNG ĐẦU RA JSON BẮT BUỘC
           }
         }
 
+        // LỌC BỎ 100% CÂU CHỮ HÁN CHƯA DỊCH (CHINESE REJECTION FILTER)
+        for (let i = 0; i < candidateTexts.length; i++) {
+          const t = candidateTexts[i];
+          if (t) {
+            const chCount = (t.match(/[\u4e00-\u9fff]/g) || []).length;
+            const vnCount = (t.match(/[a-zA-ZÀ-ỹ]/g) || []).length;
+            // Nếu câu có chữ Hán mà không có chữ cái Latinh/Việt nào -> Đây là chữ Hán chưa dịch, từ chối nhận!
+            if (chCount >= 2 && vnCount === 0) {
+              console.warn(`[API Translate] Từ chối câu #${i} do AI trả về chữ Hán chưa dịch: "${t}"`);
+              candidateTexts[i] = null;
+            }
+          }
+        }
+
         // Kiểm đếm kết quả
         const missingCount = candidateTexts.filter(t => t === null || t.trim() === '').length;
         if (missingCount === 0) {
@@ -473,7 +469,11 @@ QUY TẮC 3: ĐỊNH DẠNG ĐẦU RA JSON BẮT BUỘC
               for (const idx of missingIndices) {
                 const val = miniParsed[idx.toString()] || miniParsed[idx];
                 if (val && typeof val === 'string' && val.trim().length > 0) {
-                  candidateTexts[idx] = val.trim();
+                  const chCount = (val.match(/[\u4e00-\u9fff]/g) || []).length;
+                  const vnCount = (val.match(/[a-zA-ZÀ-ỹ]/g) || []).length;
+                  if (!(chCount >= 2 && vnCount === 0)) {
+                    candidateTexts[idx] = val.trim();
+                  }
                 }
               }
             }
@@ -488,14 +488,8 @@ QUY TẮC 3: ĐỊNH DẠNG ĐẦU RA JSON BẮT BUỘC
             console.log(`[API Translate] DeepSeek Mini-Rescue 100% cứu hộ thành công!`);
             break;
           } else {
-            // Không bao giờ trả tiếng Trung nguyên bản để không kích hoạt Google Translate
-            translatedTexts = candidateTexts.map((t, idx) => {
-              if (t && t.trim().length > 0) return t.trim();
-              if (idx > 0 && candidateTexts[idx - 1]) return candidateTexts[idx - 1]!;
-              return '...';
-            });
-            console.warn(`[API Translate] DeepSeek rescue finalized with ${stillMissing} bridged keys.`);
-            break;
+            lastError = `DeepSeek không hoàn tất được ${stillMissing}/${texts.length} câu tiếng Việt`;
+            console.warn(`[API Translate] ${lastError}`);
           }
         } else {
           lastError = `DeepSeek output incomplete (${texts.length - missingCount}/${texts.length} câu bóc tách được)`;
