@@ -7,7 +7,7 @@ export async function runDeepSeek(
   input: Record<string, any>,
   credentials: Record<string, string>
 ): Promise<ActionResult> {
-  const apiKey = credentials?.apiKey;
+  const apiKey = credentials?.apiKey || credentials?.api_key || credentials?.token;
   if (!apiKey) {
     throw new Error('Thiếu DeepSeek API Key.');
   }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { verifyDubWorkerToken } from '@/lib/db/hero-dub-actions';
 import { db } from '@/lib/db/drizzle';
 import { dubTasks, connectHubConnections } from '@/lib/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, or } from 'drizzle-orm';
 import { decryptField } from '@/lib/sim-crypto';
 import { executeAction } from '@/lib/connect-hub/connectors/engine';
 
@@ -114,7 +114,10 @@ export async function POST(request: Request) {
           and(
             eq(connectHubConnections.teamId, auth.teamId),
             eq(connectHubConnections.appSlug, fSlug),
-            eq(connectHubConnections.status, 'connected')
+            or(
+              eq(connectHubConnections.status, 'connected'),
+              eq(connectHubConnections.status, 'active')
+            )
           )
         )
         .limit(1);
@@ -131,7 +134,10 @@ export async function POST(request: Request) {
           .where(
             and(
               eq(connectHubConnections.teamId, auth.teamId),
-              eq(connectHubConnections.status, 'connected')
+              or(
+                eq(connectHubConnections.status, 'connected'),
+                eq(connectHubConnections.status, 'active')
+              )
             )
           );
 
@@ -161,7 +167,10 @@ export async function POST(request: Request) {
           and(
             eq(connectHubConnections.teamId, auth.teamId),
             eq(connectHubConnections.appSlug, appSlug),
-            eq(connectHubConnections.status, 'connected')
+            or(
+              eq(connectHubConnections.status, 'connected'),
+              eq(connectHubConnections.status, 'active')
+            )
           )
         )
         .limit(1);
@@ -488,8 +497,15 @@ QUY TẮC BẮT BUỘC TUYỆT ĐỐI (CRITICAL RULES - STRICT TARGET: VIETNAMES
             console.log(`[API Translate] DeepSeek Mini-Rescue 100% cứu hộ thành công!`);
             break;
           } else {
-            lastError = `DeepSeek không hoàn tất được ${stillMissing}/${texts.length} câu tiếng Việt`;
-            console.warn(`[API Translate] ${lastError}`);
+            // Thay vì bỏ đi toàn bộ bản dịch và ném HTTP 500,
+            // bảo toàn các câu đã dịch tốt của DeepSeek (đa số tuyệt đối),
+            // điền câu gốc vào các vị trí còn thiếu để Quality Gate của Worker tự động dọn dẹp bằng Google Translate!
+            translatedTexts = candidateTexts.map((t, idx) => {
+              if (t && t.trim().length > 0) return t.trim();
+              return texts[idx] || '...';
+            });
+            console.warn(`[API Translate] DeepSeek cứu hộ thành công phần lớn (${texts.length - stillMissing}/${texts.length}). Chuyển tiếp ${stillMissing} câu sang Quality Gate.`);
+            break;
           }
         } else {
           lastError = `DeepSeek output incomplete (${texts.length - missingCount}/${texts.length} câu bóc tách được)`;

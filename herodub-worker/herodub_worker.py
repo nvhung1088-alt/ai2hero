@@ -309,7 +309,7 @@ except ImportError:
 # ---------------------------------------------------------
 # CAU HINH MVP WORKER
 # ---------------------------------------------------------
-API_BASE_URL = "https://www.ai2hero.com/api/hero-dub"
+API_BASE_URL = "https://ai2hero-flax.vercel.app/api/hero-dub"
 CONFIG_FILE = "config.json"
 WORKSPACE_DIR = "workspace"
 
@@ -1842,7 +1842,7 @@ def process_task(token, task):
                         print(Fore.CYAN + f"  [⚡ WebSocket Local] Dang ban truc tiep {len(texts)} cau sang Chrome Extension ({target_ai.upper()})...")
                         ws_input = {str(k): t for k, t in enumerate(texts)}
                         context_str = f"\nBối cảnh phim: {task.get('translateContext', '')}" if task.get('translateContext') else ""
-                        ws_prompt = f"""Bạn là một biên dịch viên phụ đề phim và video chuyên nghiệp (Senior Subtitle Translator). Hãy dịch toàn bộ các câu thoại tiếng Trung sau sang tiếng Việt tự nhiên, thoát ý, cô đọng:{context_str}
+                        ws_prompt = f"""Bạn là một biên dịch viên phụ đề phim và video chuyên nghiệp (Senior Subtitle Translator). Hãy dịch toàn bộ {len(texts)} câu thoại tiếng Trung sau sang tiếng Việt tự nhiên, thoát ý, cô đọng chuẩn phụ đề:{context_str}
 
 QUY TẮC BẮT BUỘC:
 1. TỰ ĐỘNG PHÁT HIỆN THỂ LOẠI & ÁP DỤNG VĂN PHONG PHÙ HỢP:
@@ -1850,15 +1850,15 @@ QUY TẮC BẮT BUỘC:
    - 🔬 Khoa học / Khám phá / Tài liệu: Văn phong chuẩn xác, hiện đại, logic, dễ hiểu.
    - 🏢 Đô thị / Hiện đại / Drama: Văn phong tự nhiên, đời thường, bắt trend ("tôi - bạn / anh - em").
    - ⚔️ Cổ trang / Tiên hiệp: Văn phong Hán Việt cổ phong ("Trẫm, Bệ hạ, Thần, Huynh, Đệ...").
-2. Tuyệt đối KHÔNG dịch thô word-by-word. Tự động sửa lỗi nghe nhầm đồng âm ASR tiếng Trung.
-3. Trả về đúng định dạng JSON gốc (key "0", "1"... giữ nguyên 100%, chỉ thay value bằng chuỗi dịch tiếng Việt).
+2. Tuyệt đối KHÔNG dịch thô word-by-word. Tự động sửa lỗi nghe nhầm đồng âm ASR tiếng Trung. Dịch ngắn gọn, súc tích, khớp khẩu hình/nhịp video.
+3. ĐÚNG ĐỦ {len(texts)} CÂU: Bắt buộc trả về đúng định dạng JSON gốc với đủ tất cả các key từ "0" đến "{len(texts)-1}". Tuyệt đối KHÔNG bỏ sót câu nào ở cuối!
 4. KHÔNG giải thích, KHÔNG thêm lời chào, KHÔNG bọc trong markdown code block (```json). Chỉ trả về mã JSON thuần túy để máy đọc.
 
 Dữ liệu:
-{json.dumps(ws_input, ensure_ascii=False, indent=2)}"""
+{json.dumps(ws_input, ensure_ascii=False)}"""
 
-                        # Timeout 60s cho batch 80 câu
-                        ws_timeout = 60
+                        # Timeout 150s cho batch 80 câu (Gemini Web gõ 80 câu mất ~45-80s)
+                        ws_timeout = 150
                         ws_res = bridge_server.execute_job(ws_prompt, target_ai=target_ai, timeout=ws_timeout)
                         if ws_res and ws_res.get("success") and ws_res.get("result"):
                             res_val = ws_res.get("result")
@@ -1978,17 +1978,22 @@ Dữ liệu:
                                 # Lấy danh sách values theo thứ tự để bọc lót nếu bị lệch key
                                 ordered_vals = [str(v).strip() for k, v in sorted(trans_map.items(), key=lambda x: int(x[0]) if x[0].isdigit() else 9999) if str(v).strip()]
 
-                                translated_array = []
-                                for k in range(len(texts)):
-                                    t_val = trans_map.get(str(k)) or trans_map.get(k)
-                                    if t_val and str(t_val).strip():
-                                        translated_array.append(str(t_val).strip())
-                                    elif k < len(ordered_vals):
-                                        translated_array.append(ordered_vals[k])
-                                    else:
-                                        fallback_val = translated_array[-1] if translated_array else ""
-                                        translated_array.append(fallback_val if fallback_val else texts[k])
-                                print(Fore.GREEN + Style.BRIGHT + f"  [⚡ WebSocket Local] Da trich xuat thanh cong {len(translated_array)} cau dich muot ma tu {target_ai.upper()}!")
+                                # Kiểm tra nếu Gemini trả về thiếu quá 5 câu trên 80 câu -> Kích hoạt Cứu hộ
+                                if len(ordered_vals) < len(texts) - 5:
+                                    print(Fore.YELLOW + f"  [⚠️ Cảnh báo] Gemini trả về thiếu {len(texts) - len(ordered_vals)}/{len(texts)} câu (Chỉ được {len(ordered_vals)} câu). Chuyển sang Cứu hộ Cloud API...")
+                                    translated_array = None
+                                else:
+                                    translated_array = []
+                                    for k in range(len(texts)):
+                                        t_val = trans_map.get(str(k)) or trans_map.get(k)
+                                        if t_val and str(t_val).strip():
+                                            translated_array.append(str(t_val).strip())
+                                        elif k < len(ordered_vals):
+                                            translated_array.append(ordered_vals[k])
+                                        else:
+                                            # Tuyệt đối KHÔNG nhân bản câu trước nếu bị thiếu ở cuối batch
+                                            translated_array.append(texts[k])
+                                    print(Fore.GREEN + Style.BRIGHT + f"  [⚡ WebSocket Local] Da trich xuat thanh cong {len(translated_array)} cau dich muot ma tu {target_ai.upper()}!")
                             else:
                                 preview = str(res_val)[:100].replace('\n', ' ')
                                 print(Fore.YELLOW + f"  [!] Khong the parse JSON tu {target_ai.upper()} (Output: '{preview}...'). Kich hoat Cuu ho...")
@@ -1999,7 +2004,7 @@ Dữ liệu:
                     if not translated_array:
                         print(Fore.MAGENTA + f"  [🔄 Cứu hộ Tầng 2: DeepSeek Cloud API] Dang chuyen {len(texts)} cau sang Cloud API...")
                         
-                        sub_batch_size = 30
+                        sub_batch_size = 25
                         cloud_success = True
                         cloud_translated_all = []
                         
@@ -2016,7 +2021,7 @@ Dữ liệu:
                                         "previousContext": sub_prev,
                                         "fallbackModel": "deepseek|deepseek-chat"
                                     }
-                                    res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=45)
+                                    res = requests.post(f"{API_BASE_URL}/translate", json=payload, headers=headers, timeout=75)
                                     
                                     if res.status_code == 200:
                                         data = res.json()
@@ -2025,16 +2030,32 @@ Dữ liệu:
                                             break
                                         else:
                                             err_msg = str(data.get('error', ''))
+                                            print(Fore.YELLOW + f"    [!] Cloud AI tra ve loi: {err_msg}")
                                             if "NO_CLOUD_LLM" in err_msg or "not found" in err_msg.lower():
                                                 break
+                                    elif res.status_code == 402 and "ai2hero.com" in API_BASE_URL:
+                                        print(Fore.YELLOW + "    [!] Domain ai2hero.com bi Vercel khoa (402). Tu dong chuyen sang https://ai2hero-flax.vercel.app...")
+                                        API_BASE_URL = "https://ai2hero-flax.vercel.app/api/hero-dub"
                                     elif res.status_code in [400, 404]:
+                                        err_info = res.json().get('error', '') if res.headers.get('content-type', '').startswith('application/json') else res.text[:100]
+                                        print(Fore.YELLOW + f"    [!] Cloud API HTTP {res.status_code}: {err_info}")
                                         break
-                                except Exception:
-                                    pass
+                                    else:
+                                        print(Fore.YELLOW + f"    [!] Cloud API HTTP {res.status_code} (Attempt {hub_attempt+1}/2)")
+                                except Exception as req_err:
+                                    print(Fore.YELLOW + f"    [!] Loi ket noi Cloud API (Attempt {hub_attempt+1}/2): {req_err}")
+                                    if "ai2hero.com" in API_BASE_URL:
+                                        API_BASE_URL = "https://ai2hero-flax.vercel.app/api/hero-dub"
                                 time.sleep(1.5)
                             
                             if sub_translated and len(sub_translated) == len(sub_texts):
                                 cloud_translated_all.extend(sub_translated)
+                            elif sub_translated and len(sub_translated) > 0:
+                                for s_i in range(len(sub_texts)):
+                                    if s_i < len(sub_translated) and sub_translated[s_i]:
+                                        cloud_translated_all.append(sub_translated[s_i])
+                                    else:
+                                        cloud_translated_all.append(sub_texts[s_i])
                             else:
                                 cloud_success = False
                                 break
@@ -2043,7 +2064,7 @@ Dữ liệu:
                             translated_array = cloud_translated_all
                             print(Fore.GREEN + Style.BRIGHT + f"  [☁️ Connect Hub DeepSeek] Nhan ket qua cuu ho DeepSeek thanh cong ({len(translated_array)} cau)!")
                         else:
-                            print(Fore.YELLOW + "  [!] DeepSeek Cloud API khong kha dung (chua co Key hoac loi mang).")
+                            print(Fore.YELLOW + "  [!] DeepSeek Cloud API khong kha dung hoac gap su co mang. Chuyen sang Tang 3...")
                         
                     # NHÁNH 3: TẦNG 3 - Áp dụng kết quả hoặc Cứu hộ khẩn cấp bằng Google Translate Direct
                     if translated_array and len(translated_array) > 0:

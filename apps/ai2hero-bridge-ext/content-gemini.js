@@ -350,7 +350,7 @@ if (!window.hasAi2HeroBridgeGemini) {
    */
   function waitForGeminiResponseLifecycle(isImageJob = false) {
     return new Promise((resolve, reject) => {
-      const MAX_TIMEOUT_MS = isImageJob ? 180000 : 120000;
+      const MAX_TIMEOUT_MS = isImageJob ? 180000 : 150000;
       const startTime = Date.now();
 
       // Ghi nhận số lượng và nội dung tin nhắn trước khi AI sinh câu mới (chống bắt nhầm tin nhắn cũ)
@@ -460,12 +460,20 @@ if (!window.hasAi2HeroBridgeGemini) {
         return null;
       };
 
-      // Lấy phần tử model-response cuối cùng (Chỉ câu trả lời của AI)
+      // Lấy phần tử model-response MỚI THỰC SỰ do prompt này tạo ra (Chống bắt nhầm tin nhắn cũ)
       const getLatestModelResponseElement = () => {
         const modelResponses = document.querySelectorAll(
           'model-response, [data-test-id="model-response"], .model-response, message-content, [role="article"], .response-container'
         );
         if (modelResponses.length > 0) {
+          // Nếu số lượng phản hồi không tăng so với ban đầu và nội dung giống hệt tin cũ -> Bỏ qua
+          if (initialResponseCount > 0 && modelResponses.length <= initialResponseCount) {
+            const lastEl = modelResponses[modelResponses.length - 1];
+            const txt = (lastEl.innerText || lastEl.textContent || '').trim();
+            if (txt === initialResponseText) {
+              return null;
+            }
+          }
           return modelResponses[modelResponses.length - 1];
         }
         return null;
@@ -719,15 +727,35 @@ if (!window.hasAi2HeroBridgeGemini) {
         return (text + finalImgMarkdown).trim();
       }
 
-      // Timeout bảo vệ
+      // Timeout bảo vệ (Chặn đứng bẫy bốc tin nhắn cũ khi quá hạn)
       const globalTimeout = setTimeout(async () => {
         if (observer) observer.disconnect();
         if (intervalCheck) clearInterval(intervalCheck);
+
+        const isGenerating = isStopButtonVisible() || (isImageJob && isGeneratingImage());
+        const currentResponses = document.querySelectorAll(
+          'model-response, [data-test-id="model-response"], .model-response, message-content, [role="article"], .response-container'
+        );
+        const hasNewModelResponse = currentResponses.length > initialResponseCount;
+        const currentText = extractCleanResponse();
+
+        if (isGenerating) {
+          console.error(`[Ai2Hero Bridge] 🛑 Timeout: Gemini Web vẫn đang sinh phản hồi sau ${MAX_TIMEOUT_MS / 1000}s.`);
+          reject(new Error(`TIMEOUT_GENERATING: Gemini Web phản hồi quá ${MAX_TIMEOUT_MS / 1000}s nhưng vẫn chưa hoàn thành.`));
+          return;
+        }
+
+        if (!hasNewModelResponse && (!currentText || currentText === initialResponseText)) {
+          console.error(`[Ai2Hero Bridge] 🛑 Timeout: Không nhận được câu trả lời mới nào từ Gemini Web sau ${MAX_TIMEOUT_MS / 1000}s.`);
+          reject(new Error(`TIMEOUT_NO_RESPONSE: Hết thời gian chờ (${MAX_TIMEOUT_MS / 1000}s) và không nhận được phản hồi mới từ Gemini Web.`));
+          return;
+        }
+
         const finalCheck = await buildFinalResult();
-        if (finalCheck) {
+        if (finalCheck && finalCheck.trim().length > 10 && finalCheck.trim() !== initialResponseText) {
           resolve(finalCheck);
         } else {
-          reject(new Error('Timeout: Không nhận được câu trả lời từ Gemini Web.'));
+          reject(new Error(`TIMEOUT_INVALID: Hết thời gian chờ (${MAX_TIMEOUT_MS / 1000}s) và phản hồi không hợp lệ hoặc bị trùng tin cũ.`));
         }
       }, MAX_TIMEOUT_MS);
 
@@ -893,21 +921,49 @@ if (!window.hasAi2HeroBridgeGemini) {
   }
 
   /**
-   * Tự động tạo cuộc trò chuyện mới (New Chat) để giải phóng RAM
+   * Tự động tạo cuộc trò chuyện mới (New Chat) để giải phóng RAM và xóa ngữ cảnh cũ
    */
   async function triggerNewChat() {
     console.log('[Ai2Hero Bridge] Đang làm mới phiên chat (New Chat)...');
+
+    // 1. Nếu thanh menu sidebar đang bị ẩn/co lại, tìm và bấm nút mở menu trước
+    const menuBtnSelectors = [
+      'button[aria-label*="Mở rộng menu" i]',
+      'button[aria-label*="Thu gọn menu" i]',
+      'button[aria-label*="Menu" i]',
+      'button[aria-label*="Main menu" i]',
+      'button[aria-label*="Bảng điều khiển" i]',
+      'button[aria-label*="Ngăn điều hướng" i]',
+      'button[aria-label*="Navigation drawer" i]',
+      'button[data-test-id="side-nav-button"]'
+    ];
+
+    for (const mSel of menuBtnSelectors) {
+      const mEl = document.querySelector(mSel);
+      if (mEl && mEl.offsetParent !== null) {
+        const drawer = document.querySelector('mat-sidenav, bard-sidenav, .side-nav-container');
+        if (drawer && !drawer.classList.contains('mat-drawer-opened') && !drawer.classList.contains('opened')) {
+          try {
+            mEl.click();
+            await new Promise((r) => setTimeout(r, 400));
+          } catch(e) {}
+        }
+        break;
+      }
+    }
+
+    // 2. Tìm và click nút "Cuộc trò chuyện mới"
     const newChatSelectors = [
+      'button[aria-label*="Cuộc trò chuyện mới" i]',
+      'button[aria-label*="New chat" i]',
+      'div[role="button"][aria-label*="Cuộc trò chuyện mới" i]',
+      'div[role="button"][aria-label*="New chat" i]',
+      'a[aria-label*="Cuộc trò chuyện mới" i]',
+      'a[aria-label*="New chat" i]',
+      '[data-test-id="new-chat-button"]',
+      '.new-chat-button',
       'a[href="/app"]',
       'a[href="/"]',
-      'button[aria-label*="Cuộc trò chuyện mới"]',
-      'button[aria-label*="New chat"]',
-      'div[role="button"][aria-label*="Cuộc trò chuyện mới"]',
-      'div[role="button"][aria-label*="New chat"]',
-      'a[aria-label*="Cuộc trò chuyện mới"]',
-      'a[aria-label*="New chat"]',
-      '.new-chat-button',
-      '[data-test-id="new-chat-button"]',
       'side-nav a[href*="app"]',
       'bard-sidenav button'
     ];
@@ -918,14 +974,31 @@ if (!window.hasAi2HeroBridgeGemini) {
         if (el.offsetParent !== null) {
           try {
             el.click();
+            el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
             await new Promise((r) => setTimeout(r, 800));
-            return;
+
+            const currentResponses = document.querySelectorAll('model-response, [data-test-id="model-response"]');
+            if (currentResponses.length === 0) {
+              console.log('[Ai2Hero Bridge] ✅ New Chat thành công (DOM cuộc trò chuyện đã sạch bong)!');
+              return;
+            }
           } catch(e) {}
         }
       }
     }
 
-    // Dọn dẹp thủ công input và attachment nếu không bấm được nút
+    // 3. Nếu URL vẫn đang nằm ở /app/<chat_id>, kích hoạt click liên kết /app
+    if (window.location.pathname.length > 5 && window.location.pathname.startsWith('/app/')) {
+      const appLink = document.querySelector('a[href="/app"], a[href="/"]');
+      if (appLink) {
+        try {
+          appLink.click();
+          await new Promise((r) => setTimeout(r, 1000));
+        } catch(e) {}
+      }
+    }
+
+    // 4. Dọn dẹp thủ công input và attachment nếu không bấm được nút
     const allRemoveBtns = document.querySelectorAll(
       'button[aria-label*="Xóa"], button[aria-label*="Remove"], button[aria-label*="Delete"], button[aria-label*="close"], .remove-button, [data-test-id*="remove-attachment"], mat-chip button, .uploader-preview button'
     );

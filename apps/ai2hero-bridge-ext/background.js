@@ -278,6 +278,20 @@ async function executeAiJobOnTab(job) {
       console.log(`[Ai2Hero Bridge] Đang mở tab mới cho ${targetAi}...`);
       tab = await chrome.tabs.create({ url: defaultOpenUrl, active: true });
       await new Promise(r => setTimeout(r, 4500)); // Chờ tab tải DOM
+    } else if (targetAi === 'gemini' && job.autoNewChat !== false && tab.url && tab.url.includes('/app/') && !tab.url.endsWith('/app')) {
+      console.log(`[Ai2Hero Bridge] Tab Gemini đang ở đoạn chat cũ (${tab.url}). Đang điều hướng về https://gemini.google.com/app...`);
+      await chrome.tabs.update(tab.id, { url: 'https://gemini.google.com/app' });
+      await new Promise((resolve) => {
+        const navListener = (tabId, info) => {
+          if (tabId === tab.id && info.status === 'complete') {
+            chrome.tabs.onUpdated.removeListener(navListener);
+            resolve();
+          }
+        };
+        chrome.tabs.onUpdated.addListener(navListener);
+        setTimeout(resolve, 5000);
+      });
+      await new Promise(r => setTimeout(r, 1500)); // Chờ DOM giao diện mới sẵn sàng
     }
 
     // 2. Chuyển đổi URLs đính kèm thành Base64 blobs trong background (để tránh lỗi CORS)
