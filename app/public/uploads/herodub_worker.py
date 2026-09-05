@@ -1452,6 +1452,7 @@ def detect_best_encoder(target_kbps=2000):
     }
 
 def process_task(token, task):
+    global API_BASE_URL
     import shutil
     
     task_id = task.get("id")
