@@ -2194,3 +2194,4 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
     - Nhận diện thể loại và từ khóa: Nhóm Hoạt hình 3D, Chú heo con, Thú cưng, Vlog đời sống, Drama ngắn -> Tự động đặt tiêu đề ở NỬA TRÊN (TOP, $Y \approx 14\%$ chiều cao ảnh, đúng vị trí khoảng trống trên đầu nhân vật nơi tiêu đề gốc hiển thị).
     - Nhóm Sinh tồn hoang dã, Chế tác, Ẩm thực, Nấu ăn -> Tự động đặt tiêu đề ở NỬA DƯỚI (BOTTOM, $Y \approx 68\%$).
     - Đồng bộ mã nguồn hoàn chỉnh giữa `herodub_worker.py`, `fix_publishing_suite.py` và `app/public/uploads/herodub_worker.py`.
+  - Khắc phục lỗi UnboundLocalError: `cannot access local variable 'stt_was_run'` khi Worker tái sử dụng dữ liệu STT có sẵn trong cache workspace. Đã khởi tạo `stt_was_run = False` an toàn trước khối xử lý STT.
