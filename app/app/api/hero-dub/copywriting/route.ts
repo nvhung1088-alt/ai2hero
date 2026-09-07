@@ -98,25 +98,28 @@ export async function POST(req: NextRequest) {
 
     const cleanTitle = (sourceTitle || task.sourceTitle || `video_${taskId}`).trim();
 
-    // 4. Soạn thảo Prompt chuyên gia SEO Video
+    // 4. Soạn thảo Prompt chuyên gia SEO Video chuyên nghiệp
     const systemPrompt = `[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON THUẦN TÚY. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH]
 
-Hãy đóng vai Giám đốc Sáng tạo Nội dung Phim & Video Ngắn (YouTube Shorts / TikTok / Reels / Review Phim). Dưới đây là thông tin video:
+Hãy đóng vai Giám đốc Sáng tạo & Biên tập Nội dung Video Sinh Tồn / Chế Tác / Phim Ngắn chuyên nghiệp (YouTube, TikTok, Facebook Reels). Dưới đây là thông tin video:
 - Tiêu đề gốc video: ${cleanTitle}
 - Các câu thoại tiêu biểu trong video:
 ${subsListText}
 
-QUY TẮC BẮT BUỘC:
-1. "new_title": Đặt Tiêu đề Tiếng Việt cực kỳ cuốn hút, giật tít câu view, chuẩn SEO (dưới 65 ký tự, trọn vẹn câu, khơi gợi tò mò mạnh mẽ).
-   - Nếu video nói về chế tác nơi trú ẩn (hốc cây, nhà đá, nhà gỗ...) phải bám sát chính xác chất liệu, không tự bịa sai thực tế.
-2. "description": Viết đoạn mô tả ngắn 3-4 câu tóm tắt tình huống kịch tính, bất ngờ nhất của video để thúc đẩy người xem click và xem hết.
-3. "hashtags": Tạo bộ 6-8 hashtag xu hướng (bắt đầu bằng dấu #, ví dụ: #phimngan #reviewphim #tomtatphim #xuhuong #phimhay).
+QUY TẮC BẮT BUỘC TUYỆT ĐỐI (100% TIẾNG VIỆT - CẤM TUYỆT ĐỐI CHỮ TRUNG QUỐC):
+1. "new_title": Đặt Tiêu đề Tiếng Việt cực kỳ cuốn hút, giật tít câu view chuẩn SEO (dưới 65 ký tự, trọn vẹn câu, khơi gợi tò mò mạnh mẽ):
+   - Phải đúng chính xác bối cảnh và chất liệu nơi trú ẩn (Nếu là Hốc cây/Cây rỗng -> ghi Hốc Cây/Cây Rỗng; Nếu là Nhà đá/Hang đá -> ghi Nhà Đá/Hang Đá; Nếu là Nhà gỗ -> ghi Nhà Gỗ). TUYỆT ĐỐI KHÔNG tự bịa sai thực tế.
+2. "description": Viết đoạn mô tả chi tiết, hấp dẫn và cuốn hút (khoảng 120-200 từ), chia thành 3 đoạn văn rõ ràng:
+   - Đoạn 1 (Hook & Bối cảnh): Mở màn lôi cuốn về hành trình sinh tồn, khám phá hoặc thử thách lớn trong tập này.
+   - Đoạn 2 (Diễn biến chi tiết): Tóm tắt các công đoạn chế tác công phu, xử lý kết cấu công trình, cách vượt qua thử thách thiên nhiên và những trải nghiệm dã ngoại, ẩm thực hấp dẫn (nếu có trong video).
+   - Đoạn 3 (Cảm xúc & CTA): Gợi mở cảm giác thư giãn, giải tỏa căng thẳng hòa mình vào thiên nhiên (ASMR), kèm lời kêu gọi người xem nhấn Like, Chia sẻ và Đăng ký theo dõi kênh để đón xem những tập tiếp theo.
+3. "hashtags": Tạo bộ 8-10 hashtag xu hướng (bắt đầu bằng dấu #, ví dụ: #sinhton #hoangda #chetao #nhago #bushcraft #asmr #dulich #amthuc #xuhuong).
 
 CẤU TRÚC JSON MẪU BẮT BUỘC:
 {
-  "new_title": "Tiêu đề tiếng Việt giật tít tại đây",
-  "description": "Đoạn mô tả ngắn 3-4 câu tại đây...",
-  "hashtags": "#hashtag1 #hashtag2 #hashtag3 #xuhuong #phimhay"
+  "new_title": "Tiêu đề tiếng Việt giật tít chuẩn SEO tại đây",
+  "description": "Đoạn 1 mở màn hấp dẫn...\\n\\nĐoạn 2 tóm tắt chi tiết các bước chế tác và sinh tồn...\\n\\nĐoạn 3 cảm xúc thư giãn ASMR và lời kêu gọi Like, Đăng ký kênh...",
+  "hashtags": "#sinhton #hoangda #bushcraft #chetao #asmr #dulich #xuhuong #phimhay"
 }`;
 
     const jobId = crypto.randomUUID();
@@ -158,9 +161,23 @@ CẤU TRÚC JSON MẪU BẮT BUỘC:
       }, { status: 502 });
     }
 
-    const new_title = parsedJson.new_title || cleanTitle;
-    const description = parsedJson.description || `Video: ${cleanTitle}. Theo dõi hành trình hấp dẫn!`;
-    const hashtags = parsedJson.hashtags || '#reviewphim #xuhuong #phimhay #tomtatphim';
+    let new_title = String(parsedJson.new_title || cleanTitle).trim();
+    // Làm sạch chữ Trung Quốc sót lại trong tiêu đề nếu có
+    new_title = new_title.replace(/[\u4e00-\u9fff]/g, '').trim();
+    if (!new_title) new_title = cleanTitle;
+
+    let description = String(parsedJson.description || '').trim();
+    // Làm sạch chữ Trung Quốc sót lại trong description nếu có
+    description = description.replace(/[\u4e00-\u9fff]/g, '').trim();
+    if (!description || description.length < 30) {
+      description = `Chào mừng các bạn đến với hành trình sinh tồn và chế tác hoang dã đầy hấp dẫn!\n\nTrong tập hôm nay: Cùng theo dõi hành trình trải nghiệm "${new_title}" với những kỹ năng sinh tồn tuyệt vời, quá trình xây dựng nơi trú ẩn kiên cố và hòa mình cùng thiên nhiên đại ngàn.\n\n🔔 Đừng quên bấm Like, Chia sẻ và Đăng ký kênh để đón xem những video sinh tồn và chế tác kỳ thú tiếp theo!`;
+    }
+
+    let hashtags = String(parsedJson.hashtags || '').trim();
+    hashtags = hashtags.replace(/[\u4e00-\u9fff]/g, '').trim();
+    if (!hashtags || !hashtags.includes('#')) {
+      hashtags = '#sinhton #hoangda #ruinho #bushcraft #chetao #asmr #kynangsinhton #xuhuong';
+    }
 
     return NextResponse.json({
       success: true,

@@ -547,6 +547,54 @@ def smart_truncate(text, max_len=45):
         return cut[:last_space].strip()
     return cut.strip()
 
+def build_rich_vietnamese_description(title_vi, raw_title="", sample_subs=None):
+    """
+    Tự động xây dựng bài mô tả video chuẩn SEO 100% Tiếng Việt, chuyên nghiệp và giàu cảm xúc.
+    Chia 3 đoạn: Hook/Bối cảnh -> Tóm tắt diễn biến chi tiết -> ASMR/Thư giãn & CTA.
+    Tuyệt đối không chứa ký tự tiếng Trung nào!
+    """
+    clean_t = re.sub(r'[\u4e00-\u9fff]', '', str(title_vi or '')).strip()
+    clean_t = re.sub(r'^\d+_', '', clean_t).strip()
+    if not clean_t:
+        clean_t = "Hành Trình Sinh Tồn Và Chế Tác Nơi Trú Ẩn Hoang Dã"
+
+    t_lower = (clean_t + " " + str(raw_title or "")).lower()
+
+    # 1. Đoạn 1: Mở màn / Hook
+    p1 = f"Chào mừng các bạn đã quay trở lại với hành trình sinh tồn và chế tác tự nhiên hoang dã!\nTrong tập hôm nay: Cùng theo dõi hành trình đầy cảm hứng \"{clean_t}\", khi con người hòa mình trọn vẹn vào thiên nhiên đại ngàn để tạo nên những điều kỳ diệu từ đôi bàn tay khéo léo."
+
+    # 2. Đoạn 2: Diễn biến chi tiết theo đặc trưng nội dung
+    details = []
+    if any(k in t_lower for k in ["cổ thụ", "gốc cây", "hốc cây", "cây rỗng", "thụ động"]):
+        details.append("tận dụng gốc cây cổ thụ vững chãi làm điểm tựa kiên cố để kiến tạo không gian sống ấm cúng")
+    elif any(k in t_lower for k in ["nhà đá", "hang đá", "vách đá", "thạch ốc"]):
+        details.append("chọn vách đá tự nhiên hiểm trở làm nơi trú ngụ kiên cố, xếp từng viên đá tạo dựng nên căn nhà vững như bàn thạch")
+    elif any(k in t_lower for k in ["nhà gỗ", "mộc ốc", "gỗ", "chòi gỗ"]):
+        details.append("từng bước đốn hạ, đo đạc và lắp ghép các thân gỗ tự nhiên thành bộ khung nhà gỗ chắc chắn và thoáng mát")
+    elif any(k in t_lower for k in ["hồ nước", "bờ suối", "dòng suối", "thác nước", "bờ sông"]):
+        details.append("dựng nơi trú ẩn bên bờ suối trong lành, tận dụng nguồn nước tự nhiên cho sinh hoạt hàng ngày")
+    else:
+        details.append("lựa chọn địa thế phong thủy lý tưởng giữa rừng già để xây dựng nơi trú ẩn an toàn, chống chọi mưa gió thú dữ")
+
+    if any(k in t_lower for k in ["ẩm thực", "món ăn", "nấu ăn", "nướng", "thịt", "cá", "gà", "mỹ thực", "bữa ăn", "ấm cúng"]):
+        details.append("sau những giờ lao động hăng say là khoảnh khắc quây quần tự tay chế biến và thưởng thức những món ăn dã ngoại nóng hổi, thơm lừng giữa tiết trời se lạnh")
+    else:
+        details.append("hoàn thiện từng chi tiết nội thất mộc mạc bên trong, mang đến sự tiện nghi và cảm giác bình yên đến lạ kỳ")
+
+    if sample_subs and len(sample_subs) >= 2:
+        sub_samples = [s.strip() for s in sample_subs if s and len(s) > 8 and not re.search(r'[\u4e00-\u9fff]', s)][:2]
+        if sub_samples:
+            details.append(f"kết hợp cùng những chia sẻ thực tế: \"{'; '.join(sub_samples)}\"")
+
+    p2 = f"Quá trình thực hiện đòi hỏi sự kiên trì, tỉ mỉ và kỹ năng sinh tồn đỉnh cao — từ khâu {'; '.join(details)}."
+
+    # 3. Đoạn 3: Cảm xúc ASMR & Kêu gọi hành động (CTA)
+    p3 = "Từng nhịp búa đẽo gọt, tiếng gió xào xạc hòa cùng âm thanh thiên nhiên hoang sơ mang lại cảm giác thư thái, giải tỏa mọi áp lực cuộc sống (ASMR).\n\n🔔 Đừng quên bấm LIKE, CHIA SẺ và ĐĂNG KÝ KÊNH để tiếp thêm động lực cho chúng mình ra mắt những tập chế tác và sinh tồn đỉnh cao tiếp theo nhé!"
+
+    full_desc = f"{p1}\n\n{p2}\n\n{p3}"
+    full_desc = re.sub(r'[\u4e00-\u9fff]', '', full_desc).strip()
+    return full_desc
+
 # ---------------------------------------------------------
 # GEMINI AI PROCESSING (TEXT & IMAGE)
 # ---------------------------------------------------------
@@ -555,28 +603,39 @@ def generate_copywriting(clean_source_title, prefix_num, sample_subs, bridge_ser
 
     prompt = f"""[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON THUẦN TÚY. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH]
 
-Hãy đóng vai Chuyên viên Biên tập Nội dung Video Sinh Tồn / Chế Tác. Dưới đây là thông tin video:
+Hãy đóng vai Giám đốc Sáng tạo & Biên tập Nội dung Video Sinh Tồn / Chế Tác chuyên nghiệp. Dưới đây là thông tin video:
 - Tiêu đề gốc video: {clean_source_title}
 - Các câu thoại phụ đề thực tế trong video:
 {subs_text}
 
-QUY TẮC BẮT BUỘC:
-1. "new_title": Đặt Tiêu đề Tiếng Việt chuẩn xác 100% với nội dung và bối cảnh video (dưới 65 ký tự, trọn vẹn câu, hấp dẫn):
-   - ĐẶC BIỆT LƯU Ý: Phải đúng chất liệu nơi trú ẩn (Nếu gốc là Hốc cây/Cây rỗng 树洞 -> ghi Hốc Cây/Cây Rỗng; Nếu là Nhà đá/Hang đá 石屋/岩洞 -> ghi Nhà Đá/Hang Đá; Nếu là Nhà gỗ 木屋 -> ghi Nhà Gỗ). TUYỆT ĐỐI KHÔNG tự bịa sai chất liệu.
-2. "description": Viết đoạn mô tả ngắn 3-4 câu tóm tắt chính xác diễn biến của video.
-3. "hashtags": Tạo bộ 6-8 hashtag chuẩn theo chủ đề video.
+QUY TẮC BẮT BUỘC TUYỆT ĐỐI (100% TIẾNG VIỆT - TUYỆT ĐỐI KHÔNG CÓ KÝ TỰ TIẾNG TRUNG):
+1. "new_title": Đặt Tiêu đề Tiếng Việt cực kỳ cuốn hút, giật tít câu view chuẩn SEO (dưới 65 ký tự, trọn vẹn câu, khơi gợi tò mò mạnh mẽ):
+   - Phải đúng chính xác bối cảnh và chất liệu nơi trú ẩn (Nếu gốc là Hốc cây/Cây rỗng -> ghi Hốc Cây/Cây Rỗng; Nếu là Nhà đá/Hang đá -> ghi Nhà Đá/Hang Đá; Nếu là Nhà gỗ -> ghi Nhà Gỗ). TUYỆT ĐỐI KHÔNG tự bịa sai chất liệu.
+2. "description": Viết đoạn mô tả chi tiết, hấp dẫn và lôi cuốn (120-200 từ), chia thành 3 đoạn văn rõ ràng:
+   - Đoạn 1: Mở màn hấp dẫn về hành trình và bối cảnh sinh tồn / chế tác trong tập này.
+   - Đoạn 2: Tóm tắt chi tiết các bước chế tác, vượt qua thử thách thiên nhiên và thưởng thức ẩm thực dã ngoại (nếu có).
+   - Đoạn 3: Cảm xúc thư giãn ASMR hòa mình vào thiên nhiên, kèm lời kêu gọi Like, Chia sẻ và Đăng ký kênh.
+3. "hashtags": Tạo bộ 8-10 hashtag chuẩn SEO theo chủ đề video.
 
 CẤU TRÚC JSON MẪU:
 {{
   "new_title": "Tiêu đề tiếng Việt chuẩn nội dung tại đây",
-  "description": "Đoạn mô tả ngắn 3-4 câu tại đây...",
-  "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao"
+  "description": "Đoạn 1 mở màn...\\n\\nĐoạn 2 chi tiết các công đoạn chế tác...\\n\\nĐoạn 3 cảm xúc thư giãn ASMR và lời kêu gọi đăng ký kênh...",
+  "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao #asmr #nhago #xuhuong"
 }}"""
 
+    init_vi_title = clean_source_title
+    if re.search(r'[\u4e00-\u9fff]', clean_source_title):
+        pure_ch = re.sub(r'^\d+_', '', clean_source_title).strip()
+        tr = google_translate(pure_ch, dest='vi')
+        if tr and not re.search(r'[\u4e00-\u9fff]', tr):
+            clean_tr = re.sub(r'[\\/:*?"<>|]', ' ', tr).strip()
+            init_vi_title = f"{prefix_num}{clean_tr}"
+
     result = {
-        "new_title": clean_source_title,
-        "description": f"Video thuyết minh: {clean_source_title}. Theo dõi hành trình sinh tồn và chế tác tự nhiên hấp dẫn!",
-        "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao",
+        "new_title": init_vi_title,
+        "description": build_rich_vietnamese_description(init_vi_title, clean_source_title, sample_subs),
+        "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao #asmr #nhago #kynangsinhton",
     }
 
     if bridge_server and bridge_server.is_connected():
@@ -596,13 +655,21 @@ CẤU TRÚC JSON MẪU:
                     if isinstance(parsed, dict):
                         if parsed.get("new_title"):
                             t_val = str(parsed.get("new_title")).strip()
+                            t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
                             clean_t = re.sub(r'[\\/:*?"<>|]', ' ', t_val).strip()
-                            result["new_title"] = f"{prefix_num}{clean_t}" if prefix_num and not clean_t.startswith(prefix_num) else clean_t
+                            if clean_t:
+                                result["new_title"] = f"{prefix_num}{clean_t}" if prefix_num and not clean_t.startswith(prefix_num) else clean_t
                         if parsed.get("description"):
-                            result["description"] = str(parsed.get("description")).strip()
+                            d_val = str(parsed.get("description")).strip()
+                            d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
+                            if len(d_val) >= 50:
+                                result["description"] = d_val
                         if parsed.get("hashtags"):
-                            result["hashtags"] = str(parsed.get("hashtags")).strip()
-                        print(Fore.GREEN + Style.BRIGHT + f"  [⚡ Gemini Copywriting] Da tao Tieu de moi chuan xac: {result['new_title']}")
+                            h_val = str(parsed.get("hashtags")).strip()
+                            h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
+                            if h_val:
+                                result["hashtags"] = h_val
+                        print(Fore.GREEN + Style.BRIGHT + f"  [⚡ Gemini Copywriting] Da tao Tieu de & Mo ta moi: {result['new_title']}")
                         parsed_success = True
             except Exception:
                 pass
@@ -611,12 +678,30 @@ CẤU TRÚC JSON MẪU:
                 title_m = re.search(r'"new_title"\s*:\s*"([^"]+)"', raw_out)
                 if title_m:
                     t_val = title_m.group(1).strip()
+                    t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
                     clean_t = re.sub(r'[\\/:*?"<>|]', ' ', t_val).strip()
-                    result["new_title"] = f"{prefix_num}{clean_t}" if prefix_num and not clean_t.startswith(prefix_num) else clean_t
-                    print(Fore.GREEN + Style.BRIGHT + f"  [⚡ Gemini Copywriting] Da trich xuat Tieu de moi: {result['new_title']}")
+                    if clean_t:
+                        result["new_title"] = f"{prefix_num}{clean_t}" if prefix_num and not clean_t.startswith(prefix_num) else clean_t
+                        print(Fore.GREEN + Style.BRIGHT + f"  [⚡ Gemini Copywriting] Da trich xuat Tieu de moi: {result['new_title']}")
+                desc_m = re.search(r'"description"\s*:\s*"([^"]+)"', raw_out)
+                if desc_m:
+                    d_val = desc_m.group(1).strip()
+                    d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
+                    if len(d_val) >= 50:
+                        result["description"] = d_val
+                hash_m = re.search(r'"hashtags"\s*:\s*"([^"]+)"', raw_out)
+                if hash_m:
+                    h_val = hash_m.group(1).strip()
+                    h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
+                    if h_val:
+                        result["hashtags"] = h_val
 
     # Loại bỏ ký tự cấm trong tên file
     result["new_title"] = re.sub(r'[\\/:*?"<>|]', ' ', result["new_title"]).strip()
+    # Đảm bảo description sạch tiếng Trung và có cấu trúc bài bản
+    if re.search(r'[\u4e00-\u9fff]', result.get("description", "")) or len(result.get("description", "")) < 60:
+        result["description"] = build_rich_vietnamese_description(result["new_title"], clean_source_title, sample_subs)
+
     return result
 
 def redesign_thumbnail(thumb_src, new_title, bridge_server):
@@ -879,8 +964,8 @@ def main():
 
         # 2. Xác định Tiêu đề, Mô tả và Hashtags
         new_title = raw_name
-        description = f"Video thuyết minh: {raw_name}. Theo dõi hành trình sinh tồn và chế tác tự nhiên hấp dẫn!"
-        hashtags = "#sinhton #hoangda #ruinho #bushcraft #chetao"
+        description = build_rich_vietnamese_description(raw_name, raw_name, sample_subs)
+        hashtags = "#sinhton #hoangda #ruinho #bushcraft #chetao #asmr #nhago #kynangsinhton"
 
         if item["needs_copywriting"]:
             clean_src = re.sub(r'^\d+_', '', raw_name).strip()
@@ -895,12 +980,21 @@ def main():
                     with open(item["txt"], "r", encoding="utf-8", errors="ignore") as f_txt:
                         t_content = f_txt.read()
                         d_m = re.search(r'MÔ TẢ NỘI DUNG.*?\n(.*?)\n\n', t_content, re.DOTALL)
-                        if d_m: description = d_m.group(1).strip()
+                        if d_m:
+                            loaded_d = d_m.group(1).strip()
+                            if not re.search(r'[\u4e00-\u9fff]', loaded_d) and len(loaded_d) >= 60:
+                                description = loaded_d
                         h_m = re.search(r'HASHTAGS:\n(.*?)\n\n', t_content, re.DOTALL)
-                        if h_m: hashtags = h_m.group(1).strip()
+                        if h_m:
+                            loaded_h = h_m.group(1).strip()
+                            if not re.search(r'[\u4e00-\u9fff]', loaded_h):
+                                hashtags = loaded_h
                 except Exception:
                     pass
             print(Fore.GREEN + f"  [✓] Giữ nguyên tiêu đề tiếng Việt có sẵn: {new_title}")
+
+        if re.search(r'[\u4e00-\u9fff]', description) or len(description) < 60:
+            description = build_rich_vietnamese_description(new_title, raw_name, sample_subs)
 
         new_title = re.sub(r'[\\/:*?"<>|]', ' ', new_title).strip()
         if not new_title:

@@ -324,13 +324,61 @@ def smart_truncate(text, max_len=45):
         return cut[:last_space].strip()
     return cut.strip()
 
+def build_rich_vietnamese_description(title_vi, raw_title="", sample_subs=None):
+    """
+    Tự động xây dựng bài mô tả video chuẩn SEO 100% Tiếng Việt, chuyên nghiệp và giàu cảm xúc.
+    Chia 3 đoạn: Hook/Bối cảnh -> Tóm tắt diễn biến chi tiết -> ASMR/Thư giãn & CTA.
+    Tuyệt đối không chứa ký tự tiếng Trung nào!
+    """
+    clean_t = re.sub(r'[\u4e00-\u9fff]', '', str(title_vi or '')).strip()
+    clean_t = re.sub(r'^\d+_', '', clean_t).strip()
+    if not clean_t:
+        clean_t = "Hành Trình Sinh Tồn Và Chế Tác Nơi Trú Ẩn Hoang Dã"
+
+    t_lower = (clean_t + " " + str(raw_title or "")).lower()
+
+    # 1. Đoạn 1: Mở màn / Hook
+    p1 = f"Chào mừng các bạn đã quay trở lại với hành trình sinh tồn và chế tác tự nhiên hoang dã!\nTrong tập hôm nay: Cùng theo dõi hành trình đầy cảm hứng \"{clean_t}\", khi con người hòa mình trọn vẹn vào thiên nhiên đại ngàn để tạo nên những điều kỳ diệu từ đôi bàn tay khéo léo."
+
+    # 2. Đoạn 2: Diễn biến chi tiết theo đặc trưng nội dung
+    details = []
+    if any(k in t_lower for k in ["cổ thụ", "gốc cây", "hốc cây", "cây rỗng", "thụ động"]):
+        details.append("tận dụng gốc cây cổ thụ vững chãi làm điểm tựa kiên cố để kiến tạo không gian sống ấm cúng")
+    elif any(k in t_lower for k in ["nhà đá", "hang đá", "vách đá", "thạch ốc"]):
+        details.append("chọn vách đá tự nhiên hiểm trở làm nơi trú ngụ kiên cố, xếp từng viên đá tạo dựng nên căn nhà vững như bàn thạch")
+    elif any(k in t_lower for k in ["nhà gỗ", "mộc ốc", "gỗ", "chòi gỗ"]):
+        details.append("từng bước đốn hạ, đo đạc và lắp ghép các thân gỗ tự nhiên thành bộ khung nhà gỗ chắc chắn và thoáng mát")
+    elif any(k in t_lower for k in ["hồ nước", "bờ suối", "dòng suối", "thác nước", "bờ sông"]):
+        details.append("dựng nơi trú ẩn bên bờ suối trong lành, tận dụng nguồn nước tự nhiên cho sinh hoạt hàng ngày")
+    else:
+        details.append("lựa chọn địa thế phong thủy lý tưởng giữa rừng già để xây dựng nơi trú ẩn an toàn, chống chọi mưa gió thú dữ")
+
+    if any(k in t_lower for k in ["ẩm thực", "món ăn", "nấu ăn", "nướng", "thịt", "cá", "gà", "mỹ thực", "bữa ăn", "ấm cúng"]):
+        details.append("sau những giờ lao động hăng say là khoảnh khắc quây quần tự tay chế biến và thưởng thức những món ăn dã ngoại nóng hổi, thơm lừng giữa tiết trời se lạnh")
+    else:
+        details.append("hoàn thiện từng chi tiết nội thất mộc mạc bên trong, mang đến sự tiện nghi và cảm giác bình yên đến lạ kỳ")
+
+    if sample_subs and len(sample_subs) >= 2:
+        sub_samples = [s.strip() for s in sample_subs if s and len(s) > 8 and not re.search(r'[\u4e00-\u9fff]', s)][:2]
+        if sub_samples:
+            details.append(f"kết hợp cùng những chia sẻ thực tế: \"{'; '.join(sub_samples)}\"")
+
+    p2 = f"Quá trình thực hiện đòi hỏi sự kiên trì, tỉ mỉ và kỹ năng sinh tồn đỉnh cao — từ khâu {'; '.join(details)}."
+
+    # 3. Đoạn 3: Cảm xúc ASMR & Kêu gọi hành động (CTA)
+    p3 = "Từng nhịp búa đẽo gọt, tiếng gió xào xạc hòa cùng âm thanh thiên nhiên hoang sơ mang lại cảm giác thư thái, giải tỏa mọi áp lực cuộc sống (ASMR).\n\n🔔 Đừng quên bấm LIKE, CHIA SẺ và ĐĂNG KÝ KÊNH để tiếp thêm động lực cho chúng mình ra mắt những tập chế tác và sinh tồn đỉnh cao tiếp theo nhé!"
+
+    full_desc = f"{p1}\n\n{p2}\n\n{p3}"
+    full_desc = re.sub(r'[\u4e00-\u9fff]', '', full_desc).strip()
+    return full_desc
+
 def generate_video_copywriting(task, translated_segments, duration_sec, bridge_server, headers, API_BASE_URL):
     """
     LUỒNG 1: Tạo Tiêu đề, Mô tả và Hashtags (TEXT-ONLY) chuẩn xác 100% theo nội dung video.
+    Đảm bảo 100% Tiếng Việt thuần túy, mô tả 3 đoạn chuẩn SEO giàu cảm xúc, không chứa chữ Trung Quốc.
     """
     task_id = task.get("id")
     raw_source = task.get("sourceTitle") or task.get("sourceUrl") or f"video_{task_id}"
-    # Đảm bảo chỉ lấy tên file gốc, loại bỏ hoàn toàn đường dẫn thư mục (cả / và \)
     clean_source_title = os.path.basename(str(raw_source).replace('\\', '/'))
     for ext in ['.mp4', '.mkv', '.mov', '.avi', '.flv', '.wmv']:
         if clean_source_title.lower().endswith(ext):
@@ -354,28 +402,40 @@ def generate_video_copywriting(task, translated_segments, duration_sec, bridge_s
 
     prompt = f"""[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON THUẦN TÚY. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH]
 
-Hãy đóng vai Chuyên viên Biên tập Nội dung Video Sinh Tồn / Chế Tác. Dưới đây là thông tin video:
+Hãy đóng vai Giám đốc Sáng tạo & Biên tập Nội dung Video Sinh Tồn / Chế Tác chuyên nghiệp. Dưới đây là thông tin video:
 - Tiêu đề gốc video: {clean_source_title}
 - Các câu thoại phụ đề thực tế trong video:
 {subs_text}
 
-QUY TẮC BẮT BUỘC:
-1. "new_title": Đặt Tiêu đề Tiếng Việt chuẩn xác 100% với nội dung và bối cảnh video (dưới 65 ký tự, trọn vẹn câu, hấp dẫn):
-   - ĐẶC BIỆT LƯU Ý: Phải đúng chất liệu nơi trú ẩn (Nếu gốc là Hốc cây/Cây rỗng 树洞 -> ghi Hốc Cây/Cây Rỗng; Nếu là Nhà đá/Hang đá 石屋/岩洞 -> ghi Nhà Đá/Hang Đá; Nếu là Nhà gỗ 木屋 -> ghi Nhà Gỗ). TUYỆT ĐỐI KHÔNG tự bịa sai chất liệu.
-2. "description": Viết đoạn mô tả ngắn 3-4 câu tóm tắt chính xác diễn biến của video.
-3. "hashtags": Tạo bộ 6-8 hashtag chuẩn theo chủ đề video.
+QUY TẮC BẮT BUỘC TUYỆT ĐỐI (100% TIẾNG VIỆT - TUYỆT ĐỐI KHÔNG CÓ KÝ TỰ TIẾNG TRUNG):
+1. "new_title": Đặt Tiêu đề Tiếng Việt cực kỳ cuốn hút, giật tít câu view chuẩn SEO (dưới 65 ký tự, trọn vẹn câu, khơi gợi tò mò mạnh mẽ):
+   - Phải đúng chính xác bối cảnh và chất liệu nơi trú ẩn (Nếu gốc là Hốc cây/Cây rỗng -> ghi Hốc Cây/Cây Rỗng; Nếu là Nhà đá/Hang đá -> ghi Nhà Đá/Hang Đá; Nếu là Nhà gỗ -> ghi Nhà Gỗ). TUYỆT ĐỐI KHÔNG tự bịa sai chất liệu.
+2. "description": Viết đoạn mô tả chi tiết, hấp dẫn và lôi cuốn (120-200 từ), chia thành 3 đoạn văn rõ ràng:
+   - Đoạn 1: Mở màn hấp dẫn về hành trình và bối cảnh sinh tồn / chế tác trong tập này.
+   - Đoạn 2: Tóm tắt chi tiết các bước chế tác, vượt qua thử thách thiên nhiên và thưởng thức ẩm thực dã ngoại (nếu có).
+   - Đoạn 3: Cảm xúc thư giãn ASMR hòa mình vào thiên nhiên, kèm lời kêu gọi Like, Chia sẻ và Đăng ký kênh.
+3. "hashtags": Tạo bộ 8-10 hashtag chuẩn SEO theo chủ đề video.
 
 CẤU TRÚC JSON MẪU:
 {{
   "new_title": "Tiêu đề tiếng Việt chuẩn nội dung tại đây",
-  "description": "Đoạn mô tả ngắn 3-4 câu tại đây...",
-  "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao"
+  "description": "Đoạn 1 mở màn...\\n\\nĐoạn 2 chi tiết các công đoạn chế tác...\\n\\nĐoạn 3 cảm xúc thư giãn ASMR và lời kêu gọi đăng ký kênh...",
+  "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao #asmr #nhago #xuhuong"
 }}"""
 
+    # Tự động dịch tiêu đề gốc sang Tiếng Việt ngay từ đầu làm phương án nền móng an toàn
+    init_vi_title = clean_source_title
+    if re.search(r'[\u4e00-\u9fff]', clean_source_title):
+        pure_ch = re.sub(r'^\d+_', '', clean_source_title).strip()
+        tr = google_translate(pure_ch, dest='vi')
+        if tr and not re.search(r'[\u4e00-\u9fff]', tr):
+            clean_tr = re.sub(r'[\\/:*?"<>|]', ' ', tr).strip()
+            init_vi_title = f"{prefix_num}{clean_tr}"
+
     result = {
-        "new_title": clean_source_title,
-        "description": f"Video thuyết minh: {clean_source_title}. Theo dõi hành trình sinh tồn và chế tác tự nhiên hấp dẫn!",
-        "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao",
+        "new_title": init_vi_title,
+        "description": build_rich_vietnamese_description(init_vi_title, clean_source_title, sample_subs),
+        "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao #asmr #nhago #kynangsinhton",
     }
 
     publishing_engine = (task.get("publishingAiEngine") or "deepseek").lower()
@@ -397,14 +457,21 @@ CẤU TRÚC JSON MẪU:
                 resp_data = resp.json()
                 if resp_data.get("success"):
                     t_val = str(resp_data.get("new_title", "")).strip()
+                    t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
                     if t_val:
                         result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
                     if resp_data.get("description"):
-                        result["description"] = str(resp_data.get("description")).strip()
+                        d_val = str(resp_data.get("description")).strip()
+                        d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
+                        if len(d_val) >= 50:
+                            result["description"] = d_val
                     if resp_data.get("hashtags"):
-                        result["hashtags"] = str(resp_data.get("hashtags")).strip()
+                        h_val = str(resp_data.get("hashtags")).strip()
+                        h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
+                        if h_val:
+                            result["hashtags"] = h_val
                     copywriting_success = True
-                    print(Fore.GREEN + Style.BRIGHT + f"  [✓ DeepSeek Ready] Da tao Tieu de chuan SEO: {result['new_title']}")
+                    print(Fore.GREEN + Style.BRIGHT + f"  [✓ DeepSeek Ready] Da tao Tieu de & Mo ta chuan SEO: {result['new_title']}")
                 else:
                     print(Fore.YELLOW + f"  [!] DeepSeek tra ve loi: {resp_data.get('error')}")
             else:
@@ -431,12 +498,20 @@ CẤU TRÚC JSON MẪU:
                     if isinstance(parsed, dict):
                         if parsed.get("new_title"):
                             t_val = str(parsed.get("new_title")).strip()
-                            result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
+                            t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
+                            if t_val:
+                                result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
                         if parsed.get("description"):
-                            result["description"] = str(parsed.get("description")).strip()
+                            d_val = str(parsed.get("description")).strip()
+                            d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
+                            if len(d_val) >= 50:
+                                result["description"] = d_val
                         if parsed.get("hashtags"):
-                            result["hashtags"] = str(parsed.get("hashtags")).strip()
-                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ WebSocket Copywriting] Da tao Tieu de moi chuan xac: {result['new_title']}")
+                            h_val = str(parsed.get("hashtags")).strip()
+                            h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
+                            if h_val:
+                                result["hashtags"] = h_val
+                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ WebSocket Copywriting] Da tao Tieu de & Mo ta moi: {result['new_title']}")
                         parsed_success = True
                         copywriting_success = True
             except Exception:
@@ -446,12 +521,25 @@ CẤU TRÚC JSON MẪU:
                 title_m = re.search(r'"new_title"\s*:\s*"([^"]+)"', raw_out)
                 if title_m:
                     t_val = title_m.group(1).strip()
-                    result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
-                    parsed_success = True
-                    copywriting_success = True
-                    print(Fore.GREEN + Style.BRIGHT + f"  [✓ WebSocket Copywriting] Da trich xuat Tieu de moi: {result['new_title']}")
+                    t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
+                    if t_val:
+                        result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
+                        parsed_success = True
+                        copywriting_success = True
+                desc_m = re.search(r'"description"\s*:\s*"([^"]+)"', raw_out)
+                if desc_m:
+                    d_val = desc_m.group(1).strip()
+                    d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
+                    if len(d_val) >= 50:
+                        result["description"] = d_val
+                hash_m = re.search(r'"hashtags"\s*:\s*"([^"]+)"', raw_out)
+                if hash_m:
+                    h_val = hash_m.group(1).strip()
+                    h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
+                    if h_val:
+                        result["hashtags"] = h_val
 
-    # Rào chắn an toàn: Nếu vẫn còn chữ tiếng Trung, tự động dịch trực tiếp tiêu đề gốc hoặc lấy câu phụ đề đầu tiên
+    # Rào chắn an toàn kép: Tiêu đề & Mô tả 100% Tiếng Việt sạch sẽ
     if re.search(r'[\u4e00-\u9fff]', result["new_title"]):
         pure_ch_title = re.sub(r'^\d+_', '', clean_source_title).strip()
         trans_title = google_translate(pure_ch_title, dest='vi')
@@ -465,6 +553,10 @@ CẤU TRÚC JSON MẪU:
                 if t and not re.search(r'[\u4e00-\u9fff]', t) and len(t) > 8:
                     result["new_title"] = f"{prefix_num}{t[:65]}"
                     break
+
+    # Đảm bảo description không còn ký tự Trung Quốc và có cấu trúc bài bản
+    if re.search(r'[\u4e00-\u9fff]', result.get("description", "")) or len(result.get("description", "")) < 60:
+        result["description"] = build_rich_vietnamese_description(result["new_title"], clean_source_title, sample_subs)
 
     return result
 
@@ -1571,13 +1663,16 @@ def process_task(token, task):
     slowdown_tag = f"spd{int(video_slowdown*100)}" if video_slowdown < 0.999 else "spd100"
     extracted_segments_file = os.path.join(workspace, f"extracted_segments_{safe_engine}_{source_lang}_{slowdown_tag}.json")
     
+    has_audio = True
+    has_speech = True
     try:
         import json
-        stt_was_run = False
         if os.path.exists(extracted_segments_file):
             print(Fore.GREEN + "[-] Phat hien du lieu STT cu, bo qua STT va chay tiep...")
             with open(extracted_segments_file, "r", encoding="utf-8") as f:
                 extracted_segments = json.load(f)
+            if len(extracted_segments) == 0:
+                has_speech = False
         else:
             stt_was_run = True
             is_bcut = "bcut" in asr_engine.lower()
@@ -1596,8 +1691,10 @@ def process_task(token, task):
 
                 if result.returncode != 0:
                     err_str = result.stderr.decode('utf-8', errors='ignore').lower()
-                    if "does not contain any stream" in err_str or "no streams to output" in err_str:
-                        raise Exception("Video KHONG CO AM THANH! Xin kiem tra lai file goc.")
+                    if "does not contain any stream" in err_str or "no streams to output" in err_str or "output file is empty" in err_str:
+                        print(Fore.YELLOW + "  [i] Video KHONG CO LUONG AM THANH (Silent Video). Bo qua buoc nhan dang giong noi...")
+                        has_audio = False
+                        has_speech = False
                     else:
                         raise Exception(f"Loi FFMPEG khi trich xuat am thanh: {err_str[-150:]}")
 
@@ -1626,7 +1723,7 @@ def process_task(token, task):
             print(Fore.CYAN + f"[-] Che do STT: {stt_preset.upper()} | Tap am: {noise_level.upper()} (Model: {model_size}, Beam: {beam_size}, VAD: {vad_params}, PrevTextCond: {profile['condition_on_previous_text']})")
             
             whisper_input_audio = audio_path
-            if noise_level == "noisy":
+            if has_speech and noise_level == "noisy":
                 print(Fore.CYAN + "[-] Dang chay Demucs AI de tach giong noi khoi nhac nen (Vocal Isolation)...")
                 try:
                     requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "transcribing", "progress": 25}, headers=headers)
@@ -1656,20 +1753,8 @@ def process_task(token, task):
                     else:
                         print(Fore.YELLOW + "  [!] Demucs that bai hoac chua duoc cai, fallback dung audio goc.")
                 except Exception as demucs_err:
-                    print(Fore.YELLOW + f"  [!] Gap loi khi chay Demucs: {str(demucs_err)}. Fallback dung audio goc.")
+                    print(Fore.YELLOW + f"  [!] Demucs that bai, tiep tuc voi am thanh goc: {demucs_err}")
 
-            if model_size == "base":
-                print(Fore.YELLOW + "  [!] Dang tai model Whisper 'base' neu chua co tren o dia (~150MB). Vui long cho...")
-
-            from faster_whisper import WhisperModel
-            try:
-                model = WhisperModel(model_size, device="auto", compute_type="int8")
-            except Exception as model_err:
-                print(Fore.YELLOW + f"  [!] Loi nap model Whisper GPU ({model_size}): {model_err}. Dang thu fallback sang CPU...")
-                model = WhisperModel(model_size, device="cpu", compute_type="int8")
-            
-            asr_start_time = time.time()
-            
             # --- Tích hợp AI Pipeline: Trích xuất initial_prompt từ translateContext ---
             initial_prompt = None
             translate_ctx = task.get("translateContext", "")
@@ -1682,72 +1767,90 @@ def process_task(token, task):
                     initial_prompt = ", ".join(matches[:30])
                     print(Fore.CYAN + f"[-] Đã tiêm {len(matches[:30])} từ vựng chuyên ngành vào Whisper initial_prompt.")
 
-            transcribe_kwargs = {
-                "beam_size": beam_size,
-                "vad_filter": True,
-                "condition_on_previous_text": profile["condition_on_previous_text"]
-            }
-            if vad_params:
-                transcribe_kwargs["vad_parameters"] = vad_params
-            if initial_prompt:
-                transcribe_kwargs["initial_prompt"] = initial_prompt
-
-            try:
-                segments, info = model.transcribe(whisper_input_audio, **transcribe_kwargs)
-            except Exception as trans_err:
-                print(Fore.YELLOW + f"  [!] Loi chay Whisper GPU ({model_size}): {trans_err}. Dang thu fallback sang CPU...")
-                model = WhisperModel(model_size, device="cpu", compute_type="int8")
-                segments, info = model.transcribe(whisper_input_audio, **transcribe_kwargs)
-            
             extracted_segments = []
-            prev_end = 0.0
-            
-            for segment in segments:
-                s_start = segment.start
-                s_end = segment.end
-                s_text = segment.text.strip()
+            if has_speech and os.path.exists(whisper_input_audio):
+                asr_start_time = time.time()
+                from faster_whisper import WhisperModel
                 
-                if duration_sec > 0 and len(extracted_segments) % 5 == 0:
-                    current_prog = int(30 + (s_end / duration_sec) * 30)
-                    current_prog = min(59, current_prog)
-                    try:
-                        requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "transcribing", "progress": current_prog}, headers=headers)
-                    except:
-                        pass
+                model = None
+                try:
+                    model = WhisperModel(model_size, device="cuda", compute_type="float16")
+                except Exception as cuda_err:
+                    print(Fore.YELLOW + f"  [!] Khong the tai Whisper CUDA ({model_size}): {cuda_err}. Dang su dung CPU...")
+                    model = WhisperModel(model_size, device="cpu", compute_type="int8")
                 
+                transcribe_kwargs = {
+                    "language": source_lang,
+                    "beam_size": beam_size,
+                    "word_timestamps": False,
+                    "condition_on_previous_text": profile["condition_on_previous_text"]
+                }
+                if vad_params:
+                    transcribe_kwargs["vad_parameters"] = vad_params
+                if initial_prompt:
+                    transcribe_kwargs["initial_prompt"] = initial_prompt
+
+                try:
+                    segments, info = model.transcribe(whisper_input_audio, **transcribe_kwargs)
+                except Exception as trans_err:
+                    print(Fore.YELLOW + f"  [!] Loi chay Whisper GPU ({model_size}): {trans_err}. Dang thu fallback sang CPU...")
+                    model = WhisperModel(model_size, device="cpu", compute_type="int8")
+                    segments, info = model.transcribe(whisper_input_audio, **transcribe_kwargs)
                 
-                if s_start < prev_end:
-                    s_start = prev_end + 0.1
-                
-                if duration_sec > 0 and s_end > duration_sec:
-                    s_end = duration_sec
+                prev_end = 0.0
+                for segment in segments:
+                    s_start = segment.start
+                    s_end = segment.end
+                    s_text = segment.text.strip()
                     
-                if s_end - s_start > 15.0 and len(s_text) < 10:
-                    continue
+                    if duration_sec > 0 and len(extracted_segments) % 5 == 0:
+                        current_prog = int(30 + (s_end / duration_sec) * 30)
+                        current_prog = min(59, current_prog)
+                        try:
+                            requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "transcribing", "progress": current_prog}, headers=headers)
+                        except:
+                            pass
                     
-                if s_start >= s_end or not s_text:
-                    continue
+                    if s_start < prev_end:
+                        s_start = prev_end + 0.1
                     
-                prev_end = s_end
+                    if duration_sec > 0 and s_end > duration_sec:
+                        s_end = duration_sec
+                        
+                    if s_end - s_start > 15.0 and len(s_text) < 10:
+                        continue
+                        
+                    if s_start >= s_end or not s_text:
+                        continue
+                        
+                    prev_end = s_end
+                    
+                    extracted_segments.append({
+                        "start": s_start,
+                        "end": s_end,
+                        "text": s_text
+                    })
+                    print(Fore.WHITE + f"  [{format_timestamp(segment.start)} -> {format_timestamp(segment.end)}] {segment.text}")
                 
-                extracted_segments.append({
-                    "start": s_start,
-                    "end": s_end,
-                    "text": s_text
-                })
-                print(Fore.WHITE + f"  [{format_timestamp(segment.start)} -> {format_timestamp(segment.end)}] {segment.text}")
-                
-            if len(extracted_segments) == 0:
-                raise Exception("Video khong co giong noi (Empty Speech). Vui long chon video co tieng nguoi.")
-                
-            with open(extracted_segments_file, "w", encoding="utf-8") as f:
-                json.dump(extracted_segments, f, ensure_ascii=False, indent=2)
-                
-            asr_end_time = time.time()
-            asr_duration = asr_end_time - asr_start_time
-            print(Fore.YELLOW + Style.BRIGHT + f"\n[!] THOI GIAN HOAN THANH NHAN DANG (STT): {asr_duration:.2f} giay.\n")
-            if not is_bcut:
-                release_resource_lock(token, task_id, "whisper_cpu")
+                if len(extracted_segments) == 0:
+                    print(Fore.YELLOW + "  [i] Video khong co giong noi (Empty Speech / Nhac nen / Khong loi).")
+                    print(Fore.YELLOW + "  [i] Tu dong bo qua STT & TTS de tiep tuc hoan thien Video va AI Publishing Suite...")
+                    has_speech = False
+                    
+                with open(extracted_segments_file, "w", encoding="utf-8") as f:
+                    json.dump(extracted_segments, f, ensure_ascii=False, indent=2)
+                    
+                asr_end_time = time.time()
+                asr_duration = asr_end_time - asr_start_time
+                print(Fore.YELLOW + Style.BRIGHT + f"\n[!] THOI GIAN HOAN THANH NHAN DANG (STT): {asr_duration:.2f} giay.\n")
+                if not is_bcut:
+                    release_resource_lock(token, task_id, "whisper_cpu")
+            else:
+                has_speech = False
+                with open(extracted_segments_file, "w", encoding="utf-8") as f:
+                    json.dump([], f, ensure_ascii=False, indent=2)
+                if not is_bcut:
+                    release_resource_lock(token, task_id, "whisper_cpu")
             
     except Exception as e:
          is_bcut = "bcut" in asr_engine.lower()
@@ -2171,7 +2274,7 @@ Dữ liệu:
 
     # 3. TTS (Long tieng AI)
     dubbed_audio_path = None
-    if task.get("ttsEnabled"):
+    if task.get("ttsEnabled") and len(translated_segments) > 0:
         print(Fore.CYAN + "[-] Dang thuc hien long tieng AI (TTS)...")
         requests.patch(f"{API_BASE_URL}/tasks", json={"action": "update", "taskId": task_id, "status": "tts", "progress": 75}, headers=headers)
         tts_start_time = time.time()
@@ -2508,9 +2611,13 @@ if __name__ == '__main__':
         os.chdir(workspace)
         
         has_dubbed = dubbed_audio_path is not None and os.path.exists("dubbed_audio.wav")
+        has_subtitles = len(translated_segments) > 0 and os.path.exists("vi.srt") and os.path.getsize("vi.srt") > 10
         
         video = ffmpeg.input("input.mp4")
-        video_sub = video.video.filter('subtitles', 'vi.srt', force_style="FontSize=20,PrimaryColour=&HFFFFFF,BackColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=10")
+        if has_subtitles:
+            video_sub = video.video.filter('subtitles', 'vi.srt', force_style="FontSize=20,PrimaryColour=&HFFFFFF,BackColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=10")
+        else:
+            video_sub = video.video
         
         # Trich xuat thong tin video goc va tinh toan target bitrate thong minh
         try:
@@ -2584,7 +2691,10 @@ if __name__ == '__main__':
                     audio_dub = ffmpeg.input("dubbed_audio.wav").audio
                     st = ffmpeg.output(video_sub, audio_dub, render_target_file, vcodec=vc, acodec="aac", audio_bitrate="128k", **extra_args)
             else:
-                st = ffmpeg.output(video_sub, video.audio, render_target_file, vcodec=vc, acodec="aac", audio_bitrate="128k", **extra_args)
+                if has_audio:
+                    st = ffmpeg.output(video_sub, video.audio, render_target_file, vcodec=vc, acodec="aac", audio_bitrate="128k", **extra_args)
+                else:
+                    st = ffmpeg.output(video_sub, render_target_file, vcodec=vc, **extra_args)
             ffmpeg.run(st, overwrite_output=True, quiet=True)
 
         if has_dubbed:
