@@ -184,10 +184,11 @@ CẤU TRÚC JSON MẪU BẮT BUỘC:
       return meaningfulLen >= 6;
     };
 
-    let new_title = String(parsedJson.new_title || '').trim();
-    // Nếu tiêu đề còn chữ Trung hoặc rơi vào rác (như Vlog_AI____, Vlog___ai___AI)
+    // 6. Nhận diện thể loại video và xây dựng mô tả giàu chi tiết
+    const detectedGenre = detectVideoGenre(cleanTitle, cleanTitle, Array.isArray(sampleSubs) ? sampleSubs : []);
+
+    let new_title = String(parsedJson.new_title || parsedJson.title || '').trim();
     if (!isMeaningful(new_title)) {
-      // Dùng câu phụ đề tiếng Việt tiêu biểu đầu tiên nếu có
       const firstValidSub = Array.isArray(sampleSubs)
         ? sampleSubs.find((s: string) => isMeaningful(s))
         : null;
@@ -198,17 +199,37 @@ CẤU TRÚC JSON MẪU BẮT BUỘC:
       }
     }
 
-    let description = String(parsedJson.description || '').trim();
-    // Làm sạch chữ Trung Quốc sót lại trong description nếu có
+    // Đọc linh hoạt mọi biến thể key của description
+    let description = String(
+      parsedJson.description ||
+      parsedJson.desc ||
+      parsedJson.summary ||
+      parsedJson.content ||
+      parsedJson.mota ||
+      parsedJson.mo_ta ||
+      parsedJson.noidung ||
+      ''
+    ).trim();
     description = description.replace(/[\u4e00-\u9fff]/g, '').trim();
-    if (!description || description.length < 30) {
-      description = `Chào mừng các bạn đến với video "${new_title}"!\n\nCùng theo dõi những khoảnh khắc hấp dẫn, diễn biến lôi cuốn và những trải nghiệm đặc sắc nhất được thể hiện trọn vẹn trong tập này.\n\n🔔 Đừng quên bấm Like, Chia sẻ và Đăng ký kênh để đón xem những video mới nhất tiếp theo nhé!`;
+
+    // Nếu DeepSeek không trả về description hoặc trả về quá ngắn (< 100 từ) hoặc sáo rỗng -> Tự động tạo bài mô tả 3 đoạn chi tiết bám sát phụ đề
+    const isGenericDesc = description.includes('khoảnh khắc hấp dẫn, diễn biến lôi cuốn và những trải nghiệm đặc sắc');
+    if (!description || description.length < 120 || isGenericDesc) {
+      description = buildRichDescription(new_title, cleanTitle, Array.isArray(sampleSubs) ? sampleSubs : []);
     }
 
-    let hashtags = String(parsedJson.hashtags || '').trim();
+    // Đọc linh hoạt mọi biến thể key của hashtags
+    let hashtags = String(
+      parsedJson.hashtags ||
+      parsedJson.tags ||
+      parsedJson.tag ||
+      parsedJson.hash_tags ||
+      parsedJson.keywords ||
+      ''
+    ).trim();
     hashtags = hashtags.replace(/[\u4e00-\u9fff]/g, '').trim();
     if (!hashtags || !hashtags.includes('#')) {
-      hashtags = '#reviewphim #xuhuong #phimhay #tomtatphim #video #hot';
+      hashtags = getDefaultHashtags(detectedGenre);
     }
 
     return NextResponse.json({
@@ -221,4 +242,93 @@ CẤU TRÚC JSON MẪU BẮT BUỘC:
     console.error('[API /api/hero-dub/copywriting] Error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
   }
+}
+
+function detectVideoGenre(title: string, rawTitle: string, subs: string[]): string {
+  const fullText = `${title} ${rawTitle} ${subs.join(' ')}`.toLowerCase();
+  
+  if (['小猪', '菜花小猪', '萌宠', '可爱', '宠物', 'heo', 'pig', 'chú heo', 'súp lơ', 'bông cải', 'thú cưng', 'pet', 'búp bê', 'tiểu trư'].some(k => fullText.includes(k))) {
+    return 'pet_animation';
+  }
+  if (['anime', '3d', 'donghua', 'hoạt hình', 'tu tiên', 'tu chân', 'đấu la', 'thôn phệ', 'huyền huyễn', 'tiên hiệp', 'võ hiệp', 'kiếm hiệp', '动漫', '动画', '修仙', '玄幻'].some(k => fullText.includes(k))) {
+    return 'anime_donghua';
+  }
+  if (['ẩm thực', 'món ăn', 'nấu ăn', 'món ngon', 'nướng', 'mukbang', 'cooking', 'food', '美食', '做饭', '吃播'].some(k => fullText.includes(k))) {
+    return 'food_cooking';
+  }
+  if (['sinh tồn', 'hoang dã', 'chế tác', 'nơi trú ẩn', 'nhà gỗ', 'hang đá', 'bushcraft', 'survival', '荒野', '求生', '庇护所', '木屋'].some(k => fullText.includes(k))) {
+    return 'survival_bushcraft';
+  }
+  if (['khoa học', 'khám phá', 'vũ trụ', 'bí ẩn', 'tại sao', 'giải mã', 'tri thức', '科普', '科学', '探索'].some(k => fullText.includes(k))) {
+    return 'science_discovery';
+  }
+  if (['phim', 'drama', 'tổng tài', 'hôn nhân', 'mẹ chồng', 'review phim', 'tóm tắt phim', '短剧', '电视剧', '电影', '剧情'].some(k => fullText.includes(k))) {
+    return 'movie_drama';
+  }
+  return 'general_lifestyle';
+}
+
+function buildRichDescription(new_title: string, rawTitle: string, sampleSubs: string[] = []): string {
+  const genre = detectVideoGenre(new_title, rawTitle, sampleSubs);
+  const validSubs = sampleSubs
+    .filter(s => s && s.length > 8 && !/[\u4e00-\u9fff]/.test(s))
+    .slice(0, 4);
+  const quotes = validSubs.length > 0 ? validSubs.map(s => `"${s.trim()}"`).join(', ') : '';
+
+  if (genre === 'pet_animation') {
+    const p1 = `Chào mừng các bạn đến với tập phim mới nhất về Chú Heo Bông Súp Lơ siêu đáng yêu: "${new_title}"!\nTheo dõi hành trình phiêu lưu dở khóc dở cười của chú heo nhỏ ngây thơ khi bước ra thế giới xung quanh với biết bao tình huống bất ngờ và ngộ nghĩnh.`;
+    const p2 = quotes
+      ? `Trong tập này, chú heo đối mặt với muôn vàn khoảnh khắc đáng nhớ cùng những câu thoại ngây ngô khiến người xem bật cười thích thú: ${quotes}. Từng biểu cảm tròn xoe mắt, dáng đi lũn cũn và lòng tốt chân thành của chú heo chắc chắn sẽ làm tan chảy mọi trái tim!`
+      : `Trong tập này, chú heo nhỏ trải qua những diễn biến vô cùng hài hước và ấm áp khi tương tác cùng mọi người xung quanh. Từng nét biểu cảm bẽn lẽn, sự nhiệt tình và vụng về đáng yêu mang lại cảm giác xả stress cực kỳ thư giãn cho người xem.`;
+    const p3 = `Một tập phim chữa lành (healing) tuyệt vời giúp bạn giải tỏa mọi mệt mỏi sau ngày dài bận rộn.\n\n🔔 Đừng quên bấm LIKE, CHIA SẺ và ĐĂNG KÝ KÊNH để không bỏ lỡ những tập tiếp theo của Chú Heo Bông Súp Lơ nhé!`;
+    return `${p1}\n\n${p2}\n\n${p3}`;
+  }
+
+  if (genre === 'anime_donghua') {
+    const p1 = `Chào mừng các bạn đến với tập phim hoạt hình 3D đỉnh cao: "${new_title}"!\nBước chân vào thế giới huyền ảo đầy mê hoặc với đồ họa sắc nét, những màn giao tranh kịch tính và hành trình đột phá ngoạn mục của các nhân vật chính.`;
+    const p2 = quotes
+      ? `Diễn biến tập phim được đẩy lên cao trào kịch tính với những tình tiết gay cấn và lời thoại đắt giá: ${quotes}. Những bí mật ẩn giấu dần được khai mở, đưa câu chuyện bước sang một bước ngoặt hoàn toàn mới.`
+      : `Diễn biến tập phim mở ra với những màn đối đầu căng thẳng, sự tranh đoạt công pháp và những mưu lược quyết đoán của nhân vật chính khi đứng trước hiểm nguy trùng trùng.`;
+    const p3 = `Kỹ xảo 3D mãn nhãn cùng nhịp phim cuốn hút sẽ mang đến trải nghiệm thị giác tuyệt đỉnh.\n\n🔔 Hãy bấm LIKE, CHIA SẺ và ĐĂNG KÝ KÊNH để theo dõi trọn bộ những tập phim bom tấn tiếp theo nhé!`;
+    return `${p1}\n\n${p2}\n\n${p3}`;
+  }
+
+  if (genre === 'food_cooking') {
+    const p1 = `Chào mừng các bạn đến với không gian ẩm thực ấm cúng và hấp dẫn: "${new_title}"!\nCùng khám phá những bí quyết chế biến món ngon độc đáo và cảm nhận trọn vẹn hương vị tinh túy của từng nguyên liệu.`;
+    const p2 = quotes
+      ? `Tập hôm nay mang đến trải nghiệm vị giác bùng nổ cùng những chia sẻ tận tâm: ${quotes}. Từng công đoạn sơ chế, tẩm ướp đậm đà và canh lửa tỉ mỉ tạo nên món ăn thơm lừng, đẹp mắt và tràn đầy năng lượng.`
+      : `Từng công đoạn lựa chọn nguyên liệu tươi ngon, công thức tẩm ướp đặc biệt và kỹ thuật nấu nướng điêu luyện được chia sẻ trọn vẹn, giúp bạn dễ dàng thực hiện thành công ngay tại nhà.`;
+    const p3 = `Âm thanh xèo xèo sôi sục trên bếp lửa hòa quyện cùng màu sắc bắt mắt mang lại cảm giác thư thái vô cùng (ASMR Cooking).\n\n🔔 Nhấn LIKE, LƯU LẠI công thức và ĐĂNG KÝ KÊNH để học thêm nhiều món ngon mỗi ngày nhé!`;
+    return `${p1}\n\n${p2}\n\n${p3}`;
+  }
+
+  if (genre === 'survival_bushcraft') {
+    const p1 = `Chào mừng các bạn quay trở lại với hành trình sinh tồn và chế tác nơi hoang dã: "${new_title}"!\nCùng hòa mình vào thiên nhiên đại ngàn, nơi sức mạnh ý chí và đôi bàn tay khéo léo biến những điều mộc mạc thành không gian sống kỳ diệu.`;
+    const p2 = quotes
+      ? `Quá trình thực hiện đòi hỏi sự kiên trì và kỹ năng sinh tồn đỉnh cao: ${quotes}. Từng thân gỗ, phiến đá tự nhiên được khai phá, đo đạc và lắp ghép tỉ mỉ để tạo nên công trình vững chãi chống chọi mưa gió đại ngàn.`
+      : `Từ việc tìm kiếm địa thế lý tưởng, đẵn gỗ, dựng khung chịu lực đến hoàn thiện từng góc nhỏ ấm cúng, tất cả đều được thực hiện hoàn toàn thủ công với kỹ năng sinh tồn điêu luyện.`;
+    const p3 = `Âm thanh đẽo gọt mộc mạc hòa cùng tiếng chim rừng xào xạc mang lại cảm giác bình yên, giải tỏa mọi âu lo áp lực.\n\n🔔 Đừng quên bấm LIKE, CHIA SẺ và ĐĂNG KÝ KÊNH để đồng hành cùng chúng mình trong những hành trình tiếp theo!`;
+    return `${p1}\n\n${p2}\n\n${p3}`;
+  }
+
+  // Mặc định / Phim drama / Đời sống
+  const p1 = `Chào mừng các bạn đến với video đặc sắc: "${new_title}"!\nMột câu chuyện lôi cuốn chứa đựng nhiều cung bậc cảm xúc, dẫn dắt người xem qua những diễn biến bất ngờ và sâu sắc.`;
+  const p2 = quotes
+    ? `Tập phim mang đến những tình huống kịch tính, góc nhìn đa chiều cùng những câu đối thoại ấn tượng: ${quotes}. Từng nút thắt dần được mở ra, phản ánh chân thực những mối quan hệ và suy ngẫm ý nghĩa về cuộc sống.`
+    : `Tập phim mang đến những tình huống bất ngờ, sự giằng xé nội tâm và những quyết định then chốt của các nhân vật, đẩy cao trào câu chuyện lên đỉnh điểm.`;
+  const p3 = `Hy vọng tập phim sẽ mang lại cho bạn những phút giây lắng đọng và nguồn năng lượng tích cực.\n\n🔔 Hãy nhấn LIKE, BÌNH LUẬN cảm nghĩ của bạn và ĐĂNG KÝ KÊNH để đón xem những tập mới nhất nhé!`;
+  return `${p1}\n\n${p2}\n\n${p3}`;
+}
+
+function getDefaultHashtags(genre: string): string {
+  const mapping: Record<string, string> = {
+    pet_animation: '#chuheocon #heobongsouplo #heocon #vloghaihuoc #hoathinh3d #thucung #cute #haihuoc #xuhuong #douyin #giaitri',
+    anime_donghua: '#hoathinh3d #donghua #anime #reviewphim #phimhay #xuhuong #tutien #huyenhuyen',
+    food_cooking: '#amthuc #monngon #nauan #cooking #food #mukbang #asmr #monanngon #xuhuong',
+    survival_bushcraft: '#sinhton #hoangda #ruinho #bushcraft #chetao #asmr #nhago #kynangsinhton',
+    science_discovery: '#khoahoc #khampha #bian #vutru #kienthuc #tailieu #thegioidongvat #xuhuong',
+    movie_drama: '#phimngan #drama #tomtatphim #reviewphim #phimhay #xuhuong #phimmoi #tinhcam',
+    general_lifestyle: '#video #cuocsong #thugian #khampha #xuhuong #hot #giaitri'
+  };
+  return mapping[genre] || mapping['general_lifestyle'];
 }

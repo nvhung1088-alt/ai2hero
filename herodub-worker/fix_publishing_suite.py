@@ -581,10 +581,19 @@ def detect_video_genre(title_vi, raw_title="", sample_subs=None):
     - Tên file / Tiêu đề gốc (tiếng Trung / tiếng Anh)
     - Nội dung các câu thoại phụ đề mẫu
     Trả về một trong các nhóm:
-    'anime_donghua', 'movie_drama', 'survival_bushcraft', 'food_cooking', 'science_discovery', 'general_lifestyle'
+    'pet_animation', 'anime_donghua', 'movie_drama', 'survival_bushcraft', 'food_cooking', 'science_discovery', 'general_lifestyle'
     """
     subs_text = " ".join(sample_subs or []).lower() if sample_subs else ""
     full_text = f"{title_vi} {raw_title} {subs_text}".lower()
+
+    # 0. Chú Heo Bông Súp Lơ / Thú cưng / Hoạt hình 3D Cute / Pet Vlog
+    pet_keywords = [
+        "tiểu trư", "chú heo", "heo bông", "súp lơ", "bông cải", "thú cưng", "pet", "búp bê", 
+        "chu heo", "heo con", "lợn nhỏ", "lợn con", "búp bê vải", "gấu bông", "liu jianzhu", "nhỏ đĩ điếm",
+        "小猪", "菜花小猪", "萌宠", "可爱", "宠物", "租房", "面试", "解压", "天桥", "摆摊"
+    ]
+    if any(k in full_text for k in pet_keywords):
+        return "pet_animation"
 
     # 1. Hoạt hình 3D / Anime / Donghua / Tiên hiệp / Tu chân
     anime_keywords = [
@@ -639,6 +648,7 @@ def detect_video_genre(title_vi, raw_title="", sample_subs=None):
 
 def get_default_hashtags_by_genre(genre):
     mapping = {
+        "pet_animation": "#chuheocon #heobongsouplo #heocon #vloghaihuoc #hoathinh3d #thucung #cute #haihuoc #xuhuong #douyin #giaitri",
         "anime_donghua": "#hoathinh3d #donghua #anime #reviewphim #phimhay #xuhuong #tutien #huyenhuyen",
         "movie_drama": "#phimngan #drama #tomtatphim #reviewphim #phimhay #xuhuong #phimmoi #tinhcam",
         "food_cooking": "#amthuc #monngon #nauan #cooking #food #mukbang #asmr #monanngon #xuhuong",
@@ -651,7 +661,7 @@ def get_default_hashtags_by_genre(genre):
 def build_rich_vietnamese_description(title_vi, raw_title="", sample_subs=None):
     """
     Tự động xây dựng bài mô tả video chuẩn SEO 100% Tiếng Việt, chuyên nghiệp và giàu cảm xúc.
-    Tự động thích ứng theo ĐÚNG THỂ LOẠI: Hoạt hình 3D, Phim drama, Ẩm thực, Khoa học, Sinh tồn, Đời sống...
+    Tự động thích ứng theo ĐÚNG THỂ LOẠI: Chú heo bông súp lơ, Hoạt hình 3D, Phim drama, Ẩm thực, Khoa học, Sinh tồn, Đời sống...
     Tuyệt đối không chứa ký tự tiếng Trung nào!
     """
     clean_t = re.sub(r'[\u4e00-\u9fff]', '', str(title_vi or '')).strip()
@@ -662,8 +672,19 @@ def build_rich_vietnamese_description(title_vi, raw_title="", sample_subs=None):
     genre = detect_video_genre(clean_t, raw_title, sample_subs)
     t_lower = (clean_t + " " + str(raw_title or "")).lower()
 
+    # Nhánh 0: Chú Heo Bông Súp Lơ / Thú cưng / Hoạt hình Cute
+    if genre == "pet_animation":
+        p1 = f"Chào mừng các bạn đến với tập phim mới nhất về Chú Heo Bông Súp Lơ siêu đáng yêu: \"{clean_t}\"!\nCùng theo dõi hành trình phiêu lưu dở khóc dở cười của chú heo nhỏ ngây thơ khi bước ra thế giới xung quanh với biết bao tình huống bất ngờ, ấm áp và ngộ nghĩnh."
+        valid_subs = [s.strip() for s in (sample_subs or []) if s and len(s) > 8 and not re.search(r'[\u4e00-\u9fff]', s)][:4]
+        if valid_subs:
+            quotes = "; ".join([f'"{s}"' for s in valid_subs])
+            p2 = f"Trong tập này, chú heo đối mặt với những thử thách bất ngờ cùng những câu thoại ngây ngô khiến người xem bật cười thích thú: {quotes}. Từng biểu cảm tròn xoe mắt, dáng đi lũn cũn và lòng tốt chân thành của chú heo chắc chắn sẽ làm tan chảy mọi trái tim!"
+        else:
+            p2 = "Trong tập này, chú heo nhỏ trải qua những diễn biến vô cùng hài hước và ấm áp khi tương tác cùng mọi người xung quanh. Từng nét biểu cảm bẽn lẽn, sự nhiệt tình và vụng về đáng yêu mang lại cảm giác xả stress cực kỳ thư giãn cho người xem."
+        p3 = "Một tập phim chữa lành (healing) tuyệt vời giúp bạn giải tỏa mọi mệt mỏi và áp lực sau ngày dài bận rộn.\n\n🔔 Đừng quên bấm LIKE, CHIA SẺ và ĐĂNG KÝ KÊNH để không bỏ lỡ những tập tiếp theo của Chú Heo Bông Súp Lơ nhé!"
+
     # Nhánh 1: Hoạt hình 3D / Anime / Donghua / Tiên hiệp
-    if genre == "anime_donghua":
+    elif genre == "anime_donghua":
         p1 = f"Chào mừng các bạn đến với tập phim mới nhất: \"{clean_t}\"!\nBước vào thế giới hoạt hình 3D huyền ảo với chất lượng đồ họa đỉnh cao, mở ra hành trình phiêu lưu kỳ thú và những trận chiến mãn nhãn không thể rời mắt."
         p2 = "Trong tập này: Diễn biến câu chuyện được đẩy lên cao trào kịch tính với những màn chạm trán nảy lửa giữa các thế lực, sự đột phá công pháp và mưu lược quyết đoán của nhân vật chính khi đối mặt với hiểm nguy trùng trùng."
         if sample_subs and len(sample_subs) >= 2:
@@ -893,9 +914,20 @@ CẤU TRÚC JSON MẪU:
             result["new_title"] = f"{prefix_num}{genre_name_map.get(init_genre, 'Tác Phẩm Đặc Sắc')}"
             print(Fore.CYAN + Style.BRIGHT + f"  [-] Đã đặt tiêu đề theo thể loại video: {result['new_title']}")
 
-    # Đảm bảo description sạch tiếng Trung và có cấu trúc bài bản
-    if re.search(r'[\u4e00-\u9fff]', result.get("description", "")) or len(result.get("description", "")) < 60:
+    # Đảm bảo description sạch tiếng Trung và có cấu trúc bài bản, tuyệt đối không dùng văn mẫu sáo rỗng
+    desc_val = str(result.get("description", "")).strip()
+    is_generic_desc = any(phrase in desc_val for phrase in [
+        "khoảnh khắc hấp dẫn, diễn biến lôi cuốn và những trải nghiệm đặc sắc",
+        "trải nghiệm đặc sắc nhất được thể hiện trọn vẹn"
+    ]) and len(desc_val) < 300
+    if not desc_val or len(desc_val) < 120 or is_generic_desc or re.search(r'[\u4e00-\u9fff]', desc_val):
         result["description"] = build_rich_vietnamese_description(result["new_title"], clean_source_title, sample_subs)
+
+    # Đảm bảo hashtags đúng thể loại (không gán bừa #reviewphim cho video thú cưng hoặc sinh tồn)
+    curr_genre = detect_video_genre(result["new_title"], clean_source_title, sample_subs)
+    hash_val = str(result.get("hashtags", "")).strip()
+    if not hash_val or ("#reviewphim" in hash_val and curr_genre in ["pet_animation", "survival_bushcraft", "food_cooking"]):
+        result["hashtags"] = get_default_hashtags_by_genre(curr_genre)
 
     return result
 
@@ -928,7 +960,7 @@ def is_top_title_layout(title_text="", path_or_name="", genre=None):
     - TOP (14% chiều cao): Thể loại Hoạt hình 3D, Chú heo, Thú cưng, Vlog đời sống, Hài hước, Drama ngắn.
     - BOTTOM (68% chiều cao): Thể loại Sinh tồn hoang dã, Chế tác, Nấu ăn, Khám phá thiên nhiên.
     """
-    if genre in ["anime_donghua", "general_lifestyle", "movie_drama"]:
+    if genre in ["pet_animation", "anime_donghua", "general_lifestyle", "movie_drama"]:
         return True
     
     check_str = f"{title_text} {path_or_name} {genre or ''}".lower()
