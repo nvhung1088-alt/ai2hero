@@ -910,12 +910,16 @@ def get_gemini_api_key():
 def clean_image_with_gemini_flash(thumb_src, out_clean_path, api_key=None, bridge_server=None):
     """
     BƯỚC 1: XÓA SẠCH TOÀN BỘ CHỮ TIẾNG TRUNG QUỐC & WATERMARK BẰNG GEMINI.
+    - Ưu tiên 1: Gọi thẳng Gemini Flash Image Direct API (Free Tier) siêu tốc trong 3 giây.
+    - Ưu tiên 2: Fallback sang Browser AI Bridge (Gemini Web) nếu không có API Key.
     - Giữ nguyên 100% nhân vật, nét mặt, trang phục, bối cảnh, ánh sáng và màu sắc.
     - TUYỆT ĐỐI KHÔNG VIẾT CHỮ TIẾNG VIỆT TẠI BƯỚC NÀY (Để Worker viết ở Bước 2).
     - Xuất ra file ảnh nền hoàn toàn sạch chữ (Clean Background).
     """
     if not thumb_src or not os.path.exists(thumb_src):
         return None
+
+    import shutil
 
     clean_prompt = """Hãy chỉnh sửa bức ảnh đính kèm này (Image Inpainting / Text Removal):
 1. XÓA BỎ HOÀN TOÀN tất cả các dòng chữ tiếng Trung Quốc và watermark/logo trên ảnh.
@@ -924,7 +928,60 @@ def clean_image_with_gemini_flash(thumb_src, out_clean_path, api_key=None, bridg
 4. TUYỆT ĐỐI KHÔNG VIẾT BẤT KỲ CHỮ NÀO LÊN ẢNH, KHÔNG VẼ THÊM KHUNG ĐEN.
 5. Xuất ra hình ảnh nền hoàn toàn sạch chữ (clean edited image without any text)."""
 
-    # 1. ƯU TIÊN 1: BROWSER AI BRIDGE (Gemini Web Free qua Chrome Extension - 0đ)
+    # 1. ƯU TIÊN 1 TUYỆT ĐỐI: GEMINI FLASH IMAGE DIRECT API (Free Tier, 3s xong ngay, không phụ thuộc trình duyệt)
+    key = api_key or get_gemini_api_key()
+    if key:
+        try:
+            print(Fore.CYAN + Style.BRIGHT + f"  [⚡ Gemini Flash Image API] Dang gui anh sang Gemini Flash de xoa chu tieng Trung (3s)...")
+            with open(thumb_src, "rb") as f:
+                b64_img = base64.b64encode(f.read()).decode("utf-8")
+
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key={key}"
+            payload = {
+                "contents": [{
+                    "parts": [
+                        {"text": clean_prompt},
+                        {"inline_data": {"mime_type": "image/jpeg", "data": b64_img}}
+                    ]
+                }]
+            }
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=45) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                candidates = res_data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    for p in parts:
+                        inline = p.get("inlineData") or p.get("inline_data")
+                        if inline and inline.get("data"):
+                            img_bytes = base64.b64decode(inline["data"])
+                            os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
+                            with open(out_clean_path, "wb") as out_f:
+                                out_f.write(img_bytes)
+
+                            # Tẩy sạch nốt tem logo ở góc dưới phải bằng PIL patch nếu còn
+                            try:
+                                from PIL import Image, ImageFilter
+                                c_im = Image.open(out_clean_path).convert("RGBA")
+                                cw, ch = c_im.size
+                                wm_w = int(cw * 0.12)
+                                wm_h = int(ch * 0.08)
+                                wm_patch = c_im.crop((cw - wm_w, ch - wm_h * 2, cw, ch - wm_h)).filter(ImageFilter.GaussianBlur(2))
+                                c_im.paste(wm_patch, (cw - wm_w, ch - wm_h))
+                                c_im.convert("RGB").save(out_clean_path, quality=95)
+                            except Exception:
+                                pass
+
+                            print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Flash Image] Da xoa sach chu TQ thanh cong (3s, {len(img_bytes)//1024} KB)!")
+                            return out_clean_path
+        except Exception as e:
+            print(Fore.YELLOW + f"  [!] Gemini Flash API loi: {e}, chuyen sang Browser AI Bridge...")
+
+    # 2. ƯU TIÊN 2 (DỰ PHÒNG): BROWSER AI BRIDGE (Gemini Web qua Chrome Extension nếu API lỗi)
     if bridge_server and bridge_server.is_connected():
         try:
             print(Fore.CYAN + Style.BRIGHT + f"  [🌐 Gemini Web Clean] Dang gui anh sang Gemini Web de xoa sach chu tieng Trung...")
@@ -962,60 +1019,7 @@ def clean_image_with_gemini_flash(thumb_src, out_clean_path, api_key=None, bridg
                 print(Fore.GREEN + Style.BRIGHT + f"  [✓ Downloads Watcher] Da phat hien anh nen sach tai ve may: {os.path.basename(dl_img)}!")
                 return out_clean_path
         except Exception as bridge_err:
-            print(Fore.YELLOW + f"  [!] Gemini Bridge Clean loi: {bridge_err}, chuyen sang Flash API...")
-
-    # 2. ƯU TIÊN 2: GEMINI FLASH IMAGE DIRECT API (Neu co Gemini API Key)
-    key = api_key or get_gemini_api_key()
-    if key:
-        try:
-            print(Fore.CYAN + f"  [⚡ Gemini Flash Image] Dang gui anh sang Gemini Flash API de xoa chu tieng Trung (3s)...")
-            with open(thumb_src, "rb") as f:
-                b64_img = base64.b64encode(f.read()).decode("utf-8")
-
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key={key}"
-            payload = {
-                "contents": [{
-                    "parts": [
-                        {"text": clean_prompt},
-                        {"inline_data": {"mime_type": "image/jpeg", "data": b64_img}}
-                    ]
-                }]
-            }
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=45) as resp:
-                res_data = json.loads(resp.read().decode("utf-8"))
-                candidates = res_data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    for p in parts:
-                        inline = p.get("inlineData") or p.get("inline_data")
-                        if inline and inline.get("data"):
-                            img_bytes = base64.b64decode(inline["data"])
-                            os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
-                            with open(out_clean_path, "wb") as out_f:
-                                out_f.write(img_bytes)
-
-                            # Tay sach nốt tem logo ở góc dưới phải bằng PIL patch nếu còn
-                            try:
-                                from PIL import Image, ImageFilter
-                                c_im = Image.open(out_clean_path).convert("RGBA")
-                                cw, ch = c_im.size
-                                wm_w = int(cw * 0.12)
-                                wm_h = int(ch * 0.08)
-                                wm_patch = c_im.crop((cw - wm_w, ch - wm_h * 2, cw, ch - wm_h)).filter(ImageFilter.GaussianBlur(2))
-                                c_im.paste(wm_patch, (cw - wm_w, ch - wm_h))
-                                c_im.convert("RGB").save(out_clean_path, quality=95)
-                            except Exception:
-                                pass
-
-                            print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Flash Image] Da xoa sach chu TQ thanh cong (3s, {len(img_bytes)//1024} KB)!")
-                            return out_clean_path
-        except Exception as e:
-            print(Fore.YELLOW + f"  [!] Gemini Flash API: {e}")
+            print(Fore.YELLOW + f"  [!] Gemini Bridge Clean loi: {bridge_err}")
 
     # 3. FALLBACK CỤC BỘ: Tay mo watermark goc phai neu co
     try:

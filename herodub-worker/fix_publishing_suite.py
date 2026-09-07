@@ -1079,51 +1079,11 @@ def clean_image_with_gemini_flash(thumb_src, out_clean_path, api_key=None, bridg
 4. TUYỆT ĐỐI KHÔNG VIẾT BẤT KỲ CHỮ NÀO LÊN ẢNH, KHÔNG VẼ THÊM KHUNG ĐEN.
 5. Xuất ra hình ảnh nền hoàn toàn sạch chữ (clean edited image without any text)."""
 
-    # 1. ƯU TIÊN 1: BROWSER AI BRIDGE (Gemini Web Free qua Chrome Extension - 0đ)
-    if bridge_server and bridge_server.is_connected():
-        try:
-            print(Fore.CYAN + Style.BRIGHT + f"  [🌐 Gemini Web Clean] Dang gui anh sang Gemini Web de xoa sach chu tieng Trung...")
-            with open(thumb_src, "rb") as img_f:
-                b64_data = base64.b64encode(img_f.read()).decode('utf-8')
-                img_b64 = f"data:image/jpeg;base64,{b64_data}"
-
-            payload = [{"name": os.path.basename(thumb_src), "type": "image/jpeg", "data": img_b64}]
-            start_t = time.time()
-            res = bridge_server.execute_job(clean_prompt, attachments=payload, target_ai="gemini", timeout=75, allow_failover=True)
-            if res and res.get("success") and res.get("result"):
-                m = re.search(r'!\[.*?\]\((data:image/[^)]+|https?://[^\s\)]+)\)', str(res.get("result")))
-                if m:
-                    u = m.group(1)
-                    if u.startswith("data:image/"):
-                        raw_b64 = u.split(",", 1)[1]
-                        os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
-                        with open(out_clean_path, "wb") as out_f:
-                            out_f.write(base64.b64decode(raw_b64))
-                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Web Clean] Da xoa sach chu TQ va nhan anh nen thanh cong (Base64)!")
-                        return out_clean_path
-                    elif u.startswith("http"):
-                        req_dl = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"})
-                        with urllib.request.urlopen(req_dl, timeout=20) as dl_resp:
-                            os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
-                            with open(out_clean_path, "wb") as out_f:
-                                out_f.write(dl_resp.read())
-                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Web Clean] Da tai anh nen sach tu Gemini Web URL!")
-                        return out_clean_path
-
-            # Watcher Downloads folder neu Extension tai ve may
-            dl_img = get_latest_download_image(start_t - 2, timeout=4)
-            if dl_img:
-                shutil.copy2(dl_img, out_clean_path)
-                print(Fore.GREEN + Style.BRIGHT + f"  [✓ Downloads Watcher] Da phat hien anh nen sach tai ve may: {os.path.basename(dl_img)}!")
-                return out_clean_path
-        except Exception as bridge_err:
-            print(Fore.YELLOW + f"  [!] Gemini Bridge Clean loi: {bridge_err}, chuyen sang Flash API...")
-
-    # 2. ƯU TIÊN 2: GEMINI FLASH IMAGE DIRECT API
+    # 1. ƯU TIÊN 1 TUYỆT ĐỐI: GEMINI FLASH IMAGE DIRECT API (Free Tier, 3s xong ngay, không phụ thuộc trình duyệt)
     key = api_key or get_gemini_api_key()
     if key:
         try:
-            print(Fore.CYAN + f"  [⚡ Gemini Flash Image] Dang gui anh sang Gemini Flash API de xoa chu tieng Trung (3s)...")
+            print(Fore.CYAN + Style.BRIGHT + f"  [⚡ Gemini Flash Image API] Dang gui anh sang Gemini Flash de xoa chu tieng Trung (3s)...")
             with open(thumb_src, "rb") as f:
                 b64_img = base64.b64encode(f.read()).decode("utf-8")
 
@@ -1169,7 +1129,48 @@ def clean_image_with_gemini_flash(thumb_src, out_clean_path, api_key=None, bridg
                             print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Flash Image] Da xoa sach chu TQ thanh cong (3s, {len(img_bytes)//1024} KB)!")
                             return out_clean_path
         except Exception as e:
-            print(Fore.YELLOW + f"  [!] Gemini Flash API: {e}")
+            print(Fore.YELLOW + f"  [!] Gemini Flash API loi: {e}, chuyen sang Browser AI Bridge...")
+
+    # 2. ƯU TIÊN 2 (DỰ PHÒNG): BROWSER AI BRIDGE (Gemini Web qua Chrome Extension nếu API lỗi)
+    if bridge_server and bridge_server.is_connected():
+        try:
+            import shutil
+            print(Fore.CYAN + Style.BRIGHT + f"  [🌐 Gemini Web Clean] Dang gui anh sang Gemini Web de xoa sach chu tieng Trung...")
+            with open(thumb_src, "rb") as img_f:
+                b64_data = base64.b64encode(img_f.read()).decode('utf-8')
+                img_b64 = f"data:image/jpeg;base64,{b64_data}"
+
+            payload = [{"name": os.path.basename(thumb_src), "type": "image/jpeg", "data": img_b64}]
+            start_t = time.time()
+            res = bridge_server.execute_job(clean_prompt, attachments=payload, target_ai="gemini", timeout=75, allow_failover=True)
+            if res and res.get("success") and res.get("result"):
+                m = re.search(r'!\[.*?\]\((data:image/[^)]+|https?://[^\s\)]+)\)', str(res.get("result")))
+                if m:
+                    u = m.group(1)
+                    if u.startswith("data:image/"):
+                        raw_b64 = u.split(",", 1)[1]
+                        os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
+                        with open(out_clean_path, "wb") as out_f:
+                            out_f.write(base64.b64decode(raw_b64))
+                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Web Clean] Da xoa sach chu TQ va nhan anh nen thanh cong (Base64)!")
+                        return out_clean_path
+                    elif u.startswith("http"):
+                        req_dl = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"})
+                        with urllib.request.urlopen(req_dl, timeout=20) as dl_resp:
+                            os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
+                            with open(out_clean_path, "wb") as out_f:
+                                out_f.write(dl_resp.read())
+                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Web Clean] Da tai anh nen sach tu Gemini Web URL!")
+                        return out_clean_path
+
+            # Watcher Downloads folder neu Extension tai ve may
+            dl_img = get_latest_download_image(start_t - 2, timeout=4)
+            if dl_img:
+                shutil.copy2(dl_img, out_clean_path)
+                print(Fore.GREEN + Style.BRIGHT + f"  [✓ Downloads Watcher] Da phat hien anh nen sach tai ve may: {os.path.basename(dl_img)}!")
+                return out_clean_path
+        except Exception as bridge_err:
+            print(Fore.YELLOW + f"  [!] Gemini Bridge Clean loi: {bridge_err}")
 
     # 3. FALLBACK CỤC BỘ: Tra ve anh goc
     return thumb_src
