@@ -742,12 +742,39 @@ CẤU TRÚC JSON MẪU:
 
     return result
 
-def create_local_3d_gold_thumbnail(src_path, title_text, out_path, tag_text="THUYẾT MINH"):
+def is_top_title_layout(title_text="", path_or_name="", genre=None):
+    """
+    Tự động nhận diện bố cục vị trí tiêu đề:
+    - TOP (14% chiều cao): Thể loại Hoạt hình 3D, Chú heo, Thú cưng, Vlog đời sống, Hài hước, Drama ngắn.
+    - BOTTOM (68% chiều cao): Thể loại Sinh tồn hoang dã, Chế tác, Nấu ăn, Khám phá thiên nhiên.
+    """
+    if genre in ["anime_donghua", "general_lifestyle", "movie_drama"]:
+        return True
+    
+    check_str = f"{title_text} {path_or_name} {genre or ''}".lower()
+    top_keywords = [
+        "vlog", "heo", "pig", "chu heo", "anime", "hoat hinh", "3d", "donghua",
+        "hai huoc", "drama", "pet", "meo", "cho", "thu cung", "con heo", "be heo",
+        "tieu da", "tieu do", "sa ba", "chibi", "bac si", "phong kham"
+    ]
+    if any(k in check_str for k in top_keywords):
+        return True
+        
+    bottom_keywords = [
+        "sinh ton", "hoang da", "che tac", "rui nho", "nau an", "am thuc",
+        "bushcraft", "survival", "trai", "be ca", "ho ca", "xay dung", "cau ca"
+    ]
+    if any(k in check_str for k in bottom_keywords):
+        return False
+        
+    return False
+
+def create_local_3d_gold_thumbnail(src_path, title_text, out_path, tag_text="THUYẾT MINH", position="auto", genre=None):
     """
     LOCAL 3D GOLD THUMBNAIL ENGINE (0đ, KHÔNG CẦN API):
     - Tự động resize ảnh gốc về chuẩn 720p sắc nét.
     - Phủ Badge đỏ ruby góc trên trái che sạch logo/badge Trung Quốc cũ.
-    - Tạo Khung biển hiệu Charcoal viền Vàng Kim bo góc che 100% chữ tiếng Trung ở nửa dưới.
+    - Bố cục thông minh: Nửa trên (14% chiều cao) cho Hoạt hình/Vlog/Chú heo, hoặc Nửa dưới (68%) cho Sinh tồn/Nấu ăn.
     - Vẽ tiêu đề Tiếng Việt Typography 3D Vàng Kim (Extrusion Shadow + Black Stroke + Gold Sheen).
     - Tự động căn chỉnh font size và ngắt dòng nghệ thuật.
     """
@@ -816,7 +843,19 @@ def create_local_3d_gold_thumbnail(src_path, title_text, out_path, tag_text="THU
             im = Image.alpha_composite(im, badge_layer)
             
         # 2. TYPOGRAPHY 3D VÀNG KIM TRỰC TIẾP (TUYỆT ĐỐI KHÔNG CÓ BẢNG ĐEN CHE BỨC ẢNH)
-        text_start_y = max(int(target_h * 0.72) - (total_text_h // 2), int(target_h * 0.55))
+        is_top = False
+        if position == "top":
+            is_top = True
+        elif position == "bottom":
+            is_top = False
+        else:
+            is_top = is_top_title_layout(title, src_path, genre)
+
+        if is_top:
+            text_start_y = int(target_h * 0.14)
+        else:
+            text_start_y = max(int(target_h * 0.72) - (total_text_h // 2), int(target_h * 0.55))
+
         text_layer = Image.new('RGBA', (target_w, target_h), (0, 0, 0, 0))
         d_text = ImageDraw.Draw(text_layer)
         
@@ -993,7 +1032,7 @@ def clean_image_with_gemini_flash(thumb_src, out_clean_path, api_key=None, bridg
     except Exception:
         return thumb_src
 
-def render_adaptive_vietnamese_thumbnail(bg_image_path, title_text, out_path, style="auto", tag_text="THUYẾT MINH"):
+def render_adaptive_vietnamese_thumbnail(bg_image_path, title_text, out_path, style="auto", tag_text="THUYẾT MINH", position="auto", genre=None):
     """
     BƯỚC 2: Ghép tiêu đề tiếng Việt chuẩn Typography vào ĐÚNG VỊ TRÍ CHỮ CŨ:
     - Nhận diện Aspect Ratio (Ngang 16:9 vs Dọc 9:16).
@@ -1102,7 +1141,7 @@ def render_adaptive_vietnamese_thumbnail(bg_image_path, title_text, out_path, st
         # TRƯỜNG HỢP 2: ẢNH DỌC 9:16 (VLOG / SINH TỒN / SHORTS / TIKTOK)
         # ----------------------------------------------------
         else:
-            final_path = create_local_3d_gold_thumbnail(bg_image_path, clean_title, out_path, tag_text=tag_text)
+            final_path = create_local_3d_gold_thumbnail(bg_image_path, clean_title, out_path, tag_text=tag_text, position=position, genre=genre)
             return final_path
 
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -1112,7 +1151,7 @@ def render_adaptive_vietnamese_thumbnail(bg_image_path, title_text, out_path, st
         print(Fore.YELLOW + f"  [!] Loi render Adaptive Thumbnail: {e}")
         return None
 
-def redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, bridge_server):
+def redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, bridge_server, genre=None, position="auto"):
     """
     QUY TRÌNH 2 BƯỚC THIẾT KẾ THUMBNAIL (Gemini Flash + Worker Typography):
     - Bước 1: Gọi Gemini Flash xóa sạch 100% chữ tiếng Trung & watermark (3 giây).
@@ -1162,14 +1201,14 @@ def redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, br
 
     # BƯỚC 2: WORKER VIẾT TIÊU ĐỀ TIẾNG VIỆT CHUẨN TYPOGRAPHY 3D VÀO ĐÚNG VỊ TRÍ CHỮ CŨ
     print(Fore.CYAN + f"  [Bước 2: Worker Typography Engine] Dang ve chu tieng Viet co dau 3D len anh...")
-    res = render_adaptive_vietnamese_thumbnail(effective_bg, clean_title, final_thumb, style=font_style, tag_text="THUYẾT MINH")
+    res = render_adaptive_vietnamese_thumbnail(effective_bg, clean_title, final_thumb, style=font_style, tag_text="THUYẾT MINH", position=position, genre=genre)
     if res and os.path.exists(res):
         print(Fore.GREEN + Style.BRIGHT + f"  [✓ Hoàn Tất 100%] Da tao anh bia tieng Viet thanh cong: {os.path.basename(res)}!")
         return res
 
     # Fallback cục bộ nếu render_adaptive gặp sự cố
     local_thumb = os.path.join(dest_dir, f"_local_3d_{os.path.basename(thumb_src)}")
-    return create_local_3d_gold_thumbnail(effective_bg, clean_title, local_thumb, tag_text="THUYẾT MINH")
+    return create_local_3d_gold_thumbnail(effective_bg, clean_title, local_thumb, tag_text="THUYẾT MINH", position=position, genre=genre)
 
 
 def get_latest_download_image(start_time, timeout=5):
@@ -3027,7 +3066,9 @@ if __name__ == '__main__':
         time.sleep(2.0)
 
     # Luồng 2: Thiết kế lại Thumbnail (Image-Only, nếu được bật)
-    new_thumb_url = redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, bridge_server)
+    sample_texts = [s.get('text', '') for s in translated_segments[:10]] if translated_segments else []
+    detected_genre = copy_pack.get("genre") or detect_video_genre(new_title, raw_source, sample_subs=sample_texts)
+    new_thumb_url = redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, bridge_server, genre=detected_genre, position="auto")
     pub_pack = {
         "new_title": new_title,
         "description": copy_pack.get("description", ""),
@@ -3134,7 +3175,7 @@ if __name__ == '__main__':
             # Fallback 3: TỰ ĐỘNG VẼ ẢNH BÌA 3D VÀNG KIM TIẾNG VIỆT (Local 0đ) NẾU CHƯA CÓ ẢNH BÌA MỚI
             if not saved_thumb_success and task.get("redesignThumbnailEnabled") and thumb_src and os.path.exists(thumb_src):
                 print(Fore.CYAN + Style.BRIGHT + f"  [⚡ Local 3D Gold Engine] Dang tu dong ghep chu 3D Vang Kim tieng Viet len anh goc...")
-                local_thumb_res = create_local_3d_gold_thumbnail(thumb_src, new_title, dest_thumb, tag_text="THUYẾT MINH")
+                local_thumb_res = create_local_3d_gold_thumbnail(thumb_src, new_title, dest_thumb, tag_text="THUYẾT MINH", position="auto", genre=detected_genre)
                 if local_thumb_res and os.path.exists(dest_thumb):
                     saved_thumb_success = True
                     print(Fore.GREEN + Style.BRIGHT + f"[✓] Da tao anh bia 3D Vang Kim tieng Viet cuc bo thanh cong: {os.path.basename(dest_thumb)}")

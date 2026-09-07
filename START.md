@@ -2185,6 +2185,12 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
     - Dashboard Web: Thêm trường chọn "Phong cách chữ Tiếng Việt (Typography)" trên form tạo task lồng tiếng và tự động ghi nhớ tùy chọn vào `localStorage`.
     - Tối ưu UX Thumbnail: Phân tách rõ ràng 3 Phương án thiết kế ảnh bìa (`Gemini Flash API + Worker`, `Browser AI Bridge`, `Local Worker 3D Gold`), điều kiện hóa hiển thị chọn Phong cách chữ Typography chỉ khi dùng Worker engines, ẩn khi dùng Browser AI Bridge.
     - Đã test `tsc --noEmit`, `pnpm build`, push lên GitHub `origin main` kích hoạt Vercel Production deployment tự động tại `https://ai2hero-flax.vercel.app/hero-dub/t/3/dashboard`.
-
-
-
+- **2026-09-07**:
+  - Khắc phục triệt để lỗi tiêu đề rác `Vlog___ai___AI` và chuẩn hóa hoàn toàn bộ nhận diện ý nghĩa tiêu đề (`is_meaningful_title`): Tích hợp danh sách STOP_WORDS, loại bỏ việc dùng `re.sub` xóa chữ Hán khiến băm nát chuỗi tiếng Anh, kích hoạt cơ chế dịch cứu hộ tự động qua Google Translate / câu phụ đề tiêu biểu.
+  - Chuẩn hóa toàn diện **Pipeline 2 bước thiết kế thumbnail** (Gemini Flash + Worker Typography):
+    - Bước 1: Gemini Flash chỉ làm duy nhất nhiệm vụ Image Inpainting xóa sạch chữ tiếng Trung & watermark (3 giây), giữ nguyên 100% nhân vật, nét mặt và bối cảnh.
+    - Bước 2: Worker dùng Pillow vẽ tiêu đề tiếng Việt chuẩn Typography 3D Vàng kim viền đen dày nổi bật.
+  - Nâng cấp **Bố cục vị trí tiêu đề tự động (Smart Adaptive Title Positioning)**:
+    - Nhận diện thể loại và từ khóa: Nhóm Hoạt hình 3D, Chú heo con, Thú cưng, Vlog đời sống, Drama ngắn -> Tự động đặt tiêu đề ở NỬA TRÊN (TOP, $Y \approx 14\%$ chiều cao ảnh, đúng vị trí khoảng trống trên đầu nhân vật nơi tiêu đề gốc hiển thị).
+    - Nhóm Sinh tồn hoang dã, Chế tác, Ẩm thực, Nấu ăn -> Tự động đặt tiêu đề ở NỬA DƯỚI (BOTTOM, $Y \approx 68\%$).
+    - Đồng bộ mã nguồn hoàn chỉnh giữa `herodub_worker.py`, `fix_publishing_suite.py` và `app/public/uploads/herodub_worker.py`.
