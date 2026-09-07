@@ -276,7 +276,22 @@ async function executeAiJobOnTab(job) {
 
     if (!tab) {
       console.log(`[Ai2Hero Bridge] Đang mở tab mới cho ${targetAi}...`);
-      tab = await chrome.tabs.create({ url: defaultOpenUrl, active: true });
+      try {
+        tab = await chrome.tabs.create({ url: defaultOpenUrl, active: true });
+      } catch (tabErr) {
+        if (tabErr && tabErr.message && tabErr.message.includes('No current window')) {
+          console.log(`[Ai2Hero Bridge] Không có cửa sổ nào mở, đang tự động mở cửa sổ Chrome mới cho ${targetAi}...`);
+          const win = await chrome.windows.create({ url: defaultOpenUrl, focused: true });
+          if (win && win.tabs && win.tabs.length > 0) {
+            tab = win.tabs[0];
+          } else {
+            const newTabs = await chrome.tabs.query({ windowId: win.id });
+            tab = newTabs[0];
+          }
+        } else {
+          throw tabErr;
+        }
+      }
       await new Promise(r => setTimeout(r, 4500)); // Chờ tab tải DOM
     } else if (targetAi === 'gemini' && job.autoNewChat !== false && tab.url && tab.url.includes('/app/') && !tab.url.endsWith('/app')) {
       console.log(`[Ai2Hero Bridge] Tab Gemini đang ở đoạn chat cũ (${tab.url}). Đang điều hướng về https://gemini.google.com/app...`);
