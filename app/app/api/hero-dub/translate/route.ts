@@ -448,8 +448,8 @@ QUY TẮC BẮT BUỘC TUYỆT ĐỐI (CRITICAL RULES - STRICT TARGET: VIETNAMES
           translatedTexts = candidateTexts.map(t => t!);
           console.log(`[API Translate] Attempt ${attempts} SUCCESS! 100% (${texts.length}/${texts.length}) keys parsed flawlessly.`);
           break;
-        } else if (missingCount <= Math.max(2, Math.floor(texts.length * 0.35))) {
-          // THIẾU MỘT VÀI CÂU: TỰ ĐỘNG CỨU HỘ BẰNG DEEPSEEK MINI-RESCUE (CẤM TRẢ TIẾNG TRUNG)
+        } else if (missingCount < texts.length) {
+          // THIẾU MỘT SỐ CÂU: TỰ ĐỘNG CỨU HỘ BẰNG DEEPSEEK MINI-RESCUE
           console.log(`[API Translate] Thiếu ${missingCount}/${texts.length} câu. Kích hoạt DeepSeek Mini-Rescue...`);
           const missingIndices: number[] = [];
           const missingObj: Record<string, string> = {};
@@ -504,11 +504,11 @@ QUY TẮC BẮT BUỘC TUYỆT ĐỐI (CRITICAL RULES - STRICT TARGET: VIETNAMES
               if (t && t.trim().length > 0) return t.trim();
               return texts[idx] || '...';
             });
-            console.warn(`[API Translate] DeepSeek cứu hộ thành công phần lớn (${texts.length - stillMissing}/${texts.length}). Chuyển tiếp ${stillMissing} câu sang Quality Gate.`);
+            console.warn(`[API Translate] DeepSeek bảo toàn ${texts.length - stillMissing}/${texts.length} câu. Chuyển tiếp ${stillMissing} câu sang Quality Gate.`);
             break;
           }
         } else {
-          lastError = `DeepSeek output incomplete (${texts.length - missingCount}/${texts.length} câu bóc tách được)`;
+          lastError = `DeepSeek output empty (0/${texts.length} câu bóc tách được)`;
           console.warn(`[API Translate] Attempt ${attempts} failed: ${lastError}`);
         }
       } catch (e: any) {
@@ -520,22 +520,15 @@ QUY TẮC BẮT BUỘC TUYỆT ĐỐI (CRITICAL RULES - STRICT TARGET: VIETNAMES
     }
 
     if (translatedTexts.length === 0) {
-      console.error(`[API Translate] Tất cả ${MAX_ATTEMPTS} lần thử dịch thuật thất bại. Lỗi cuối cùng: ${lastError}`);
-      
-      let friendlyError = lastError;
-      if (lastError.includes('Content Script') || lastError.includes('sendMessage')) {
-        friendlyError = 'Không thể kết nối với Content Script trên Tab AI. Vui lòng mở sẵn Tab ChatGPT/Gemini và Reload lại Extension.';
-      } else if (lastError.includes('khung nhập liệu') || lastError.includes('input')) {
-        friendlyError = 'Không tìm thấy khung nhập liệu trên ChatGPT/Gemini. Vui lòng kiểm tra xem trang web có bị yêu cầu Đăng nhập lại hoặc CAPTCHA không.';
-      } else if (lastError.includes('Timeout')) {
-        friendlyError = 'AI trên trình duyệt không phản hồi đúng thời gian (Timeout). Vui lòng thử lại hoặc giảm bớt độ dài.';
-      }
-
+      console.warn(`[API Translate] Tất cả ${MAX_ATTEMPTS} lần thử AI thất bại: ${lastError}. Chuyển tiếp êm ái sang Quality Gate...`);
+      // Thay vì ném lỗi 500 chặn đứng Worker, trả về mảng câu gốc kèm cảnh báo
+      // để Worker Quality Gate tự động dịch bằng Google Translate mà không làm hỏng tiến trình!
       return NextResponse.json({ 
-        error: `Lỗi Dịch Thuật AI: ${friendlyError}`,
-        detail: lastError,
-        isBlockError: true 
-      }, { status: 500 });
+        success: true,
+        translatedTexts: texts,
+        fallbackToGoogle: true,
+        warning: `AI dịch thuật gián đoạn (${lastError}). Đã kích hoạt Quality Gate fallback.`
+      });
     }
 
     // VÒNG LẶP AI TỰ HỌC (PHƯƠNG ÁN B): Kích hoạt ngầm không làm chậm response

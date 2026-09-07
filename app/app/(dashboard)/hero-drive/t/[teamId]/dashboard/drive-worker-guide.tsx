@@ -11,7 +11,7 @@ export function DriveWorkerGuide({ teamId }: WorkerGuideProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const commandText = 'cd /d "C:\\Users\\ADMIN\\OneDrive\\Desktop\\Ai2Hero" && python scripts/herodrive_worker.py';
+  const commandText = 'cd /d "C:\\Users\\ADMIN\\OneDrive\\Desktop\\Ai2Hero" && python scripts/herodrive_worker.py --server https://ai2hero-flax.vercel.app';
 
   const handleCopyCommand = () => {
     navigator.clipboard.writeText(commandText);
@@ -59,37 +59,19 @@ export function DriveWorkerGuide({ teamId }: WorkerGuideProps) {
                 </div>
 
                 <div className="space-y-2 mt-2">
-                  <p className="text-[11px] text-emerald-400 font-medium">Lựa chọn 1: Máy chủ mới (Khuyên dùng - Đã fix lỗi Database)</p>
-                  <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 font-mono text-xs text-slate-300 flex items-center justify-between gap-4 group">
-                    <p className="break-all text-blue-400 font-semibold">cd /d "C:\Users\ADMIN\OneDrive\Desktop\Ai2Hero" && python scripts/herodrive_worker.py --server https://ai2hero-flax.vercel.app</p>
-                    <button 
-                      onClick={() => {
-                        navigator.clipboard.writeText('cd /d "C:\\Users\\ADMIN\\OneDrive\\Desktop\\Ai2Hero" && python scripts/herodrive_worker.py --server https://ai2hero-flax.vercel.app');
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      }} 
-                      className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors shrink-0 flex items-center gap-1 text-[11px]" 
-                      title="Copy lệnh"
-                    >
-                      {copied ? (
-                        <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Đã copy!</>
-                      ) : (
-                        <><Copy className="w-3.5 h-3.5" /> Copy</>
-                      )}
-                    </button>
+                  <p className="text-[11px] text-emerald-400 font-medium">⚡ Cách 1: Chạy 1-Click bằng Shortcut (Nhanh nhất & Khuyên dùng)</p>
+                  <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 text-xs text-slate-300 space-y-1.5">
+                    <p className="text-emerald-400 font-semibold">🖥️ Nhấp đúp biểu tượng <strong>CHAY_HERODRIVE_WORKER</strong> ngay trên màn hình Desktop của bạn.</p>
+                    <p className="text-[11px] text-slate-400 font-mono">Hoặc mở file: <code>c:\Users\ADMIN\OneDrive\Desktop\Ai2Hero\CHAY_HERODRIVE_WORKER_LOCAL.bat</code></p>
                   </div>
                 </div>
 
                 <div className="space-y-2 mt-3">
-                  <p className="text-[11px] text-amber-400 font-medium">Lựa chọn 2: Máy chủ cũ (www.ai2hero.com)</p>
+                  <p className="text-[11px] text-blue-400 font-medium">💻 Cách 2: Chạy bằng Terminal CMD</p>
                   <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 font-mono text-xs text-slate-300 flex items-center justify-between gap-4 group">
-                    <p className="break-all text-amber-400 font-semibold">cd /d "C:\Users\ADMIN\OneDrive\Desktop\Ai2Hero" && python scripts/herodrive_worker.py --server https://www.ai2hero.com</p>
+                    <p className="break-all text-blue-400 font-semibold">{commandText}</p>
                     <button 
-                      onClick={() => {
-                        navigator.clipboard.writeText('cd /d "C:\\Users\\ADMIN\\OneDrive\\Desktop\\Ai2Hero" && python scripts/herodrive_worker.py --server https://www.ai2hero.com');
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      }} 
+                      onClick={handleCopyCommand}
                       className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white transition-colors shrink-0 flex items-center gap-1 text-[11px]" 
                       title="Copy lệnh"
                     >

@@ -51,6 +51,27 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Invalid payload' }, { status: 400 });
       }
 
+      // Resolve correct teamId and projectId from mapping or config
+      let resolvedTeamId = teamId;
+      let resolvedProjectId = projectId;
+      if (mappingId && (!resolvedTeamId || !resolvedProjectId)) {
+        const mapping = await db.query.driveFolderMappings.findFirst({
+          where: eq(driveFolderMappings.id, mappingId),
+          with: { project: true },
+        });
+        if (mapping) {
+          resolvedProjectId = resolvedProjectId || mapping.projectId;
+          resolvedTeamId = resolvedTeamId || (mapping as any).project?.teamId;
+        }
+      } else if (configId && !resolvedTeamId) {
+        const config = await db.query.driveScanConfigs.findFirst({
+          where: eq(driveScanConfigs.id, configId),
+        });
+        if (config) {
+          resolvedTeamId = config.teamId;
+        }
+      }
+
       const createdContents = [];
 
       for (const item of items) {
@@ -73,8 +94,8 @@ export async function POST(req: NextRequest) {
           const [inserted] = await db
             .insert(driveContents)
             .values({
-              teamId: teamId || 1,
-              projectId: projectId || null,
+              teamId: resolvedTeamId || 1,
+              projectId: resolvedProjectId || null,
               mappingId: mappingId || null,
               configId: configId || null,
               baseName,

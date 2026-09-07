@@ -22,7 +22,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="HeroDrive Python Local Worker")
     parser.add_argument("--project", type=int, help="ID của Dự án Quét (Tùy chọn)")
     parser.add_argument("--config", type=int, help="ID của Cấu hình quét (Tùy chọn)")
-    parser.add_argument("--server", type=str, default="https://www.ai2hero.com", help="URL máy chủ AI2Hero")
+    parser.add_argument("--server", type=str, default="https://ai2hero-flax.vercel.app", help="URL máy chủ AI2Hero")
     parser.add_argument("--interval", type=int, default=60, help="Thời gian giãn cách kiểm tra polling (giây)")
     parser.add_argument("--workers", type=int, default=2, help="Số luồng upload song song (Mặc định 2 luồng để tối ưu băng thông)")
     return parser.parse_args()
@@ -403,6 +403,14 @@ def main():
                             for future in concurrent.futures.as_completed(futures):
                                 pass
 
+            elif res.status_code == 402 or "DEPLOYMENT_DISABLED" in res.text:
+                if "ai2hero.com" in server_url:
+                    print(f"⚠️ [{now_str}] Server {server_url} báo 402 (Deployment Disabled), tự động chuyển sang https://ai2hero-flax.vercel.app...")
+                    server_url = "https://ai2hero-flax.vercel.app"
+                    time.sleep(2)
+                    continue
+                else:
+                    print(f"⚠️ [{now_str}] Máy chủ báo HTTP 402 Payment Required: {res.text[:150]}")
             elif res.status_code == 403:
                 print(f"⚠️ [{now_str}] Máy chủ tạm thời bận (HTTP 403 - Nghỉ 30s)...")
                 time.sleep(30)

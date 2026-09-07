@@ -2042,7 +2042,13 @@ Dữ liệu:
                                         print(Fore.YELLOW + f"    [!] Cloud API HTTP {res.status_code}: {err_info}")
                                         break
                                     else:
-                                        print(Fore.YELLOW + f"    [!] Cloud API HTTP {res.status_code} (Attempt {hub_attempt+1}/2)")
+                                        err_detail = ""
+                                        try:
+                                            err_json = res.json()
+                                            err_detail = err_json.get('error', '') or err_json.get('detail', '')
+                                        except Exception:
+                                            err_detail = res.text[:120] if res.text else ""
+                                        print(Fore.YELLOW + f"    [!] Cloud API HTTP {res.status_code} (Attempt {hub_attempt+1}/2): {err_detail}")
                                 except Exception as req_err:
                                     print(Fore.YELLOW + f"    [!] Loi ket noi Cloud API (Attempt {hub_attempt+1}/2): {req_err}")
                                     if "ai2hero.com" in API_BASE_URL:

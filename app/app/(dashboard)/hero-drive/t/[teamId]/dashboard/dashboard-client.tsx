@@ -260,7 +260,7 @@ export default function DriveDashboardClient({
 
   const activeMapping = mappings.find((m) => m.id === selectedMappingId);
   const activeConn = googleDriveConnections.find((c) => c.id === activeMapping?.connectionId);
-  const activeEmail = activeConn?.credentials?.accountEmail || activeConn?.credentials?.email || activeConn?.name;
+  const activeEmail = activeConn?.connectionName || activeConn?.credentials?.accountEmail || activeConn?.credentials?.email || activeConn?.name;
 
   const statusPriority: Record<string, number> = {
     uploading: 1,
