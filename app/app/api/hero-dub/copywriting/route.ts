@@ -168,19 +168,33 @@ CẤU TRÚC JSON MẪU BẮT BUỘC:
       }, { status: 502 });
     }
 
-    let new_title = String(parsedJson.new_title || cleanTitle).trim();
-    // Làm sạch chữ Trung Quốc sót lại trong tiêu đề nếu có
-    new_title = new_title.replace(/[\u4e00-\u9fff]/g, '').trim();
-    // Kiểm tra xem tiêu đề có bị cắt cụt ngủn hoặc vô nghĩa không (ví dụ "Vlog_AI____", "___", ít hơn 6 ký tự chữ)
-    const cleanWordChars = new_title.replace(/[^a-zA-Z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ\s]/g, '').trim();
-    if (!new_title || cleanWordChars.length < 6 || /^(vlog|clip|video)[\s_]*ai[\s_]*$/i.test(new_title) || /^[\s_–-]+$/.test(new_title)) {
+    const STOP_WORDS = new Set(['vlog', 'clip', 'video', 'ai', 'mp4', 'full', 'hd', 'hot', 'part', 'tap', 'phim', 'short', 'shorts', 'ep', 'episode', 'goc', 'raw', 'douyin', 'tiktok', 'task', 'thuyet', 'minh']);
+    const isMeaningful = (t: string | null | undefined): boolean => {
+      if (!t) return false;
+      const str = String(t).trim();
+      if (/[\u4e00-\u9fff]/.test(str)) return false;
+      const clean = str.replace(/^\d+[\s_–-]+/, '')
+        .replace(/[^a-zA-Z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ\s]/g, ' ')
+        .trim();
+      const words = clean.split(/\s+/).map(w => w.toLowerCase()).filter(w => !/^\d+$/.test(w));
+      if (words.length === 0) return false;
+      const meaningfulWords = words.filter(w => !STOP_WORDS.has(w));
+      if (meaningfulWords.length < 2) return false;
+      const meaningfulLen = meaningfulWords.reduce((acc, w) => acc + w.length, 0);
+      return meaningfulLen >= 6;
+    };
+
+    let new_title = String(parsedJson.new_title || '').trim();
+    // Nếu tiêu đề còn chữ Trung hoặc rơi vào rác (như Vlog_AI____, Vlog___ai___AI)
+    if (!isMeaningful(new_title)) {
       // Dùng câu phụ đề tiếng Việt tiêu biểu đầu tiên nếu có
-      const firstValidSub = Array.isArray(sampleSubs) ? sampleSubs.find((s: string) => s && s.trim().length >= 8 && !/[\u4e00-\u9fff]/.test(s)) : null;
+      const firstValidSub = Array.isArray(sampleSubs)
+        ? sampleSubs.find((s: string) => isMeaningful(s))
+        : null;
       if (firstValidSub) {
         new_title = firstValidSub.trim().slice(0, 60);
       } else {
-        const fallbackWord = cleanTitle.replace(/[\u4e00-\u9fff]/g, '').trim();
-        new_title = (fallbackWord && fallbackWord.length >= 6) ? fallbackWord : 'Tập Phim Đặc Sắc';
+        new_title = 'Tập Phim Đời Sống Đặc Sắc';
       }
     }
 

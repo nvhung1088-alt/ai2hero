@@ -322,32 +322,34 @@ def smart_truncate(text, max_len=45):
     last_space = cut.rfind(' ')
     if last_space > int(max_len * 0.5):
         return cut[:last_space].strip()
-    return cut.strip()
+STOP_WORDS = {'vlog', 'clip', 'video', 'ai', 'mp4', 'full', 'hd', 'hot', 'part', 'tap', 'phim', 'short', 'shorts', 'ep', 'episode', 'goc', 'raw', 'douyin', 'tiktok', 'task', 'thuyet', 'minh'}
 
 def is_meaningful_title(title):
     """
     Kiểm tra xem tiêu đề tiếng Việt có thực sự có nghĩa hay không:
     - Không chứa chữ tiếng Trung Quốc.
-    - Không bị cụt ngủn hoặc vô nghĩa như Vlog_AI____, video_123, ___.
-    - Có ít nhất 2 từ và độ dài chữ có nghĩa >= 7 ký tự.
+    - Không chứa toàn từ rác vô nghĩa như Vlog_AI____, 2493_Vlog___ai___AI, video_123, clip_ai.
+    - Phải có ít nhất 2 từ tiếng Việt có nghĩa (nằm ngoài danh sách STOP_WORDS) và tổng độ dài >= 6 ký tự.
     """
     if not title:
         return False
     str_t = str(title).strip()
+    # Chứa chữ Hán -> Không phải tiếng Việt
     if re.search(r'[\u4e00-\u9fff]', str_t):
         return False
-    clean_words = re.sub(r'^\d+_', '', str_t).strip()
-    clean_words = re.sub(r'[^a-zA-Z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ\s]', ' ', clean_words).strip()
-    words = clean_words.split()
-    if len(words) < 2 or len(clean_words) < 7:
+    # Loại bỏ tiền tố số (ví dụ 2493_, 1202 - )
+    clean = re.sub(r'^\d+[\s_–-]+', '', str_t).strip()
+    # Chỉ giữ lại chữ và số
+    clean = re.sub(r'[^a-zA-Z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ\s]', ' ', clean).strip()
+    words = [w.lower() for w in clean.split() if not w.isdigit()]
+    if not words:
         return False
-    # Loại trừ các tiêu đề rác vô nghĩa
-    lower_t = clean_words.lower()
-    if lower_t in ["vlog ai", "video ai", "clip ai", "video", "clip", "vlog", "tap phim", "thuyet minh", "video goc"]:
+    # Lọc các từ có nghĩa thực tế
+    meaningful_words = [w for w in words if w not in STOP_WORDS]
+    if len(meaningful_words) < 2:
         return False
-    if re.match(r'^(vlog|clip|video)[\s_]*ai[\s_]*$', lower_t):
-        return False
-    if re.match(r'^(video|clip|vlog|task)[\s_]*\d+$', lower_t):
+    meaningful_len = sum(len(w) for w in meaningful_words)
+    if meaningful_len < 6:
         return False
     return True
 
@@ -587,9 +589,15 @@ CẤU TRÚC JSON MẪU:
     # Tự động dịch tiêu đề gốc sang Tiếng Việt ngay từ đầu làm phương án nền móng an toàn
     init_vi_title = clean_source_title
     if re.search(r'[\u4e00-\u9fff]', clean_source_title):
-        pure_ch = re.sub(r'^\d+_', '', clean_source_title).strip()
-        tr = google_translate(pure_ch, dest='vi')
-        if tr and not re.search(r'[\u4e00-\u9fff]', tr):
+        pure_ch = re.sub(r'^\d+[\s_–-]+', '', clean_source_title).strip()
+        pure_ch = os.path.splitext(pure_ch)[0]
+        main_part = pure_ch.split('_')[0].strip() if '_' in pure_ch else pure_ch
+        if len(main_part) < 6:
+            main_part = pure_ch
+        tr = google_translate(main_part, dest='vi')
+        if not tr or not is_meaningful_title(tr):
+            tr = google_translate(pure_ch, dest='vi')
+        if tr and is_meaningful_title(tr):
             clean_tr = re.sub(r'[\\/:*?"<>|]', ' ', tr).strip()
             init_vi_title = f"{prefix_num}{clean_tr}"
 
@@ -620,19 +628,16 @@ CẤU TRÚC JSON MẪU:
                     if isinstance(parsed, dict):
                         if parsed.get("new_title"):
                             t_val = str(parsed.get("new_title")).strip()
-                            t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
                             if is_meaningful_title(t_val):
                                 result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
                                 parsed_success = True
                         if parsed.get("description"):
                             d_val = str(parsed.get("description")).strip()
-                            d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
-                            if len(d_val) >= 50:
+                            if not re.search(r'[\u4e00-\u9fff]', d_val) and len(d_val) >= 50:
                                 result["description"] = d_val
                         if parsed.get("hashtags"):
                             h_val = str(parsed.get("hashtags")).strip()
-                            h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
-                            if h_val:
+                            if not re.search(r'[\u4e00-\u9fff]', h_val) and h_val:
                                 result["hashtags"] = h_val
                         if parsed_success:
                             print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Copywriting] Da tao Tieu de & Mo ta chuan tu Anh + Sub: {result['new_title']}")
@@ -644,7 +649,6 @@ CẤU TRÚC JSON MẪU:
                 title_m = re.search(r'"new_title"\s*:\s*"([^"]+)"', raw_out)
                 if title_m:
                     t_val = title_m.group(1).strip()
-                    t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
                     if is_meaningful_title(t_val):
                         result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
                         copywriting_success = True
@@ -677,30 +681,38 @@ CẤU TRÚC JSON MẪU:
                 resp_data = resp.json()
                 if resp_data.get("success"):
                     t_val = str(resp_data.get("new_title", "")).strip()
-                    t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
                     if is_meaningful_title(t_val):
                         result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
                         copywriting_success = True
+                    else:
+                        print(Fore.YELLOW + f"  [!] DeepSeek trả về tiêu đề chưa đạt chuẩn nghĩa ('{t_val}'). Bỏ qua để kích hoạt cứu hộ...")
                     if resp_data.get("description"):
                         d_val = str(resp_data.get("description")).strip()
-                        d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
-                        if len(d_val) >= 50:
+                        if not re.search(r'[\u4e00-\u9fff]', d_val) and len(d_val) >= 50:
                             result["description"] = d_val
                     if resp_data.get("hashtags"):
                         h_val = str(resp_data.get("hashtags")).strip()
-                        h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
-                        if h_val:
+                        if not re.search(r'[\u4e00-\u9fff]', h_val) and h_val:
                             result["hashtags"] = h_val
                     if copywriting_success:
                         print(Fore.GREEN + Style.BRIGHT + f"  [✓ DeepSeek Ready] Da tao Tieu de & Mo ta chuan SEO: {result['new_title']}")
         except Exception as ds_err:
             print(Fore.YELLOW + f"  [!] Loi DeepSeek Copywriting: {ds_err}")
 
-    # RÀO CHẮN BẢO VỆ CỨU HỘ ĐẶC BIỆT: Chặn đứng 100% tiêu đề rác cụt ngủn như 'Vlog_AI____'
+    # RÀO CHẮN BẢO VỆ CỨU HỘ ĐẶC BIỆT: Chặn đứng 100% tiêu đề rác cụt ngủn như 'Vlog_AI____' hoặc 'Vlog___ai___AI'
     if not is_meaningful_title(result["new_title"]):
         print(Fore.YELLOW + f"  [!] Phát hiện tiêu đề chưa hợp lệ hoặc cụt ngủn ('{result['new_title']}'). Kích hoạt cứu hộ...")
-        pure_ch_title = re.sub(r'^\d+_', '', clean_source_title).strip()
-        trans_title = google_translate(pure_ch_title, dest='vi')
+        pure_ch_title = re.sub(r'^\d+[\s_–-]+', '', clean_source_title).strip()
+        pure_ch_title = os.path.splitext(pure_ch_title)[0]
+        # Lấy phần tiêu đề chính trước các hashtag Douyin
+        main_ch_part = pure_ch_title.split('_')[0].strip() if '_' in pure_ch_title else pure_ch_title
+        if len(main_ch_part) < 6:
+            main_ch_part = pure_ch_title
+
+        trans_title = google_translate(main_ch_part, dest='vi')
+        if not trans_title or not is_meaningful_title(trans_title):
+            trans_title = google_translate(pure_ch_title, dest='vi')
+
         if trans_title and is_meaningful_title(trans_title):
             clean_t = re.sub(r'[\\/:*?"<>|]', ' ', trans_title).strip()
             result["new_title"] = f"{prefix_num}{clean_t}"
@@ -722,6 +734,7 @@ CẤU TRÚC JSON MẪU:
                 "general_lifestyle": "Những Khoảnh Khắc Cuộc Sống Đáng Xem"
             }
             result["new_title"] = f"{prefix_num}{genre_name_map.get(init_genre, 'Tác Phẩm Đặc Sắc')}"
+            print(Fore.CYAN + Style.BRIGHT + f"  [-] Đã đặt tiêu đề theo thể loại video: {result['new_title']}")
 
     # Đảm bảo description không còn ký tự Trung Quốc và có cấu trúc bài bản
     if re.search(r'[\u4e00-\u9fff]', result.get("description", "")) or len(result.get("description", "")) < 60:

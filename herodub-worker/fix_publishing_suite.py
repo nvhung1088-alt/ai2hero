@@ -547,29 +547,30 @@ def smart_truncate(text, max_len=45):
         return cut[:last_space].strip()
     return cut.strip()
 
+STOP_WORDS = {'vlog', 'clip', 'video', 'ai', 'mp4', 'full', 'hd', 'hot', 'part', 'tap', 'phim', 'short', 'shorts', 'ep', 'episode', 'goc', 'raw', 'douyin', 'tiktok', 'task', 'thuyet', 'minh'}
+
 def is_meaningful_title(title):
     """
     Kiểm tra xem tiêu đề tiếng Việt có thực sự có nghĩa hay không:
     - Không chứa chữ tiếng Trung Quốc.
-    - Không bị cụt ngủn hoặc vô nghĩa như Vlog_AI____, video_123, ___.
-    - Có ít nhất 2 từ và độ dài chữ có nghĩa >= 7 ký tự.
+    - Không chứa toàn từ rác vô nghĩa như Vlog_AI____, 2493_Vlog___ai___AI, video_123, clip_ai.
+    - Phải có ít nhất 2 từ tiếng Việt có nghĩa (nằm ngoài danh sách STOP_WORDS) và tổng độ dài >= 6 ký tự.
     """
     if not title:
         return False
     str_t = str(title).strip()
     if re.search(r'[\u4e00-\u9fff]', str_t):
         return False
-    clean_words = re.sub(r'^\d+_', '', str_t).strip()
-    clean_words = re.sub(r'[^a-zA-Z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ\s]', ' ', clean_words).strip()
-    words = clean_words.split()
-    if len(words) < 2 or len(clean_words) < 7:
+    clean = re.sub(r'^\d+[\s_–-]+', '', str_t).strip()
+    clean = re.sub(r'[^a-zA-Z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ\s]', ' ', clean).strip()
+    words = [w.lower() for w in clean.split() if not w.isdigit()]
+    if not words:
         return False
-    lower_t = clean_words.lower()
-    if lower_t in ["vlog ai", "video ai", "clip ai", "video", "clip", "vlog", "tap phim", "thuyet minh", "video goc"]:
+    meaningful_words = [w for w in words if w not in STOP_WORDS]
+    if len(meaningful_words) < 2:
         return False
-    if re.match(r'^(vlog|clip|video)[\s_]*ai[\s_]*$', lower_t):
-        return False
-    if re.match(r'^(video|clip|vlog|task)[\s_]*\d+$', lower_t):
+    meaningful_len = sum(len(w) for w in meaningful_words)
+    if meaningful_len < 6:
         return False
     return True
 
@@ -783,9 +784,15 @@ CẤU TRÚC JSON MẪU:
 
     init_vi_title = clean_source_title
     if re.search(r'[\u4e00-\u9fff]', clean_source_title):
-        pure_ch = re.sub(r'^\d+_', '', clean_source_title).strip()
-        tr = google_translate(pure_ch, dest='vi')
-        if tr and not re.search(r'[\u4e00-\u9fff]', tr):
+        pure_ch = re.sub(r'^\d+[\s_–-]+', '', clean_source_title).strip()
+        pure_ch = os.path.splitext(pure_ch)[0]
+        main_part = pure_ch.split('_')[0].strip() if '_' in pure_ch else pure_ch
+        if len(main_part) < 6:
+            main_part = pure_ch
+        tr = google_translate(main_part, dest='vi')
+        if not tr or not is_meaningful_title(tr):
+            tr = google_translate(pure_ch, dest='vi')
+        if tr and is_meaningful_title(tr):
             clean_tr = re.sub(r'[\\/:*?"<>|]', ' ', tr).strip()
             init_vi_title = f"{prefix_num}{clean_tr}"
 
@@ -813,20 +820,17 @@ CẤU TRÚC JSON MẪU:
                     if isinstance(parsed, dict):
                         if parsed.get("new_title"):
                             t_val = str(parsed.get("new_title")).strip()
-                            t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
                             clean_t = re.sub(r'[\\/:*?"<>|]', ' ', t_val).strip()
                             if is_meaningful_title(clean_t):
                                 result["new_title"] = f"{prefix_num}{clean_t}" if prefix_num and not clean_t.startswith(prefix_num) else clean_t
                                 parsed_success = True
                         if parsed.get("description"):
                             d_val = str(parsed.get("description")).strip()
-                            d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
-                            if len(d_val) >= 50:
+                            if not re.search(r'[\u4e00-\u9fff]', d_val) and len(d_val) >= 50:
                                 result["description"] = d_val
                         if parsed.get("hashtags"):
                             h_val = str(parsed.get("hashtags")).strip()
-                            h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
-                            if h_val:
+                            if not re.search(r'[\u4e00-\u9fff]', h_val) and h_val:
                                 result["hashtags"] = h_val
                         if parsed_success:
                             print(Fore.GREEN + Style.BRIGHT + f"  [⚡ Gemini Copywriting] Da tao Tieu de & Mo ta moi: {result['new_title']}")
@@ -837,7 +841,6 @@ CẤU TRÚC JSON MẪU:
                 title_m = re.search(r'"new_title"\s*:\s*"([^"]+)"', raw_out)
                 if title_m:
                     t_val = title_m.group(1).strip()
-                    t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
                     clean_t = re.sub(r'[\\/:*?"<>|]', ' ', t_val).strip()
                     if is_meaningful_title(clean_t):
                         result["new_title"] = f"{prefix_num}{clean_t}" if prefix_num and not clean_t.startswith(prefix_num) else clean_t
@@ -845,21 +848,28 @@ CẤU TRÚC JSON MẪU:
                 desc_m = re.search(r'"description"\s*:\s*"([^"]+)"', raw_out)
                 if desc_m:
                     d_val = desc_m.group(1).strip()
-                    d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
-                    if len(d_val) >= 50:
+                    if not re.search(r'[\u4e00-\u9fff]', d_val) and len(d_val) >= 50:
                         result["description"] = d_val
                 hash_m = re.search(r'"hashtags"\s*:\s*"([^"]+)"', raw_out)
                 if hash_m:
                     h_val = hash_m.group(1).strip()
-                    h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
-                    if h_val:
+                    if not re.search(r'[\u4e00-\u9fff]', h_val) and h_val:
                         result["hashtags"] = h_val
 
-    # RÀO CHẮN BẢO VỆ CỨU HỘ ĐẶC BIỆT: Chặn đứng 100% tiêu đề rác cụt ngủn như 'Vlog_AI____'
+    # RÀO CHẮN BẢO VỆ CỨU HỘ ĐẶC BIỆT: Chặn đứng 100% tiêu đề rác cụt ngủn như 'Vlog_AI____' hoặc 'Vlog___ai___AI'
     if not is_meaningful_title(result["new_title"]):
         print(Fore.YELLOW + f"  [!] Phát hiện tiêu đề chưa hợp lệ hoặc cụt ngủn ('{result['new_title']}'). Kích hoạt cứu hộ...")
-        pure_ch_title = re.sub(r'^\d+_', '', clean_source_title).strip()
-        trans_title = google_translate(pure_ch_title, dest='vi')
+        pure_ch_title = re.sub(r'^\d+[\s_–-]+', '', clean_source_title).strip()
+        pure_ch_title = os.path.splitext(pure_ch_title)[0]
+        # Lấy phần tiêu đề chính trước các hashtag Douyin
+        main_ch_part = pure_ch_title.split('_')[0].strip() if '_' in pure_ch_title else pure_ch_title
+        if len(main_ch_part) < 6:
+            main_ch_part = pure_ch_title
+
+        trans_title = google_translate(main_ch_part, dest='vi')
+        if not trans_title or not is_meaningful_title(trans_title):
+            trans_title = google_translate(pure_ch_title, dest='vi')
+
         if trans_title and is_meaningful_title(trans_title):
             clean_t = re.sub(r'[\\/:*?"<>|]', ' ', trans_title).strip()
             result["new_title"] = f"{prefix_num}{clean_t}"
@@ -881,6 +891,7 @@ CẤU TRÚC JSON MẪU:
                 "general_lifestyle": "Những Khoảnh Khắc Cuộc Sống Đáng Xem"
             }
             result["new_title"] = f"{prefix_num}{genre_name_map.get(init_genre, 'Tác Phẩm Đặc Sắc')}"
+            print(Fore.CYAN + Style.BRIGHT + f"  [-] Đã đặt tiêu đề theo thể loại video: {result['new_title']}")
 
     # Đảm bảo description sạch tiếng Trung và có cấu trúc bài bản
     if re.search(r'[\u4e00-\u9fff]', result.get("description", "")) or len(result.get("description", "")) < 60:
@@ -1307,6 +1318,7 @@ def write_copywriting_txt(target_dir, new_title, description, hashtags, duration
 def main():
     parser = argparse.ArgumentParser(description="Tool sửa lỗi metadata, thiết kế lại toàn bộ ảnh 3D và tạo file TXT cho video đã dịch.")
     parser.add_argument("--dir", type=str, default=DEFAULT_TARGET_DIR, help="Đường dẫn thư mục chứa video cần sửa")
+    parser.add_argument("--limit", type=int, default=0, help="Giới hạn số lượng video cần xử lý (0 = toàn bộ)")
     args = parser.parse_args()
 
     target_dir = args.dir
@@ -1328,13 +1340,17 @@ def main():
     print(Fore.YELLOW + "    Đang chờ Chrome Extension kết nối (hoặc ấn Ctrl+C để thoát)...")
 
     wait_sec = 0
-    while not bridge.is_connected():
+    max_wait = 10
+    while not bridge.is_connected() and wait_sec < max_wait:
         time.sleep(1)
         wait_sec += 1
-        if wait_sec % 5 == 0:
-            print(Fore.YELLOW + f"  ... Dang cho Chrome Extension ket noi ({wait_sec}s)...")
+        if wait_sec % 3 == 0:
+            print(Fore.YELLOW + f"  ... Dang cho Chrome Extension ket noi ({wait_sec}/{max_wait}s)...")
 
-    print(Fore.GREEN + Style.BRIGHT + "\n[✓] ĐÃ KẾT NỐI VỚI CHROME EXTENSION! BẮT ĐẦU QUÉT TOÀN BỘ FILE...")
+    if bridge.is_connected():
+        print(Fore.GREEN + Style.BRIGHT + "\n[✓] ĐÃ KẾT NỐI VỚI CHROME EXTENSION! BẮT ĐẦU QUÉT FILE...")
+    else:
+        print(Fore.YELLOW + Style.BRIGHT + f"\n[!] Khong co Chrome Extension ket noi sau {max_wait}s. Tu dong dung Flash API / Local Worker 3D!")
 
     # Quét toàn bộ video .mp4
     all_files = os.listdir(target_dir)
@@ -1359,18 +1375,19 @@ def main():
             full_jpg = os.path.join(target_dir, f"{base_name}.jpeg")
 
         has_chinese_name = bool(chinese_regex.search(mp4))
+        is_bad_title = not is_meaningful_title(base_name)
         missing_jpg = not os.path.exists(full_jpg) or os.path.getsize(full_jpg) < 100
         is_3d_img = is_image_already_redesigned(full_jpg) if not missing_jpg else False
         missing_txt = not os.path.exists(full_txt)
 
         # CẦN XỬ LÝ NẾU:
-        # 1. Tên MP4 còn tiếng Trung
+        # 1. Tên MP4 còn tiếng Trung hoặc bị rác/vô nghĩa (Vlog_AI____)
         # 2. Hoặc ảnh chưa phải là ảnh 3D (kích thước gốc Douyin còn chữ Trung)
         # 3. Hoặc thiếu file ảnh / ảnh hỏng
         # 4. Hoặc thiếu file txt
-        if has_chinese_name or not is_3d_img or missing_jpg or missing_txt:
+        if has_chinese_name or is_bad_title or not is_3d_img or missing_jpg or missing_txt:
             task_type = "image_only"
-            if has_chinese_name:
+            if has_chinese_name or is_bad_title:
                 stats["full_chinese_rename"] += 1
                 task_type = "full_rename"
             elif missing_jpg:
@@ -1387,7 +1404,7 @@ def main():
                 "txt": full_txt if os.path.exists(full_txt) else None,
                 "raw_name": base_name,
                 "has_chinese_name": has_chinese_name,
-                "needs_copywriting": has_chinese_name or missing_txt,
+                "needs_copywriting": has_chinese_name or is_bad_title or missing_txt,
                 "needs_image_redesign": not is_3d_img or missing_jpg,
                 "task_type": task_type
             })
@@ -1399,6 +1416,10 @@ def main():
         m = re.match(r'^(\d+)', item["raw_name"])
         return int(m.group(1)) if m else 999999
     needs_repair.sort(key=get_num)
+
+    if args.limit and args.limit > 0:
+        needs_repair = needs_repair[:args.limit]
+        print(Fore.YELLOW + f"[*] Giới hạn xử lý theo lệnh (--limit {args.limit}): Chỉ chạy {len(needs_repair)} video đầu tiên.")
 
     total_tasks = len(needs_repair)
     print(Fore.WHITE + f"\n[*] Thống kê phân loại {len(mp4_files)} video:")
