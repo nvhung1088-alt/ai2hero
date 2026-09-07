@@ -437,6 +437,30 @@ def get_default_hashtags_by_genre(genre):
     }
     return mapping.get(genre, mapping["general_lifestyle"])
 
+def pick_representative_subs(subs_list, count=4):
+    """
+    Thuật toán chọn câu phụ đề đại diện phân bổ đều theo dòng thời gian video:
+    Giúp đoạn tóm tắt diễn biến kịch bản phản ánh trọn vẹn từ mở đầu, cao trào đến kết thúc.
+    """
+    if not subs_list:
+        return []
+    cleaned = [str(s).strip() for s in subs_list if s and len(str(s).strip()) >= 12 and not re.search(r'[\u4e00-\u9fff]', str(s))]
+    if not cleaned:
+        cleaned = [str(s).strip() for s in subs_list if s and len(str(s).strip()) >= 6 and not re.search(r'[\u4e00-\u9fff]', str(s))]
+    n = len(cleaned)
+    if n == 0:
+        return []
+    if n <= count:
+        return cleaned
+    step = n / float(count)
+    selected = []
+    for i in range(count):
+        idx = min(int(i * step + step * 0.2), n - 1)
+        item = cleaned[idx]
+        if item not in selected:
+            selected.append(item)
+    return selected
+
 def build_rich_vietnamese_description(title_vi, raw_title="", sample_subs=None):
     """
     Tự động xây dựng bài mô tả video chuẩn SEO 100% Tiếng Việt, chuyên nghiệp và giàu cảm xúc.
@@ -450,13 +474,13 @@ def build_rich_vietnamese_description(title_vi, raw_title="", sample_subs=None):
 
     genre = detect_video_genre(clean_t, raw_title, sample_subs)
     t_lower = (clean_t + " " + str(raw_title or "")).lower()
+    rep_subs = pick_representative_subs(sample_subs, count=4)
+    quotes = "; ".join([f'"{s}"' for s in rep_subs]) if rep_subs else ""
 
     # Nhánh 0: Chú Heo Bông Súp Lơ / Thú cưng / Hoạt hình Cute
     if genre == "pet_animation":
         p1 = f"Chào mừng các bạn đến với tập phim mới nhất về Chú Heo Bông Súp Lơ siêu đáng yêu: \"{clean_t}\"!\nCùng theo dõi hành trình phiêu lưu dở khóc dở cười của chú heo nhỏ ngây thơ khi bước ra thế giới xung quanh với biết bao tình huống bất ngờ, ấm áp và ngộ nghĩnh."
-        valid_subs = [s.strip() for s in (sample_subs or []) if s and len(s) > 8 and not re.search(r'[\u4e00-\u9fff]', s)][:4]
-        if valid_subs:
-            quotes = "; ".join([f'"{s}"' for s in valid_subs])
+        if quotes:
             p2 = f"Trong tập này, chú heo đối mặt với những thử thách bất ngờ cùng những câu thoại ngây ngô khiến người xem bật cười thích thú: {quotes}. Từng biểu cảm tròn xoe mắt, dáng đi lũn cũn và lòng tốt chân thành của chú heo chắc chắn sẽ làm tan chảy mọi trái tim!"
         else:
             p2 = "Trong tập này, chú heo nhỏ trải qua những diễn biến vô cùng hài hước và ấm áp khi tương tác cùng mọi người xung quanh. Từng nét biểu cảm bẽn lẽn, sự nhiệt tình và vụng về đáng yêu mang lại cảm giác xả stress cực kỳ thư giãn cho người xem."
@@ -466,10 +490,8 @@ def build_rich_vietnamese_description(title_vi, raw_title="", sample_subs=None):
     elif genre == "anime_donghua":
         p1 = f"Chào mừng các bạn đến với tập phim mới nhất: \"{clean_t}\"!\nBước vào thế giới hoạt hình 3D huyền ảo với chất lượng đồ họa đỉnh cao, mở ra hành trình phiêu lưu kỳ thú và những trận chiến mãn nhãn không thể rời mắt."
         p2 = "Trong tập này: Diễn biến câu chuyện được đẩy lên cao trào kịch tính với những màn chạm trán nảy lửa giữa các thế lực, sự đột phá công pháp và mưu lược quyết đoán của nhân vật chính khi đối mặt với hiểm nguy trùng trùng."
-        if sample_subs and len(sample_subs) >= 2:
-            sub_samples = [s.strip() for s in sample_subs if s and len(s) > 8 and not re.search(r'[\u4e00-\u9fff]', s)][:2]
-            if sub_samples:
-                p2 += f" Điểm nhấn ấn tượng với những câu thoại đắt giá: \"{'; '.join(sub_samples)}\"."
+        if quotes:
+            p2 += f" Điểm nhấn ấn tượng với những câu thoại đắt giá: {quotes}."
         p3 = "Kỹ xảo 3D sắc nét từng khung hình kết hợp cùng âm thanh hào hùng chắc chắn sẽ mang đến cho bạn trải nghiệm thị giác tuyệt vời nhất.\n\n🔔 Hãy bấm LIKE, CHIA SẺ và ĐĂNG KÝ KÊNH để cùng đồng hành trong những tập phim bom tấn tiếp theo nhé!"
 
     # Nhánh 2: Ẩm thực / Nấu ăn / Food / Mukbang
