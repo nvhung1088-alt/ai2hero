@@ -1882,6 +1882,7 @@ def process_task(token, task):
     
     has_audio = True
     has_speech = True
+    stt_was_run = False
     try:
         import json
         if os.path.exists(extracted_segments_file):
