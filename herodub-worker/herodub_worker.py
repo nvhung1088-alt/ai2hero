@@ -857,26 +857,74 @@ def get_gemini_api_key():
 
 def clean_image_with_gemini_flash(thumb_src, out_clean_path, api_key=None, bridge_server=None):
     """
-    BƯỚC 1: Xóa sạch toàn bộ chữ tiếng Trung Quốc và Watermark trên ảnh bằng Gemini Flash Image (3 giây).
-    Giữ nguyên 100% nhân vật, bối cảnh, tỷ lệ khung hình và hiệu ứng hình ảnh.
+    BƯỚC 1: XÓA SẠCH TOÀN BỘ CHỮ TIẾNG TRUNG QUỐC & WATERMARK BẰNG GEMINI.
+    - Giữ nguyên 100% nhân vật, nét mặt, trang phục, bối cảnh, ánh sáng và màu sắc.
+    - TUYỆT ĐỐI KHÔNG VIẾT CHỮ TIẾNG VIỆT TẠI BƯỚC NÀY (Để Worker viết ở Bước 2).
+    - Xuất ra file ảnh nền hoàn toàn sạch chữ (Clean Background).
     """
     if not thumb_src or not os.path.exists(thumb_src):
         return None
 
+    clean_prompt = """Hãy chỉnh sửa bức ảnh đính kèm này (Image Inpainting / Text Removal):
+1. XÓA BỎ HOÀN TOÀN tất cả các dòng chữ tiếng Trung Quốc và watermark/logo trên ảnh.
+2. Phục hồi chi tiết bối cảnh tự nhiên bị chữ che khuất.
+3. BẮT BUỘC GIỮ NGUYÊN 100% nhân vật, biểu cảm, nét mặt, trang phục, ánh sáng, màu sắc và tỷ lệ khung hình gốc.
+4. TUYỆT ĐỐI KHÔNG VIẾT BẤT KỲ CHỮ NÀO LÊN ẢNH, KHÔNG VẼ THÊM KHUNG ĐEN.
+5. Xuất ra hình ảnh nền hoàn toàn sạch chữ (clean edited image without any text)."""
+
+    # 1. ƯU TIÊN 1: BROWSER AI BRIDGE (Gemini Web Free qua Chrome Extension - 0đ)
+    if bridge_server and bridge_server.is_connected():
+        try:
+            print(Fore.CYAN + Style.BRIGHT + f"  [🌐 Gemini Web Clean] Dang gui anh sang Gemini Web de xoa sach chu tieng Trung...")
+            with open(thumb_src, "rb") as img_f:
+                b64_data = base64.b64encode(img_f.read()).decode('utf-8')
+                img_b64 = f"data:image/jpeg;base64,{b64_data}"
+
+            payload = [{"name": os.path.basename(thumb_src), "type": "image/jpeg", "data": img_b64}]
+            start_t = time.time()
+            res = bridge_server.execute_job(clean_prompt, attachments=payload, target_ai="gemini", timeout=75, allow_failover=True)
+            if res and res.get("success") and res.get("result"):
+                m = re.search(r'!\[.*?\]\((data:image/[^)]+|https?://[^\s\)]+)\)', str(res.get("result")))
+                if m:
+                    u = m.group(1)
+                    if u.startswith("data:image/"):
+                        raw_b64 = u.split(",", 1)[1]
+                        os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
+                        with open(out_clean_path, "wb") as out_f:
+                            out_f.write(base64.b64decode(raw_b64))
+                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Web Clean] Da xoa sach chu TQ va nhan anh nen thanh cong (Base64)!")
+                        return out_clean_path
+                    elif u.startswith("http"):
+                        req_dl = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"})
+                        with urllib.request.urlopen(req_dl, timeout=20) as dl_resp:
+                            os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
+                            with open(out_clean_path, "wb") as out_f:
+                                out_f.write(dl_resp.read())
+                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Web Clean] Da tai anh nen sach tu Gemini Web URL!")
+                        return out_clean_path
+
+            # Watcher thu muc Downloads neu Chrome Extension tu tai anh ve
+            dl_img = get_latest_download_image(start_t - 2, timeout=4)
+            if dl_img:
+                shutil.copy2(dl_img, out_clean_path)
+                print(Fore.GREEN + Style.BRIGHT + f"  [✓ Downloads Watcher] Da phat hien anh nen sach tai ve may: {os.path.basename(dl_img)}!")
+                return out_clean_path
+        except Exception as bridge_err:
+            print(Fore.YELLOW + f"  [!] Gemini Bridge Clean loi: {bridge_err}, chuyen sang Flash API...")
+
+    # 2. ƯU TIÊN 2: GEMINI FLASH IMAGE DIRECT API (Neu co Gemini API Key)
     key = api_key or get_gemini_api_key()
     if key:
         try:
-            print(Fore.CYAN + f"  [⚡ Gemini Flash Image] Dang gui anh sang Gemini Flash de xoa sach chu tieng Trung (3s)...")
+            print(Fore.CYAN + f"  [⚡ Gemini Flash Image] Dang gui anh sang Gemini Flash API de xoa chu tieng Trung (3s)...")
             with open(thumb_src, "rb") as f:
                 b64_img = base64.b64encode(f.read()).decode("utf-8")
 
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key={key}"
-            prompt = "Edit this image: restore and clean the background scene and road without any text, subtitles or typography overlays. Keep the characters, lighting and ruined city completely intact. Output only the clean edited image."
-
             payload = {
                 "contents": [{
                     "parts": [
-                        {"text": prompt},
+                        {"text": clean_prompt},
                         {"inline_data": {"mime_type": "image/jpeg", "data": b64_img}}
                     ]
                 }]
@@ -899,7 +947,7 @@ def clean_image_with_gemini_flash(thumb_src, out_clean_path, api_key=None, bridg
                             with open(out_clean_path, "wb") as out_f:
                                 out_f.write(img_bytes)
 
-                            # Tẩy sạch nốt tem logo ở góc dưới phải bằng PIL patch nếu còn
+                            # Tay sach nốt tem logo ở góc dưới phải bằng PIL patch nếu còn
                             try:
                                 from PIL import Image, ImageFilter
                                 c_im = Image.open(out_clean_path).convert("RGBA")
@@ -915,31 +963,9 @@ def clean_image_with_gemini_flash(thumb_src, out_clean_path, api_key=None, bridg
                             print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Flash Image] Da xoa sach chu TQ thanh cong (3s, {len(img_bytes)//1024} KB)!")
                             return out_clean_path
         except Exception as e:
-            print(Fore.YELLOW + f"  [!] Gemini Flash API: {e}, thu qua Extension Bridge...")
+            print(Fore.YELLOW + f"  [!] Gemini Flash API: {e}")
 
-    # Fallback qua Browser Bridge nếu có
-    if bridge_server and bridge_server.is_connected():
-        try:
-            with open(thumb_src, "rb") as img_f:
-                b64_data = base64.b64encode(img_f.read()).decode('utf-8')
-                img_b64 = f"data:image/jpeg;base64,{b64_data}"
-            prompt = "Hãy chỉnh sửa bức ảnh này: XÓA SẠCH toàn bộ chữ tiếng Trung Quốc và watermark trên ảnh, giữ nguyên 100% nhân vật, hiệu ứng và bối cảnh. BẮT BUỘC xuất ra ảnh sạch KHÔNG CÓ BẤT KỲ CHỮ NÀO (clean background image)."
-            payload = [{"name": os.path.basename(thumb_src), "type": "image/jpeg", "data": img_b64}]
-            res = bridge_server.execute_job(prompt, attachments=payload, target_ai="gemini", timeout=60)
-            if res and res.get("success") and res.get("result"):
-                m = re.search(r'!\[.*?\]\((data:image/[^)]+|https?://[^\s\)]+)\)', str(res.get("result")))
-                if m:
-                    u = m.group(1)
-                    if u.startswith("data:image/"):
-                        raw_b64 = u.split(",", 1)[1]
-                        os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
-                        with open(out_clean_path, "wb") as out_f:
-                            out_f.write(base64.b64decode(raw_b64))
-                        return out_clean_path
-        except Exception as bridge_err:
-            print(Fore.YELLOW + f"  [!] Bridge Error: {bridge_err}")
-
-    # Fallback cục bộ: Xóa watermark góc phải
+    # 3. FALLBACK CỤC BỘ: Tay mo watermark goc phai neu co
     try:
         from PIL import Image, ImageFilter
         im = Image.open(thumb_src).convert("RGBA")
@@ -1107,69 +1133,30 @@ def redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, br
     clean_bg = os.path.join(dest_dir, f"_clean_bg_{os.path.basename(thumb_src)}")
     final_thumb = os.path.join(dest_dir, f"_final_thumb_{os.path.basename(thumb_src)}")
 
-    # PHƯƠNG ÁN 1: BROWSER AI BRIDGE (GEMINI WEB PRO QUA EXTENSION - Khuyến nghị & Ưu tiên hàng đầu)
-    # Quy định: Gửi ảnh gốc sang Gemini để xóa chữ TQ và viết lại tiếng Việt lên đúng vị trí chữ cũ
-    if bridge_server and bridge_server.is_connected():
-        print(Fore.CYAN + Style.BRIGHT + f"  [🌐 Gemini Imagen 3] Dang gui anh sang Gemini Web de xoa chu TQ va viet lai tieng Viet...")
-        try:
-            with open(thumb_src, "rb") as f:
-                b64_img = base64.b64encode(f.read()).decode("utf-8")
-            bridge_payload = [{"name": os.path.basename(thumb_src), "type": "image/jpeg", "data": f"data:image/jpeg;base64,{b64_img}"}]
-            
-            short_viet_title = smart_truncate(clean_title, max_len=35)
-            bridge_prompt = f"""Tạo hình ảnh (Generate image / Edit image):
-Dựa trên bức ảnh bìa thumbnail đính kèm này, hãy thực hiện chỉnh sửa ảnh thumbnail hoàn chỉnh:
-1. XÓA BỎ HOÀN TOÀN toàn bộ các dòng chữ tiếng Trung Quốc có trên ảnh (kể cả chữ to ở phía trên, giữa hoặc dưới).
-2. VIẾT LẠI TIÊU ĐỀ TIẾNG VIỆT MỚI: "{short_viet_title}" LÊN ĐÚNG VỊ TRÍ CỦA DÒNG CHỮ CŨ ĐÓ.
-   - Sử dụng phong cách chữ Typography nghệ thuật nổi bật, dễ đọc trên điện thoại (chữ 3D màu vàng kim hoặc trắng viền đen dày, có bóng đổ sắc nét).
-3. BẮT BUỘC GIỮ NGUYÊN 100% nhân vật, biểu cảm, trang phục, bối cảnh phòng ốc/thiên nhiên, màu sắc và tỷ lệ khung hình của bức ảnh gốc.
-4. TUYỆT ĐỐI KHÔNG thêm bất kỳ khung viền màu đen che khuất nhân vật, KHÔNG tự thêm badge hay tem chữ nào khác.
-5. BẮT BUỘC xuất ra hình ảnh mới đã chỉnh sửa hoàn thiện, không giải thích bằng văn bản."""
+    # =========================================================================
+    # QUY TRÌNH THIẾT KẾ THUMBNAIL 2 BƯỚC CHUẨN HÓA (GEMINI + WORKER):
+    # - BƯỚC 1: Gemini (Bridge hoặc Flash API) CHỈ LÀM DUY NHẤT 1 VIỆC LÀ XÓA CHỮ TQ
+    # - BƯỚC 2: Worker dùng Pillow viết chữ tiếng Việt chuẩn Typography vào đúng vị trí chữ cũ
+    # =========================================================================
+    print(Fore.CYAN + Style.BRIGHT + f"\n  ==================================================")
+    print(Fore.CYAN + Style.BRIGHT + f"  🎨 THIẾT KẾ THUMBNAIL (PIPELINE 2 BƯỚC CHUẨN HÓA)")
+    print(Fore.CYAN + Style.BRIGHT + f"  ==================================================")
+    print(Fore.WHITE + f"  -> Tiêu đề tiếng Việt: '{clean_title}'")
 
-            start_t = time.time()
-            ws_res = bridge_server.execute_job(bridge_prompt, attachments=bridge_payload, target_ai="gemini", timeout=85, allow_failover=True)
-            
-            # 1. Bóc tách ảnh Base64 từ kết quả trả về của Extension
-            if ws_res and ws_res.get("success") and ws_res.get("result"):
-                raw_out = str(ws_res.get("result", "")).strip()
-                img_match = re.search(r'!\[.*?\]\((data:image/[^)]+|https?://[^\s\)]+)\)', raw_out)
-                if img_match:
-                    new_thumb_url = img_match.group(1)
-                    if new_thumb_url.startswith("data:image/"):
-                        try:
-                            header, encoded = new_thumb_url.split(",", 1)
-                            img_bytes = base64.b64decode(encoded)
-                            with open(final_thumb, "wb") as f_out:
-                                f_out.write(img_bytes)
-                            print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Imagen 3] Da nhan duoc anh thiet ke moi tu Gemini (Base64)!")
-                            return final_thumb
-                        except Exception as decode_err:
-                            print(Fore.YELLOW + f"  [!] Loi ghi file Base64: {decode_err}")
-                    elif new_thumb_url.startswith("http"):
-                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Imagen 3] Da nhan URL anh thiet ke moi tu Gemini!")
-                        return new_thumb_url
+    # BƯỚC 1: XÓA SẠCH CHỮ TIẾNG TRUNG BẰNG GEMINI
+    clean_path = clean_image_with_gemini_flash(thumb_src, clean_bg, api_key=get_gemini_api_key(), bridge_server=bridge_server)
+    effective_bg = clean_path if (clean_path and os.path.exists(clean_path)) else thumb_src
 
-            # 2. Quan sát thư mục Downloads của máy tính (do Extension Chrome Native Downloads API tải về)
-            dl_img = get_latest_download_image(start_t - 2, timeout=4)
-            if dl_img:
-                print(Fore.GREEN + Style.BRIGHT + f"  [✓ Downloads Watcher] Da phat hien anh 3D moi tai ve may: {os.path.basename(dl_img)}!")
-                return dl_img
-        except Exception as b_err:
-            print(Fore.YELLOW + f"  [!] Gemini Bridge loi: {b_err}. Chuyen sang fallback...")
+    # BƯỚC 2: WORKER VIẾT TIÊU ĐỀ TIẾNG VIỆT CHUẨN TYPOGRAPHY 3D VÀO ĐÚNG VỊ TRÍ CHỮ CŨ
+    print(Fore.CYAN + f"  [Bước 2: Worker Typography Engine] Dang ve chu tieng Viet co dau 3D len anh...")
+    res = render_adaptive_vietnamese_thumbnail(effective_bg, clean_title, final_thumb, style=font_style, tag_text="THUYẾT MINH")
+    if res and os.path.exists(res):
+        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Hoàn Tất 100%] Da tao anh bia tieng Viet thanh cong: {os.path.basename(res)}!")
+        return res
 
-    # PHƯƠNG ÁN 2: GEMINI FLASH DIRECT API (Nếu có API Key)
-    key = get_gemini_api_key()
-    if key:
-        clean_path = clean_image_with_gemini_flash(thumb_src, clean_bg, api_key=key)
-        effective_bg = clean_path if (clean_path and os.path.exists(clean_path)) else thumb_src
-        res = render_adaptive_vietnamese_thumbnail(effective_bg, clean_title, final_thumb, style=font_style, tag_text="THUYẾT MINH")
-        if res and os.path.exists(res):
-            print(Fore.GREEN + Style.BRIGHT + f"  [✓ Thumbnail Ready] Hoan tat anh bia moi tu Flash API: {os.path.basename(res)}!")
-            return res
-
-    # PHƯƠNG ÁN 3: LOCAL TYPOGRAPHY 3D (0đ - Offline - KHÔNG KHUNG ĐEN CHE ẢNH)
+    # Fallback cục bộ nếu render_adaptive gặp sự cố
     local_thumb = os.path.join(dest_dir, f"_local_3d_{os.path.basename(thumb_src)}")
-    return create_local_3d_gold_thumbnail(thumb_src, clean_title, local_thumb, tag_text="THUYẾT MINH")
+    return create_local_3d_gold_thumbnail(effective_bg, clean_title, local_thumb, tag_text="THUYẾT MINH")
 
 
 def get_latest_download_image(start_time, timeout=5):

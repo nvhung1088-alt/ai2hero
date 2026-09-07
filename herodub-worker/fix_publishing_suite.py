@@ -888,100 +888,388 @@ CẤU TRÚC JSON MẪU:
 
     return result
 
-def redesign_thumbnail(thumb_src, new_title, bridge_server):
+def get_gemini_api_key():
+    """Lấy Gemini API Key từ biến môi trường hoặc file .env của app."""
+    key = os.environ.get("GEMINI_API_KEY")
+    if key:
+        return key.strip()
+    env_paths = [
+        os.path.join(os.path.dirname(__file__), "..", "app", ".env"),
+        os.path.join(os.path.dirname(__file__), ".env"),
+        r"c:\Users\ADMIN\OneDrive\Desktop\Ai2Hero\app\.env"
+    ]
+    for ep in env_paths:
+        if os.path.exists(ep):
+            try:
+                with open(ep, "r", encoding="utf-8", errors="ignore") as f:
+                    for line in f:
+                        if line.startswith("GEMINI_API_KEY="):
+                            k = line.split("=", 1)[1].replace("'", "").replace('"', '').strip()
+                            if k:
+                                return k
+            except Exception:
+                pass
+    return None
+
+def create_local_3d_gold_thumbnail(src_path, title_text, out_path, tag_text="THUYẾT MINH"):
+    """
+    LOCAL 3D GOLD THUMBNAIL ENGINE CHO FIX SUITE:
+    - Bố cục chữ ở 60%-72% chiều cao ảnh dọc 9:16 (vị trí vàng chữ cũ).
+    - Typography 3D Vàng Kim (Extrusion Shadow 7 lớp + Black Stroke + Gold Sheen).
+    - Badge đỏ ruby nhỏ gọn góc trên trái.
+    - TUYỆT ĐỐI KHÔNG CÓ BẢNG ĐEN CHE BỨC ẢNH.
+    """
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        if not src_path or not os.path.exists(src_path):
+            return None
+
+        im = Image.open(src_path).convert('RGBA')
+        w, h = im.size
+        
+        target_w = 720
+        target_h = int(h * (target_w / w))
+        im = im.resize((target_w, target_h), Image.Resampling.LANCZOS)
+        
+        font_path = 'C:/Windows/Fonts/arialbd.ttf'
+        if not os.path.exists(font_path):
+            font_path = 'C:/Windows/Fonts/tahomabd.ttf'
+        if not os.path.exists(font_path):
+            font_path = 'C:/Windows/Fonts/arial.ttf'
+            
+        title = title_text.upper().strip()
+        title = re.sub(r'^\d+_', '', title).strip()
+        title = re.sub(r'[\\/:*?"<>|]', ' ', title).strip()
+        
+        words = title.split()
+        lines = []
+        if len(title) > 16 and len(words) >= 3:
+            mid = len(words) // 2
+            lines.append(' '.join(words[:mid]))
+            lines.append(' '.join(words[mid:]))
+        else:
+            lines.append(title)
+            
+        font_size = 50 if len(lines) == 1 else 44
+        font = ImageFont.truetype(font_path, font_size)
+        
+        max_text_w = max(font.getbbox(l)[2] - font.getbbox(l)[0] for l in lines)
+        while max_text_w > (target_w * 0.84) and font_size > 22:
+            font_size -= 2
+            font = ImageFont.truetype(font_path, font_size)
+            max_text_w = max(font.getbbox(l)[2] - font.getbbox(l)[0] for l in lines)
+            
+        line_h = int(font_size * 1.32)
+        total_text_h = len(lines) * line_h
+        
+        # 1. TOP-LEFT BADGE
+        if tag_text:
+            badge_layer = Image.new('RGBA', (target_w, target_h), (0, 0, 0, 0))
+            d_badge = ImageDraw.Draw(badge_layer)
+            tag_font = ImageFont.truetype(font_path, 18)
+            tb_box = tag_font.getbbox(tag_text)
+            tw = tb_box[2] - tb_box[0]
+            th = tb_box[3] - tb_box[1]
+            
+            bx, by = 14, 14
+            bw = tw + 20
+            bh = th + 12
+            
+            d_badge.rounded_rectangle([bx + 2, by + 2, bx + bw + 2, by + bh + 2], radius=8, fill=(0, 0, 0, 160))
+            d_badge.rounded_rectangle([bx, by, bx + bw, by + bh], radius=8, fill=(210, 25, 35, 240), outline=(255, 220, 100, 220), width=1)
+            tx = bx + (bw - tw) // 2
+            ty = by + (bh - th) // 2 - 1
+            d_badge.text((tx, ty), tag_text, font=tag_font, fill=(255, 255, 255))
+            im = Image.alpha_composite(im, badge_layer)
+            
+        # 2. TYPOGRAPHY 3D VÀNG KIM TRỰC TIẾP
+        text_start_y = max(int(target_h * 0.72) - (total_text_h // 2), int(target_h * 0.55))
+        text_layer = Image.new('RGBA', (target_w, target_h), (0, 0, 0, 0))
+        d_text = ImageDraw.Draw(text_layer)
+        
+        for idx, line in enumerate(lines):
+            bbox = font.getbbox(line)
+            lw = bbox[2] - bbox[0]
+            lx = (target_w - lw) // 2
+            ly = text_start_y + idx * line_h
+            
+            # Shadow 3D sâu
+            for offset in range(7, 0, -1):
+                d_text.text((lx + offset, ly + offset), line, font=font, fill=(0, 0, 0, 240))
+            # Viền đen dày
+            stroke_w = max(4, font_size // 9)
+            d_text.text((lx, ly), line, font=font, fill=(255, 205, 0), stroke_width=stroke_w, stroke_fill=(0, 0, 0, 255))
+            # Ánh kim phản chiếu
+            d_text.text((lx, ly), line, font=font, fill=(255, 245, 140), stroke_width=1, stroke_fill=(210, 150, 0, 180))
+            
+        final_img = Image.alpha_composite(im, text_layer).convert('RGB')
+        dest_dir = os.path.dirname(out_path)
+        if dest_dir and not os.path.exists(dest_dir):
+            os.makedirs(dest_dir, exist_ok=True)
+        final_img.save(out_path, quality=92, optimize=True)
+        return out_path
+    except Exception as e:
+        print(Fore.YELLOW + f"  [!] Loi render 3D Gold Thumbnail: {e}")
+        return None
+
+def clean_image_with_gemini_flash(thumb_src, out_clean_path, api_key=None, bridge_server=None):
+    """
+    BƯỚC 1: XÓA SẠCH TOÀN BỘ CHỮ TIẾNG TRUNG QUỐC & WATERMARK BẰNG GEMINI.
+    - Giữ nguyên 100% nhân vật, nét mặt, bối cảnh, tỷ lệ và màu sắc.
+    - TUYỆT ĐỐI KHÔNG VIẾT CHỮ TIẾNG VIỆT TẠI BƯỚC NÀY.
+    - Xuất ra file ảnh nền hoàn toàn sạch chữ (Clean Background).
+    """
     if not thumb_src or not os.path.exists(thumb_src):
         return None
 
-    if not bridge_server or not bridge_server.is_connected():
+    clean_prompt = """Hãy chỉnh sửa bức ảnh đính kèm này (Image Inpainting / Text Removal):
+1. XÓA BỎ HOÀN TOÀN tất cả các dòng chữ tiếng Trung Quốc và watermark/logo trên ảnh.
+2. Phục hồi chi tiết bối cảnh tự nhiên bị chữ che khuất.
+3. BẮT BUỘC GIỮ NGUYÊN 100% nhân vật, biểu cảm, nét mặt, trang phục, ánh sáng, màu sắc và tỷ lệ khung hình gốc.
+4. TUYỆT ĐỐI KHÔNG VIẾT BẤT KỲ CHỮ NÀO LÊN ẢNH, KHÔNG VẼ THÊM KHUNG ĐEN.
+5. Xuất ra hình ảnh nền hoàn toàn sạch chữ (clean edited image without any text)."""
+
+    # 1. ƯU TIÊN 1: BROWSER AI BRIDGE (Gemini Web Free qua Chrome Extension - 0đ)
+    if bridge_server and bridge_server.is_connected():
+        try:
+            print(Fore.CYAN + Style.BRIGHT + f"  [🌐 Gemini Web Clean] Dang gui anh sang Gemini Web de xoa sach chu tieng Trung...")
+            with open(thumb_src, "rb") as img_f:
+                b64_data = base64.b64encode(img_f.read()).decode('utf-8')
+                img_b64 = f"data:image/jpeg;base64,{b64_data}"
+
+            payload = [{"name": os.path.basename(thumb_src), "type": "image/jpeg", "data": img_b64}]
+            start_t = time.time()
+            res = bridge_server.execute_job(clean_prompt, attachments=payload, target_ai="gemini", timeout=75, allow_failover=True)
+            if res and res.get("success") and res.get("result"):
+                m = re.search(r'!\[.*?\]\((data:image/[^)]+|https?://[^\s\)]+)\)', str(res.get("result")))
+                if m:
+                    u = m.group(1)
+                    if u.startswith("data:image/"):
+                        raw_b64 = u.split(",", 1)[1]
+                        os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
+                        with open(out_clean_path, "wb") as out_f:
+                            out_f.write(base64.b64decode(raw_b64))
+                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Web Clean] Da xoa sach chu TQ va nhan anh nen thanh cong (Base64)!")
+                        return out_clean_path
+                    elif u.startswith("http"):
+                        req_dl = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"})
+                        with urllib.request.urlopen(req_dl, timeout=20) as dl_resp:
+                            os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
+                            with open(out_clean_path, "wb") as out_f:
+                                out_f.write(dl_resp.read())
+                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Web Clean] Da tai anh nen sach tu Gemini Web URL!")
+                        return out_clean_path
+
+            # Watcher Downloads folder neu Extension tai ve may
+            dl_img = get_latest_download_image(start_t - 2, timeout=4)
+            if dl_img:
+                shutil.copy2(dl_img, out_clean_path)
+                print(Fore.GREEN + Style.BRIGHT + f"  [✓ Downloads Watcher] Da phat hien anh nen sach tai ve may: {os.path.basename(dl_img)}!")
+                return out_clean_path
+        except Exception as bridge_err:
+            print(Fore.YELLOW + f"  [!] Gemini Bridge Clean loi: {bridge_err}, chuyen sang Flash API...")
+
+    # 2. ƯU TIÊN 2: GEMINI FLASH IMAGE DIRECT API
+    key = api_key or get_gemini_api_key()
+    if key:
+        try:
+            print(Fore.CYAN + f"  [⚡ Gemini Flash Image] Dang gui anh sang Gemini Flash API de xoa chu tieng Trung (3s)...")
+            with open(thumb_src, "rb") as f:
+                b64_img = base64.b64encode(f.read()).decode("utf-8")
+
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key={key}"
+            payload = {
+                "contents": [{
+                    "parts": [
+                        {"text": clean_prompt},
+                        {"inline_data": {"mime_type": "image/jpeg", "data": b64_img}}
+                    ]
+                }]
+            }
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=45) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                candidates = res_data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    for p in parts:
+                        inline = p.get("inlineData") or p.get("inline_data")
+                        if inline and inline.get("data"):
+                            img_bytes = base64.b64decode(inline["data"])
+                            os.makedirs(os.path.dirname(out_clean_path), exist_ok=True)
+                            with open(out_clean_path, "wb") as out_f:
+                                out_f.write(img_bytes)
+
+                            try:
+                                from PIL import Image, ImageFilter
+                                c_im = Image.open(out_clean_path).convert("RGBA")
+                                cw, ch = c_im.size
+                                wm_w = int(cw * 0.12)
+                                wm_h = int(ch * 0.08)
+                                wm_patch = c_im.crop((cw - wm_w, ch - wm_h * 2, cw, ch - wm_h)).filter(ImageFilter.GaussianBlur(2))
+                                c_im.paste(wm_patch, (cw - wm_w, ch - wm_h))
+                                c_im.convert("RGB").save(out_clean_path, quality=95)
+                            except Exception:
+                                pass
+
+                            print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Flash Image] Da xoa sach chu TQ thanh cong (3s, {len(img_bytes)//1024} KB)!")
+                            return out_clean_path
+        except Exception as e:
+            print(Fore.YELLOW + f"  [!] Gemini Flash API: {e}")
+
+    # 3. FALLBACK CỤC BỘ: Tra ve anh goc
+    return thumb_src
+
+def render_adaptive_vietnamese_thumbnail(bg_image_path, title_text, out_path, style="auto", tag_text="THUYẾT MINH"):
+    """
+    BƯỚC 2: Ghép tiêu đề tiếng Việt chuẩn Typography vào ĐÚNG VỊ TRÍ CHỮ CŨ:
+    - Nhận diện Aspect Ratio (Ngang 16:9 vs Dọc 9:16).
+    - Hỗ trợ Font Thư pháp Việt (Charm-Bold.ttf) + 3D Vàng kim (Arial Bold).
+    - Tự động căn chỉnh hào quang, bóng đổ 3D và tối ưu 720p.
+    """
+    try:
+        from PIL import Image, ImageDraw, ImageFont, ImageFilter
+        if not bg_image_path or not os.path.exists(bg_image_path):
+            return None
+
+        im = Image.open(bg_image_path).convert("RGBA")
+        orig_w, orig_h = im.size
+        ratio = orig_w / float(orig_h)
+
+        if ratio >= 1.15:
+            target_w = 1280
+            target_h = int(target_w / ratio)
+        else:
+            target_w = 720
+            target_h = int(target_w / ratio)
+        im = im.resize((target_w, target_h), Image.Resampling.LANCZOS)
+        w, h = target_w, target_h
+
+        clean_title = re.sub(r'^\d+_', '', title_text).strip()
+        clean_title = re.sub(r'[\\/:*?"<>|]', ' ', clean_title).strip()
+
+        font_dir = os.path.join(os.path.dirname(__file__), "fonts")
+        charm_path = os.path.join(font_dir, "Charm-Bold.ttf")
+        arial_path = "C:/Windows/Fonts/arialbd.ttf"
+        if not os.path.exists(arial_path):
+            arial_path = "C:/Windows/Fonts/tahomabd.ttf"
+
+        is_landscape = ratio >= 1.15
+
+        chosen_style = style
+        if chosen_style == "auto":
+            chosen_style = "calligraphy" if (is_landscape and os.path.exists(charm_path)) else "gold_3d"
+
+        # ẢNH NGANG 16:9
+        if is_landscape:
+            font_file = charm_path if (chosen_style in ["calligraphy", "neon_glow"] and os.path.exists(charm_path)) else arial_path
+            
+            words = clean_title.split()
+            lines = []
+            if len(words) >= 6:
+                mid = len(words) // 2
+                lines.append(' '.join(words[:mid]))
+                lines.append(' '.join(words[mid:]))
+            else:
+                lines.append(clean_title)
+
+            scale = w / 1024.0
+            base_size = int((56 if len(lines) == 1 else 46) * scale)
+            font = ImageFont.truetype(font_file, base_size)
+
+            while max(font.getbbox(l)[2] - font.getbbox(l)[0] for l in lines) > (w * 0.82) and base_size > 22:
+                base_size -= 2
+                font = ImageFont.truetype(font_file, base_size)
+
+            line_h = int(base_size * 1.28)
+            total_text_h = len(lines) * line_h
+            start_y = int(h * 0.68) if total_text_h < int(h * 0.22) else int(h * 0.63)
+
+            # Glow
+            glow_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+            d_glow = ImageDraw.Draw(glow_layer)
+            glow_color = (0, 210, 255, 120) if chosen_style in ["calligraphy", "neon_glow"] else (255, 200, 30, 110)
+            glow_r = int(6 * scale)
+
+            for idx, line in enumerate(lines):
+                bbox = font.getbbox(line)
+                lw = bbox[2] - bbox[0]
+                lx = (w - lw) // 2
+                ly = start_y + idx * line_h
+                for dx in range(-glow_r*2, glow_r*2 + 1, 3):
+                    for dy in range(-glow_r*2, glow_r*2 + 1, 3):
+                        if dx*dx + dy*dy <= (glow_r*2)**2:
+                            d_glow.text((lx + dx, ly + dy), line, font=font, fill=glow_color)
+            glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(int(7 * scale)))
+            im = Image.alpha_composite(im, glow_layer)
+
+            # Chữ chính
+            text_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+            d_text = ImageDraw.Draw(text_layer)
+            for idx, line in enumerate(lines):
+                bbox = font.getbbox(line)
+                lw = bbox[2] - bbox[0]
+                lx = (w - lw) // 2
+                ly = start_y + idx * line_h
+
+                for s_off in range(int(5 * scale), 0, -1):
+                    d_text.text((lx + s_off, ly + s_off), line, font=font, fill=(0, 0, 0, 230))
+                stroke_w = max(4, int(4 * scale))
+                d_text.text((lx, ly), line, font=font, fill=(255, 255, 255), stroke_width=stroke_w, stroke_fill=(5, 12, 20, 255))
+                text_fill = (245, 252, 255) if chosen_style in ["calligraphy", "neon_glow"] else (255, 245, 140)
+                d_text.text((lx, ly), line, font=font, fill=text_fill)
+
+            final_img = Image.alpha_composite(im, text_layer).convert("RGB")
+        else:
+            final_path = create_local_3d_gold_thumbnail(bg_image_path, clean_title, out_path, tag_text=tag_text)
+            return final_path
+
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        final_img.save(out_path, quality=92, optimize=True)
+        return out_path
+    except Exception as e:
+        print(Fore.YELLOW + f"  [!] Loi render Adaptive Thumbnail: {e}")
         return None
 
-    try:
-        with open(thumb_src, "rb") as img_f:
-            b64_data = base64.b64encode(img_f.read()).decode('utf-8')
-            img_b64 = f"data:image/jpeg;base64,{b64_data}"
-    except Exception as e:
-        print(Fore.YELLOW + f"  [!] Khong the doc anh thumbnail: {e}")
+def redesign_thumbnail(thumb_src, new_title, bridge_server):
+    """
+    QUY TRÌNH THIẾT KẾ THUMBNAIL 2 BƯỚC CHUẨN HÓA (CHO FIX PUBLISHING SUITE):
+    - Bước 1: Gemini (Bridge hoặc Flash API) CHỈ xóa sạch chữ TQ & watermark, lấy ảnh nền sạch (Clean Background).
+    - Bước 2: Worker dùng Pillow viết chữ tiếng Việt chuẩn Typography 3D vào đúng vị trí chữ cũ.
+    """
+    if not thumb_src or not os.path.exists(thumb_src):
         return None
 
     clean_title = re.sub(r'^\d+_', '', new_title).strip()
     clean_title = re.sub(r'[\\/:*?"<>|]', ' ', clean_title).strip()
-    short_title = smart_truncate(clean_title, max_len=35)
+    short_title = smart_truncate(clean_title, max_len=45)
 
-    print(Fore.CYAN + f"  [⚡ Gemini Image 3D] Dang gui anh sang Gemini de xoa chu TQ va viet chu: '{short_title}'...")
-    image_prompt = f"""Tạo hình ảnh (Generate image / Edit image):
-Dựa trên bức ảnh bìa thumbnail đính kèm này, hãy thực hiện chỉnh sửa ảnh thumbnail hoàn chỉnh:
-1. XÓA BỎ HOÀN TOÀN toàn bộ các dòng chữ tiếng Trung Quốc có trên ảnh (kể cả chữ to ở phía trên, giữa hoặc dưới).
-2. VIẾT LẠI TIÊU ĐỀ TIẾNG VIỆT MỚI: "{short_title}" LÊN ĐÚNG VỊ TRÍ CỦA DÒNG CHỮ CŨ ĐÓ.
-   - Sử dụng phong cách chữ Typography nghệ thuật nổi bật, dễ đọc trên điện thoại (chữ 3D màu vàng kim hoặc trắng viền đen dày, có bóng đổ sắc nét).
-3. BẮT BUỘC GIỮ NGUYÊN 100% nhân vật, biểu cảm, trang phục, bối cảnh phòng ốc/thiên nhiên, màu sắc và tỷ lệ khung hình của bức ảnh gốc.
-4. TUYỆT ĐỐI KHÔNG thêm bất kỳ khung viền màu đen che khuất nhân vật, KHÔNG tự thêm badge hay tem chữ nào khác.
-5. BẮT BUỘC xuất ra hình ảnh mới đã chỉnh sửa hoàn thiện, không giải thích bằng văn bản."""
+    dest_dir = os.path.dirname(thumb_src)
+    clean_bg = os.path.join(dest_dir, f"_clean_bg_{os.path.basename(thumb_src)}")
+    final_thumb = thumb_src + ".new3d.jpg"
 
-    attachments_payload = [{"name": f"{os.path.basename(thumb_src)}", "type": "image/jpeg", "data": img_b64}]
-    start_t = time.time()
+    print(Fore.CYAN + Style.BRIGHT + f"\n  ==================================================")
+    print(Fore.CYAN + Style.BRIGHT + f"  🎨 THIẾT KẾ THUMBNAIL (PIPELINE 2 BƯỚC CHUẨN HÓA)")
+    print(Fore.CYAN + Style.BRIGHT + f"  ==================================================")
+    print(Fore.WHITE + f"  -> Tiêu đề tiếng Việt: '{short_title}'")
 
-    ws_holder = {"res": None}
-    cancel_ws_event = threading.Event()
+    # BƯỚC 1: XÓA SẠCH CHỮ TIẾNG TRUNG BẰNG GEMINI
+    clean_path = clean_image_with_gemini_flash(thumb_src, clean_bg, api_key=get_gemini_api_key(), bridge_server=bridge_server)
+    effective_bg = clean_path if (clean_path and os.path.exists(clean_path)) else thumb_src
 
-    def _run_ws():
-        ws_holder["res"] = bridge_server.execute_job(
-            image_prompt,
-            attachments=attachments_payload,
-            target_ai="gemini",
-            timeout=75,
-            cancel_event=cancel_ws_event,
-            allow_failover=True  # Tự động nhảy sang tài khoản còn lại nếu tài khoản hiện tại hết Quota
-        )
+    # BƯỚC 2: WORKER VIẾT TIÊU ĐỀ TIẾNG VIỆT CHUẨN TYPOGRAPHY 3D VÀO ĐÚNG VỊ TRÍ CHỮ CŨ
+    print(Fore.CYAN + f"  [Bước 2: Worker Typography Engine] Dang ve chu tieng Viet co dau 3D len anh...")
+    res = render_adaptive_vietnamese_thumbnail(effective_bg, short_title, final_thumb, style="auto", tag_text="THUYẾT MINH")
+    if res and os.path.exists(res):
+        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Hoàn Tất 100%] Da tao anh bia tieng Viet thanh cong: {os.path.basename(res)}!")
+        return res
 
-    t_ws = threading.Thread(target=_run_ws, daemon=True)
-    t_ws.start()
-
-    last_log_t = time.time()
-    while t_ws.is_alive() or ws_holder["res"] is not None:
-        dl_img = get_latest_download_image(start_t - 2, timeout=0)
-        if dl_img:
-            cancel_ws_event.set()
-            print(Fore.GREEN + Style.BRIGHT + f"  [⚡ Downloads Watcher] Da phat hien anh 3D moi tai ve may: {os.path.basename(dl_img)}!")
-            return dl_img
-
-        if ws_holder["res"] is not None:
-            ws_res = ws_holder["res"]
-            if ws_res and ws_res.get("success") and ws_res.get("result"):
-                raw_out = str(ws_res.get("result", "")).strip()
-                img_match = re.search(r'!\[.*?\]\((data:image/[^)]+|https?://[^\s\)]+)\)', raw_out)
-                if img_match:
-                    cancel_ws_event.set()
-                    new_thumb_url = img_match.group(1)
-                    if new_thumb_url.startswith("data:image/"):
-                        try:
-                            header, encoded = new_thumb_url.split(",", 1)
-                            img_bytes = base64.b64decode(encoded)
-                            save_p = thumb_src + ".new3d.jpg"
-                            with open(save_p, "wb") as f_out:
-                                f_out.write(img_bytes)
-                            print(Fore.GREEN + Style.BRIGHT + f"  [⚡ Gemini Image 3D] Da nhan duoc anh 3D Base64 tu Gemini!")
-                            return save_p
-                        except Exception:
-                            pass
-            break
-
-        # In thông báo nhịp tim mỗi 5 giây
-        elapsed = int(time.time() - start_t)
-        if time.time() - last_log_t >= 5:
-            last_log_t = time.time()
-            print(Fore.CYAN + f"  [⚡ Gemini Image 3D] Dang cho Gemini tao anh 3D ({elapsed}s)...")
-
-        time.sleep(1.2)
-
-    dl_img = get_latest_download_image(start_t - 2, timeout=3)
-    if dl_img:
-        cancel_ws_event.set()
-        print(Fore.GREEN + Style.BRIGHT + f"  [⚡ Downloads Watcher] Da nhat duoc anh 3D tu Downloads: {os.path.basename(dl_img)}!")
-        return dl_img
-
-    cancel_ws_event.set()
-    print(Fore.YELLOW + "  [!] Khong the tao anh 3D moi, giu nguyen anh goc...")
-    return None
+    # Fallback cục bộ
+    return create_local_3d_gold_thumbnail(effective_bg, short_title, final_thumb, tag_text="THUYẾT MINH")
 
 def write_copywriting_txt(target_dir, new_title, description, hashtags, duration_sec, sub_count, new_mp4_name, new_srt_name, new_jpg_name):
     txt_path = os.path.join(target_dir, f"{new_title}.txt")
