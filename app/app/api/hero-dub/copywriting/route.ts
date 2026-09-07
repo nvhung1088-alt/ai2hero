@@ -171,7 +171,18 @@ CẤU TRÚC JSON MẪU BẮT BUỘC:
     let new_title = String(parsedJson.new_title || cleanTitle).trim();
     // Làm sạch chữ Trung Quốc sót lại trong tiêu đề nếu có
     new_title = new_title.replace(/[\u4e00-\u9fff]/g, '').trim();
-    if (!new_title) new_title = cleanTitle;
+    // Kiểm tra xem tiêu đề có bị cắt cụt ngủn hoặc vô nghĩa không (ví dụ "Vlog_AI____", "___", ít hơn 6 ký tự chữ)
+    const cleanWordChars = new_title.replace(/[^a-zA-Z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ\s]/g, '').trim();
+    if (!new_title || cleanWordChars.length < 6 || /^(vlog|clip|video)[\s_]*ai[\s_]*$/i.test(new_title) || /^[\s_–-]+$/.test(new_title)) {
+      // Dùng câu phụ đề tiếng Việt tiêu biểu đầu tiên nếu có
+      const firstValidSub = Array.isArray(sampleSubs) ? sampleSubs.find((s: string) => s && s.trim().length >= 8 && !/[\u4e00-\u9fff]/.test(s)) : null;
+      if (firstValidSub) {
+        new_title = firstValidSub.trim().slice(0, 60);
+      } else {
+        const fallbackWord = cleanTitle.replace(/[\u4e00-\u9fff]/g, '').trim();
+        new_title = (fallbackWord && fallbackWord.length >= 6) ? fallbackWord : 'Tập Phim Đặc Sắc';
+      }
+    }
 
     let description = String(parsedJson.description || '').trim();
     // Làm sạch chữ Trung Quốc sót lại trong description nếu có

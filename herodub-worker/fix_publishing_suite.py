@@ -547,6 +547,32 @@ def smart_truncate(text, max_len=45):
         return cut[:last_space].strip()
     return cut.strip()
 
+def is_meaningful_title(title):
+    """
+    Kiểm tra xem tiêu đề tiếng Việt có thực sự có nghĩa hay không:
+    - Không chứa chữ tiếng Trung Quốc.
+    - Không bị cụt ngủn hoặc vô nghĩa như Vlog_AI____, video_123, ___.
+    - Có ít nhất 2 từ và độ dài chữ có nghĩa >= 7 ký tự.
+    """
+    if not title:
+        return False
+    str_t = str(title).strip()
+    if re.search(r'[\u4e00-\u9fff]', str_t):
+        return False
+    clean_words = re.sub(r'^\d+_', '', str_t).strip()
+    clean_words = re.sub(r'[^a-zA-Z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ\s]', ' ', clean_words).strip()
+    words = clean_words.split()
+    if len(words) < 2 or len(clean_words) < 7:
+        return False
+    lower_t = clean_words.lower()
+    if lower_t in ["vlog ai", "video ai", "clip ai", "video", "clip", "vlog", "tap phim", "thuyet minh", "video goc"]:
+        return False
+    if re.match(r'^(vlog|clip|video)[\s_]*ai[\s_]*$', lower_t):
+        return False
+    if re.match(r'^(video|clip|vlog|task)[\s_]*\d+$', lower_t):
+        return False
+    return True
+
 def detect_video_genre(title_vi, raw_title="", sample_subs=None):
     """
     Tự động nhận diện thể loại video dựa trên phân tích đa tầng:
@@ -709,25 +735,39 @@ def build_rich_vietnamese_description(title_vi, raw_title="", sample_subs=None):
 # ---------------------------------------------------------
 # GEMINI AI PROCESSING (TEXT & IMAGE)
 # ---------------------------------------------------------
-def generate_copywriting(clean_source_title, prefix_num, sample_subs, bridge_server):
+def generate_copywriting(clean_source_title, prefix_num, sample_subs, bridge_server, thumb_src=None):
     subs_text = "\n".join([f"- {s}" for s in sample_subs if s]) if sample_subs else "(Không có phụ đề)"
+
+    # Chuẩn bị ảnh đính kèm (Multimodal) nếu có ảnh bìa gốc
+    attachments = []
+    if thumb_src and os.path.exists(thumb_src):
+        try:
+            with open(thumb_src, "rb") as f_img:
+                b64_data = base64.b64encode(f_img.read()).decode("utf-8")
+                attachments.append({
+                    "name": os.path.basename(thumb_src),
+                    "type": "image/jpeg",
+                    "data": f"data:image/jpeg;base64,{b64_data}"
+                })
+                print(Fore.CYAN + f"  [📸 Vision Ready] Da nạp ảnh bìa gốc để gửi kèm cho Gemini quan sát!")
+        except Exception:
+            pass
 
     prompt = f"""[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON THUẦN TÚY. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH]
 
-Hãy đóng vai Giám đốc Sáng tạo & Biên tập Nội dung Video Đa Thể Loại chuyên nghiệp (Hoạt hình 3D Anime/Donghua, Phim ngắn/Drama, Ẩm thực/Nấu ăn, Khoa học/Khám phá, Sinh tồn/Chế tác, Vlog/Đời sống...).
+Hãy đóng vai Giám đốc Sáng tạo & Biên tập Nội dung Video Đa Thể Loại chuyên nghiệp (YouTube Shorts, TikTok, Facebook Reels).
 Dưới đây là thông tin video:
-- Tiêu đề gốc video: {clean_source_title}
+- Ảnh bìa thumbnail gốc của video: (Xem ảnh đính kèm - hãy quan sát kỹ nhân vật, biểu cảm, bối cảnh và ĐẶC BIỆT LÀ DÒNG CHỮ TIÊU ĐỀ TRÊN ẢNH BÌA GỐC để nắm bắt trọn vẹn chủ đề)
+- Tên file gốc video: {clean_source_title}
 - Các câu thoại phụ đề thực tế trong video:
 {subs_text}
 
 QUY TẮC BẮT BUỘC TUYỆT ĐỐI (100% TIẾNG VIỆT - TUYỆT ĐỐI KHÔNG CÓ KÝ TỰ TIẾNG TRUNG):
-1. TỰ ĐỘNG NHẬN DIỆN THỂ LOẠI & BỐI CẢNH CHÍNH XÁC:
-   - Nếu là Hoạt hình 3D / Anime / Donghua / Tiên hiệp: Văn phong hào hùng, kịch tính, phong cách huyền ảo / tu chân / dị năng đỉnh cao.
-   - Nếu là Phim ngắn / Drama / Đô thị / Tình cảm: Văn phong cuốn hút, kịch tính, sâu sắc, nhấn mạnh vào mâu thuẫn câu chuyện và cú twist.
-   - Nếu là Ẩm thực / Nấu ăn / Đời sống: Văn phong tươi vui, ấm áp, hấp dẫn vị giác và thư giãn.
-   - Nếu là Khoa học / Khám phá / Tài liệu: Văn phong logic, gợi mở tò mò, mở rộng tri thức.
-   - Nếu là Sinh tồn / Chế tác / Bushcraft: Văn phong mộc mạc, thực tế, tôn vinh kỹ năng và trải nghiệm tự nhiên.
+1. TỰ ĐỘNG NHẬN DIỆN THỂ LOẠI & NỘI DUNG CHÍNH XÁC TỪ ẢNH BÌA VÀ PHỤ ĐỀ:
+   - Đọc chữ trên ảnh bìa kết hợp với hình ảnh nhân vật và phụ đề để hiểu câu chuyện (Ví dụ: Chú heo bông đi khám bệnh viện bị từ chối xem vlog, Chế tác nhà gỗ trong rừng, Hoạt hình 3D tu tiên, v.v.).
 2. "new_title": Đặt Tiêu đề Tiếng Việt cực kỳ cuốn hút, giật tít câu view chuẩn SEO (dưới 65 ký tự, trọn vẹn câu, sát với nội dung và thể loại video).
+   - TUYỆT ĐỐI KHÔNG để chữ tiếng Trung, TUYỆT ĐỐI KHÔNG để tiêu đề cụt ngủn hoặc vô nghĩa như "Vlog_AI____".
+   - Phải là một câu trọn nghĩa, hấp dẫn, khơi gợi tò mò mạnh mẽ.
 3. "description": Viết đoạn mô tả chi tiết, bài bản và lôi cuốn (120-200 từ), chia thành 3 đoạn văn rõ ràng:
    - Đoạn 1: Mở màn hấp dẫn về nhân vật, bối cảnh hoặc tình huống mở đầu video.
    - Đoạn 2: Tóm tắt chi tiết các diễn biến then chốt, tình tiết bất ngờ hoặc điểm cao trào kịch tính.
@@ -757,8 +797,8 @@ CẤU TRÚC JSON MẪU:
     }
 
     if bridge_server and bridge_server.is_connected():
-        print(Fore.CYAN + f"  [⚡ Gemini Copywriting] Dang yeu cau tao Tieu de + Mo ta sang Gemini...")
-        ws_res = bridge_server.execute_job(prompt, attachments=[], target_ai="gemini", timeout=120, allow_failover=False)
+        print(Fore.CYAN + f"  [⚡ Gemini Multimodal Copywriting] Dang gui anh bia + ten file + sub sang Gemini Web...")
+        ws_res = bridge_server.execute_job(prompt, attachments=attachments, target_ai="gemini", timeout=120, allow_failover=False)
         if ws_res and ws_res.get("success") and ws_res.get("result"):
             raw_out = str(ws_res.get("result", "")).strip()
             raw_out = re.sub(r"^```(?:json)?\s*", "", raw_out, flags=re.IGNORECASE)
@@ -775,8 +815,9 @@ CẤU TRÚC JSON MẪU:
                             t_val = str(parsed.get("new_title")).strip()
                             t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
                             clean_t = re.sub(r'[\\/:*?"<>|]', ' ', t_val).strip()
-                            if clean_t:
+                            if is_meaningful_title(clean_t):
                                 result["new_title"] = f"{prefix_num}{clean_t}" if prefix_num and not clean_t.startswith(prefix_num) else clean_t
+                                parsed_success = True
                         if parsed.get("description"):
                             d_val = str(parsed.get("description")).strip()
                             d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
@@ -787,8 +828,8 @@ CẤU TRÚC JSON MẪU:
                             h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
                             if h_val:
                                 result["hashtags"] = h_val
-                        print(Fore.GREEN + Style.BRIGHT + f"  [⚡ Gemini Copywriting] Da tao Tieu de & Mo ta moi: {result['new_title']}")
-                        parsed_success = True
+                        if parsed_success:
+                            print(Fore.GREEN + Style.BRIGHT + f"  [⚡ Gemini Copywriting] Da tao Tieu de & Mo ta moi: {result['new_title']}")
             except Exception:
                 pass
 
@@ -798,7 +839,7 @@ CẤU TRÚC JSON MẪU:
                     t_val = title_m.group(1).strip()
                     t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
                     clean_t = re.sub(r'[\\/:*?"<>|]', ' ', t_val).strip()
-                    if clean_t:
+                    if is_meaningful_title(clean_t):
                         result["new_title"] = f"{prefix_num}{clean_t}" if prefix_num and not clean_t.startswith(prefix_num) else clean_t
                         print(Fore.GREEN + Style.BRIGHT + f"  [⚡ Gemini Copywriting] Da trich xuat Tieu de moi: {result['new_title']}")
                 desc_m = re.search(r'"description"\s*:\s*"([^"]+)"', raw_out)
@@ -814,8 +855,33 @@ CẤU TRÚC JSON MẪU:
                     if h_val:
                         result["hashtags"] = h_val
 
-    # Loại bỏ ký tự cấm trong tên file
-    result["new_title"] = re.sub(r'[\\/:*?"<>|]', ' ', result["new_title"]).strip()
+    # RÀO CHẮN BẢO VỆ CỨU HỘ ĐẶC BIỆT: Chặn đứng 100% tiêu đề rác cụt ngủn như 'Vlog_AI____'
+    if not is_meaningful_title(result["new_title"]):
+        print(Fore.YELLOW + f"  [!] Phát hiện tiêu đề chưa hợp lệ hoặc cụt ngủn ('{result['new_title']}'). Kích hoạt cứu hộ...")
+        pure_ch_title = re.sub(r'^\d+_', '', clean_source_title).strip()
+        trans_title = google_translate(pure_ch_title, dest='vi')
+        if trans_title and is_meaningful_title(trans_title):
+            clean_t = re.sub(r'[\\/:*?"<>|]', ' ', trans_title).strip()
+            result["new_title"] = f"{prefix_num}{clean_t}"
+            print(Fore.CYAN + Style.BRIGHT + f"  [-] Đã tự động dịch tiêu đề gốc thành công: {result['new_title']}")
+        elif sample_subs and len(sample_subs) > 0:
+            for seg_text in sample_subs:
+                t = str(seg_text).strip()
+                if is_meaningful_title(t):
+                    result["new_title"] = f"{prefix_num}{t[:60]}"
+                    print(Fore.CYAN + Style.BRIGHT + f"  [-] Đã lấy câu phụ đề tiêu biểu làm tiêu đề: {result['new_title']}")
+                    break
+        if not is_meaningful_title(result["new_title"]):
+            genre_name_map = {
+                "anime_donghua": "Tập Phim Hoạt Hình 3D Đặc Sắc",
+                "movie_drama": "Tập Phim Ngắn Kịch Tính",
+                "food_cooking": "Hành Trình Khám Phá Ẩm Thực Hấp Dẫn",
+                "survival_bushcraft": "Hành Trình Sinh Tồn Và Chế Tác",
+                "science_discovery": "Khám Phá Thế Giới Tri Thức Bí Ẩn",
+                "general_lifestyle": "Những Khoảnh Khắc Cuộc Sống Đáng Xem"
+            }
+            result["new_title"] = f"{prefix_num}{genre_name_map.get(init_genre, 'Tác Phẩm Đặc Sắc')}"
+
     # Đảm bảo description sạch tiếng Trung và có cấu trúc bài bản
     if re.search(r'[\u4e00-\u9fff]', result.get("description", "")) or len(result.get("description", "")) < 60:
         result["description"] = build_rich_vietnamese_description(result["new_title"], clean_source_title, sample_subs)
@@ -839,15 +905,17 @@ def redesign_thumbnail(thumb_src, new_title, bridge_server):
 
     clean_title = re.sub(r'^\d+_', '', new_title).strip()
     clean_title = re.sub(r'[\\/:*?"<>|]', ' ', clean_title).strip()
-    clean_title = smart_truncate(clean_title, max_len=45)
+    short_title = smart_truncate(clean_title, max_len=35)
 
-    print(Fore.CYAN + f"  [⚡ Gemini Image 3D] Dang gui anh sang Gemini Imagen 3 de ve chu: '{clean_title}'...")
-    image_prompt = f"""Tạo hình ảnh (Generate image): Hãy chỉnh sửa và tạo lại một bức ảnh thumbnail hoàn chỉnh dựa trên bức ảnh đính kèm này.
-Yêu cầu chỉnh sửa:
-1. XÓA SẠCH toàn bộ chữ tiếng Trung Quốc có trên ảnh gốc.
-2. VẼ VÀ THAY THẾ bằng dòng chữ tiêu đề tiếng Việt 3D nghệ thuật màu vàng kim viền đen phát sáng nổi bật: "{clean_title}".
-3. BẮT BUỘC giữ nguyên 100% tỷ lệ khung hình gốc (Aspect Ratio), bố cục, nhân vật và bối cảnh thiên nhiên của ảnh gốc.
-4. BẮT BUỘC xuất ra hình ảnh mới đã chỉnh sửa, không trả lời bằng văn bản giải thích."""
+    print(Fore.CYAN + f"  [⚡ Gemini Image 3D] Dang gui anh sang Gemini de xoa chu TQ va viet chu: '{short_title}'...")
+    image_prompt = f"""Tạo hình ảnh (Generate image / Edit image):
+Dựa trên bức ảnh bìa thumbnail đính kèm này, hãy thực hiện chỉnh sửa ảnh thumbnail hoàn chỉnh:
+1. XÓA BỎ HOÀN TOÀN toàn bộ các dòng chữ tiếng Trung Quốc có trên ảnh (kể cả chữ to ở phía trên, giữa hoặc dưới).
+2. VIẾT LẠI TIÊU ĐỀ TIẾNG VIỆT MỚI: "{short_title}" LÊN ĐÚNG VỊ TRÍ CỦA DÒNG CHỮ CŨ ĐÓ.
+   - Sử dụng phong cách chữ Typography nghệ thuật nổi bật, dễ đọc trên điện thoại (chữ 3D màu vàng kim hoặc trắng viền đen dày, có bóng đổ sắc nét).
+3. BẮT BUỘC GIỮ NGUYÊN 100% nhân vật, biểu cảm, trang phục, bối cảnh phòng ốc/thiên nhiên, màu sắc và tỷ lệ khung hình của bức ảnh gốc.
+4. TUYỆT ĐỐI KHÔNG thêm bất kỳ khung viền màu đen che khuất nhân vật, KHÔNG tự thêm badge hay tem chữ nào khác.
+5. BẮT BUỘC xuất ra hình ảnh mới đã chỉnh sửa hoàn thiện, không giải thích bằng văn bản."""
 
     attachments_payload = [{"name": f"{os.path.basename(thumb_src)}", "type": "image/jpeg", "data": img_b64}]
     start_t = time.time()
@@ -1088,7 +1156,7 @@ def main():
 
         if item["needs_copywriting"]:
             clean_src = re.sub(r'^\d+_', '', raw_name).strip()
-            copywriting = generate_copywriting(clean_src, prefix_num, sample_subs, bridge)
+            copywriting = generate_copywriting(clean_src, prefix_num, sample_subs, bridge, thumb_src=item.get("jpg"))
             new_title = copywriting["new_title"]
             description = copywriting["description"]
             hashtags = copywriting["hashtags"]
@@ -1112,11 +1180,23 @@ def main():
                     pass
             print(Fore.GREEN + f"  [✓] Giữ nguyên tiêu đề tiếng Việt có sẵn: {new_title}")
 
+        # Rào chắn cứu hộ nếu tiêu đề bị cụt ngủn hoặc vô nghĩa
+        if not is_meaningful_title(new_title):
+            pure_ch = re.sub(r'^\d+_', '', raw_name).strip()
+            tr_t = google_translate(pure_ch, dest='vi')
+            if tr_t and is_meaningful_title(tr_t):
+                new_title = f"{prefix_num}{re.sub(r'[\\/:*?\"<>|]', ' ', tr_t).strip()}"
+            elif sample_subs and len(sample_subs) > 0:
+                for seg_t in sample_subs:
+                    if is_meaningful_title(str(seg_t)):
+                        new_title = f"{prefix_num}{str(seg_t).strip()[:60]}"
+                        break
+
         if re.search(r'[\u4e00-\u9fff]', description) or len(description) < 60:
             description = build_rich_vietnamese_description(new_title, raw_name, sample_subs)
 
         new_title = re.sub(r'[\\/:*?"<>|]', ' ', new_title).strip()
-        if not new_title:
+        if not new_title or not is_meaningful_title(new_title):
             new_title = f"{prefix_num}Video_Thuyet_Minh_Moi"
 
         new_mp4_path = os.path.join(target_dir, f"{new_title}.mp4")

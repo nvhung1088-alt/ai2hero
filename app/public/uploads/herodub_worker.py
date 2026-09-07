@@ -324,6 +324,33 @@ def smart_truncate(text, max_len=45):
         return cut[:last_space].strip()
     return cut.strip()
 
+def is_meaningful_title(title):
+    """
+    Kiểm tra xem tiêu đề tiếng Việt có thực sự có nghĩa hay không:
+    - Không chứa chữ tiếng Trung Quốc.
+    - Không bị cụt ngủn hoặc vô nghĩa như Vlog_AI____, video_123, ___.
+    - Có ít nhất 2 từ và độ dài chữ có nghĩa >= 7 ký tự.
+    """
+    if not title:
+        return False
+    str_t = str(title).strip()
+    if re.search(r'[\u4e00-\u9fff]', str_t):
+        return False
+    clean_words = re.sub(r'^\d+_', '', str_t).strip()
+    clean_words = re.sub(r'[^a-zA-Z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ\s]', ' ', clean_words).strip()
+    words = clean_words.split()
+    if len(words) < 2 or len(clean_words) < 7:
+        return False
+    # Loại trừ các tiêu đề rác vô nghĩa
+    lower_t = clean_words.lower()
+    if lower_t in ["vlog ai", "video ai", "clip ai", "video", "clip", "vlog", "tap phim", "thuyet minh", "video goc"]:
+        return False
+    if re.match(r'^(vlog|clip|video)[\s_]*ai[\s_]*$', lower_t):
+        return False
+    if re.match(r'^(video|clip|vlog|task)[\s_]*\d+$', lower_t):
+        return False
+    return True
+
 def detect_video_genre(title_vi, raw_title="", sample_subs=None):
     """
     Tự động nhận diện thể loại video dựa trên phân tích đa tầng:
@@ -483,10 +510,11 @@ def build_rich_vietnamese_description(title_vi, raw_title="", sample_subs=None):
     full_desc = re.sub(r'[\u4e00-\u9fff]', '', full_desc).strip()
     return full_desc
 
-def generate_video_copywriting(task, translated_segments, duration_sec, bridge_server, headers, API_BASE_URL):
+def generate_video_copywriting(task, translated_segments, duration_sec, bridge_server, headers, API_BASE_URL, thumb_src=None):
     """
-    LUỒNG 1: Tạo Tiêu đề, Mô tả và Hashtags (TEXT-ONLY) chuẩn xác 100% theo nội dung video.
-    Tự động thích ứng đa thể loại: Hoạt hình 3D Anime, Phim drama, Ẩm thực, Khoa học, Sinh tồn, Đời sống...
+    LUỒNG 1: Tạo Tiêu đề, Mô tả và Hashtags chuẩn xác 100% theo nội dung video.
+    ĐẶC BIỆT: Hỗ trợ Multimodal - Gửi kèm Ảnh Bìa Gốc (nếu có) + Tên file + Phụ đề sang Gemini Web
+    giúp AI quan sát chữ trên ảnh bìa, nhân vật và bối cảnh để đặt tiêu đề cực hay và chuẩn xác!
     """
     task_id = task.get("id")
     raw_source = task.get("sourceTitle") or task.get("sourceUrl") or f"video_{task_id}"
@@ -511,22 +539,38 @@ def generate_video_copywriting(task, translated_segments, duration_sec, bridge_s
     
     subs_text = "\n".join([f"- {s}" for s in sample_subs if s]) if sample_subs else "(Không có phụ đề)"
 
+    # Chuẩn bị ảnh đính kèm (Multimodal) nếu có ảnh bìa gốc
+    attachments = []
+    has_thumb_attachment = False
+    if thumb_src and os.path.exists(thumb_src):
+        try:
+            with open(thumb_src, "rb") as f_img:
+                b64_data = base64.b64encode(f_img.read()).decode("utf-8")
+                attachments.append({
+                    "name": os.path.basename(thumb_src),
+                    "type": "image/jpeg",
+                    "data": f"data:image/jpeg;base64,{b64_data}"
+                })
+                has_thumb_attachment = True
+                print(Fore.CYAN + f"  [📸 Vision Ready] Da nạp ảnh bìa gốc ({os.path.basename(thumb_src)}) để gửi kèm cho AI quan sát nội dung!")
+        except Exception:
+            pass
+
     prompt = f"""[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON THUẦN TÚY. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH]
 
-Hãy đóng vai Giám đốc Sáng tạo & Biên tập Nội dung Video Đa Thể Loại chuyên nghiệp (Hoạt hình 3D Anime/Donghua, Phim ngắn/Drama, Ẩm thực/Nấu ăn, Khoa học/Khám phá, Sinh tồn/Chế tác, Vlog/Đời sống...).
+Hãy đóng vai Giám đốc Sáng tạo & Biên tập Nội dung Video Đa Thể Loại chuyên nghiệp (YouTube Shorts, TikTok, Facebook Reels).
 Dưới đây là thông tin video:
-- Tiêu đề gốc video: {clean_source_title}
+- Ảnh bìa thumbnail gốc của video: (Xem ảnh đính kèm - hãy quan sát kỹ nhân vật, biểu cảm, bối cảnh và ĐẶC BIỆT LÀ DÒNG CHỮ TIÊU ĐỀ TRÊN ẢNH BÌA GỐC để nắm bắt trọn vẹn chủ đề)
+- Tên file gốc video: {clean_source_title}
 - Các câu thoại phụ đề thực tế trong video:
 {subs_text}
 
 QUY TẮC BẮT BUỘC TUYỆT ĐỐI (100% TIẾNG VIỆT - TUYỆT ĐỐI KHÔNG CÓ KÝ TỰ TIẾNG TRUNG):
-1. TỰ ĐỘNG NHẬN DIỆN THỂ LOẠI & BỐI CẢNH CHÍNH XÁC:
-   - Nếu là Hoạt hình 3D / Anime / Donghua / Tiên hiệp: Văn phong hào hùng, kịch tính, phong cách huyền ảo / tu chân / dị năng đỉnh cao.
-   - Nếu là Phim ngắn / Drama / Đô thị / Tình cảm: Văn phong cuốn hút, kịch tính, sâu sắc, nhấn mạnh vào mâu thuẫn câu chuyện và cú twist.
-   - Nếu là Ẩm thực / Nấu ăn / Đời sống: Văn phong tươi vui, ấm áp, hấp dẫn vị giác và thư giãn.
-   - Nếu là Khoa học / Khám phá / Tài liệu: Văn phong logic, gợi mở tò mò, mở rộng tri thức.
-   - Nếu là Sinh tồn / Chế tác / Bushcraft: Văn phong mộc mạc, thực tế, tôn vinh kỹ năng và trải nghiệm tự nhiên.
+1. TỰ ĐỘNG NHẬN DIỆN THỂ LOẠI & NỘI DUNG CHÍNH XÁC TỪ ẢNH BÌA VÀ PHỤ ĐỀ:
+   - Đọc chữ trên ảnh bìa kết hợp với hình ảnh nhân vật và phụ đề để hiểu câu chuyện (Ví dụ: Chú heo bông đi khám bệnh viện bị từ chối xem vlog, Chế tác nhà gỗ trong rừng, Hoạt hình 3D tu tiên, v.v.).
 2. "new_title": Đặt Tiêu đề Tiếng Việt cực kỳ cuốn hút, giật tít câu view chuẩn SEO (dưới 65 ký tự, trọn vẹn câu, sát với nội dung và thể loại video).
+   - TUYỆT ĐỐI KHÔNG để chữ tiếng Trung, TUYỆT ĐỐI KHÔNG để tiêu đề cụt ngủn hoặc vô nghĩa như "Vlog_AI____".
+   - Phải là một câu trọn nghĩa, hấp dẫn, khơi gợi tò mò mạnh mẽ.
 3. "description": Viết đoạn mô tả chi tiết, bài bản và lôi cuốn (120-200 từ), chia thành 3 đoạn văn rõ ràng:
    - Đoạn 1: Mở màn hấp dẫn về nhân vật, bối cảnh hoặc tình huống mở đầu video.
    - Đoạn 2: Tóm tắt chi tiết các diễn biến then chốt, tình tiết bất ngờ hoặc điểm cao trào kịch tính.
@@ -556,58 +600,18 @@ CẤU TRÚC JSON MẪU:
         "hashtags": get_default_hashtags_by_genre(init_genre),
     }
 
-    publishing_engine = (task.get("publishingAiEngine") or "deepseek").lower()
     copywriting_success = False
 
-    # LUỒNG A: GỌI DEEPSEEK OFFICIAL AI QUA SERVER (Khuyến nghị - 1-2s, Ổn định ngầm 100%)
-    if publishing_engine == "deepseek" or not (bridge_server and bridge_server.is_connected()):
-        try:
-            print(Fore.CYAN + Style.BRIGHT + f"  [⚡ DeepSeek Copywriting] Dang gui yeu cau viet Tieu de + Mo ta sang DeepSeek AI...")
-            copywriting_api_url = f"{API_BASE_URL}/copywriting"
-            api_payload = {
-                "taskId": task_id,
-                "sourceTitle": clean_source_title,
-                "sampleSubs": sample_subs,
-                "engine": "deepseek"
-            }
-            resp = requests.post(copywriting_api_url, json=api_payload, headers=headers, timeout=45)
-            if resp.status_code == 200:
-                resp_data = resp.json()
-                if resp_data.get("success"):
-                    t_val = str(resp_data.get("new_title", "")).strip()
-                    t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
-                    if t_val:
-                        result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
-                    if resp_data.get("description"):
-                        d_val = str(resp_data.get("description")).strip()
-                        d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
-                        if len(d_val) >= 50:
-                            result["description"] = d_val
-                    if resp_data.get("hashtags"):
-                        h_val = str(resp_data.get("hashtags")).strip()
-                        h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
-                        if h_val:
-                            result["hashtags"] = h_val
-                    copywriting_success = True
-                    print(Fore.GREEN + Style.BRIGHT + f"  [✓ DeepSeek Ready] Da tao Tieu de & Mo ta chuan SEO: {result['new_title']}")
-                else:
-                    print(Fore.YELLOW + f"  [!] DeepSeek tra ve loi: {resp_data.get('error')}")
-            else:
-                print(Fore.YELLOW + f"  [!] Server tra ve HTTP {resp.status_code} cho DeepSeek Copywriting: {resp.text[:120]}")
-        except Exception as ds_err:
-            print(Fore.YELLOW + f"  [!] Loi khi goi DeepSeek Copywriting qua Server: {str(ds_err)}")
-
-    # LUỒNG B: GỌI BROWSER AI BRIDGE (Chrome Extension điều khiển Web Chat miễn phí)
-    if not copywriting_success and bridge_server and bridge_server.is_connected():
-        print(Fore.CYAN + f"  [🌐 WebSocket Copywriting] Dang gui yeu cau viet Tieu de + Mo ta sang Gemini qua Extension...")
-        ws_res = bridge_server.execute_job(prompt, attachments=[], target_ai="gemini", timeout=120, allow_failover=False)
+    # ƯU TIÊN 1: GỌI GEMINI WEB PRO QUA EXTENSION (Đặc biệt khi có ảnh bìa đính kèm - Multimodal Vision)
+    if bridge_server and bridge_server.is_connected():
+        print(Fore.CYAN + f"  [🌐 Gemini Multimodal Copywriting] Dang gui anh bia + ten file + sub sang Gemini Web...")
+        ws_res = bridge_server.execute_job(prompt, attachments=attachments, target_ai="gemini", timeout=120, allow_failover=False)
         if ws_res and ws_res.get("success") and ws_res.get("result"):
             raw_out = str(ws_res.get("result", "")).strip()
             raw_out = re.sub(r"^```(?:json)?\s*", "", raw_out, flags=re.IGNORECASE)
             raw_out = re.sub(r"\s*```$", "", raw_out, flags=re.IGNORECASE).strip()
             
             parsed_success = False
-            # Dùng regex bóc tách JSON siêu bền
             try:
                 json_match = re.search(r'(\{[\s\S]*\})', raw_out)
                 if json_match:
@@ -617,8 +621,9 @@ CẤU TRÚC JSON MẪU:
                         if parsed.get("new_title"):
                             t_val = str(parsed.get("new_title")).strip()
                             t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
-                            if t_val:
+                            if is_meaningful_title(t_val):
                                 result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
+                                parsed_success = True
                         if parsed.get("description"):
                             d_val = str(parsed.get("description")).strip()
                             d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
@@ -629,9 +634,9 @@ CẤU TRÚC JSON MẪU:
                             h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
                             if h_val:
                                 result["hashtags"] = h_val
-                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ WebSocket Copywriting] Da tao Tieu de & Mo ta moi: {result['new_title']}")
-                        parsed_success = True
-                        copywriting_success = True
+                        if parsed_success:
+                            print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Copywriting] Da tao Tieu de & Mo ta chuan tu Anh + Sub: {result['new_title']}")
+                            copywriting_success = True
             except Exception:
                 pass
 
@@ -640,9 +645,8 @@ CẤU TRÚC JSON MẪU:
                 if title_m:
                     t_val = title_m.group(1).strip()
                     t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
-                    if t_val:
+                    if is_meaningful_title(t_val):
                         result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
-                        parsed_success = True
                         copywriting_success = True
                 desc_m = re.search(r'"description"\s*:\s*"([^"]+)"', raw_out)
                 if desc_m:
@@ -657,20 +661,67 @@ CẤU TRÚC JSON MẪU:
                     if h_val:
                         result["hashtags"] = h_val
 
-    # Rào chắn an toàn kép: Tiêu đề & Mô tả 100% Tiếng Việt sạch sẽ
-    if re.search(r'[\u4e00-\u9fff]', result["new_title"]):
+    # ƯU TIÊN 2: GỌI DEEPSEEK OFFICIAL AI QUA SERVER (Nếu Gemini chưa tạo được)
+    if not copywriting_success:
+        try:
+            print(Fore.CYAN + Style.BRIGHT + f"  [⚡ DeepSeek Copywriting] Dang chuyen tiep sang DeepSeek Cloud AI...")
+            copywriting_api_url = f"{API_BASE_URL}/copywriting"
+            api_payload = {
+                "taskId": task_id,
+                "sourceTitle": clean_source_title,
+                "sampleSubs": sample_subs,
+                "engine": "deepseek"
+            }
+            resp = requests.post(copywriting_api_url, json=api_payload, headers=headers, timeout=45)
+            if resp.status_code == 200:
+                resp_data = resp.json()
+                if resp_data.get("success"):
+                    t_val = str(resp_data.get("new_title", "")).strip()
+                    t_val = re.sub(r'[\u4e00-\u9fff]', '', t_val).strip()
+                    if is_meaningful_title(t_val):
+                        result["new_title"] = f"{prefix_num}{t_val}" if prefix_num and not t_val.startswith(prefix_num) else t_val
+                        copywriting_success = True
+                    if resp_data.get("description"):
+                        d_val = str(resp_data.get("description")).strip()
+                        d_val = re.sub(r'[\u4e00-\u9fff]', '', d_val).strip()
+                        if len(d_val) >= 50:
+                            result["description"] = d_val
+                    if resp_data.get("hashtags"):
+                        h_val = str(resp_data.get("hashtags")).strip()
+                        h_val = re.sub(r'[\u4e00-\u9fff]', '', h_val).strip()
+                        if h_val:
+                            result["hashtags"] = h_val
+                    if copywriting_success:
+                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ DeepSeek Ready] Da tao Tieu de & Mo ta chuan SEO: {result['new_title']}")
+        except Exception as ds_err:
+            print(Fore.YELLOW + f"  [!] Loi DeepSeek Copywriting: {ds_err}")
+
+    # RÀO CHẮN BẢO VỆ CỨU HỘ ĐẶC BIỆT: Chặn đứng 100% tiêu đề rác cụt ngủn như 'Vlog_AI____'
+    if not is_meaningful_title(result["new_title"]):
+        print(Fore.YELLOW + f"  [!] Phát hiện tiêu đề chưa hợp lệ hoặc cụt ngủn ('{result['new_title']}'). Kích hoạt cứu hộ...")
         pure_ch_title = re.sub(r'^\d+_', '', clean_source_title).strip()
         trans_title = google_translate(pure_ch_title, dest='vi')
-        if trans_title and not re.search(r'[\u4e00-\u9fff]', trans_title):
+        if trans_title and is_meaningful_title(trans_title):
             clean_t = re.sub(r'[\\/:*?"<>|]', ' ', trans_title).strip()
             result["new_title"] = f"{prefix_num}{clean_t}"
-            print(Fore.CYAN + f"  [-] Da tu dong dich Tieu de goc chuan xac: {result['new_title']}")
-        elif translated_segments and len(translated_segments) > 0:
-            for seg in translated_segments[:3]:
-                t = seg.get('text', '').strip()
-                if t and not re.search(r'[\u4e00-\u9fff]', t) and len(t) > 8:
-                    result["new_title"] = f"{prefix_num}{t[:65]}"
+            print(Fore.CYAN + Style.BRIGHT + f"  [-] Đã tự động dịch tiêu đề gốc thành công: {result['new_title']}")
+        elif sample_subs and len(sample_subs) > 0:
+            for seg_text in sample_subs:
+                t = str(seg_text).strip()
+                if is_meaningful_title(t):
+                    result["new_title"] = f"{prefix_num}{t[:60]}"
+                    print(Fore.CYAN + Style.BRIGHT + f"  [-] Đã lấy câu phụ đề tiêu biểu làm tiêu đề: {result['new_title']}")
                     break
+        if not is_meaningful_title(result["new_title"]):
+            genre_name_map = {
+                "anime_donghua": "Tập Phim Hoạt Hình 3D Đặc Sắc",
+                "movie_drama": "Tập Phim Ngắn Kịch Tính",
+                "food_cooking": "Hành Trình Khám Phá Ẩm Thực Hấp Dẫn",
+                "survival_bushcraft": "Hành Trình Sinh Tồn Và Chế Tác",
+                "science_discovery": "Khám Phá Thế Giới Tri Thức Bí Ẩn",
+                "general_lifestyle": "Những Khoảnh Khắc Cuộc Sống Đáng Xem"
+            }
+            result["new_title"] = f"{prefix_num}{genre_name_map.get(init_genre, 'Tác Phẩm Đặc Sắc')}"
 
     # Đảm bảo description không còn ký tự Trung Quốc và có cấu trúc bài bản
     if re.search(r'[\u4e00-\u9fff]', result.get("description", "")) or len(result.get("description", "")) < 60:
@@ -731,43 +782,28 @@ def create_local_3d_gold_thumbnail(src_path, title_text, out_path, tag_text="THU
         line_h = int(font_size * 1.32)
         total_text_h = len(lines) * line_h
         
-        # 1. TOP-LEFT BADGE (Che logo / watermark tiếng Trung góc trên trái)
+        # 1. TOP-LEFT BADGE (Nhỏ gọn tinh tế, không chiếm dụng góc ảnh)
         if tag_text:
             badge_layer = Image.new('RGBA', (target_w, target_h), (0, 0, 0, 0))
             d_badge = ImageDraw.Draw(badge_layer)
-            tag_font = ImageFont.truetype(font_path, 26)
+            tag_font = ImageFont.truetype(font_path, 18)
             tb_box = tag_font.getbbox(tag_text)
             tw = tb_box[2] - tb_box[0]
             th = tb_box[3] - tb_box[1]
             
-            bx, by = 16, 16
-            bw = max(tw + 40, 205)
-            bh = max(th + 24, 125)
+            bx, by = 14, 14
+            bw = tw + 20
+            bh = th + 12
             
-            d_badge.rounded_rectangle([bx + 4, by + 4, bx + bw + 4, by + bh + 4], radius=14, fill=(0, 0, 0, 200))
-            d_badge.rounded_rectangle([bx, by, bx + bw, by + bh], radius=14, fill=(210, 25, 35, 255), outline=(255, 220, 100, 240), width=2)
+            d_badge.rounded_rectangle([bx + 2, by + 2, bx + bw + 2, by + bh + 2], radius=8, fill=(0, 0, 0, 160))
+            d_badge.rounded_rectangle([bx, by, bx + bw, by + bh], radius=8, fill=(210, 25, 35, 240), outline=(255, 220, 100, 220), width=1)
             tx = bx + (bw - tw) // 2
-            ty = by + (bh - th) // 2 - 2
-            d_badge.text((tx + 1, ty + 1), tag_text, font=tag_font, fill=(0, 0, 0, 180))
+            ty = by + (bh - th) // 2 - 1
             d_badge.text((tx, ty), tag_text, font=tag_font, fill=(255, 255, 255))
             im = Image.alpha_composite(im, badge_layer)
             
-        # 2. BOTTOM PLATE (Khung biển hiệu sang trọng che 100% chữ Trung Quốc gốc)
-        plate_w = target_w - 36
-        plate_h = max(int(target_h * 0.32), total_text_h + 50)
-        plate_x = 18
-        plate_y = int(target_h * 0.63)
-        
-        plate_layer = Image.new('RGBA', (target_w, target_h), (0, 0, 0, 0))
-        d_plate = ImageDraw.Draw(plate_layer)
-        
-        d_plate.rounded_rectangle([plate_x + 8, plate_y + 10, plate_x + plate_w + 8, plate_y + plate_h + 10], radius=22, fill=(0, 0, 0, 230))
-        d_plate.rounded_rectangle([plate_x, plate_y, plate_x + plate_w, plate_y + plate_h], radius=22, fill=(12, 15, 22, 255), outline=(255, 215, 0, 255), width=4)
-        d_plate.rounded_rectangle([plate_x + 7, plate_y + 7, plate_x + plate_w - 7, plate_y + plate_h - 7], radius=17, outline=(210, 165, 30, 150), width=1)
-        im = Image.alpha_composite(im, plate_layer)
-        
-        # 3. TYPOGRAPHY 3D VÀNG KIM
-        text_start_y = plate_y + (plate_h - total_text_h) // 2 - 2
+        # 2. TYPOGRAPHY 3D VÀNG KIM TRỰC TIẾP (TUYỆT ĐỐI KHÔNG CÓ BẢNG ĐEN CHE BỨC ẢNH)
+        text_start_y = max(int(target_h * 0.72) - (total_text_h // 2), int(target_h * 0.55))
         text_layer = Image.new('RGBA', (target_w, target_h), (0, 0, 0, 0))
         d_text = ImageDraw.Draw(text_layer)
         
@@ -1071,43 +1107,67 @@ def redesign_thumbnail_image(task, thumb_src, new_title, translated_segments, br
     clean_bg = os.path.join(dest_dir, f"_clean_bg_{os.path.basename(thumb_src)}")
     final_thumb = os.path.join(dest_dir, f"_final_thumb_{os.path.basename(thumb_src)}")
 
-    # PHƯƠNG ÁN 1: LOCAL WORKER 3D GOLD (Offline 100% - Không cần API)
-    if thumbnail_app == "local-engine":
-        print(Fore.CYAN + Style.BRIGHT + f"  [🏆 Local Engine] Dang ve anh bia 3D Vang Kim tieng Viet offline...")
-        res = create_local_3d_gold_thumbnail(thumb_src, clean_title, final_thumb, tag_text="THUYẾT MINH")
+    # PHƯƠNG ÁN 1: BROWSER AI BRIDGE (GEMINI WEB PRO QUA EXTENSION - Khuyến nghị & Ưu tiên hàng đầu)
+    # Quy định: Gửi ảnh gốc sang Gemini để xóa chữ TQ và viết lại tiếng Việt lên đúng vị trí chữ cũ
+    if bridge_server and bridge_server.is_connected():
+        print(Fore.CYAN + Style.BRIGHT + f"  [🌐 Gemini Imagen 3] Dang gui anh sang Gemini Web de xoa chu TQ va viet lai tieng Viet...")
+        try:
+            with open(thumb_src, "rb") as f:
+                b64_img = base64.b64encode(f.read()).decode("utf-8")
+            bridge_payload = [{"name": os.path.basename(thumb_src), "type": "image/jpeg", "data": f"data:image/jpeg;base64,{b64_img}"}]
+            
+            short_viet_title = smart_truncate(clean_title, max_len=35)
+            bridge_prompt = f"""Tạo hình ảnh (Generate image / Edit image):
+Dựa trên bức ảnh bìa thumbnail đính kèm này, hãy thực hiện chỉnh sửa ảnh thumbnail hoàn chỉnh:
+1. XÓA BỎ HOÀN TOÀN toàn bộ các dòng chữ tiếng Trung Quốc có trên ảnh (kể cả chữ to ở phía trên, giữa hoặc dưới).
+2. VIẾT LẠI TIÊU ĐỀ TIẾNG VIỆT MỚI: "{short_viet_title}" LÊN ĐÚNG VỊ TRÍ CỦA DÒNG CHỮ CŨ ĐÓ.
+   - Sử dụng phong cách chữ Typography nghệ thuật nổi bật, dễ đọc trên điện thoại (chữ 3D màu vàng kim hoặc trắng viền đen dày, có bóng đổ sắc nét).
+3. BẮT BUỘC GIỮ NGUYÊN 100% nhân vật, biểu cảm, trang phục, bối cảnh phòng ốc/thiên nhiên, màu sắc và tỷ lệ khung hình của bức ảnh gốc.
+4. TUYỆT ĐỐI KHÔNG thêm bất kỳ khung viền màu đen che khuất nhân vật, KHÔNG tự thêm badge hay tem chữ nào khác.
+5. BẮT BUỘC xuất ra hình ảnh mới đã chỉnh sửa hoàn thiện, không giải thích bằng văn bản."""
+
+            start_t = time.time()
+            ws_res = bridge_server.execute_job(bridge_prompt, attachments=bridge_payload, target_ai="gemini", timeout=85, allow_failover=True)
+            
+            # 1. Bóc tách ảnh Base64 từ kết quả trả về của Extension
+            if ws_res and ws_res.get("success") and ws_res.get("result"):
+                raw_out = str(ws_res.get("result", "")).strip()
+                img_match = re.search(r'!\[.*?\]\((data:image/[^)]+|https?://[^\s\)]+)\)', raw_out)
+                if img_match:
+                    new_thumb_url = img_match.group(1)
+                    if new_thumb_url.startswith("data:image/"):
+                        try:
+                            header, encoded = new_thumb_url.split(",", 1)
+                            img_bytes = base64.b64decode(encoded)
+                            with open(final_thumb, "wb") as f_out:
+                                f_out.write(img_bytes)
+                            print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Imagen 3] Da nhan duoc anh thiet ke moi tu Gemini (Base64)!")
+                            return final_thumb
+                        except Exception as decode_err:
+                            print(Fore.YELLOW + f"  [!] Loi ghi file Base64: {decode_err}")
+                    elif new_thumb_url.startswith("http"):
+                        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Gemini Imagen 3] Da nhan URL anh thiet ke moi tu Gemini!")
+                        return new_thumb_url
+
+            # 2. Quan sát thư mục Downloads của máy tính (do Extension Chrome Native Downloads API tải về)
+            dl_img = get_latest_download_image(start_t - 2, timeout=4)
+            if dl_img:
+                print(Fore.GREEN + Style.BRIGHT + f"  [✓ Downloads Watcher] Da phat hien anh 3D moi tai ve may: {os.path.basename(dl_img)}!")
+                return dl_img
+        except Exception as b_err:
+            print(Fore.YELLOW + f"  [!] Gemini Bridge loi: {b_err}. Chuyen sang fallback...")
+
+    # PHƯƠNG ÁN 2: GEMINI FLASH DIRECT API (Nếu có API Key)
+    key = get_gemini_api_key()
+    if key:
+        clean_path = clean_image_with_gemini_flash(thumb_src, clean_bg, api_key=key)
+        effective_bg = clean_path if (clean_path and os.path.exists(clean_path)) else thumb_src
+        res = render_adaptive_vietnamese_thumbnail(effective_bg, clean_title, final_thumb, style=font_style, tag_text="THUYẾT MINH")
         if res and os.path.exists(res):
-            print(Fore.GREEN + Style.BRIGHT + f"  [✓ Thumbnail Ready] Hoan tat anh bia Local 3D: {os.path.basename(res)}!")
+            print(Fore.GREEN + Style.BRIGHT + f"  [✓ Thumbnail Ready] Hoan tat anh bia moi tu Flash API: {os.path.basename(res)}!")
             return res
 
-    # PHƯƠNG ÁN 2: BROWSER AI BRIDGE (Chrome Extension điều khiển Web Chat vẽ lại ảnh)
-    if thumbnail_app == "browser-ai-bridge":
-        print(Fore.CYAN + Style.BRIGHT + f"  [🌐 Browser AI Bridge] Dang gui anh goc sang Web Chat qua Extension de ve lai toan dien...")
-        if bridge_server and bridge_server.is_connected():
-            try:
-                with open(thumb_src, "rb") as f:
-                    b64_img = base64.b64encode(f.read()).decode("utf-8")
-                bridge_payload = [{"type": "image", "base64": f"data:image/jpeg;base64,{b64_img}"}]
-                bridge_prompt = f"Hãy tạo lại một ảnh bìa thumbnail điện ảnh đẹp mắt dựa trên bức ảnh này. Tiêu đề tiếng Việt là '{clean_title}'. Phong cách sắc nét, ấn tượng, phù hợp YouTube."
-                target_ai = task.get("thumbnailAiModel") or "gemini"
-                ws_res = bridge_server.execute_job(bridge_prompt, attachments=bridge_payload, target_ai=target_ai, timeout=60)
-                if ws_res and ws_res.get("image_url"):
-                    return ws_res["image_url"]
-            except Exception as b_err:
-                print(Fore.YELLOW + f"  [!] Browser Bridge loi: {b_err}. Fallback sang Gemini Flash...")
-
-    # PHƯƠNG ÁN 3: GEMINI FLASH API + WORKER TYPOGRAPHY (Mặc định & Khuyến nghị - 3s)
-    # BƯỚC 1: Xóa chữ TQ bằng Gemini Flash (3s)
-    clean_path = clean_image_with_gemini_flash(thumb_src, clean_bg, bridge_server=bridge_server)
-    effective_bg = clean_path if (clean_path and os.path.exists(clean_path)) else thumb_src
-
-    # BƯỚC 2: Ghép chữ tiếng Việt vào đúng vị trí cũ
-    print(Fore.CYAN + Style.BRIGHT + f"  [⚡ Adaptive Typography] Dang ghep chu tieng Viet '{clean_title}' (Style: {font_style}) vao vi tri goc...")
-    res = render_adaptive_vietnamese_thumbnail(effective_bg, clean_title, final_thumb, style=font_style, tag_text="THUYẾT MINH")
-    if res and os.path.exists(res):
-        print(Fore.GREEN + Style.BRIGHT + f"  [✓ Thumbnail Ready] Hoan tat anh bia moi: {os.path.basename(res)}!")
-        return res
-
-    # Fallback cuối cùng
+    # PHƯƠNG ÁN 3: LOCAL TYPOGRAPHY 3D (0đ - Offline - KHÔNG KHUNG ĐEN CHE ẢNH)
     local_thumb = os.path.join(dest_dir, f"_local_3d_{os.path.basename(thumb_src)}")
     return create_local_3d_gold_thumbnail(thumb_src, clean_title, local_thumb, tag_text="THUYẾT MINH")
 
@@ -2952,8 +3012,8 @@ if __name__ == '__main__':
                     thumb_src = candidate
                     break
 
-    # Luồng 1: Viết Tiêu đề, Mô tả, Hashtags (Text-Only)
-    copy_pack = generate_video_copywriting(task, translated_segments, duration_sec, bridge_server, headers, API_BASE_URL)
+    # Luồng 1: Viết Tiêu đề, Mô tả, Hashtags (Multimodal Vision: Truyền kèm Ảnh bìa gốc nếu có)
+    copy_pack = generate_video_copywriting(task, translated_segments, duration_sec, bridge_server, headers, API_BASE_URL, thumb_src=thumb_src)
     raw_source = task.get("sourceTitle") or task.get("sourceUrl") or f"video_{task_id}"
     clean_fallback_title = os.path.basename(str(raw_source).replace('\\', '/'))
     for ext in ['.mp4', '.mkv', '.mov', '.avi', '.flv', '.wmv']:
