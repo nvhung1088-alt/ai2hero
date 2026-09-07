@@ -324,49 +324,160 @@ def smart_truncate(text, max_len=45):
         return cut[:last_space].strip()
     return cut.strip()
 
+def detect_video_genre(title_vi, raw_title="", sample_subs=None):
+    """
+    Tự động nhận diện thể loại video dựa trên phân tích đa tầng:
+    - Tiêu đề tiếng Việt
+    - Tên file / Tiêu đề gốc (tiếng Trung / tiếng Anh)
+    - Nội dung các câu thoại phụ đề mẫu
+    Trả về một trong các nhóm:
+    'anime_donghua', 'movie_drama', 'survival_bushcraft', 'food_cooking', 'science_discovery', 'general_lifestyle'
+    """
+    subs_text = " ".join(sample_subs or []).lower() if sample_subs else ""
+    full_text = f"{title_vi} {raw_title} {subs_text}".lower()
+
+    # 1. Hoạt hình 3D / Anime / Donghua / Tiên hiệp / Tu chân
+    anime_keywords = [
+        "anime", "3d", "donghua", "hoạt hình", "tu tiên", "tu chân", "đấu la", "thôn phệ", 
+        "huyền huyễn", "tiên hiệp", "võ hiệp", "kiếm hiệp", "ma pháp", "trùng sinh", "dị năng",
+        "hệ thống", "tông môn", "thần vương", "chiến thần", "chí tôn", "linh thú",
+        "动漫", "动画", "修仙", "玄幻", "斗罗", "吞噬", "修真", "仙侠", "武侠", "重生", "系统", "神魔"
+    ]
+    if any(k in full_text for k in anime_keywords):
+        return "anime_donghua"
+
+    # 2. Ẩm thực / Nấu ăn / Food / Mukbang
+    food_keywords = [
+        "ẩm thực", "món ăn", "nấu ăn", "món ngon", "nướng", "chiên", "xào", "hầm", "lẩu",
+        "bếp", "mukbang", "quán ăn", "đặc sản", "bánh", "gà nướng", "thịt nướng", "cá nướng",
+        "hải sản", "bữa ăn", "ăn uống", "mỹ thực", "gourmet", "cooking", "food",
+        "美食", "做饭", "吃播", "炒菜", "小吃", "街头美食", "烹饪", "烧烤", "海鲜"
+    ]
+    if any(k in full_text for k in food_keywords):
+        return "food_cooking"
+
+    # 3. Sinh tồn / Chế tác / Nơi trú ẩn / Hoang dã (Bushcraft)
+    survival_keywords = [
+        "sinh tồn", "hoang dã", "chế tác", "nơi trú ẩn", "hốc cây", "nhà gỗ", "hang đá",
+        "nhà đất", "chòi gỗ", "cây cổ thụ", "bão tuyết", "rừng rậm", "bẫy thú", "cắm trại",
+        "bushcraft", "survival", "camping", "shelter",
+        "荒野", "求生", "庇护所", "木屋", "树洞", "石屋", "荒野建造", "庇护所建造", "露营"
+    ]
+    if any(k in full_text for k in survival_keywords):
+        return "survival_bushcraft"
+
+    # 4. Phim ngắn / Drama / Đô thị / Tình cảm / Review phim
+    movie_keywords = [
+        "phim", "tập", "drama", "tổng tài", "hôn nhân", "mẹ chồng", "nàng dâu", "ngược tâm",
+        "trả thù", "đô thị", "tình yêu", "ngoại tình", "tiểu tam", "review phim", "tóm tắt phim",
+        "short film", "movie",
+        "短剧", "电视剧", "电影", "剧情", "霸总", "逆袭", "爱情", "都市", "婆媳", "复仇"
+    ]
+    if any(k in full_text for k in movie_keywords):
+        return "movie_drama"
+
+    # 5. Khoa học / Khám phá / Bí ẩn / Tài liệu
+    science_keywords = [
+        "khoa học", "khám phá", "vũ trụ", "bí ẩn", "lịch sử", "công nghệ", "động vật",
+        "thiên nhiên", "kỳ lạ", "tại sao", "giải mã", "tri thức", "khoa kỹ",
+        "科普", "科学", "探索", "宇宙", "未解之谜", "动物", "纪录片", "黑科技"
+    ]
+    if any(k in full_text for k in science_keywords):
+        return "science_discovery"
+
+    return "general_lifestyle"
+
+def get_default_hashtags_by_genre(genre):
+    mapping = {
+        "anime_donghua": "#hoathinh3d #donghua #anime #reviewphim #phimhay #xuhuong #tutien #huyenhuyen",
+        "movie_drama": "#phimngan #drama #tomtatphim #reviewphim #phimhay #xuhuong #phimmoi #tinhcam",
+        "food_cooking": "#amthuc #monngon #nauan #cooking #food #mukbang #asmr #monanngon #xuhuong",
+        "survival_bushcraft": "#sinhton #hoangda #ruinho #bushcraft #chetao #asmr #nhago #kynangsinhton",
+        "science_discovery": "#khoahoc #khampha #bian #vutru #kienthuc #tailieu #thegioidongvat #xuhuong",
+        "general_lifestyle": "#video #cuocsong #thugian #khampha #xuhuong #hot #giaitri"
+    }
+    return mapping.get(genre, mapping["general_lifestyle"])
+
 def build_rich_vietnamese_description(title_vi, raw_title="", sample_subs=None):
     """
     Tự động xây dựng bài mô tả video chuẩn SEO 100% Tiếng Việt, chuyên nghiệp và giàu cảm xúc.
-    Chia 3 đoạn: Hook/Bối cảnh -> Tóm tắt diễn biến chi tiết -> ASMR/Thư giãn & CTA.
+    Tự động biến đổi theo ĐÚNG THỂ LOẠI: Hoạt hình 3D, Phim drama, Ẩm thực, Khoa học, Sinh tồn, Đời sống...
     Tuyệt đối không chứa ký tự tiếng Trung nào!
     """
     clean_t = re.sub(r'[\u4e00-\u9fff]', '', str(title_vi or '')).strip()
     clean_t = re.sub(r'^\d+_', '', clean_t).strip()
     if not clean_t:
-        clean_t = "Hành Trình Sinh Tồn Và Chế Tác Nơi Trú Ẩn Hoang Dã"
+        clean_t = "Tác Phẩm Đặc Sắc Tuyển Chọn"
 
+    genre = detect_video_genre(clean_t, raw_title, sample_subs)
     t_lower = (clean_t + " " + str(raw_title or "")).lower()
 
-    # 1. Đoạn 1: Mở màn / Hook
-    p1 = f"Chào mừng các bạn đã quay trở lại với hành trình sinh tồn và chế tác tự nhiên hoang dã!\nTrong tập hôm nay: Cùng theo dõi hành trình đầy cảm hứng \"{clean_t}\", khi con người hòa mình trọn vẹn vào thiên nhiên đại ngàn để tạo nên những điều kỳ diệu từ đôi bàn tay khéo léo."
+    # Nhánh 1: Hoạt hình 3D / Anime / Donghua / Tiên hiệp
+    if genre == "anime_donghua":
+        p1 = f"Chào mừng các bạn đến với tập phim mới nhất: \"{clean_t}\"!\nBước vào thế giới hoạt hình 3D huyền ảo với chất lượng đồ họa đỉnh cao, mở ra hành trình phiêu lưu kỳ thú và những trận chiến mãn nhãn không thể rời mắt."
+        p2 = "Trong tập này: Diễn biến câu chuyện được đẩy lên cao trào kịch tính với những màn chạm trán nảy lửa giữa các thế lực, sự đột phá công pháp và mưu lược quyết đoán của nhân vật chính khi đối mặt với hiểm nguy trùng trùng."
+        if sample_subs and len(sample_subs) >= 2:
+            sub_samples = [s.strip() for s in sample_subs if s and len(s) > 8 and not re.search(r'[\u4e00-\u9fff]', s)][:2]
+            if sub_samples:
+                p2 += f" Điểm nhấn ấn tượng với những câu thoại đắt giá: \"{'; '.join(sub_samples)}\"."
+        p3 = "Kỹ xảo 3D sắc nét từng khung hình kết hợp cùng âm thanh hào hùng chắc chắn sẽ mang đến cho bạn trải nghiệm thị giác tuyệt vời nhất.\n\n🔔 Hãy bấm LIKE, CHIA SẺ và ĐĂNG KÝ KÊNH để cùng đồng hành trong những tập phim bom tấn tiếp theo nhé!"
 
-    # 2. Đoạn 2: Diễn biến chi tiết theo đặc trưng nội dung
-    details = []
-    if any(k in t_lower for k in ["cổ thụ", "gốc cây", "hốc cây", "cây rỗng", "thụ động"]):
-        details.append("tận dụng gốc cây cổ thụ vững chãi làm điểm tựa kiên cố để kiến tạo không gian sống ấm cúng")
-    elif any(k in t_lower for k in ["nhà đá", "hang đá", "vách đá", "thạch ốc"]):
-        details.append("chọn vách đá tự nhiên hiểm trở làm nơi trú ngụ kiên cố, xếp từng viên đá tạo dựng nên căn nhà vững như bàn thạch")
-    elif any(k in t_lower for k in ["nhà gỗ", "mộc ốc", "gỗ", "chòi gỗ"]):
-        details.append("từng bước đốn hạ, đo đạc và lắp ghép các thân gỗ tự nhiên thành bộ khung nhà gỗ chắc chắn và thoáng mát")
-    elif any(k in t_lower for k in ["hồ nước", "bờ suối", "dòng suối", "thác nước", "bờ sông"]):
-        details.append("dựng nơi trú ẩn bên bờ suối trong lành, tận dụng nguồn nước tự nhiên cho sinh hoạt hàng ngày")
+    # Nhánh 2: Ẩm thực / Nấu ăn / Food / Mukbang
+    elif genre == "food_cooking":
+        p1 = f"Chào mừng các bạn đến với không gian ẩm thực hấp dẫn và ấm cúng cùng \"{clean_t}\"!\nCùng khám phá những nét tinh hoa ẩm thực độc đáo và tận hưởng niềm vui nấu nướng mỗi ngày."
+        p2 = "Tập hôm nay mang đến trải nghiệm vị giác bùng nổ: Từng bước lựa chọn nguyên liệu tươi ngon, công thức tẩm ướp đậm đà và kỹ thuật chế biến công phu để tạo nên món ăn thơm nức mũi, chuẩn vị và đẹp mắt."
+        if sample_subs and len(sample_subs) >= 2:
+            sub_samples = [s.strip() for s in sample_subs if s and len(s) > 8 and not re.search(r'[\u4e00-\u9fff]', s)][:2]
+            if sub_samples:
+                p2 += f" Đặc biệt cùng những chia sẻ bí quyết nấu nướng: \"{'; '.join(sub_samples)}\"."
+        p3 = "Âm thanh xèo xèo sôi sục trên bếp lửa hòa quyện cùng màu sắc bắt mắt mang lại cảm giác thư thái, kích thích trọn vẹn mọi giác quan (ASMR Cooking).\n\n🔔 Đừng quên bấm LIKE, LƯU LẠI công thức và ĐĂNG KÝ KÊNH để cùng học thêm nhiều món ngon mỗi ngày nhé!"
+
+    # Nhánh 3: Phim ngắn / Drama / Đô thị / Review tóm tắt phim
+    elif genre == "movie_drama":
+        p1 = f"Chào mừng các bạn đến với tập phim đặc sắc: \"{clean_t}\"!\nMột câu chuyện lôi cuốn chứa đựng nhiều cung bậc cảm xúc, dẫn dắt khán giả qua những tình huống bất ngờ và kịch tính."
+        p2 = "Diễn biến tập phim mở ra với những xung đột gay cấn, sự giằng xé nội tâm và những quyết định mang tính bước ngoặt của các tuyến nhân vật. Từng bí mật dần được hé lộ, đẩy cao trào câu chuyện lên đỉnh điểm."
+        if sample_subs and len(sample_subs) >= 2:
+            sub_samples = [s.strip() for s in sample_subs if s and len(s) > 8 and not re.search(r'[\u4e00-\u9fff]', s)][:2]
+            if sub_samples:
+                p2 += f" Những câu thoại giàu ý nghĩa: \"{'; '.join(sub_samples)}\"."
+        p3 = "Tập phim để lại nhiều suy ngẫm sâu sắc về cuộc sống, tình người và những giá trị nhân văn lắng đọng.\n\n🔔 Hãy nhấn LIKE, BÌNH LUẬN cảm nghĩ của bạn và ĐĂNG KÝ KÊNH để không bỏ lỡ tập phim hấp dẫn tiếp theo!"
+
+    # Nhánh 4: Khoa học / Khám phá / Bí ẩn / Tài liệu
+    elif genre == "science_discovery":
+        p1 = f"Chào mừng các bạn đến với hành trình khám phá thế giới tri thức kỳ thú qua video \"{clean_t}\"!\nMở rộng tầm nhìn với những điều kỳ diệu của tự nhiên, khoa học và cuộc sống xung quanh ta."
+        p2 = "Video phân tích chi tiết và giải mã những hiện tượng thú vị, cung cấp góc nhìn khoa học trực quan, dễ hiểu cùng những dẫn chứng sống động giúp bạn giải đáp những thắc mắc bất ngờ nhất."
+        p3 = "Mỗi kiến thức mới là một bước tiến mở rộng hiểu biết và khơi dậy niềm say mê học hỏi không ngừng.\n\n🔔 Đừng quên bấm LIKE, CHIA SẺ và ĐĂNG KÝ KÊNH để đồng hành cùng chúng mình trong những hành trình khám phá tiếp theo!"
+
+    # Nhánh 5: Sinh tồn / Chế tác / Hoang dã (Bushcraft)
+    elif genre == "survival_bushcraft":
+        p1 = f"Chào mừng các bạn đã quay trở lại với hành trình sinh tồn và chế tác tự nhiên hoang dã!\nTrong tập hôm nay: Cùng theo dõi hành trình đầy cảm hứng \"{clean_t}\", khi con người hòa mình trọn vẹn vào thiên nhiên đại ngàn để tạo nên những điều kỳ diệu từ đôi bàn tay khéo léo."
+        details = []
+        if any(k in t_lower for k in ["cổ thụ", "gốc cây", "hốc cây", "cây rỗng", "thụ động"]):
+            details.append("tận dụng gốc cây cổ thụ vững chãi làm điểm tựa kiên cố để kiến tạo không gian sống ấm cúng")
+        elif any(k in t_lower for k in ["nhà đá", "hang đá", "vách đá", "thạch ốc"]):
+            details.append("chọn vách đá tự nhiên hiểm trở làm nơi trú ngụ kiên cố, xếp từng viên đá tạo dựng nên căn nhà vững như bàn thạch")
+        elif any(k in t_lower for k in ["nhà gỗ", "mộc ốc", "gỗ", "chòi gỗ"]):
+            details.append("từng bước đốn hạ, đo đạc và lắp ghép các thân gỗ tự nhiên thành bộ khung nhà gỗ chắc chắn và thoáng mát")
+        else:
+            details.append("lựa chọn địa thế phong thủy lý tưởng giữa rừng già để xây dựng nơi trú ẩn an toàn, chống chọi mưa gió thú dữ")
+
+        if any(k in t_lower for k in ["ẩm thực", "món ăn", "nấu ăn", "nướng", "thịt", "cá", "gà", "mỹ thực", "bữa ăn"]):
+            details.append("sau những giờ lao động hăng say là khoảnh khắc quây quần tự tay chế biến và thưởng thức những món ăn dã ngoại nóng hổi, thơm lừng giữa tiết trời se lạnh")
+        else:
+            details.append("hoàn thiện từng chi tiết nội thất mộc mạc bên trong, mang đến sự tiện nghi và cảm giác bình yên đến lạ kỳ")
+
+        p2 = f"Quá trình thực hiện đòi hỏi sự kiên trì, tỉ mỉ và kỹ năng sinh tồn đỉnh cao — từ khâu {'; '.join(details)}."
+        p3 = "Từng nhịp búa đẽo gọt, tiếng gió xào xạc hòa cùng âm thanh thiên nhiên hoang sơ mang lại cảm giác thư thái, giải tỏa mọi áp lực cuộc sống (ASMR).\n\n🔔 Đừng quên bấm LIKE, CHIA SẺ và ĐĂNG KÝ KÊNH để tiếp thêm động lực cho chúng mình ra mắt những tập chế tác đỉnh cao tiếp theo nhé!"
+
+    # Nhánh 6: Mặc định / Đời sống / Vlog / Thư giãn
     else:
-        details.append("lựa chọn địa thế phong thủy lý tưởng giữa rừng già để xây dựng nơi trú ẩn an toàn, chống chọi mưa gió thú dữ")
-
-    if any(k in t_lower for k in ["ẩm thực", "món ăn", "nấu ăn", "nướng", "thịt", "cá", "gà", "mỹ thực", "bữa ăn", "ấm cúng"]):
-        details.append("sau những giờ lao động hăng say là khoảnh khắc quây quần tự tay chế biến và thưởng thức những món ăn dã ngoại nóng hổi, thơm lừng giữa tiết trời se lạnh")
-    else:
-        details.append("hoàn thiện từng chi tiết nội thất mộc mạc bên trong, mang đến sự tiện nghi và cảm giác bình yên đến lạ kỳ")
-
-    if sample_subs and len(sample_subs) >= 2:
-        sub_samples = [s.strip() for s in sample_subs if s and len(s) > 8 and not re.search(r'[\u4e00-\u9fff]', s)][:2]
-        if sub_samples:
-            details.append(f"kết hợp cùng những chia sẻ thực tế: \"{'; '.join(sub_samples)}\"")
-
-    p2 = f"Quá trình thực hiện đòi hỏi sự kiên trì, tỉ mỉ và kỹ năng sinh tồn đỉnh cao — từ khâu {'; '.join(details)}."
-
-    # 3. Đoạn 3: Cảm xúc ASMR & Kêu gọi hành động (CTA)
-    p3 = "Từng nhịp búa đẽo gọt, tiếng gió xào xạc hòa cùng âm thanh thiên nhiên hoang sơ mang lại cảm giác thư thái, giải tỏa mọi áp lực cuộc sống (ASMR).\n\n🔔 Đừng quên bấm LIKE, CHIA SẺ và ĐĂNG KÝ KÊNH để tiếp thêm động lực cho chúng mình ra mắt những tập chế tác và sinh tồn đỉnh cao tiếp theo nhé!"
+        p1 = f"Chào mừng các bạn đến với video \"{clean_t}\"!\nCùng đón xem những khoảnh khắc thú vị, câu chuyện thường nhật ý nghĩa và những trải nghiệm đặc sắc nhất được chia sẻ trọn vẹn trong tập này."
+        p2 = "Nội dung video mang đến những diễn biến lôi cuốn, góc nhìn chân thực và những tình huống thú vị giúp người xem có những phút giây giải trí trọn vẹn."
+        if sample_subs and len(sample_subs) >= 2:
+            sub_samples = [s.strip() for s in sample_subs if s and len(s) > 8 and not re.search(r'[\u4e00-\u9fff]', s)][:2]
+            if sub_samples:
+                p2 += f" Điểm nhấn với những chia sẻ mộc mạc: \"{'; '.join(sub_samples)}\"."
+        p3 = "Hy vọng video sẽ mang lại cho bạn những phút giây thư giãn thoải mái và nguồn năng lượng tích cực.\n\n🔔 Đừng quên bấm LIKE, CHIA SẺ và ĐĂNG KÝ KÊNH để theo dõi những video mới nhất tiếp theo nhé!"
 
     full_desc = f"{p1}\n\n{p2}\n\n{p3}"
     full_desc = re.sub(r'[\u4e00-\u9fff]', '', full_desc).strip()
@@ -375,7 +486,7 @@ def build_rich_vietnamese_description(title_vi, raw_title="", sample_subs=None):
 def generate_video_copywriting(task, translated_segments, duration_sec, bridge_server, headers, API_BASE_URL):
     """
     LUỒNG 1: Tạo Tiêu đề, Mô tả và Hashtags (TEXT-ONLY) chuẩn xác 100% theo nội dung video.
-    Đảm bảo 100% Tiếng Việt thuần túy, mô tả 3 đoạn chuẩn SEO giàu cảm xúc, không chứa chữ Trung Quốc.
+    Tự động thích ứng đa thể loại: Hoạt hình 3D Anime, Phim drama, Ẩm thực, Khoa học, Sinh tồn, Đời sống...
     """
     task_id = task.get("id")
     raw_source = task.get("sourceTitle") or task.get("sourceUrl") or f"video_{task_id}"
@@ -402,25 +513,31 @@ def generate_video_copywriting(task, translated_segments, duration_sec, bridge_s
 
     prompt = f"""[HỆ THỐNG: BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT 1 ĐỐI TƯỢNG JSON THUẦN TÚY. KHÔNG CHÀO HỎI, KHÔNG GIẢI THÍCH]
 
-Hãy đóng vai Giám đốc Sáng tạo & Biên tập Nội dung Video Sinh Tồn / Chế Tác chuyên nghiệp. Dưới đây là thông tin video:
+Hãy đóng vai Giám đốc Sáng tạo & Biên tập Nội dung Video Đa Thể Loại chuyên nghiệp (Hoạt hình 3D Anime/Donghua, Phim ngắn/Drama, Ẩm thực/Nấu ăn, Khoa học/Khám phá, Sinh tồn/Chế tác, Vlog/Đời sống...).
+Dưới đây là thông tin video:
 - Tiêu đề gốc video: {clean_source_title}
 - Các câu thoại phụ đề thực tế trong video:
 {subs_text}
 
 QUY TẮC BẮT BUỘC TUYỆT ĐỐI (100% TIẾNG VIỆT - TUYỆT ĐỐI KHÔNG CÓ KÝ TỰ TIẾNG TRUNG):
-1. "new_title": Đặt Tiêu đề Tiếng Việt cực kỳ cuốn hút, giật tít câu view chuẩn SEO (dưới 65 ký tự, trọn vẹn câu, khơi gợi tò mò mạnh mẽ):
-   - Phải đúng chính xác bối cảnh và chất liệu nơi trú ẩn (Nếu gốc là Hốc cây/Cây rỗng -> ghi Hốc Cây/Cây Rỗng; Nếu là Nhà đá/Hang đá -> ghi Nhà Đá/Hang Đá; Nếu là Nhà gỗ -> ghi Nhà Gỗ). TUYỆT ĐỐI KHÔNG tự bịa sai chất liệu.
-2. "description": Viết đoạn mô tả chi tiết, hấp dẫn và lôi cuốn (120-200 từ), chia thành 3 đoạn văn rõ ràng:
-   - Đoạn 1: Mở màn hấp dẫn về hành trình và bối cảnh sinh tồn / chế tác trong tập này.
-   - Đoạn 2: Tóm tắt chi tiết các bước chế tác, vượt qua thử thách thiên nhiên và thưởng thức ẩm thực dã ngoại (nếu có).
-   - Đoạn 3: Cảm xúc thư giãn ASMR hòa mình vào thiên nhiên, kèm lời kêu gọi Like, Chia sẻ và Đăng ký kênh.
-3. "hashtags": Tạo bộ 8-10 hashtag chuẩn SEO theo chủ đề video.
+1. TỰ ĐỘNG NHẬN DIỆN THỂ LOẠI & BỐI CẢNH CHÍNH XÁC:
+   - Nếu là Hoạt hình 3D / Anime / Donghua / Tiên hiệp: Văn phong hào hùng, kịch tính, phong cách huyền ảo / tu chân / dị năng đỉnh cao.
+   - Nếu là Phim ngắn / Drama / Đô thị / Tình cảm: Văn phong cuốn hút, kịch tính, sâu sắc, nhấn mạnh vào mâu thuẫn câu chuyện và cú twist.
+   - Nếu là Ẩm thực / Nấu ăn / Đời sống: Văn phong tươi vui, ấm áp, hấp dẫn vị giác và thư giãn.
+   - Nếu là Khoa học / Khám phá / Tài liệu: Văn phong logic, gợi mở tò mò, mở rộng tri thức.
+   - Nếu là Sinh tồn / Chế tác / Bushcraft: Văn phong mộc mạc, thực tế, tôn vinh kỹ năng và trải nghiệm tự nhiên.
+2. "new_title": Đặt Tiêu đề Tiếng Việt cực kỳ cuốn hút, giật tít câu view chuẩn SEO (dưới 65 ký tự, trọn vẹn câu, sát với nội dung và thể loại video).
+3. "description": Viết đoạn mô tả chi tiết, bài bản và lôi cuốn (120-200 từ), chia thành 3 đoạn văn rõ ràng:
+   - Đoạn 1: Mở màn hấp dẫn về nhân vật, bối cảnh hoặc tình huống mở đầu video.
+   - Đoạn 2: Tóm tắt chi tiết các diễn biến then chốt, tình tiết bất ngờ hoặc điểm cao trào kịch tính.
+   - Đoạn 3: Cảm xúc đọng lại hoặc năng lượng tích cực, kèm lời kêu gọi Like, Chia sẻ và Đăng ký kênh.
+4. "hashtags": Tạo bộ 8-10 hashtag chuẩn SEO theo đúng thể loại video.
 
 CẤU TRÚC JSON MẪU:
 {{
   "new_title": "Tiêu đề tiếng Việt chuẩn nội dung tại đây",
-  "description": "Đoạn 1 mở màn...\\n\\nĐoạn 2 chi tiết các công đoạn chế tác...\\n\\nĐoạn 3 cảm xúc thư giãn ASMR và lời kêu gọi đăng ký kênh...",
-  "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao #asmr #nhago #xuhuong"
+  "description": "Đoạn 1 mở màn...\\n\\nĐoạn 2 chi tiết các công đoạn/diễn biến...\\n\\nĐoạn 3 cảm xúc và lời kêu gọi đăng ký kênh...",
+  "hashtags": "#theloai1 #theloai2 #hashtag3 #xuhuong #phimhay"
 }}"""
 
     # Tự động dịch tiêu đề gốc sang Tiếng Việt ngay từ đầu làm phương án nền móng an toàn
@@ -432,10 +549,11 @@ CẤU TRÚC JSON MẪU:
             clean_tr = re.sub(r'[\\/:*?"<>|]', ' ', tr).strip()
             init_vi_title = f"{prefix_num}{clean_tr}"
 
+    init_genre = detect_video_genre(init_vi_title, clean_source_title, sample_subs)
     result = {
         "new_title": init_vi_title,
         "description": build_rich_vietnamese_description(init_vi_title, clean_source_title, sample_subs),
-        "hashtags": "#sinhton #hoangda #ruinho #bushcraft #chetao #asmr #nhago #kynangsinhton",
+        "hashtags": get_default_hashtags_by_genre(init_genre),
     }
 
     publishing_engine = (task.get("publishingAiEngine") or "deepseek").lower()
