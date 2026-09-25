@@ -81,10 +81,19 @@ export async function PATCH(request: Request) {
       }
 
       const updateData: any = {};
-      if (status) updateData.status = status;
+      if (body.directUrlExpired || body.extractStatus === 'expired') {
+        updateData.directMp4Url = null;
+        updateData.extractStatus = 'expired';
+        updateData.status = 'pending';
+        updateData.error = error || 'Direct MP4 URL expired (403). Waiting for Extension to refresh...';
+      } else {
+        if (status) updateData.status = status;
+        if (body.extractStatus) updateData.extractStatus = body.extractStatus;
+        if (error) updateData.error = error;
+      }
+
       if (progress !== undefined) updateData.progress = progress;
       if (localPath) updateData.localPath = localPath;
-      if (error) updateData.error = error;
       if (speed !== undefined) updateData.downloadSpeed = speed; // Lưu tốc độ download
       if (sizeBytes !== undefined) updateData.sizeBytes = sizeBytes;
       if (actualSizeBytes !== undefined) updateData.actualSizeBytes = actualSizeBytes;

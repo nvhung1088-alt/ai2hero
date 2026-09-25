@@ -647,9 +647,10 @@ export async function getPendingExtractVideosAction(teamId: number, limit: numbe
           eq(downloaderProjects.teamId, teamId),
           like(downloaderVideos.videoUrl, '%douyin.com%'),
           inArray(downloaderVideos.status, ['pending', 'force_pending']),
-          isNull(downloaderVideos.directMp4Url),
           or(
-            isNull(downloaderVideos.extractStatus),
+            isNull(downloaderVideos.directMp4Url),
+            eq(downloaderVideos.extractStatus, 'expired'),
+            eq(downloaderVideos.extractStatus, 'need_refresh'),
             eq(downloaderVideos.extractStatus, 'failed')
           )
         )
@@ -718,3 +719,36 @@ export async function markExtractFailedAction(videoId: number, teamId: number, e
     return { error: 'Failed to mark extract failed: ' + error.message };
   }
 }
+
+export async function markVideoDirectUrlExpiredAction(videoId: number, teamId: number, error?: string) {
+  try {
+    const [video] = await db
+      .select({ id: downloaderVideos.id, projectId: downloaderVideos.projectId })
+      .from(downloaderVideos)
+      .innerJoin(downloaderProjects, eq(downloaderVideos.projectId, downloaderProjects.id))
+      .where(and(eq(downloaderVideos.id, videoId), eq(downloaderProjects.teamId, teamId)))
+      .limit(1);
+
+    if (!video) {
+      return { error: 'Video not found or unauthorized' };
+    }
+
+    const [updated] = await db
+      .update(downloaderVideos)
+      .set({
+        directMp4Url: null,
+        extractStatus: 'expired',
+        status: 'pending',
+        error: error || 'Direct MP4 URL expired (403). Waiting for Extension to refresh...',
+        updatedAt: new Date()
+      })
+      .where(eq(downloaderVideos.id, videoId))
+      .returning();
+
+    return { success: true, video: updated };
+  } catch (error: any) {
+    console.error('[hero-downloader-actions] markVideoDirectUrlExpiredAction error:', error);
+    return { error: error.message };
+  }
+}
+

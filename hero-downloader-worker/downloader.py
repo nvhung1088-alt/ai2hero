@@ -346,8 +346,17 @@ def download_direct_mp4(video, url, update_callback):
         print(Fore.GREEN + f"[OK] Tai xong video ID {video_id} (Direct)")
         return True
     except Exception as e:
+        err_str = str(e).lower()
+        is_expired = "403" in err_str or "forbidden" in err_str or "expired" in err_str
         print(Fore.RED + f"[X] Direct download failed for video ID {video_id}: {e}")
-        if not video.get('videoUrl'):
+        if is_expired:
+            print(Fore.YELLOW + f"[!] Link Direct MP4 cua video ID {video_id} da het han (403). Bao Server yeu cau Extension cap link moi...")
+            update_callback(video_id, status='pending', error="Direct MP4 het han (403). Dang cho Extension lam moi...", direct_url_expired=True, extract_status='expired')
+            try:
+                requests.post("http://127.0.0.1:19998/cookies/request_refresh", json={"domain": "douyin.com"}, timeout=2)
+            except Exception:
+                pass
+        elif not video.get('videoUrl'):
             update_callback(video_id, status='failed', error=str(e))
         if os.path.exists(filepath):
             try: os.remove(filepath)
@@ -528,6 +537,12 @@ def download_video(video, update_callback, cookie_data: str = None):
                 requests.post("http://127.0.0.1:19998/cookies/request_refresh", json={"domain": domain_key}, timeout=2)
             except Exception:
                 pass
+
+            # Đối với Douyin: Link direct đã chết và yt-dlp bị chặn -> Báo server đưa vào pending-extract để Extension mở tab ngầm
+            if "douyin" in url:
+                print(Fore.YELLOW + f"[!] Douyin can trinh duyet bat link direct moi. Bao Server dua video ID {video_id} vao hang doi Extension extract...")
+                update_callback(video_id, status='pending', error="Douyin can trinh duyet bat link fresh. Dang cho Extension...", direct_url_expired=True, extract_status='expired')
+                return False
 
             # Đợi 3.5 giây để Extension âm thầm lấy cookie tươi và nạp vào cookies.txt
             import time as _t

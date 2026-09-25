@@ -199,6 +199,13 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 
 
 ### 3. CÔNG VIỆC HIỆN TẠI ĐANG THỰC HIỆN (IN-PROGRESS)
+- **2026-09-25 (hero-downloader - Expired Douyin Direct Link Auto-Refresh & Quality Extraction)**:
+  - 🔄 **Khắc Phục Triệt Để Lỗi 403 Forbidden Time Expired của CDN Douyin**: Xác định rõ token giới hạn thời gian trên link CDN của ByteDance khiến các video Douyin cũ bị `403 time expired` khi tải qua Direct MP4.
+  - 🔓 **Mở Khóa Pending-Extract Cho Video Hết Hạn (`getPendingExtractVideosAction`)**: Sửa điều kiện lọc trong `hero-downloader-actions.ts`, cho phép hệ thống tự động giao nhiệm vụ mở tab ngầm cho Extension khi video có `extractStatus IN ('expired', 'need_refresh', 'failed')` hoặc `directMp4Url` là null.
+  - 📡 **Tích Hợp Callback Báo Link Hết Hạn Trên Server API (`/api/hero-downloader/worker/update`)**: Tiếp nhận cờ `directUrlExpired` / `extractStatus: 'expired'`, tự động xóa sạch link cũ đã chết và đưa video về hàng đợi trích xuất link mới của Extension.
+  - 🐍 **Nâng Cấp Worker Xử Lý Lỗi 403 & WAF Douyin (`downloader.py` & `worker.py`)**: Nhận diện tức thì lỗi `403` / `time expired` và `ArgusSecurityPlugin` WAF chặn yt-dlp, tự động báo Server đưa vào hàng đợi Extension trích xuất lại link thay vì bị kẹt trong vòng lặp retry 3 lần rồi báo `failed`.
+  - 🟢 **Verification**: `python -m py_compile worker.py downloader.py` đạt 0 lỗi, `npx tsc --noEmit` đạt 0 lỗi.
+
 - **2026-09-05 (hero-dub - Translation Chinese Rejection Filter & Quality Gate Unblock)**:
   - 🛡️ **Tối Ưu Ràng Buộc Ngôn Ngữ Server API (`/api/hero-dub/translate`)**: Tái cấu trúc `systemMessage` và `userMessage`, loại bỏ các chỉ dẫn dễ gây hiểu lầm cho LLM tiếng Trung ("sửa lỗi đồng âm ASR tiếng Trung") và thay bằng quy tắc cứng rắn song ngữ (Target: Vietnamese Only, Absolutely No Chinese Characters).
   - 🛑 **Bộ Lọc Phản Kháng Chữ Hán (Chinese Rejection Filter)**: Server tự động quét `candidateTexts`, hễ phát hiện câu nào có chữ Hán (`chCount >= 2`) mà không có chữ cái Latinh/Việt nào ➔ Lập tức từ chối nhận và kích hoạt cứu hộ mini-rescue hoặc attempt retry. Tuyệt đối không trả về 200 với các câu chữ Hán.
@@ -2188,10 +2195,16 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
 - **2026-09-07**:
   - Khắc phục triệt để lỗi tiêu đề rác `Vlog___ai___AI` và chuẩn hóa hoàn toàn bộ nhận diện ý nghĩa tiêu đề (`is_meaningful_title`): Tích hợp danh sách STOP_WORDS, loại bỏ việc dùng `re.sub` xóa chữ Hán khiến băm nát chuỗi tiếng Anh, kích hoạt cơ chế dịch cứu hộ tự động qua Google Translate / câu phụ đề tiêu biểu.
   - Chuẩn hóa toàn diện **Pipeline 2 bước thiết kế thumbnail** (Gemini Flash + Worker Typography):
-    - Bước 1: Gemini Flash chỉ làm duy nhất nhiệm vụ Image Inpainting xóa sạch chữ tiếng Trung & watermark (3 giây), giữ nguyên 100% nhân vật, nét mặt và bối cảnh.
+    - Bước 1: Gemini Flash Image Direct API chỉ làm duy nhất nhiệm vụ Image Inpainting xóa sạch chữ tiếng Trung & watermark (3 giây), giữ nguyên 100% nhân vật, nét mặt và bối cảnh. Khắc phục triệt để lỗi thiếu `import urllib.request` khiến API bị crash và văng sang Browser AI Bridge.
     - Bước 2: Worker dùng Pillow vẽ tiêu đề tiếng Việt chuẩn Typography 3D Vàng kim viền đen dày nổi bật.
   - Nâng cấp **Bố cục vị trí tiêu đề tự động (Smart Adaptive Title Positioning)**:
-    - Nhận diện thể loại và từ khóa: Nhóm Hoạt hình 3D, Chú heo con, Thú cưng, Vlog đời sống, Drama ngắn -> Tự động đặt tiêu đề ở NỬA TRÊN (TOP, $Y \approx 14\%$ chiều cao ảnh, đúng vị trí khoảng trống trên đầu nhân vật nơi tiêu đề gốc hiển thị).
+    - Nhận diện thể loại và từ khóa: Nhóm Hoạt hình 3D, Chú heo con (`pet_animation`), Thú cưng, Vlog đời sống, Drama ngắn -> Tự động đặt tiêu đề ở NỬA TRÊN (TOP, $Y \approx 14\%$ chiều cao ảnh, đúng vị trí khoảng trống trên đầu nhân vật nơi tiêu đề gốc hiển thị).
     - Nhóm Sinh tồn hoang dã, Chế tác, Ẩm thực, Nấu ăn -> Tự động đặt tiêu đề ở NỬA DƯỚI (BOTTOM, $Y \approx 68\%$).
     - Đồng bộ mã nguồn hoàn chỉnh giữa `herodub_worker.py`, `fix_publishing_suite.py` và `app/public/uploads/herodub_worker.py`.
   - Khắc phục lỗi UnboundLocalError: `cannot access local variable 'stt_was_run'` khi Worker tái sử dụng dữ liệu STT có sẵn trong cache workspace. Đã khởi tạo `stt_was_run = False` an toàn trước khối xử lý STT.
+  - Nâng cấp toàn diện **Hệ Thống Mô Tả Video Chuẩn SEO 3 Đoạn Văn & Bộ Hashtags Đa Thể Loại**:
+    - Bổ sung nhóm thể loại `pet_animation` chuyên biệt cho Chú Heo Bông Súp Lơ, Thú cưng, Hoạt hình 3D.
+    - Chặn đứng 100% văn mẫu sáo rỗng vô nghĩa: Tự động phát hiện và thay thế bằng bài viết 3 đoạn văn sâu sắc (Mở màn -> Tóm tắt kịch tính -> Cảm xúc chữa lành & Kêu gọi hành động).
+    - Phát triển thuật toán `pick_representative_subs`: Tự động trích xuất 3-4 câu thoại đắt giá nhất phân bổ đều xuyên suốt dòng thời gian video (10%, 40%, 75%, 90%) để đưa vào phần tóm tắt diễn biến.
+    - Khắc phục triệt để lỗi gán nhầm `#reviewphim` cho phim hoạt hình chú heo con, chuẩn hóa bộ hashtag bám sát thể loại.
+    - Đã kiểm thử thành công trên video 2494 (`2494_Vlog Chú Heo Bông Đi Thuê Phòng Vượt Qua Phỏng Vấn Hài Hước`).
