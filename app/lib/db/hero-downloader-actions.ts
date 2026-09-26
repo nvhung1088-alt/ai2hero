@@ -2,7 +2,7 @@
 
 import { db } from './drizzle';
 import { downloaderProjects, downloaderVideos, downloaderCookies, downloaderSettings, teams, users } from './schema';
-import { eq, and, desc, sql, isNull, gt, inArray, or, like } from 'drizzle-orm';
+import { eq, and, desc, sql, isNull, gt, lt, inArray, or, like } from 'drizzle-orm';
 import { getUser } from './queries';
 import { generateLinkCode } from './extension-actions';
 
@@ -634,6 +634,8 @@ export async function resolveVideoDirectUrlAction(videoId: number, teamId: numbe
 
 export async function getPendingExtractVideosAction(teamId: number, limit: number = 5) {
   try {
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+
     const pendingVideos = await db
       .select({
         id: downloaderVideos.id,
@@ -651,7 +653,11 @@ export async function getPendingExtractVideosAction(teamId: number, limit: numbe
             isNull(downloaderVideos.directMp4Url),
             eq(downloaderVideos.extractStatus, 'expired'),
             eq(downloaderVideos.extractStatus, 'need_refresh'),
-            eq(downloaderVideos.extractStatus, 'failed')
+            eq(downloaderVideos.extractStatus, 'failed'),
+            and(
+              eq(downloaderVideos.extractStatus, 'extracting'),
+              lt(downloaderVideos.updatedAt, twoMinutesAgo)
+            )
           )
         )
       )

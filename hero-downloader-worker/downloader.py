@@ -1,4 +1,6 @@
 import os
+import sys
+import io
 import re
 import tempfile
 import threading
@@ -6,6 +8,14 @@ import base64
 import requests
 import yt_dlp
 from colorama import Fore
+
+# Đảm bảo in an toàn ký tự Unicode (tiếng Trung, tiếng Việt) trên Windows console
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 def _strip_ansi(text: str) -> str:
     """Xóa tất cả ANSI escape codes khỏi chuỗi (tránh lem ký tự rác lên Web UI)."""
@@ -385,13 +395,20 @@ def download_video(video, update_callback, cookie_data: str = None):
         if success:
             return True
         else:
-            print(Fore.YELLOW + f"[*] Direct download failed, falling back to yt-dlp with videoUrl...")
             url = video.get('videoUrl')
+            # Nếu là Douyin: yt-dlp KHÔNG thể tải do WAF chặn, mà cần Extension bắt link fresh
+            if url and "douyin.com" in url:
+                print(Fore.YELLOW + f"[!] Video Douyin ID {video_id} direct link bi het han. Da chuyen giao cho Extension cap link moi. Bo qua yt-dlp.")
+                return False
+            print(Fore.YELLOW + f"[*] Direct download failed, falling back to yt-dlp with videoUrl...")
             if not url:
-                if video.get('videoUrl'): # It already checked above, but just in case
-                    pass 
-                else:
-                    return False
+                return False
+
+    # Nếu là Douyin nhưng chưa có Direct MP4: không chạy yt-dlp
+    if url and "douyin.com" in url:
+        print(Fore.YELLOW + f"[!] Video Douyin ID {video_id} chua co Direct MP4 link. Bao Server chuyen giao cho Extension bat link...")
+        update_callback(video_id, status='pending', error="Dang cho Extension bat link fresh...", direct_url_expired=True, extract_status='expired')
+        return False
 
     print(Fore.GREEN + f"[-] Dang tai video ID {video_id} - URL: {url}")
 

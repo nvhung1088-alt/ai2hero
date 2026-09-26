@@ -152,8 +152,13 @@ function getScanIntervalMs(intervalStr: string): number {
           eq(downloaderVideos.status, 'force_pending'),
           or(
             notLike(downloaderVideos.videoUrl, '%douyin.com%'),
-            isNotNull(downloaderVideos.directMp4Url),
-            lt(downloaderVideos.updatedAt, twoMinutesAgo)
+            and(
+              isNotNull(downloaderVideos.directMp4Url),
+              or(
+                isNull(downloaderVideos.extractStatus),
+                eq(downloaderVideos.extractStatus, 'resolved')
+              )
+            )
           )
         )
       )
@@ -181,8 +186,13 @@ function getScanIntervalMs(intervalStr: string): number {
           eq(downloaderVideos.status, 'pending'),
           or(
             notLike(downloaderVideos.videoUrl, '%douyin.com%'),
-            isNotNull(downloaderVideos.directMp4Url),
-            lt(downloaderVideos.updatedAt, twoMinutesAgo)
+            and(
+              isNotNull(downloaderVideos.directMp4Url),
+              or(
+                isNull(downloaderVideos.extractStatus),
+                eq(downloaderVideos.extractStatus, 'resolved')
+              )
+            )
           )
         )
       )

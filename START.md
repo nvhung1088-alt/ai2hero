@@ -27,6 +27,7 @@ Ten du an:    AI2Hero Platform (Free AI MVP Super App)
   - `[x]` Phát triển công cụ **Tự động Tái tạo Ảnh Bìa Thumbnail Tiếng Việt**: Tích hợp Google Gemini AI Image Generator (Free Tier 100%), tự động đọc ảnh gốc tiếng Trung, dịch tiêu đề sang tiếng Việt chuẩn SEO và tối ưu 720p lưu trực tiếp vào thư mục video dịch.
   - `[x]` Nâng cấp **Hệ Thống Dịch Thuật Phụ Đề Đa Thể Loại Thông Minh (Multi-Genre Adaptive Translation Engine)**: Loại bỏ hardcode "Tiên Hiệp / Cổ Trang", cho phép AI tự động phân tích ngữ cảnh để nhận diện thể loại video (Khoa học, Sinh tồn hoang dã, Đô thị đời sống, Cổ trang, Hành động...) và tự động áp dụng đại từ / văn phong lồng tiếng chuẩn xác 100%.
   - `[x]` Đồng bộ **Quy Trình Thiết Kế & Tải Ảnh Thumbnail 3 Tầng Bảo Vệ** vào `herodub_worker.py`: Tích hợp chuẩn payload attachments, prompt 3D vàng kim viền đen, cơ chế bắt Base64 WebSocket và fallback tự động quét thư mục Downloads. Đã kiểm thử thành công 100%.
+  - `[x]` Khắc phục triệt để lỗi **Nghẽn Hàng Đợi (Head-of-Line Blocking) & Link Douyin Hết Hạn (403)** trên Hero Downloader: Phân định rạch ròi luồng Worker và Extension, tự động thu hồi task `extracting` bị treo sau 2 phút, bypass yt-dlp cho Douyin để chuyển giao trực tiếp cho Extension bắt link fresh, đồng thời giải phóng hoàn toàn hàng trăm video Bilibili và Douyin tải về thành công (1,041+ video đã hoàn tất).
 
 ### 5. Hero Care (MVP Mới - Trợ lý CSKH AI đa kênh)
 - **Status:** `Beta`
